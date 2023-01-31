@@ -1,0 +1,103 @@
+workspace "Quiet"
+    architecture "x64"
+    startproject "Sandbox"
+
+    configurations{
+        "Debug",
+        "Release",
+        "Dist"
+    }
+
+outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+
+project "Quiet"
+    location "Quiet"
+    kind "SharedLib"
+    language "C++"
+
+    targetdir ("%{prj.name}/bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("%{prj.name}/bin-int/" .. outputdir .. "/%{prj.name}")
+
+    files{
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp"
+    }
+
+
+    includedirs{
+		"%{prj.name}/src",
+        "%{prj.name}/vendor/spdlog/include"
+	}
+
+    filter "system:windows"
+        cppdialect "C++17"
+        staticruntime "On"
+        systemversion "latest"
+
+        defines{
+            "QT_PLATFORM_WINDOWS",
+            "QT_BUILD_DLL"
+        }
+
+        postbuildcommands {
+			("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+		}
+
+    filter "configurations:Debug"
+        defines "QT_DEBUG"
+        runtime "Debug"
+        symbols "on"
+
+    filter "configurations:Release"
+        defines "QT_RELEASE"
+        runtime "Release"
+        optimize "on"
+
+    filter "configurations:Dist"
+        defines "QT_DIST"
+        runtime "Release"
+        optimize "on"
+
+project "Sandbox"
+    location "Sandbox"
+    kind "ConsoleApp"
+    language "C++"
+
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+    files{
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp"
+    }
+
+    includedirs{
+        "Quiet/src",
+        "Quiet/vendor/spdlog/include"
+    }
+
+    links{
+        "Quiet"
+    }
+
+    filter "system:windows"
+        systemversion "latest"
+
+        defines{
+            "QT_PLATFORM_WINDOWS"
+        }
+
+    filter "configurations:Debug"
+        defines "QT_DEBUG"
+        runtime "Debug"
+        symbols "on"
+
+    filter "configurations:Release"
+        defines "QT_RELEASE"
+        runtime "Release"
+        optimize "on"
+
+    filter "configurations:Dist"
+        defines "QT_DIST"
+        runtime "Release"
+        optimize "on"
