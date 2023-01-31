@@ -37,7 +37,9 @@ namespace Quiet
 
 	#define EVENT_CLASS_CATEGORY(category) virtual int GetCategoryFlags() const override { return category; }
 
-	// EVENT CLASS BASE
+	//-----------------------------------------------------------------------------
+	// [CLASS] Event Base
+	//-----------------------------------------------------------------------------
 	class QUIET_API Event
 	{
 		friend class EventDispatcher;
@@ -55,7 +57,9 @@ namespace Quiet
 		bool m_Handled = false;
 	};
 
-	// EVENT DISPATCHER
+	//-----------------------------------------------------------------------------
+	// [CLASS] Event Dispatcher
+	//-----------------------------------------------------------------------------
 	class EventDispatcher
 	{
 		template<typename T>
