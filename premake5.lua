@@ -15,8 +15,8 @@ project "Quiet"
     kind "SharedLib"
     language "C++"
 
-    targetdir ("%{prj.name}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{prj.name}/bin-int/" .. outputdir .. "/%{prj.name}")
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
     files{
         "%{prj.name}/src/**.h",

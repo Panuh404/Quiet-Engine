@@ -55,22 +55,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>bin\Debug-windows-x86_64\Quiet\</OutDir>
-    <IntDir>bin-int\Debug-windows-x86_64\Quiet\</IntDir>
+    <OutDir>..\bin\Debug-windows-x86_64\Quiet\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\Quiet\</IntDir>
     <TargetName>Quiet</TargetName>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>bin\Release-windows-x86_64\Quiet\</OutDir>
-    <IntDir>bin-int\Release-windows-x86_64\Quiet\</IntDir>
+    <OutDir>..\bin\Release-windows-x86_64\Quiet\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\Quiet\</IntDir>
     <TargetName>Quiet</TargetName>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>bin\Dist-windows-x86_64\Quiet\</OutDir>
-    <IntDir>bin-int\Dist-windows-x86_64\Quiet\</IntDir>
+    <OutDir>..\bin\Dist-windows-x86_64\Quiet\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\Quiet\</IntDir>
     <TargetName>Quiet</TargetName>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
@@ -89,10 +89,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ImportLibrary>bin\Debug-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
+      <ImportLibrary>..\bin\Debug-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST bin\Debug-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I bin\Debug-windows-x86_64\Quiet\Quiet.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I bin\Debug-windows-x86_64\Quiet\Quiet.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\Quiet\Quiet.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\Quiet\Quiet.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -114,10 +114,10 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>bin\Release-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
+      <ImportLibrary>..\bin\Release-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST bin\Release-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I bin\Release-windows-x86_64\Quiet\Quiet.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I bin\Release-windows-x86_64\Quiet\Quiet.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\Quiet\Quiet.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\Quiet\Quiet.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
@@ -139,10 +139,10 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>bin\Dist-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
+      <ImportLibrary>..\bin\Dist-windows-x86_64\Quiet\Quiet.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST bin\Dist-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I bin\Dist-windows-x86_64\Quiet\Quiet.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I bin\Dist-windows-x86_64\Quiet\Quiet.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\Quiet\Quiet.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\Quiet\Quiet.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\Quiet\Quiet.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -150,6 +150,10 @@
     <ClInclude Include="src\Quiet\Application.h" />
     <ClInclude Include="src\Quiet\Core.h" />
     <ClInclude Include="src\Quiet\EntryPoint.h" />
+    <ClInclude Include="src\Quiet\Events\ApplicationEvent.h" />
+    <ClInclude Include="src\Quiet\Events\Event.h" />
+    <ClInclude Include="src\Quiet\Events\KeyEvent.h" />
+    <ClInclude Include="src\Quiet\Events\MouseEvent.h" />
     <ClInclude Include="src\Quiet\Log.h" />
   </ItemGroup>
   <ItemGroup>
