@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Quiet/Core.h"
+#include "Quiet/Window.h"
 #include "Events/Event.h"
 
 namespace Quiet
@@ -12,6 +13,9 @@ namespace Quiet
 		virtual ~Application();
 
 		void Run();
+	private:
+		std::unique_ptr<Window> m_Window;
+		bool m_Running = true;
 	};
 
 	// to be defined in client

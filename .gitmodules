@@ -1,3 +1,6 @@
 [submodule "Quiet/vendor/spdlog"]
 	path = Quiet/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "Quiet/vendor/GLFW"]
+	path = Quiet/vendor/GLFW
+	url = https://github.com/glfw/glfw.git

@@ -10,6 +10,13 @@ workspace "Quiet"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+--include directories relative to root folder (solution directory)
+IncludeDir = {}
+IncludeDir["GLFW"] = "Quiet/vendor/GLFW/include"
+
+--include premake file for vendor 
+include "Quiet/vendor"
+
 project "Quiet"
     location "Quiet"
     kind "SharedLib"
@@ -18,16 +25,24 @@ project "Quiet"
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
+    pchheader "qtpch.h"
+    pchsource "Quiet/src/qtpch.cpp"
+
     files{
         "%{prj.name}/src/**.h",
         "%{prj.name}/src/**.cpp"
     }
 
-
     includedirs{
 		"%{prj.name}/src",
-        "%{prj.name}/vendor/spdlog/include"
+        "%{prj.name}/vendor/spdlog/include",
+        "%{IncludeDir.GLFW}"
 	}
+
+    links{
+        "GLFW",
+        "opengl32.lib"
+    }
 
     filter "system:windows"
         cppdialect "C++17"
