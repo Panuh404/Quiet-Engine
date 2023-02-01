@@ -14,6 +14,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 IncludeDir = {}
 IncludeDir["GLFW"] = "Quiet/vendor/GLFW/include"
 IncludeDir["Glad"] = "Quiet/vendor/Glad/include"
+IncludeDir["ImGui"] = "Quiet/vendor/ImGui"
 
 --include premake file for vendor 
 include "Quiet/vendor"
@@ -37,11 +38,15 @@ project "Quiet"
     includedirs{
 		"%{prj.name}/src",
         "%{prj.name}/vendor/spdlog/include",
-        "%{IncludeDir.GLFW}"
+        "%{IncludeDir.GLFW}",
+        "%{IncludeDir.Glad}",
+        "%{IncludeDir.ImGui}"
 	}
 
     links{
         "GLFW",
+        "Glad",
+        "ImGui",
         "opengl32.lib"
     }
 
@@ -52,7 +57,8 @@ project "Quiet"
 
         defines{
             "QT_PLATFORM_WINDOWS",
-            "QT_BUILD_DLL"
+            "QT_BUILD_DLL",
+            "GLFW_INCLUDE_NONE"
         }
 
         postbuildcommands {

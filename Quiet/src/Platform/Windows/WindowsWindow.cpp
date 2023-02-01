@@ -6,6 +6,9 @@
 
 #include "Platform/Windows/WindowsWindow.h"
 
+#include <glad/glad.h>
+
+
 namespace Quiet
 {
 	static bool s_GLFWInitialized = false;
@@ -38,6 +41,7 @@ namespace Quiet
 
 		QT_CORE_INFO("Creating window {0} ({1}:{2})", props.Title, props.Width, props.Height);
 
+		// GLFW Initialization
 		if (!s_GLFWInitialized)
 		{
 			//TODO: glfwTerminate on system shutdown
@@ -49,6 +53,11 @@ namespace Quiet
 
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
 		glfwMakeContextCurrent(m_Window);
+
+		// Glad Initialization
+		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+		QT_CORE_ASSERT(status, "Could not initialize GLAD!")
+
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		SetVSync(true);
 

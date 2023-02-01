@@ -4,3 +4,7 @@
 [submodule "Quiet/vendor/GLFW"]
 	path = Quiet/vendor/GLFW
 	url = https://github.com/glfw/glfw.git
+[submodule "Quiet/vendor/ImGui"]
+	path = Quiet/vendor/ImGui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

@@ -9,12 +9,12 @@ public:
 
 	void OnUpdate() override
 	{
-		QT_INFO("ExampleLayer::Update");
+		//QT_INFO("ExampleLayer::Update");
 	}
 
 	void OnEvent(Quiet::Event& event) override
 	{
-		QT_TRACE("ExampleLayer::Event::{0}", event);
+		//QT_TRACE("ExampleLayer::Event::{0}", event);
 	}
 };
 
@@ -24,6 +24,7 @@ public:
 	Sandbox()
 	{
 		PushLayer(new ExampleLayer());
+		PushOverlay(new Quiet::ImGuiLayer());
 	}
 
 	~Sandbox()

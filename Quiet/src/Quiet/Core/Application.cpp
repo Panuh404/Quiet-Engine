@@ -3,12 +3,17 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
 
-#include <GLFW/glfw3.h>
+#include <glad/glad.h>
 
 namespace Quiet
 {
+	Application* Application::s_Instance = nullptr;
+
 	Application::Application()
 	{
+		QT_CORE_ASSERT(!s_Instance, "Application already exists!!!")
+		s_Instance = this;
+
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 	}
@@ -21,20 +26,20 @@ namespace Quiet
 	void Application::PushLayer(Layer* layer)
 	{
 		m_LayerStack.PushLayer(layer);
+		layer->OnAttach();
 	}
 
 	void Application::PushOverlay(Layer* overlay)
 	{
 		m_LayerStack.PushOverlay(overlay);
+		overlay->OnAttach();
 	}
 
 	void Application::OnEvent(Event& e)
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::OnWindowClose));
-
-		//QT_CORE_TRACE("{0}", e);
-
+		
 		for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
 		{
 			(*--it)->OnEvent(e);
