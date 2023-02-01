@@ -6,7 +6,6 @@
 
 #include "Platform/Windows/WindowsWindow.h"
 
-
 namespace Quiet
 {
 	static bool s_GLFWInitialized = false;

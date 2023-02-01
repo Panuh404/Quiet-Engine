@@ -7,10 +7,11 @@
 //-----------------------------------------------------------------------------
 // [SECTION] Core
 //-----------------------------------------------------------------------------
-#include "Quiet/Core.h"
+#include "Quiet/Core/Core.h"
 
-#include "Quiet/Application.h"
-#include "Quiet/Log.h"
+#include "Quiet/Core/Application.h"
+#include "Quiet/Core/Layer.h"
+#include "Quiet/Core/Log.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] Input
@@ -20,4 +21,4 @@
 //-----------------------------------------------------------------------------
 // [Entry Point]
 //-----------------------------------------------------------------------------
-#include "Quiet/EntryPoint.h"
+#include "Quiet/Core/EntryPoint.h"

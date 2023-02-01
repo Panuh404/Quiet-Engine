@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Quiet/Core.h"
+#include "Quiet/Core/Core.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/fmt/ostr.h"
 

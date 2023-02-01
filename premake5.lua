@@ -13,6 +13,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 --include directories relative to root folder (solution directory)
 IncludeDir = {}
 IncludeDir["GLFW"] = "Quiet/vendor/GLFW/include"
+IncludeDir["Glad"] = "Quiet/vendor/Glad/include"
 
 --include premake file for vendor 
 include "Quiet/vendor"
@@ -60,17 +61,17 @@ project "Quiet"
 
     filter "configurations:Debug"
         defines "QT_DEBUG"
-        runtime "Debug"
+        buildoptions "/MDd"
         symbols "on"
 
     filter "configurations:Release"
         defines "QT_RELEASE"
-        runtime "Release"
+        buildoptions "/MD"
         optimize "on"
 
     filter "configurations:Dist"
         defines "QT_DIST"
-        runtime "Release"
+        buildoptions "/MD"
         optimize "on"
 
 project "Sandbox"
@@ -104,15 +105,15 @@ project "Sandbox"
 
     filter "configurations:Debug"
         defines "QT_DEBUG"
-        runtime "Debug"
+        buildoptions "/MDd"
         symbols "on"
 
     filter "configurations:Release"
         defines "QT_RELEASE"
-        runtime "Release"
+        buildoptions "/MD"
         optimize "on"
 
     filter "configurations:Dist"
         defines "QT_DIST"
-        runtime "Release"
+        buildoptions "/MD"
         optimize "on"
