@@ -23,6 +23,7 @@ project "Quiet"
     location "Quiet"
     kind "SharedLib"
     language "C++"
+    staticruntime "off"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -62,22 +63,22 @@ project "Quiet"
         }
 
         postbuildcommands {
-			("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
 		}
 
     filter "configurations:Debug"
         defines "QT_DEBUG"
-        buildoptions "/MDd"
+        runtime "Debug"
         symbols "on"
 
     filter "configurations:Release"
         defines "QT_RELEASE"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "on"
 
     filter "configurations:Dist"
         defines "QT_DIST"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "on"
 
 project "Sandbox"
@@ -111,15 +112,15 @@ project "Sandbox"
 
     filter "configurations:Debug"
         defines "QT_DEBUG"
-        buildoptions "/MDd"
+        runtime "Debug"
         symbols "on"
 
     filter "configurations:Release"
         defines "QT_RELEASE"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "on"
 
     filter "configurations:Dist"
         defines "QT_DIST"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "on"
