@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Quiet/Core/Window.h"
+#include "Quiet/Renderer/RendererContext.h"
+
 #include <GLFW/glfw3.h>
 
 namespace Quiet
@@ -9,7 +11,7 @@ namespace Quiet
 	{
 	public:
 		WindowsWindow(const WindowProps& props);
-		virtual ~WindowsWindow();
+		~WindowsWindow();
 
 		void OnUpdate() override;
 
@@ -29,6 +31,7 @@ namespace Quiet
 
 	private:
 		GLFWwindow* m_Window;
+		RendererContext* m_Context;
 
 		struct WindowData
 		{
