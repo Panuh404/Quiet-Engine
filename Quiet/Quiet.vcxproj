@@ -159,9 +159,11 @@
     <ClInclude Include="src\Quiet\Core\Core.h" />
     <ClInclude Include="src\Quiet\Core\EntryPoint.h" />
     <ClInclude Include="src\Quiet\Core\Input.h" />
+    <ClInclude Include="src\Quiet\Core\KeyCodes.h" />
     <ClInclude Include="src\Quiet\Core\Layer.h" />
     <ClInclude Include="src\Quiet\Core\LayerStack.h" />
     <ClInclude Include="src\Quiet\Core\Log.h" />
+    <ClInclude Include="src\Quiet\Core\MouseCodes.h" />
     <ClInclude Include="src\Quiet\Core\Window.h" />
     <ClInclude Include="src\Quiet\Events\ApplicationEvent.h" />
     <ClInclude Include="src\Quiet\Events\Event.h" />
