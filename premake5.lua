@@ -22,10 +22,10 @@ include "Quiet/vendor"
 
 project "Quiet"
     location "Quiet"
-    kind "SharedLib"
+    kind "StaticLib"
     language "C++"
     cppdialect "C++17"
-    staticruntime "off"
+    staticruntime "on"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -109,7 +109,7 @@ project "Sandbox"
         "Quiet/src",
         "Quiet/vendor/",
         "Quiet/vendor/spdlog/include",
-        "%{IncludeDir.glm}"
+        "%{IncludeDir.glm}",
     }
 
     links{

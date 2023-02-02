@@ -7,6 +7,8 @@
 #include "Quiet/Events/Event.h"
 #include "Quiet/Events/ApplicationEvent.h"
 
+#include "Quiet/ImGui/ImGuiLayer.h"
+
 namespace Quiet
 {
 	class QUIET_API Application
@@ -27,9 +29,10 @@ namespace Quiet
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
 
-		static Application* s_Instance;
 		std::unique_ptr<Window> m_Window;
+		ImGuiLayer* m_ImGuiLayer;
 		LayerStack m_LayerStack;
+		static Application* s_Instance;
 
 		bool m_Running = true;
 		bool m_Minimized = false;

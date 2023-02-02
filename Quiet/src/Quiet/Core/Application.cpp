@@ -14,11 +14,17 @@ namespace Quiet
 
 	Application::Application()
 	{
+		// Create Application Instance
 		QT_CORE_ASSERT(!s_Instance, "Application already exists!!!")
 		s_Instance = this;
 
+		// Create Window
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
+
+		// Create ImGui Layer
+		m_ImGuiLayer = new ImGuiLayer();
+		PushOverlay(m_ImGuiLayer);
 	}
 
 	Application::~Application()
@@ -57,11 +63,22 @@ namespace Quiet
 		{
 			glClearColor(0.2f, 0.3f, 0.7f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			// Layers
 			for (Layer* layer : m_LayerStack)
 			{
 				layer->OnUpdate();
 			}
-			
+
+			// ImGui Render
+			m_ImGuiLayer->Begin();
+			for (Layer* layer : m_LayerStack)
+			{
+				layer->OnImGuiRender();
+			}
+			m_ImGuiLayer->End();
+
+			// Window
 			m_Window->OnUpdate();
 		}
 	}

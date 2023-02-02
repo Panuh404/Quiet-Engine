@@ -6,13 +6,16 @@
 // [PLATFORM] Windows
 //-----------------------------------------------------------------------------
 #ifdef QT_PLATFORM_WINDOWS
-	// FOR SHARED LIB ONLY (.dll)
-	#ifdef QT_BUILD_DLL
-		#define QUIET_API __declspec(dllexport)	// Export to DLL
+	#if QT_DYNAMIC_LINK
+		// FOR SHARED LIB ONLY (.dll)
+		#ifdef QT_BUILD_DLL
+			#define QUIET_API __declspec(dllexport)	// Export to DLL
+		#else
+			#define QUIET_API __declspec(dllimport)	// Import from DLL
+		#endif
 	#else
-		#define QUIET_API __declspec(dllimport)	// Import from DLL
+		#define QUIET_API
 	#endif
-
 #else
 	#error QUIET ONLY SUPPORTS WINDOWS!
 #endif
