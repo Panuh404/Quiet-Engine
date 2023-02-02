@@ -152,11 +152,13 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Quiet.h" />
     <ClInclude Include="src\Quiet\Core\Application.h" />
     <ClInclude Include="src\Quiet\Core\Core.h" />
     <ClInclude Include="src\Quiet\Core\EntryPoint.h" />
+    <ClInclude Include="src\Quiet\Core\Input.h" />
     <ClInclude Include="src\Quiet\Core\Layer.h" />
     <ClInclude Include="src\Quiet\Core\LayerStack.h" />
     <ClInclude Include="src\Quiet\Core\Log.h" />
@@ -169,8 +171,10 @@
     <ClInclude Include="src\qtpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Quiet\Core\Application.cpp" />
+    <ClCompile Include="src\Quiet\Core\Input.cpp" />
     <ClCompile Include="src\Quiet\Core\Layer.cpp" />
     <ClCompile Include="src\Quiet\Core\LayerStack.cpp" />
     <ClCompile Include="src\Quiet\Core\Log.cpp" />

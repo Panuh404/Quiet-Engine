@@ -2,6 +2,7 @@
 
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Core/Input.h"
 
 #include <glad/glad.h>
 
@@ -58,6 +59,7 @@ namespace Quiet
 			{
 				layer->OnUpdate();
 			}
+			
 			m_Window->OnUpdate();
 		}
 	}
