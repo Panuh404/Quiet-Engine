@@ -15,6 +15,7 @@ IncludeDir = {}
 IncludeDir["GLFW"] = "Quiet/vendor/GLFW/include"
 IncludeDir["Glad"] = "Quiet/vendor/Glad/include"
 IncludeDir["ImGui"] = "Quiet/vendor/ImGui"
+IncludeDir["glm"] = "Quiet/vendor/glm"
 
 --include premake file for vendor 
 include "Quiet/vendor"
@@ -23,6 +24,7 @@ project "Quiet"
     location "Quiet"
     kind "SharedLib"
     language "C++"
+    cppdialect "C++17"
     staticruntime "off"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
@@ -33,7 +35,9 @@ project "Quiet"
 
     files{
         "%{prj.name}/src/**.h",
-        "%{prj.name}/src/**.cpp"
+        "%{prj.name}/src/**.cpp",
+        "%{prj.name}/vendor/glm/glm/**.hpp",
+        "%{prj.name}/vendor/glm/glm/**.inl"
     }
 
     includedirs{
@@ -41,8 +45,13 @@ project "Quiet"
         "%{prj.name}/vendor/spdlog/include",
         "%{IncludeDir.GLFW}",
         "%{IncludeDir.Glad}",
-        "%{IncludeDir.ImGui}"
+        "%{IncludeDir.ImGui}",
+        "%{IncludeDir.glm}",
 	}
+
+    defines{
+        "_CRT_SECURE_NO_WARNINGS"
+    }
 
     links{
         "GLFW",
@@ -85,6 +94,8 @@ project "Sandbox"
     location "Sandbox"
     kind "ConsoleApp"
     language "C++"
+    cppdialect "C++17"
+    staticruntime "on"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -96,7 +107,9 @@ project "Sandbox"
 
     includedirs{
         "Quiet/src",
-        "Quiet/vendor/spdlog/include"
+        "Quiet/vendor/",
+        "Quiet/vendor/spdlog/include",
+        "%{IncludeDir.glm}"
     }
 
     links{

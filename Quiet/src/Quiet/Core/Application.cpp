@@ -4,6 +4,8 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Input.h"
 
+#include "glm/glm.hpp"
+
 #include <glad/glad.h>
 
 namespace Quiet

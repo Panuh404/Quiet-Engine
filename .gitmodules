@@ -8,3 +8,6 @@
 	path = Quiet/vendor/ImGui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "Quiet/vendor/glm"]
+	path = Quiet/vendor/glm
+	url = https://github.com/g-truc/glm
