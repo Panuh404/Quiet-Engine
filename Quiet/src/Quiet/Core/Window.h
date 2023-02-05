@@ -1,8 +1,5 @@
 #pragma once
 
-#include "qtpch.h"
-
-#include "Quiet/Core/Core.h"
 #include "Quiet/Events/Event.h"
 
 namespace Quiet
@@ -10,23 +7,24 @@ namespace Quiet
 	struct WindowProps
 	{
 		std::string Title;
-		unsigned int Width;
-		unsigned int Height;
+		uint32_t Width;
+		uint32_t Height;
 
 		WindowProps(const std::string& title = "Quiet Engine",
-					unsigned int width = 1280,
-					unsigned int height = 720)
-			: Title(title), Width(width), Height(height) {}
+			uint32_t width = 1280,
+			uint32_t height = 720) :
+			Title(title), Width(width), Height(height) {}
 	};
 
-	class QUIET_API Window
+	// Interface representing a desktop system based Window
+	class Window
 	{
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;
 
 		virtual ~Window() {}
-
 		virtual void OnUpdate() = 0;
+
 		virtual unsigned int GetWidth() const = 0;
 		virtual unsigned int GetHeight() const = 0;
 

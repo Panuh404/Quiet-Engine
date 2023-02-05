@@ -21,18 +21,14 @@ public:
 	void OnImGuiRender() override
 	{
 		ImGui::Begin("Test");
-		ImGui::Text("Hello World");
+		ImGui::Text("Hello There");
 		ImGui::End();
 
 	}
 
 	void OnEvent(Quiet::Event& event) override
 	{
-		if(event.GetEventType() == Quiet::EventType::KeyPressed)
-		{
-			Quiet::KeyPressedEvent& e = (Quiet::KeyPressedEvent&)event;
-			QT_TRACE("{0}", e.GetKeyCode());
-		}
+	
 	}
 };
 

@@ -46,7 +46,7 @@ project "Quiet"
         "%{IncludeDir.GLFW}",
         "%{IncludeDir.Glad}",
         "%{IncludeDir.ImGui}",
-        "%{IncludeDir.glm}",
+        "%{IncludeDir.glm}"
 	}
 
     defines{
@@ -61,8 +61,6 @@ project "Quiet"
     }
 
     filter "system:windows"
-        cppdialect "C++17"
-        staticruntime "On"
         systemversion "latest"
 
         defines{
@@ -70,10 +68,6 @@ project "Quiet"
             "QT_BUILD_DLL",
             "GLFW_INCLUDE_NONE"
         }
-
-        postbuildcommands {
-			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
-		}
 
     filter "configurations:Debug"
         defines "QT_DEBUG"
@@ -109,7 +103,7 @@ project "Sandbox"
         "Quiet/src",
         "Quiet/vendor/",
         "Quiet/vendor/spdlog/include",
-        "%{IncludeDir.glm}",
+        "%{IncludeDir.glm}"
     }
 
     links{

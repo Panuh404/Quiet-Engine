@@ -10,11 +10,11 @@
 namespace Quiet
 {
 	static bool s_GLFWInitialized = false;
-	static void GLFWErrorCallback(int error, const char* description)
-	{
-		QT_CORE_ERROR("GLFW ERROR ({0}): {1}", error, description);
-	}
 
+	static void GLFWerrorCallback(int error, const char* description)
+	{
+		QT_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
+	}
 
 	Window* Window::Create(const WindowProps& props)
 	{
@@ -39,19 +39,20 @@ namespace Quiet
 
 		QT_CORE_INFO("Creating window {0} ({1}:{2})", props.Title, props.Width, props.Height);
 
-		// GLFW Initialization
 		if (!s_GLFWInitialized)
 		{
 			//TODO: glfwTerminate on system shutdown
 			int success = glfwInit();
 			QT_CORE_ASSERT(success, "Could not initialize GLFW!");
-			glfwSetErrorCallback(GLFWErrorCallback);
+			glfwSetErrorCallback(GLFWerrorCallback);
 			s_GLFWInitialized = true;
 		}
 
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
+
 		m_Context = new OpenGLContext(m_Window);
 		m_Context->Init();
+
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		SetVSync(true);
 

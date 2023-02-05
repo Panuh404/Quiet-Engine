@@ -2,10 +2,6 @@
 
 #include "Quiet/Core/Layer.h"
 
-#include "Quiet/Events/ApplicationEvent.h"
-#include "Quiet/Events/KeyEvent.h"
-#include "Quiet/Events/MouseEvent.h"
-
 namespace Quiet
 {
 	class QUIET_API ImGuiLayer final : public Layer
@@ -14,9 +10,9 @@ namespace Quiet
 		ImGuiLayer();
 		~ImGuiLayer();
 
-		virtual void OnAttach() override;
-		virtual void OnDetach() override;
-		virtual void OnImGuiRender() override;
+		void OnAttach() override;
+		void OnDetach() override;
+		void OnImGuiRender() override;
 
 		void Begin();
 		void End();
