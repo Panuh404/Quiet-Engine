@@ -9,6 +9,8 @@
 
 #include "Quiet/ImGui/ImGuiLayer.h"
 
+#include "Quiet/Renderer/Shader.h"
+
 namespace Quiet
 {
 	class QUIET_API Application
@@ -38,6 +40,7 @@ namespace Quiet
 		uint32_t m_VertexArray;
 		uint32_t m_VertexBuffer;
 		uint32_t m_IndexBuffer;
+		std::unique_ptr<Shader> m_Shader;
 
 		bool m_Running = true;
 		bool m_Minimized = false;

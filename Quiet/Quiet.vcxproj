@@ -164,6 +164,7 @@
     <ClInclude Include="src\Quiet\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\Quiet\Renderer\RendererContext.h" />
     <ClInclude Include="src\qtpch.h" />
+    <ClInclude Include="src\Quiet\Renderer\Shader.h" />
     <ClInclude Include="vendor\glm\glm\common.hpp" />
     <ClInclude Include="vendor\glm\glm\detail\_features.hpp" />
     <ClInclude Include="vendor\glm\glm\detail\_fixes.hpp" />
@@ -596,6 +597,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\Quiet\Renderer\RendererContext.cpp" />
+    <ClCompile Include="src\Quiet\Renderer\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">
