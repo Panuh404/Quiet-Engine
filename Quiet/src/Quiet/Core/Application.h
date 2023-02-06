@@ -10,6 +10,7 @@
 #include "Quiet/ImGui/ImGuiLayer.h"
 
 #include "Quiet/Renderer/Shader.h"
+#include "Quiet/Renderer/Buffer.h"
 
 namespace Quiet
 {
@@ -38,9 +39,9 @@ namespace Quiet
 		LayerStack m_LayerStack;
 
 		uint32_t m_VertexArray;
-		uint32_t m_VertexBuffer;
-		uint32_t m_IndexBuffer;
 		std::unique_ptr<Shader> m_Shader;
+		std::unique_ptr<VertexBuffer> m_VertexBuffer;
+		std::unique_ptr<IndexBuffer> m_IndexBuffer;
 
 		bool m_Running = true;
 		bool m_Minimized = false;
