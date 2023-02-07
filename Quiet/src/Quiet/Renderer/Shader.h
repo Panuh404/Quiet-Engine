@@ -5,7 +5,7 @@ namespace Quiet
 	class Shader
 	{
 	public:
-		Shader(const std::string& vertexSrc, const std::string& fragmentStr);
+		Shader(const std::string& vertexSrc, const std::string& fragmentSrc);
 		~Shader();
 
 		void Bind() const;

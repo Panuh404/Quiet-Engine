@@ -1,8 +1,11 @@
-# Directories
-.vs/
+# Binaries
 bin/
 bin-int/
 
-# Files
+# Visual Studio
+.vs/
+**.sln
+**.vcxproj
 **.vcxproj.filters
 **.vcxproj.user
+**.csproj
