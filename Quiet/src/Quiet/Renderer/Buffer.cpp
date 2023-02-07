@@ -14,11 +14,11 @@ namespace Quiet
 	{
 		switch (Renderer::GetAPI())
 		{
-		case RendererAPI::None:			QT_CORE_ASSERT(false, "RendererAPI::There is no API Selected"); return nullptr;
-		case RendererAPI::OpenGL:		return new OpenGLVertexBuffer(vertices, size);
-		case RendererAPI::Vulkan:		QT_CORE_ASSERT(false, "RendererAPI::Vulkan is currently not supported!"); return nullptr;
-		case RendererAPI::DirectX11:	QT_CORE_ASSERT(false, "RendererAPI::Direct11 is currently not supported!"); return nullptr;
-		case RendererAPI::DirectX12:	QT_CORE_ASSERT(false, "RendererAPI::Direct12 is currently not supported!"); return nullptr;
+		case RendererAPI::API::None:		QT_CORE_ASSERT(false, "RendererAPI::There is no API Selected"); return nullptr;
+		case RendererAPI::API::OpenGL:		return new OpenGLVertexBuffer(vertices, size);
+		case RendererAPI::API::Vulkan:		QT_CORE_ASSERT(false, "RendererAPI::Vulkan is currently not supported!"); return nullptr;
+		case RendererAPI::API::DirectX11:	QT_CORE_ASSERT(false, "RendererAPI::Direct11 is currently not supported!"); return nullptr;
+		case RendererAPI::API::DirectX12:	QT_CORE_ASSERT(false, "RendererAPI::Direct12 is currently not supported!"); return nullptr;
 		}
 		QT_CORE_ASSERT(false, "RendererAPI::Unknown RendererAPI");
 		return nullptr;
@@ -31,11 +31,11 @@ namespace Quiet
 	{
 		switch (Renderer::GetAPI())
 		{
-		case RendererAPI::None:			QT_CORE_ASSERT(false, "RendererAPI::There is no API Selected"); return nullptr;
-		case RendererAPI::OpenGL:		return new OpenGLIndexBuffer(indices, size);
-		case RendererAPI::Vulkan:		QT_CORE_ASSERT(false, "RendererAPI::Vulkan is currently not supported!"); return nullptr;
-		case RendererAPI::DirectX11:	QT_CORE_ASSERT(false, "RendererAPI::Direct11 is currently not supported!"); return nullptr;
-		case RendererAPI::DirectX12:	QT_CORE_ASSERT(false, "RendererAPI::Direct12 is currently not supported!"); return nullptr;
+		case RendererAPI::API::None:		QT_CORE_ASSERT(false, "RendererAPI::There is no API Selected"); return nullptr;
+		case RendererAPI::API::OpenGL:		return new OpenGLIndexBuffer(indices, size);
+		case RendererAPI::API::Vulkan:		QT_CORE_ASSERT(false, "RendererAPI::Vulkan is currently not supported!"); return nullptr;
+		case RendererAPI::API::DirectX11:	QT_CORE_ASSERT(false, "RendererAPI::Direct11 is currently not supported!"); return nullptr;
+		case RendererAPI::API::DirectX12:	QT_CORE_ASSERT(false, "RendererAPI::Direct12 is currently not supported!"); return nullptr;
 		}
 
 		QT_CORE_ASSERT(false, "Unknown RendererAPI!");

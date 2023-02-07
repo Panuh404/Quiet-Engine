@@ -43,7 +43,7 @@ namespace Quiet
 		std::shared_ptr<VertexArray> m_VertexArray;
 
 		std::unique_ptr<Shader> m_BlueShader;
-		std::unique_ptr<VertexArray> m_SquareVA;
+		std::shared_ptr<VertexArray> m_SquareVA;
 
 		bool m_Running = true;
 		bool m_Minimized = false;

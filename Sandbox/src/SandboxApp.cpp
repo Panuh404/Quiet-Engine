@@ -21,7 +21,7 @@ public:
 	void OnImGuiRender() override
 	{
 		ImGui::Begin("Dialog");
-		ImGui::Text("Vertex Buffer Test");
+		ImGui::Text("RenderCommand");
 		ImGui::End();
 
 	}

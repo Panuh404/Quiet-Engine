@@ -2,11 +2,9 @@
 
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
-#include "Quiet/Core/Input.h"
+#include "Quiet/Renderer/Renderer.h"
 
 #include "glm/glm.hpp"
-
-#include <glad/glad.h>
 
 namespace Quiet
 {
@@ -156,16 +154,18 @@ namespace Quiet
 	{
 		while (m_Running)
 		{
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			RendererCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1 });
+			RendererCommand::Clear();
+
+			Renderer::BeginScene();
 
 			m_BlueShader->Bind();
-			m_SquareVA->Bind();
-			glDrawElements(GL_TRIANGLES, m_SquareVA->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+			Renderer::Submit(m_SquareVA);
 
 			m_Shader->Bind();
-			m_VertexArray->Bind();
-			glDrawElements(GL_TRIANGLES, m_VertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+			Renderer::Submit(m_VertexArray);
+
+			Renderer::EndScene();
 
 			// Layers
 			for (Layer* layer : m_LayerStack)
