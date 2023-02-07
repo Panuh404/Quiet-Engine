@@ -20,8 +20,8 @@ public:
 
 	void OnImGuiRender() override
 	{
-		ImGui::Begin("Test");
-		ImGui::Text("Hello There");
+		ImGui::Begin("Dialog");
+		ImGui::Text("Buffer Layout Test");
 		ImGui::End();
 
 	}
