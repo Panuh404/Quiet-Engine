@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Platform/OpenGL/OpenGLShader.h"
 
 class TestLayer : public Quiet::Layer
 {
@@ -56,18 +57,44 @@ public:
 		squareIB.reset(Quiet::IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
 		m_SquareVA->SetIndexBuffer(squareIB);
 
-		std::string vertexSrc = R"(
+		std::string flatColorShaderVertexSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) in vec3 a_Position;
+			uniform mat4 u_ViewProjection;
+			uniform mat4 u_Transform;
+			out vec3 v_Position;
+			void main()
+			{
+				v_Position = a_Position;
+				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);	
+			}
+		)";
+		std::string flatColorShaderFragmentSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) out vec4 color;
+			in vec3 v_Position;
+			
+			uniform vec4 u_Color;
+
+			void main()
+			{
+				color = u_Color;
+			}
+		)";
+
+		m_FlatColorShader.reset(Quiet::Shader::Create(flatColorShaderVertexSrc, flatColorShaderFragmentSrc));
+
+		std::string posVertexSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
 			layout(location = 1) in vec4 a_Color;
-
 			uniform mat4 u_ViewProjection;
-			uniform mat4 u_Transform;			
-
+			uniform mat4 u_Transform;
 			out vec3 v_Position;
 			out vec4 v_Color;
-
 			void main()
 			{
 				v_Position = a_Position;
@@ -75,14 +102,12 @@ public:
 				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);	
 			}
 		)";
-		std::string fragmentSrc = R"(
+		std::string posFragmentSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) out vec4 color;
-
 			in vec3 v_Position;
 			in vec4 v_Color;
-
 			void main()
 			{
 				color = vec4(v_Position * 0.5 + 0.5, 1.0);
@@ -90,37 +115,7 @@ public:
 			}
 		)";
 
-		m_Shader.reset(new Quiet::Shader(vertexSrc, fragmentSrc));
-
-		std::string blueShaderVertexSrc = R"(
-			#version 330 core
-			
-			layout(location = 0) in vec3 a_Position;
-
-			uniform mat4 u_ViewProjection;
-			uniform mat4 u_Transform;
-
-			out vec3 v_Position;
-
-			void main()
-			{
-				v_Position = a_Position;
-				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);	
-			}
-		)";
-
-		std::string blueShaderFragmentSrc = R"(
-			#version 330 core
-			
-			layout(location = 0) out vec4 color;
-			in vec3 v_Position;
-			void main()
-			{
-				color = vec4(0.2, 0.3, 0.8, 1.0);
-			}
-		)";
-
-		m_BlueShader.reset(new Quiet::Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
+		m_PositionShader.reset( Quiet::Shader::Create(posVertexSrc, posFragmentSrc));
 	}
 
 	void OnUpdate(Quiet::Timestep ts) override
@@ -154,17 +149,20 @@ public:
 
 		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
-		for (int y = 0; y < 20; y++)
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->Bind();
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->UploadUniformFloat4("u_Color", m_Color);
+
+		for (int y = -10; y < 10; y++)
 		{
-			for (int x = 0; x < 20; x++)
+			for (int x = -10; x < 10; x++)
 			{
 				glm::vec3 pos(x * 0.11f, y * 0.11f, 0.0f);
 				glm::mat4 transform = glm::translate(glm::mat4(1.0f), pos) * scale;
-				Quiet::Renderer::Submit(m_BlueShader, m_SquareVA, transform);
+				Quiet::Renderer::Submit(m_FlatColorShader, m_SquareVA, transform);
 			}
 
 		}
-		Quiet::Renderer::Submit(m_Shader, m_VertexArray);
+		Quiet::Renderer::Submit(m_PositionShader, m_VertexArray);
 
 		Quiet::Renderer::EndScene();
 	}
@@ -188,6 +186,10 @@ public:
 		ImGui::SliderFloat("Rotation", &m_CameraRotation, -360, 360);
 		ImGui::InputFloat("Movement Speed", &m_CameraMovementSpeed);
 		ImGui::InputFloat("Rotation Speed", &m_CameraRotationSpeed);
+
+		ImGui::Separator();
+		ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Box");
+		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_Color));
 		ImGui::End();
 
 	}
@@ -198,10 +200,10 @@ public:
 	}
 
 private:
-	std::shared_ptr<Quiet::Shader> m_Shader;
+	std::shared_ptr<Quiet::Shader> m_FlatColorShader;
 	std::shared_ptr<Quiet::VertexArray> m_VertexArray;
 
-	std::shared_ptr<Quiet::Shader> m_BlueShader;
+	std::shared_ptr<Quiet::Shader> m_PositionShader;
 	std::shared_ptr<Quiet::VertexArray> m_SquareVA;
 
 	Quiet::CameraOrthographic m_Camera;
@@ -210,6 +212,8 @@ private:
 
 	float m_CameraMovementSpeed = 5.0f;
 	float m_CameraRotationSpeed = 0.5f;
+
+	glm::vec4 m_Color = { 0.8f, 0.2f, 0.3f, 1.0f };
 
 	// Debug
 	Quiet::Timestep m_DebugTS;
