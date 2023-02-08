@@ -7,6 +7,8 @@
 #include "Quiet/Events/Event.h"
 #include "Quiet/Events/ApplicationEvent.h"
 
+#include "Quiet/Core/Timestep.h"
+
 #include "Quiet/ImGui/ImGuiLayer.h"
 
 namespace Quiet
@@ -34,6 +36,7 @@ namespace Quiet
 		std::unique_ptr<Window> m_Window;
 		ImGuiLayer* m_ImGuiLayer;
 		LayerStack m_LayerStack;
+		float m_LastFrameTime = 0.0f;
 
 		bool m_Running = true;
 		bool m_Minimized = false;

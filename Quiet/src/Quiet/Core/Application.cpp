@@ -2,9 +2,10 @@
 
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
-#include "Quiet/Renderer/Renderer.h"
 
 #include <glm/glm.hpp>
+
+#include "GLFW/glfw3.h"
 
 namespace Quiet
 {
@@ -19,6 +20,7 @@ namespace Quiet
 		// Create Window
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
+		m_Window->SetVSync(true);
 
 		// Create ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
@@ -52,10 +54,15 @@ namespace Quiet
 	{
 		while (m_Running)
 		{
+			// Timestep
+			float time = (float)glfwGetTime();
+			Timestep timestep = time - m_LastFrameTime;
+			m_LastFrameTime = time;
+
 			// Layers
 			for (Layer* layer : m_LayerStack)
 			{
-				layer->OnUpdate();
+				layer->OnUpdate(timestep);
 			}
 
 			// ImGui Render

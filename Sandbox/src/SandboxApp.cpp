@@ -112,23 +112,27 @@ public:
 		m_BlueShader.reset(new Quiet::Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
 	}
 
-	void OnUpdate() override
+	void OnUpdate(Quiet::Timestep ts) override
 	{
+		// Set debug Timestep 
+		debugTS = ts;
+
 		// Camera Movement
 		if (Quiet::Input::IsKeyPressed(Quiet::Key::Left))	
-			m_CameraPosition.x -= m_CameraMovementSpeed;
+			m_CameraPosition.x -= m_CameraMovementSpeed * ts;
 		else if (Quiet::Input::IsKeyPressed(Quiet::Key::Right))	
-			m_CameraPosition.x += m_CameraMovementSpeed;
+			m_CameraPosition.x += m_CameraMovementSpeed * ts;
 		if (Quiet::Input::IsKeyPressed(Quiet::Key::Up))		
-			m_CameraPosition.y += m_CameraMovementSpeed;
+			m_CameraPosition.y += m_CameraMovementSpeed * ts;
 		else if (Quiet::Input::IsKeyPressed(Quiet::Key::Down))	
-			m_CameraPosition.y -= m_CameraMovementSpeed;
+			m_CameraPosition.y -= m_CameraMovementSpeed * ts;
 
 		// Camera Rotation
 		if (Quiet::Input::IsKeyPressed(Quiet::Key::A))
 			m_CameraRotation -= m_CameraRotationSpeed;
 		if (Quiet::Input::IsKeyPressed(Quiet::Key::D))
 			m_CameraRotation += m_CameraRotationSpeed;
+
 
 		Quiet::RendererCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1 });
 		Quiet::RendererCommand::Clear();
@@ -147,7 +151,8 @@ public:
 	void OnImGuiRender() override
 	{
 		ImGui::Begin("Dialog");
-		ImGui::Text("Running in sandbox");
+		ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Debug");
+		ImGui::Text("Deltatime: %f s (%f ms)", debugTS, debugTS.GetMilliseconds());
 		ImGui::Separator();
 
 		ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Camera Status");
@@ -159,7 +164,7 @@ public:
 
 		ImGui::Separator();
 		ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Camera Control");
-		ImGui::SliderFloat("Rotation", &m_CameraRotation, 0, 360);
+		ImGui::SliderFloat("Rotation", &m_CameraRotation, -360, 360);
 		ImGui::InputFloat("Movement Speed", &m_CameraMovementSpeed);
 		ImGui::InputFloat("Rotation Speed", &m_CameraRotationSpeed);
 		ImGui::End();
@@ -191,8 +196,11 @@ private:
 	glm::vec3 m_CameraPosition;
 	float m_CameraRotation = 0;
 
-	float m_CameraMovementSpeed = 0.01f;
-	float m_CameraRotationSpeed = 1.0f;
+	float m_CameraMovementSpeed = 5.0f;
+	float m_CameraRotationSpeed = 0.5f;
+
+	// Debug
+	Quiet::Timestep debugTS;
 };
 
 class Sandbox : public Quiet::Application

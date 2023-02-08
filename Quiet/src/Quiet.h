@@ -12,6 +12,7 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Layer.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Core/Timestep.h"
 
 #include "Quiet/ImGui/ImGuiLayer.h"
 
