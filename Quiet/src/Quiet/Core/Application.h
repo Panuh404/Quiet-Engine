@@ -9,10 +9,6 @@
 
 #include "Quiet/ImGui/ImGuiLayer.h"
 
-#include "Quiet/Renderer/Shader.h"
-#include "Quiet/Renderer/VertexArray.h"
-#include "Quiet/Renderer/CameraOrthographic.h"
-
 namespace Quiet
 {
 	class QUIET_API Application
@@ -38,14 +34,6 @@ namespace Quiet
 		std::unique_ptr<Window> m_Window;
 		ImGuiLayer* m_ImGuiLayer;
 		LayerStack m_LayerStack;
-
-		std::shared_ptr<Shader> m_Shader;
-		std::shared_ptr<VertexArray> m_VertexArray;
-
-		std::shared_ptr<Shader> m_BlueShader;
-		std::shared_ptr<VertexArray> m_SquareVA;
-
-		CameraOrthographic m_Camera;
 
 		bool m_Running = true;
 		bool m_Minimized = false;
