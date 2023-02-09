@@ -3,7 +3,7 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Timestep.h"
-
+#include "Quiet/Renderer/Renderer.h"
 
 #include <glm/glm.hpp>
 
@@ -23,6 +23,9 @@ namespace Quiet
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 		m_Window->SetVSync(true);
+
+		// Rendering
+		Renderer::Init();
 
 		// Create ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();

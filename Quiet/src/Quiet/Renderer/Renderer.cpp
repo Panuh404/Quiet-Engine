@@ -7,6 +7,12 @@ namespace Quiet
 {
 	Renderer::SceneData* Renderer::s_SceneData = new Renderer::SceneData;
 
+	void Renderer::Init()
+	{
+		RendererCommand::Init();
+	}
+
+
 	void Renderer::BeginScene(CameraOrthographic& camera)
 	{
 		s_SceneData->ViewProjectionMatrix = camera.GetViewProjectionMatrix();

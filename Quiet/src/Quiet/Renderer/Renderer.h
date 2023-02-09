@@ -9,6 +9,7 @@ namespace Quiet
 	class Renderer
 	{
 	public:
+		static void Init();
 		static void BeginScene(CameraOrthographic& camera);
 		static void EndScene();
 

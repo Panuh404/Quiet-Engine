@@ -107,6 +107,7 @@ public:
 		m_TextureShader.reset( Quiet::Shader::Create(textureVertexSrc, textureFragmentSrc));
 
 		m_Texture2D = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
+		m_TexFace = Quiet::Texture2D::Create("res/textures/awesomeface.png");
 
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->Bind();
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->UploadUniformInt("u_Texture", 0);
@@ -155,7 +156,7 @@ public:
 				Quiet::Renderer::Submit(m_FlatColorShader, m_SquareVA, transform);
 			}
 		}
-		m_Texture2D->Bind();
+		m_TexFace->Bind();
 		Quiet::Renderer::Submit(m_TextureShader, m_SquareVA, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
 		Quiet::Renderer::EndScene();
@@ -200,6 +201,7 @@ private:
 	std::shared_ptr<Quiet::VertexArray> m_SquareVA;
 
 	std::shared_ptr<Quiet::Texture2D> m_Texture2D;
+	std::shared_ptr<Quiet::Texture2D> m_TexFace;
 
 	Quiet::CameraOrthographic m_Camera;
 	glm::vec3 m_CameraPosition;
