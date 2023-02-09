@@ -32,6 +32,7 @@
 
 #include "Quiet/Renderer/Buffer.h"
 #include "Quiet/Renderer/Shader.h"
+#include "Quiet/Renderer/Texture.h"
 #include "Quiet/Renderer/VertexArray.h"
 
 #include "Quiet/Renderer/CameraOrthographic.h"

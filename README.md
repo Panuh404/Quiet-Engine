@@ -4,49 +4,34 @@
 
 ### *QUIET ONLY SUPPORTS WINDOWS CURRENTLY*
 
+## Project Setup
+(This project is compatible with Visual Studio 2017 and 2022, other IDE has not been tested yet.)
+You need to run the script to generate the visual studio (/scripts/GenProject_VS2022.bat)
+
 ## Roadmap
 * Renderer
 * Render API Abstraction (OpenGL, Vulkan, Direct3D)
 * Debugging Support (Logging, Profiling, etc)
-* Scripting Language (C# / Python) <Not Decided Yet>
+* Scripting Language
 * Memory Systems
 * Physics
 * File I/O, VFS
 
-## Progress
-* Project Initial Setup:
-    - Engine Project -> Quiet   -> Static Library `.lib`
-    - Test Project   -> Sandbox -> Executable `.exe`
-
-* Entry Point:
-    - Basic Application
-    - Entry Point
+## Details
+- Engine Project -> Quiet   -> Static Library `.lib`
+- Test Project   -> Sandbox -> Executable `.exe`
 
 * Logging:
-    - Quiet Core Logger   -> Quiet Logging Tool
-    - Quiet Client Logger -> App Logging Tool
-    - Basic Logging API Macros
-
-* Premake:
-    - Generate project Files (`./scripts/GenerateProject_Win.bat`)
-    - Main Project Premake config (`./premake5.lua`)
-    - Quiet Dependencies Premake config (`./Quiet/vendor/premake5.lua`)
+    - Quiet Core Logger   -> Quiet Logging Tool (QT_CORE_TRACE)
+    - Quiet Client Logger -> App Logging Tool (QT_TRACE)
 
 * Event System:
-    - Event Class
     - Application Events
     - Key Events
     - Mouse Events
     - Event Dispatcher
     
-* Window Abstraction:
-    - Window Class -> Windows Window (Platform `Windows`)
-    - Window Events -> GLFW Callbacks
-
-* Layers:
-    - Layer Stack
-    - Applicable to Events and logic
-    - Determine the order of Drawing
+- Window Class -> Windows Window (Platform `Windows`)
 
 * User Interface:
     - ImGui Layer
@@ -55,13 +40,11 @@
 
 * Input:
     - Input Class -> Windows Input -> GLFW Input System
-    - Input Polling
+    - Input Polling (Quiet::Key::{KeyCode})
     - Key and Mouse Codes
 
-* ImGui:
-    - ImGuiBuild -> Implementation of Dear ImGui Backend (OpenGL / glfw)
-    - Dockspace
-    - Viewports
+- ImGuiBuild -> Implementation of Dear ImGui Backend (OpenGL / glfw)
+- Dockspace - Viewports
 
 * Renderer:
     - OpenGL Rendering
@@ -69,7 +52,7 @@
     - Cameras
     - Textures
 
-## Dependencies
+## Vendor information
 * [spdlog](https://github.com/gabime/spdlog) -> Fast C++ logging library 
 * [Premake](https://github.com/premake/premake-core) -> Generate Project Files 
 * [GLFW](https://github.com/glfw/glfw) -> A multi-platform library for OpenGL, OpenGL ES, Vulkan, window and input 

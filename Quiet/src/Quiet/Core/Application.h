@@ -7,8 +7,6 @@
 #include "Quiet/Events/Event.h"
 #include "Quiet/Events/ApplicationEvent.h"
 
-#include "Quiet/Core/Timestep.h"
-
 #include "Quiet/ImGui/ImGuiLayer.h"
 
 namespace Quiet

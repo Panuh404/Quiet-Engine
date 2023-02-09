@@ -13,42 +13,21 @@ class TestLayer : public Quiet::Layer
 public:
 	TestLayer() : Layer("Test"), m_Camera(-1.6f, 1.6f, -0.9f, 0.9f), m_CameraPosition(0.0f)
 	{
-		m_VertexArray.reset(Quiet::VertexArray::Create());
-
-		float vertices[3 * 7] = {
-			-0.5f, -0.5f, 0.0f, 0.8f, 0.2f, 0.8f, 1.0f,
-			 0.5f, -0.5f, 0.0f, 0.2f, 0.3f, 0.8f, 1.0f,
-			 0.0f,  0.5f, 0.0f, 0.8f, 0.8f, 0.2f, 1.0f
-		};
-
-		std::shared_ptr<Quiet::VertexBuffer> vertexBuffer;
-		vertexBuffer.reset(Quiet::VertexBuffer::Create(vertices, sizeof(vertices)));
-
-		Quiet::BufferLayout layout = {
-			{Quiet::ShaderDataType::Float3, "a_Position" },
-			{Quiet::ShaderDataType::Float4, "a_Color" }
-		};
-		vertexBuffer->SetLayout(layout);
-		m_VertexArray->AddVertexBuffer(vertexBuffer);
-
-		uint32_t indices[3] = { 0, 1, 2 };
-		std::shared_ptr<Quiet::IndexBuffer> indexBuffer;
-		indexBuffer.reset(Quiet::IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t)));
-		m_VertexArray->SetIndexBuffer(indexBuffer);
-
 		m_SquareVA.reset(Quiet::VertexArray::Create());
 
-		float squareVertices[3 * 4] = {
-			-0.5f, -0.5f, 0.0f,
-			 0.5f, -0.5f, 0.0f,
-			 0.5f,  0.5f, 0.0f,
-			-0.5f,  0.5f, 0.0f
+		float squareVertices[5 * 4] = {
+			// Square			// Texture
+			-0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+			 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+			 0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+			-0.5f,  0.5f, 0.0f, 0.0f, 1.0f
 		};
 
 		std::shared_ptr<Quiet::VertexBuffer> squareVB;
 		squareVB.reset(Quiet::VertexBuffer::Create(squareVertices, sizeof(squareVertices)));
 		squareVB->SetLayout({
-			{Quiet::ShaderDataType::Float3, "a_Position" }
+			{Quiet::ShaderDataType::Float3, "a_Position" },
+			{Quiet::ShaderDataType::Float2, "a_TexCoord" }
 			});
 		m_SquareVA->AddVertexBuffer(squareVB);
 
@@ -57,13 +36,19 @@ public:
 		squareIB.reset(Quiet::IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
 		m_SquareVA->SetIndexBuffer(squareIB);
 
+		//-----------------------------------------------------------------------------
+		// [SHADER] Flat Color
+		//-----------------------------------------------------------------------------
 		std::string flatColorShaderVertexSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
+
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
+
 			out vec3 v_Position;
+
 			void main()
 			{
 				v_Position = a_Position;
@@ -82,40 +67,49 @@ public:
 			{
 				color = u_Color;
 			}
-		)";
-
+		)";		
 		m_FlatColorShader.reset(Quiet::Shader::Create(flatColorShaderVertexSrc, flatColorShaderFragmentSrc));
 
-		std::string posVertexSrc = R"(
+		//-----------------------------------------------------------------------------
+		// [SHADER] Texture
+		//-----------------------------------------------------------------------------
+		std::string textureVertexSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) in vec3 a_Position;
-			layout(location = 1) in vec4 a_Color;
+			layout(location = 1) in vec2 a_TexCoord;
+
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
-			out vec3 v_Position;
-			out vec4 v_Color;
+
+			out vec2 v_TexCoord;
+
 			void main()
 			{
-				v_Position = a_Position;
-				v_Color = a_Color;
+				v_TexCoord = a_TexCoord;
 				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);	
 			}
 		)";
-		std::string posFragmentSrc = R"(
+		std::string textureFragmentSrc = R"(
 			#version 330 core
 			
 			layout(location = 0) out vec4 color;
-			in vec3 v_Position;
-			in vec4 v_Color;
+
+			in vec2 v_TexCoord;
+			
+			uniform sampler2D u_Texture;
+
 			void main()
 			{
-				color = vec4(v_Position * 0.5 + 0.5, 1.0);
-				color = v_Color;
+				color = texture(u_Texture, v_TexCoord);
 			}
 		)";
+		m_TextureShader.reset( Quiet::Shader::Create(textureVertexSrc, textureFragmentSrc));
 
-		m_PositionShader.reset( Quiet::Shader::Create(posVertexSrc, posFragmentSrc));
+		m_Texture2D = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
+
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->Bind();
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->UploadUniformInt("u_Texture", 0);
 	}
 
 	void OnUpdate(Quiet::Timestep ts) override
@@ -152,17 +146,17 @@ public:
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->Bind();
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->UploadUniformFloat4("u_Color", m_Color);
 
-		for (int y = -10; y < 10; y++)
+		for (int y = -10; y < 11; y++)
 		{
-			for (int x = -10; x < 10; x++)
+			for (int x = -10; x < 11; x++)
 			{
 				glm::vec3 pos(x * 0.11f, y * 0.11f, 0.0f);
 				glm::mat4 transform = glm::translate(glm::mat4(1.0f), pos) * scale;
 				Quiet::Renderer::Submit(m_FlatColorShader, m_SquareVA, transform);
 			}
-
 		}
-		Quiet::Renderer::Submit(m_PositionShader, m_VertexArray);
+		m_Texture2D->Bind();
+		Quiet::Renderer::Submit(m_TextureShader, m_SquareVA, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
 		Quiet::Renderer::EndScene();
 	}
@@ -201,10 +195,11 @@ public:
 
 private:
 	std::shared_ptr<Quiet::Shader> m_FlatColorShader;
-	std::shared_ptr<Quiet::VertexArray> m_VertexArray;
+	std::shared_ptr<Quiet::Shader> m_TextureShader;
 
-	std::shared_ptr<Quiet::Shader> m_PositionShader;
 	std::shared_ptr<Quiet::VertexArray> m_SquareVA;
+
+	std::shared_ptr<Quiet::Texture2D> m_Texture2D;
 
 	Quiet::CameraOrthographic m_Camera;
 	glm::vec3 m_CameraPosition;
