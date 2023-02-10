@@ -8,12 +8,15 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [ENUM] Shaders
+	//-----------------------------------------------------------------------------
 	static GLenum ShaderTypeFromString(const std::string& type)
 	{
-		if (type == "VERTEX")						{ return GL_VERTEX_SHADER; }
+		if (type == "VERTEX")						{ return GL_VERTEX_SHADER;   }
 		if (type == "FRAGMENT" || type == "PIXEL")	{ return GL_FRAGMENT_SHADER; }
 		if (type == "GEOMETRY")						{ return GL_GEOMETRY_SHADER; }
-		if (type == "COMPUTE")						{ return GL_COMPUTE_SHADER; }
+		if (type == "COMPUTE")						{ return GL_COMPUTE_SHADER;  }
 		QT_CORE_ASSERT(false, "SHADER::Unknown shader type!");
 		return 0;
 	}
@@ -97,16 +100,21 @@ namespace Quiet
 		std::array<GLenum, 4> glShaderIDs;
 		int glShaderIDindex = 0;
 
+		//-----------------------------------------------------------------------------
+		// [METHOD] Handle Shaders
+		//-----------------------------------------------------------------------------
 		for (auto& key : shaderSources)
 		{
 			GLenum type = key.first;
 			const std::string& source = key.second;
 
+			// Create and compile Shaders
 			GLuint shader = glCreateShader(type);
 			const GLchar* shaderSrc = source.c_str();
 			glShaderSource(shader, 1, &shaderSrc, 0);
 			glCompileShader(shader);
 
+			// Verify compilation
 			GLint isCompiled = 0;
 			glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
 			if (isCompiled == GL_FALSE)
@@ -126,6 +134,9 @@ namespace Quiet
 			glShaderIDs[glShaderIDindex++] = (shader);
 		}
 
+		//-----------------------------------------------------------------------------
+		// [METHOD] Handle Shader Program
+		//-----------------------------------------------------------------------------
 		glLinkProgram(program);
 
 		GLint isLinked = 0;
@@ -134,7 +145,6 @@ namespace Quiet
 		{
 			GLint maxLength = 0;
 			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-
 			std::vector<GLchar> infoLog(maxLength);
 			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
 			glDeleteProgram(program);
@@ -165,6 +175,9 @@ namespace Quiet
 		glUseProgram(0);
 	}
 
+	//-----------------------------------------------------------------------------
+	// [CLASS] Uniforms
+	//-----------------------------------------------------------------------------
 	void OpenGLShader::UploadUniformInt(const std::string& name, int value)
 	{
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());

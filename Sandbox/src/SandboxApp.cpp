@@ -68,16 +68,16 @@ public:
 				color = u_Color;
 			}
 		)";		
-		m_FlatColorShader.reset(Quiet::Shader::Create("Default", flatColorShaderVertexSrc, flatColorShaderFragmentSrc));
+		m_FlatColorShader = Quiet::Shader::Create("FlatColor", flatColorShaderVertexSrc, flatColorShaderFragmentSrc);
 
-
-		m_TextureShader.reset( Quiet::Shader::Create("res/shaders/texture.shader"));
+		auto textureShader = m_ShaderLibrary.Load("res/shaders/texture.shader");
 
 		m_Texture2D = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
 		m_TexFace = Quiet::Texture2D::Create("res/textures/awesomeface.png");
 
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->Bind();
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_TextureShader)->UploadUniformInt("u_Texture", 0);
+
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->Bind();
+		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->UploadUniformInt("u_Texture", 0);
 	}
 
 	void OnUpdate(Quiet::Timestep ts) override
@@ -123,8 +123,10 @@ public:
 				Quiet::Renderer::Submit(m_FlatColorShader, m_SquareVA, transform);
 			}
 		}
+		auto textureShader = m_ShaderLibrary.Get("texture");
+
 		m_TexFace->Bind();
-		Quiet::Renderer::Submit(m_TextureShader, m_SquareVA, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+		Quiet::Renderer::Submit(textureShader, m_SquareVA, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
 
 		Quiet::Renderer::EndScene();
 	}
@@ -162,8 +164,8 @@ public:
 	}
 
 private:
+	Quiet::ShaderLibrary m_ShaderLibrary;
 	std::shared_ptr<Quiet::Shader> m_FlatColorShader;
-	std::shared_ptr<Quiet::Shader> m_TextureShader;
 
 	std::shared_ptr<Quiet::VertexArray> m_SquareVA;
 
