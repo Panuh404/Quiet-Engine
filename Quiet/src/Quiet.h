@@ -23,6 +23,7 @@
 #include "Quiet/Core/KeyCodes.h"
 #include "Quiet/Core/MouseCodes.h"
 
+#include "Quiet/Renderer/CameraController.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] Renderer Area
@@ -35,7 +36,7 @@
 #include "Quiet/Renderer/Texture.h"
 #include "Quiet/Renderer/VertexArray.h"
 
-#include "Quiet/Renderer/CameraOrthographic.h"
+#include "Quiet/Renderer/Camera.h"
 
 //-----------------------------------------------------------------------------
 // [Entry Point]

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Quiet/Renderer/RendererCommand.h"
-#include "Quiet/Renderer/CameraOrthographic.h"
+#include "Quiet/Renderer/Camera.h"
 #include "Quiet/Renderer/Shader.h"
 
 namespace Quiet
@@ -10,7 +10,7 @@ namespace Quiet
 	{
 	public:
 		static void Init();
-		static void BeginScene(CameraOrthographic& camera);
+		static void BeginScene(OrthographicCamera& camera);
 		static void EndScene();
 
 		static void Submit(
