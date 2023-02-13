@@ -86,7 +86,10 @@ namespace Quiet
 			size_t begin = pos + typeTokenLength + 1;							// Start shader type name (after #TYPE: keyword)
 			std::string type = source.substr(begin, eol - begin);
 
+			QT_CORE_ASSERT(ShaderTypeFromString(type), "Invalid shader type specified");
 			size_t nextLinePos = source.find_first_not_of("\r\n", eol);		//Start of shader code after shader type declaration line
+
+			QT_CORE_ASSERT(nextLinePos != std::string::npos, "Syntax error");
 			pos = source.find(typeToken, nextLinePos);							//Start of next shader type declaration line
 			shaderSources[ShaderTypeFromString(type)] = source.substr(nextLinePos, pos - (nextLinePos == std::string::npos ? source.size() - 1 : nextLinePos));
 		}
