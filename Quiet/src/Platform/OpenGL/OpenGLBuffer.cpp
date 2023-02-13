@@ -6,7 +6,7 @@
 namespace Quiet
 {
 	//-----------------------------------------------------------------------------
-	// [OpenGL Class] Vertex Buffer
+	// [CLASS] Vertex Buffer -- API: OpenGL
 	//-----------------------------------------------------------------------------
 	OpenGLVertexBuffer::OpenGLVertexBuffer(float* vertices, uint32_t size)
 	{
@@ -34,7 +34,7 @@ namespace Quiet
 	}
 
 	//-----------------------------------------------------------------------------
-	// [OpenGL Class] Index Buffer
+	// [CLASS] Index Buffer -- API: OpenGL
 	//-----------------------------------------------------------------------------
 	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t count)
 		: m_Count(count)

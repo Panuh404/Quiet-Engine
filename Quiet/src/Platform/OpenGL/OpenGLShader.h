@@ -9,6 +9,9 @@ typedef unsigned int GLenum;
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Shader -- API: OpenGL
+	//-----------------------------------------------------------------------------
 	class OpenGLShader : public Shader
 	{
 	public:

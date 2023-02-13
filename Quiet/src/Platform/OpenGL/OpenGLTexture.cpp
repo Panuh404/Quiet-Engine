@@ -56,6 +56,4 @@ namespace Quiet
 	{
 		glBindTextureUnit(slot, m_RendererID);
 	}
-
-
 }

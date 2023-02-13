@@ -7,6 +7,9 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Window -- Platform: Windows
+	//-----------------------------------------------------------------------------
 	class WindowsWindow : public Window
 	{
 	public:
@@ -26,10 +29,6 @@ namespace Quiet
 		virtual void* GetNativeWindow() const { return m_Window; }
 
 	private:
-		virtual void Init(const WindowProps& props);
-		virtual void Shutdown();
-
-	private:
 		GLFWwindow* m_Window;
 		RendererContext* m_Context;
 
@@ -42,5 +41,8 @@ namespace Quiet
 			EventCallbackFn EventCallback;
 		};
 		WindowData m_Data;
+
+		virtual void Init(const WindowProps& props);
+		virtual void Shutdown();
 	};
 }

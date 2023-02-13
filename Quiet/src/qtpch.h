@@ -19,7 +19,6 @@
 
 #include "Quiet/Core/Log.h"
 
-
 #ifdef QT_PLATFORM_WINDOWS
 	#include <windows.h>
 #endif

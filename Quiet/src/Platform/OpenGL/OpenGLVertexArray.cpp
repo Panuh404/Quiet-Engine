@@ -5,6 +5,7 @@
 
 namespace Quiet
 {
+
 	static GLenum ShaderDataTypeToOpenGLBaseType(ShaderDataType type)
 	{
 		switch (type)

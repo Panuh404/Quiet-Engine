@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 {
 	Quiet::Log::Init();
 	QT_CORE_WARN("Initialized Log");
-	QT_INFO("QUIET-ENGINE");
+	QT_INFO("QUIET_ENGINE");
 
 	auto application = Quiet::CreateApplication();
 	application->Run();

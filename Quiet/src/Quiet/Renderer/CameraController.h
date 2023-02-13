@@ -8,6 +8,9 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Orthographic Camera Controller
+	//-----------------------------------------------------------------------------
 	class OrthographicCameraController
 	{
 	public:

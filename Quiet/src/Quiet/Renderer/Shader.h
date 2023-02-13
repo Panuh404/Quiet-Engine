@@ -2,6 +2,9 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Shader
+	//-----------------------------------------------------------------------------
 	class Shader
 	{
 	public:
@@ -16,6 +19,9 @@ namespace Quiet
 		static std::shared_ptr<Shader> Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc);
 	};
 
+	//-----------------------------------------------------------------------------
+	// [CLASS] Shader Library
+	//-----------------------------------------------------------------------------
 	class ShaderLibrary
 	{
 	public:

@@ -4,6 +4,9 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] RendererAPI -- API: OpenGL
+	//-----------------------------------------------------------------------------
 	class OpenGLRendererAPI : public RendererAPI
 	{
 	public:

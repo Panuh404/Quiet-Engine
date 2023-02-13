@@ -5,8 +5,6 @@
 #include "Quiet/Core/Timestep.h"
 #include "Quiet/Renderer/Renderer.h"
 
-#include <glm/glm.hpp>
-
 #include "GLFW/glfw3.h"
 
 namespace Quiet
@@ -16,7 +14,7 @@ namespace Quiet
 	Application::Application()
 	{
 		// Create Application Instance
-		QT_CORE_ASSERT(!s_Instance, "Application already exists!!!")
+		QT_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
 		// Create Window
@@ -90,7 +88,6 @@ namespace Quiet
 	{
 		if(e.GetWidth() == 0 || e.GetHeight() == 0)
 		{
-
 			m_Minimized = true;
 			return false;
 		}

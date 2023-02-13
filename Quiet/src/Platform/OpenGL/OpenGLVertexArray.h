@@ -4,6 +4,9 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Vertex Array -- API: OpenGL
+	//-----------------------------------------------------------------------------
 	class OpenGLVertexArray : public VertexArray
 	{
 	public:

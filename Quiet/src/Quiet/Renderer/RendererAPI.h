@@ -7,12 +7,19 @@
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Renderer API
+	//-----------------------------------------------------------------------------
 	class RendererAPI
 	{
 	public:
 		enum class API
 		{
-			None = 0, OpenGL = 1, Vulkan = 2, DirectX11 = 3, DirectX12 = 4
+			None		= 0,
+			OpenGL		= 1,
+			Vulkan		= 2,
+			DirectX11	= 3,
+			DirectX12	= 4
 		};
 
 		virtual void Init() = 0;

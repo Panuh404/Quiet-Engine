@@ -36,45 +36,14 @@ public:
 		squareIB.reset(Quiet::IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
 		m_SquareVA->SetIndexBuffer(squareIB);
 
-		//-----------------------------------------------------------------------------
-		// [SHADER] Flat Color
-		//-----------------------------------------------------------------------------
-		std::string flatColorShaderVertexSrc = R"(
-			#version 330 core
-			
-			layout(location = 0) in vec3 a_Position;
+		// Loaded in a Shader Variable
+		m_FlatColorShader = Quiet::Shader::Create("res/shaders/flatColor.shader");
 
-			uniform mat4 u_ViewProjection;
-			uniform mat4 u_Transform;
-
-			out vec3 v_Position;
-
-			void main()
-			{
-				v_Position = a_Position;
-				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);	
-			}
-		)";
-		std::string flatColorShaderFragmentSrc = R"(
-			#version 330 core
-			
-			layout(location = 0) out vec4 color;
-			in vec3 v_Position;
-			
-			uniform vec4 u_Color;
-
-			void main()
-			{
-				color = u_Color;
-			}
-		)";		
-		m_FlatColorShader = Quiet::Shader::Create("FlatColor", flatColorShaderVertexSrc, flatColorShaderFragmentSrc);
-
+		// Loaded in the shader library
 		auto textureShader = m_ShaderLibrary.Load("res/shaders/texture.shader");
 
 		m_Texture2D = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
 		m_TexFace = Quiet::Texture2D::Create("res/textures/awesomeface.png");
-
 
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->Bind();
 		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->UploadUniformInt("u_Texture", 0);

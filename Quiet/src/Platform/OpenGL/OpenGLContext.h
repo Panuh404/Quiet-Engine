@@ -6,6 +6,9 @@ struct GLFWwindow;
 
 namespace Quiet
 {
+	//-----------------------------------------------------------------------------
+	// [CLASS] Renderer Context -- API: OpenGL
+	//-----------------------------------------------------------------------------
 	class OpenGLContext : public RendererContext
 	{
 	public:
