@@ -36,8 +36,3 @@
 #include "Quiet/Renderer/VertexArray.h"
 
 #include "Quiet/Renderer/Camera.h"
-
-//-----------------------------------------------------------------------------
-// [Entry Point]
-//-----------------------------------------------------------------------------
-#include "Quiet/Core/EntryPoint.h"

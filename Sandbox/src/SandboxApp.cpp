@@ -1,4 +1,5 @@
 #include <Quiet.h>
+#include "Quiet/Core/EntryPoint.h"
 
 #include "ImGui/imgui.h"
 #include "Quiet/Events/KeyEvent.h"
@@ -7,13 +8,14 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Platform/OpenGL/OpenGLShader.h"
+#include "Sandbox2D.h"
 
 class TestLayer : public Quiet::Layer
 {
 public:
 	TestLayer() : Layer("Test"), m_CameraController(1280.0f / 720.0f, true)
 	{
-		m_SquareVA.reset(Quiet::VertexArray::Create());
+		m_SquareVA = Quiet::VertexArray::Create();
 
 		float squareVertices[5 * 4] = {
 			// Square			// Texture
@@ -24,7 +26,7 @@ public:
 		};
 
 		std::shared_ptr<Quiet::VertexBuffer> squareVB;
-		squareVB.reset(Quiet::VertexBuffer::Create(squareVertices, sizeof(squareVertices)));
+		squareVB =Quiet::VertexBuffer::Create(squareVertices, sizeof(squareVertices));
 		squareVB->SetLayout({
 			{Quiet::ShaderDataType::Float3, "a_Position" },
 			{Quiet::ShaderDataType::Float2, "a_TexCoord" }
@@ -33,7 +35,7 @@ public:
 
 		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
 		std::shared_ptr<Quiet::IndexBuffer> squareIB;
-		squareIB.reset(Quiet::IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t)));
+		squareIB =Quiet::IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t));
 		m_SquareVA->SetIndexBuffer(squareIB);
 
 		// Loaded in a Shader Variable
@@ -105,7 +107,6 @@ public:
 private:
 	Quiet::ShaderLibrary m_ShaderLibrary;
 	std::shared_ptr<Quiet::Shader> m_FlatColorShader;
-
 	std::shared_ptr<Quiet::VertexArray> m_SquareVA;
 
 	std::shared_ptr<Quiet::Texture2D> m_Texture2D;
@@ -123,7 +124,8 @@ class Sandbox : public Quiet::Application
 public:
 	Sandbox()
 	{
-		PushLayer(new TestLayer());
+		// PushLayer(new TestLayer());
+		PushLayer(new Sandbox2D());
 	}
 
 	~Sandbox()
