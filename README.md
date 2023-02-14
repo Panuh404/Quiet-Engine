@@ -62,19 +62,34 @@ You need to run the script to generate the visual studio (/scripts/GenProject_VS
 * [stb](https://github.com/nothings/stb) -> single-file public domain libraries (stb_image.h only)
 
 ## Resources
+GameEngine Stuff
+* https://thatonegamedev.com/cpp/c-packages-for-a-custom-game-engine/
+* https://www.gamedeveloper.com/blogs/how-to-make-your-own-c-game-engine
+
+Shaders
+* https://thebookofshaders.com/
+* https://www.pbr-book.org/
+
 OpenGL
 * http://docs.gl/
 * https://www.khronos.org/opengl/wiki/
 * https://learnopengl.com/
+* https://ogldev.org/
+* https://nehe.gamedev.net/
+* https://paroj.github.io/gltut/index.html
 
 DirectX
 * http://www.rastertek.com/
 * https://www.3dgep.com/
+* http://www.directxtutorial.com/
+* https://learn.microsoft.com/en-us/windows/win32/direct3d12/directx-12-programming-guide?redirectedfrom=MSDN
+* https://digitalerr0r.net/2015/08/19/quickstart-directx-12-programming/
 
 Vulkan
 * https://vulkan-tutorial.com/
 * https://youtube.com/playlist?list=PL8327DO66nu9qYVKLDmdLW_84-yE4auCR
 * https://github.com/SaschaWillems/Vulkan
+* https://github.com/vinjn/awesome-vulkan
 
 Graphics General
 * https://www.scratchapixel.com/
@@ -83,6 +98,10 @@ Math
 * https://www.youtube.com/playlist?list=PL7wAPgl1JVvUEb0dIygHzO4698tmcwLk9
 * http://www.euclideanspace.com/
 * https://eater.net/quaternions
+
+Programming
+* https://refactoring.guru/design-patterns/abstract-factory
+* https://en.cppreference.com/w/cpp/language
 
 ## Main features to come:
 - Fast 2D rendering (UI, particles, sprites, etc.)
