@@ -16,9 +16,9 @@ namespace Quiet
 		QT_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
 	}
 
-	Window* Window::Create(const WindowProps& props)
+	std::unique_ptr<Window> Window::Create(const WindowProps& props)
 	{
-		return new WindowsWindow(props);
+		return std::make_unique<WindowsWindow>(props);
 	}
 
 	WindowsWindow::WindowsWindow(const WindowProps& props)
@@ -50,7 +50,7 @@ namespace Quiet
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
 		++s_GLFWWindowCount;
 
-		m_Context = new OpenGLContext(m_Window);
+		m_Context = GraphicsContext::Create(m_Window);
 		m_Context->Init();
 
 		glfwSetWindowUserPointer(m_Window, &m_Data);
@@ -155,7 +155,9 @@ namespace Quiet
 	void WindowsWindow::Shutdown()
 	{
 		glfwDestroyWindow(m_Window);
-		if (--s_GLFWWindowCount == 0)
+		--s_GLFWWindowCount;
+
+		if (s_GLFWWindowCount == 0)
 		{
 			QT_CORE_INFO("Terminating GLFW");
 			glfwTerminate();

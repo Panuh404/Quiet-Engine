@@ -4,7 +4,7 @@
 
 namespace Quiet
 {
-	class QUIET_API Input
+	class Input
 	{
 	public:
 		Input(const Input&) = delete;

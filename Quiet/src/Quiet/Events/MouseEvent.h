@@ -8,7 +8,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] MouseMovedEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API MouseMovedEvent : public Event
+	class MouseMovedEvent : public Event
 	{
 	public:
 		MouseMovedEvent(float x, float y) : m_MouseX(x), m_MouseY(y) {}
@@ -32,7 +32,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] MouseScrolledEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API MouseScrolledEvent : public Event
+	class MouseScrolledEvent : public Event
 	{
 	public:
 		MouseScrolledEvent(float xOffset, float yOffset) : m_XOffset(xOffset), m_YOffset(yOffset) {}
@@ -56,7 +56,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] MouseButtonEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API MouseButtonEvent : public Event
+	class MouseButtonEvent : public Event
 	{
 	public:
 		int GetMouseButton() const { return m_Button; }

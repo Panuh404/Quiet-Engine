@@ -9,7 +9,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] WindowResizeEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API WindowResizeEvent : public Event
+	class WindowResizeEvent : public Event
 	{
 	public:
 		WindowResizeEvent(uint32_t width, uint32_t height) :
@@ -34,7 +34,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] WindowCloseEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API WindowCloseEvent : public Event
+	class WindowCloseEvent : public Event
 	{
 	public:
 		WindowCloseEvent() = default;
@@ -45,7 +45,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] AppTickEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API AppTickEvent : public Event
+	class AppTickEvent : public Event
 	{
 	public:
 		AppTickEvent() = default;
@@ -56,7 +56,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] AppUpdateEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API AppUpdateEvent : public Event
+	class AppUpdateEvent : public Event
 	{
 	public:
 		AppUpdateEvent() = default;
@@ -67,7 +67,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [EVENT] AppRenderEvent
 	//-----------------------------------------------------------------------------
-	class QUIET_API AppRenderEvent : public Event
+	class AppRenderEvent : public Event
 	{
 	public:
 		AppRenderEvent() = default;

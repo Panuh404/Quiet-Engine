@@ -49,6 +49,9 @@ namespace Quiet
 		glDeleteProgram(m_RendererID);
 	}
 
+	//-----------------------------------------------------------------------------
+	// [CLASS UTIL] Read File
+	//-----------------------------------------------------------------------------
 	std::string OpenGLShader::ReadFile(const std::string filepath)
 	{
 		std::string result;
@@ -70,6 +73,9 @@ namespace Quiet
 		return result;
 	}
 
+	//-----------------------------------------------------------------------------
+	// [CLASS UTIL] Pre Process Shader files
+	//-----------------------------------------------------------------------------
 	std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(const std::string source)
 	{
 		std::unordered_map<GLenum, std::string> shaderSources;
@@ -96,6 +102,9 @@ namespace Quiet
 		return shaderSources;
 	}
 
+	//-----------------------------------------------------------------------------
+	// [CLASS UTIL] Compile Shaders
+	//-----------------------------------------------------------------------------
 	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& shaderSources)
 	{
 		GLuint program = glCreateProgram();

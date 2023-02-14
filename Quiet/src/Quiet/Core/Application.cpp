@@ -18,7 +18,7 @@ namespace Quiet
 		s_Instance = this;
 
 		// Create Window
-		m_Window = std::unique_ptr<Window>(Window::Create());
+		m_Window = Window::Create();
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 		m_Window->SetVSync(true);
 
@@ -28,6 +28,11 @@ namespace Quiet
 		// Create ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);		
+	}
+
+	Application::~Application()
+	{
+		Renderer::Shutdown();
 	}
 
 	void Application::PushLayer(Layer* layer)

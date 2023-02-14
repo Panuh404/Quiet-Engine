@@ -5,7 +5,7 @@
 
 namespace Quiet
 {
-	class QUIET_API Log
+	class Log
 	{
 	public:
 		static void Init();

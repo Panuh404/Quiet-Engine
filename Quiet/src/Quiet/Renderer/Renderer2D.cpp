@@ -36,8 +36,7 @@ namespace Quiet
 		};
 
 		// Vertex Buffer
-		std::shared_ptr<VertexBuffer> squareVB;
-		squareVB = VertexBuffer::Create(squareVertices, sizeof(squareVertices));
+		std::shared_ptr<VertexBuffer> squareVB = VertexBuffer::Create(squareVertices, sizeof(squareVertices));
 		squareVB->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float2, "a_TexCoord" }
@@ -46,8 +45,7 @@ namespace Quiet
 
 		// Index Buffer
 		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
-		std::shared_ptr<IndexBuffer> squareIB;
-		squareIB = IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t));
+		std::shared_ptr<IndexBuffer> squareIB = IndexBuffer::Create(squareIndices, sizeof(squareIndices) / sizeof(uint32_t));
 
 		// load buffer
 		s_Data->QuadVertexArray->SetIndexBuffer(squareIB);

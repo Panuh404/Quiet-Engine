@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Quiet/Renderer/RendererContext.h"
+#include "Quiet/Renderer/GraphicsContext.h"
 
 struct GLFWwindow;
 
@@ -9,7 +9,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [CLASS] Renderer Context -- API: OpenGL
 	//-----------------------------------------------------------------------------
-	class OpenGLContext : public RendererContext
+	class OpenGLContext : public GraphicsContext
 	{
 	public:
 		OpenGLContext(GLFWwindow* windowHandle);

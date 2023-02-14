@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Quiet/Renderer/Camera.h"
 #include <glm/glm.hpp>
 
 namespace Quiet

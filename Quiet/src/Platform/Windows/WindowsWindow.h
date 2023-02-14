@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Quiet/Core/Window.h"
-#include "Quiet/Renderer/RendererContext.h"
+#include "Quiet/Renderer/GraphicsContext.h"
 
 #include <GLFW/glfw3.h>
 
@@ -30,7 +30,7 @@ namespace Quiet
 
 	private:
 		GLFWwindow* m_Window;
-		RendererContext* m_Context;
+		std::unique_ptr<GraphicsContext> m_Context;
 
 		struct WindowData
 		{

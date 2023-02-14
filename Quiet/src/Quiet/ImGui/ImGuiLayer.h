@@ -4,7 +4,7 @@
 
 namespace Quiet
 {
-	class QUIET_API ImGuiLayer final : public Layer
+	class ImGuiLayer final : public Layer
 	{
 	public:
 		ImGuiLayer();

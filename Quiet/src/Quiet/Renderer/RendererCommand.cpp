@@ -5,5 +5,5 @@
 
 namespace Quiet
 {
-	RendererAPI* RendererCommand::s_RendererAPI = new OpenGLRendererAPI;
+	std::unique_ptr<RendererAPI> RendererCommand::s_RendererAPI = RendererAPI::Create();
 }

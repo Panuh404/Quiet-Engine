@@ -1,8 +1,8 @@
 #include "qtpch.h"
 
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 
 #include "Quiet/ImGui/ImGuiLayer.h"
 #include "Quiet/Core/Application.h"

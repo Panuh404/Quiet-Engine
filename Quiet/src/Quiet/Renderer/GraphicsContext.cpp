@@ -1,21 +1,21 @@
 #include "qtpch.h"
 
-#include "Quiet/Renderer/RendererAPI.h"
-#include "Platform/OpenGL/OpenGLRendererAPI.h"
+#include "Quiet/Renderer/GraphicsContext.h"
+
+#include "Quiet/Renderer/Renderer.h"
+#include "Platform/OpenGL/OpenGLContext.h"
 
 namespace Quiet
 {
-	RendererAPI::API RendererAPI::s_API = RendererAPI::API::OpenGL;
-
 	//-----------------------------------------------------------------------------
-	// [API Abstraction] RendererAPI
+	// [API Abstraction] Graphic Context
 	//-----------------------------------------------------------------------------
-	std::unique_ptr<RendererAPI> RendererAPI::Create()
+	std::unique_ptr<GraphicsContext> GraphicsContext::Create(void* window)
 	{
-		switch (s_API)
+		switch (Renderer::GetAPI())
 		{
 			case RendererAPI::API::None:		QT_CORE_ASSERT(false, "RendererAPI::There is no API Selected"); return nullptr;
-			case RendererAPI::API::OpenGL:		return std::make_unique<OpenGLRendererAPI>();
+			case RendererAPI::API::OpenGL:		return std::make_unique<OpenGLContext>(static_cast<GLFWwindow*>(window));
 			case RendererAPI::API::Vulkan:		QT_CORE_ASSERT(false, "RendererAPI::Vulkan is currently not supported!"); return nullptr;
 			case RendererAPI::API::DirectX11:	QT_CORE_ASSERT(false, "RendererAPI::Direct11 is currently not supported!"); return nullptr;
 			case RendererAPI::API::DirectX12:	QT_CORE_ASSERT(false, "RendererAPI::Direct12 is currently not supported!"); return nullptr;

@@ -1,7 +1,5 @@
 #pragma once
-
-#include "Quiet/Core/Application.h"
-#include "Quiet/Core/Log.h"
+#include "Quiet/Core/Core.h"
 
 #ifdef QT_PLATFORM_WINDOWS
 
