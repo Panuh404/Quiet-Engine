@@ -7,7 +7,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Platform/OpenGL/OpenGLShader.h"
 #include "Sandbox2D.h"
 
 class TestLayer : public Quiet::Layer
@@ -47,8 +46,8 @@ public:
 		m_Texture2D = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
 		m_TexFace = Quiet::Texture2D::Create("res/textures/awesomeface.png");
 
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->Bind();
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(textureShader)->UploadUniformInt("u_Texture", 0);
+		textureShader->Bind();
+		textureShader->SetInt("u_Texture", 0);
 	}
 
 	void OnUpdate(Quiet::Timestep ts) override
@@ -66,8 +65,8 @@ public:
 
 		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->Bind();
-		std::dynamic_pointer_cast<Quiet::OpenGLShader>(m_FlatColorShader)->UploadUniformFloat4("u_Color", m_Color);
+		m_FlatColorShader->Bind();
+		m_FlatColorShader->SetFloat4("u_Color", m_Color);
 
 		for (int y = -10; y < 11; y++)
 		{
