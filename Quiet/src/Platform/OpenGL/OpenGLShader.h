@@ -24,8 +24,19 @@ namespace Quiet
 
 		const std::string& GetName() const override { return m_Name; }
 
+		// Uniforms References
+		void SetInt(const std::string& name, int value) override						{ UploadUniformInt(name, value);			}
+		void SetIntArr(const std::string& name, int* values, uint32_t count) override	{ UploadUniformIntArr(name, values, count); }
+		void SetFloat(const std::string& name, float values) override					{ UploadUniformFloat(name, values);			}
+		void SetFloat2(const std::string& name, const glm::vec2& values) override		{ UploadUniformFloat2(name, values);		}
+		void SetFloat3(const std::string& name, const glm::vec3& values) override		{ UploadUniformFloat3(name, values);		}
+		void SetFloat4(const std::string& name, const glm::vec4& values) override		{ UploadUniformFloat4(name, values);		}
+		void SetMat3(const std::string& name, const glm::mat3& matrix) override			{ UploadUniformMat3(name, matrix);			}
+		void SetMat4(const std::string& name, const glm::mat4& matrix) override			{ UploadUniformMat4(name, matrix);			}
+
 		// Uniforms Handle
 		void UploadUniformInt	(const std::string& name, int value);
+		void UploadUniformIntArr(const std::string& name, int* values, uint32_t count);
 		void UploadUniformFloat	(const std::string& name, float value);
 		void UploadUniformFloat2(const std::string& name, const glm::vec2& values);
 		void UploadUniformFloat3(const std::string& name, const glm::vec3& values);
