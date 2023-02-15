@@ -77,6 +77,4 @@ namespace Quiet
 			glfwMakeContextCurrent(backup_current_context);
 		}
 	}
-
-	void ImGuiLayer::OnImGuiRender() {}
 }
