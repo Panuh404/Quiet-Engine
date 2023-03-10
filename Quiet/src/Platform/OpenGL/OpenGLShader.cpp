@@ -23,6 +23,7 @@ namespace Quiet
 
 	OpenGLShader::OpenGLShader(const std::string& filepath)
 	{
+		QT_PROFILE_FUNCTION();
 		std::string shaderSource = ReadFile(filepath);
 		auto sources = PreProcess(shaderSource);
 		Compile(sources);
@@ -38,6 +39,7 @@ namespace Quiet
 
 	OpenGLShader::OpenGLShader(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)
 	{
+		QT_PROFILE_FUNCTION();
 		std::unordered_map<GLenum, std::string> sources;
 		sources[GL_VERTEX_SHADER] = vertexSrc;
 		sources[GL_FRAGMENT_SHADER] = fragmentSrc;
@@ -46,6 +48,7 @@ namespace Quiet
 
 	OpenGLShader::~OpenGLShader()
 	{
+		QT_PROFILE_FUNCTION();
 		glDeleteProgram(m_RendererID);
 	}
 
@@ -54,6 +57,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	std::string OpenGLShader::ReadFile(const std::string filepath)
 	{
+		QT_PROFILE_FUNCTION();
 		std::string result;
 		std::ifstream in(filepath, std::ios::in | std::ios::binary);
 		if (in)
@@ -78,6 +82,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(const std::string source)
 	{
+		QT_PROFILE_FUNCTION();
 		std::unordered_map<GLenum, std::string> shaderSources;
 		const char* typeToken = "#TYPE:";
 		size_t typeTokenLength = strlen(typeToken);
@@ -107,6 +112,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& shaderSources)
 	{
+		QT_PROFILE_FUNCTION();
 		GLuint program = glCreateProgram();
 		QT_CORE_ASSERT(shaderSources.size() <= 4, "SHADER::Too many shaders!");
 		std::array<GLenum, 4> glShaderIDs;
@@ -179,11 +185,13 @@ namespace Quiet
 
 	void OpenGLShader::Bind() const
 	{
+		QT_PROFILE_FUNCTION();
 		glUseProgram(m_RendererID);
 	}
 
 	void OpenGLShader::Unbind() const
 	{
+		QT_PROFILE_FUNCTION();
 		glUseProgram(0);
 	}
 

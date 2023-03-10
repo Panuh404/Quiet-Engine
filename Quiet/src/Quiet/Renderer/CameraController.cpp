@@ -15,6 +15,7 @@ namespace Quiet
 
 	void OrthographicCameraController::OnUpdate(Timestep ts)
 	{
+		QT_PROFILE_FUNCTION();
 		// Camera Translation
 		if (Input::IsKeyPressed(Key::A))
 		{
@@ -59,6 +60,7 @@ namespace Quiet
 
 	void OrthographicCameraController::OnEvent(Event& e)
 	{
+		QT_PROFILE_FUNCTION();
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(OrthographicCameraController::OnMouseScrolled));
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OrthographicCameraController::OnWindowResized));
@@ -66,6 +68,7 @@ namespace Quiet
 
 	bool OrthographicCameraController::OnMouseScrolled(MouseScrolledEvent& e)
 	{
+		QT_PROFILE_FUNCTION();
 		m_ZoomLevel -= e.GetYOffset() * 0.25f;
 		m_ZoomLevel = std::max(m_ZoomLevel, 0.25f);
 		m_Camera.SetProjection(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel);
@@ -74,6 +77,7 @@ namespace Quiet
 
 	bool OrthographicCameraController::OnWindowResized(WindowResizeEvent& e)
 	{
+		QT_PROFILE_FUNCTION();
 		m_AspectRatio = (float)e.GetWidth() / (float)e.GetHeight();
 		m_Camera.SetProjection(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel);
 		return false;

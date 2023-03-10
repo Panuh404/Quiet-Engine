@@ -5,17 +5,19 @@
 //-----------------------------------------------------------------------------
 // [PLATFORM] Windows
 //-----------------------------------------------------------------------------
-// WINDOWS
 #ifdef _WIN32
 	// Windows x64/x86
 	#ifdef _WIN64
 		// Windows x64
-		#define HZ_PLATFORM_WINDOWS
+		#define QT_PLATFORM_WINDOWS
 	#else
 		// Windows x86
 		#error "x86 Builds are not supported!"
 	#endif
-// APPLE
+
+//-----------------------------------------------------------------------------
+// [PLATFORM] APPLE
+//-----------------------------------------------------------------------------
 #elif defined(__APPLE__) || defined(__MACH__)
 	#include <TargetConditionals.h>
 	// TARGET_OS_MAC exists on all the platforms
@@ -25,29 +27,35 @@
 	#if TARGET_IPHONE_SIMULATOR == 1
 		#error "IOS simulator is not supported!"
 	#elif TARGET_OS_IPHONE == 1
-		#define HZ_PLATFORM_IOS
+		#define QT_PLATFORM_IOS
 		#error "IOS is not supported!"
 	#elif TARGET_OS_MAC == 1
-		#define HZ_PLATFORM_MACOS
+		#define QT_PLATFORM_MACOS
 		#error "MacOS is not supported!"
 	#else
 		#error "Unknown Apple platform!"
 	#endif
 
-// ANDROID
+//-----------------------------------------------------------------------------
+// [PLATFORM] ANDROID
+//-----------------------------------------------------------------------------
 #elif defined(__ANDROID__)
 	// We also have to check __ANDROID__ before __linux__
 	// since android is based on the linux kernel
 	// it has __linux__ defined
-	#define HZ_PLATFORM_ANDROID
+	#define QT_PLATFORM_ANDROID
 	#error "Android is not supported!"
 
-// LINUX
+//-----------------------------------------------------------------------------
+// [PLATFORM] LINUX
+//-----------------------------------------------------------------------------
 #elif defined(__linux__)
-	#define HZ_PLATFORM_LINUX
+	#define QT_PLATFORM_LINUX
 	#error "Linux is not supported!"
 
-// OTHER
+//-----------------------------------------------------------------------------
+// [PLATFORM] OTHER
+//-----------------------------------------------------------------------------
 #else
 	// Unknown compiler/platform
 	#error "Unknown platform!"
@@ -57,6 +65,7 @@
 // [DEBUG]
 //----------------------------------------------------------------------------- 
 #ifdef QT_DEBUG
+	#define QT_PROFILE 1
 	#define QT_ENABLE_ASSERTS
 #endif
 

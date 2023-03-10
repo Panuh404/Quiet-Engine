@@ -8,6 +8,10 @@ workspace "Quiet"
         "Dist"
     }
 
+    flags{
+        "MultiProcessorCompile"
+    }
+
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 --include directories relative to root folder (solution directory)
@@ -24,9 +28,9 @@ include "Quiet/vendor"
 project "Quiet"
     location "Quiet"
     kind "StaticLib"
-    language "C++"
-    cppdialect "C++17"
-    staticruntime "on"
+	language "C++"
+	cppdialect "C++17"
+	staticruntime "on"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -43,6 +47,10 @@ project "Quiet"
         "%{prj.name}/vendor/glm/glm/**.inl"
     }
 
+    defines{
+        "_CRT_SECURE_NO_WARNINGS"
+    }
+
     includedirs{
 		"%{prj.name}/src",
         "%{prj.name}/vendor/spdlog/include",
@@ -52,10 +60,6 @@ project "Quiet"
         "%{IncludeDir.glm}",
         "%{IncludeDir.stb}"
 	}
-
-    defines{
-        "_CRT_SECURE_NO_WARNINGS"
-    }
 
     links{
         "GLFW",
@@ -68,7 +72,6 @@ project "Quiet"
         systemversion "latest"
 
         defines{
-            "QT_PLATFORM_WINDOWS",
             "QT_BUILD_DLL",
             "GLFW_INCLUDE_NONE"
         }
@@ -116,10 +119,6 @@ project "Sandbox"
 
     filter "system:windows"
         systemversion "latest"
-
-        defines{
-            "QT_PLATFORM_WINDOWS"
-        }
 
     filter "configurations:Debug"
         defines "QT_DEBUG"

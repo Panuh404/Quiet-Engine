@@ -1,8 +1,6 @@
 #include "qtpch.h"
 
 #include "Quiet/Renderer/Renderer.h"
-
-#include "Platform/OpenGL/OpenGLShader.h"
 #include "Quiet/Renderer/Renderer2D.h"
 
 namespace Quiet
@@ -11,6 +9,7 @@ namespace Quiet
 
 	void Renderer::Init()
 	{
+		QT_PROFILE_FUNCTION();
 		RendererCommand::Init();
 		Renderer2D::Init();
 	}

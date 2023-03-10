@@ -19,6 +19,8 @@
 
 #include "Quiet/Core/Log.h"
 
+#include "Quiet/Debug/Instrumentor.h"
+
 #ifdef QT_PLATFORM_WINDOWS
 	#include <windows.h>
 #endif

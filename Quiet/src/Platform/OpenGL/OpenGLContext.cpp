@@ -16,6 +16,7 @@ namespace Quiet
 
 	void OpenGLContext::Init()
 	{
+		QT_PROFILE_FUNCTION();
 		// Create a GLFW context
 		glfwMakeContextCurrent(m_WindowHandle);
 
@@ -41,6 +42,7 @@ namespace Quiet
 
 	void OpenGLContext::SwapBuffers()
 	{
+		QT_PROFILE_FUNCTION();
 		glfwSwapBuffers(m_WindowHandle);
 	}
 }

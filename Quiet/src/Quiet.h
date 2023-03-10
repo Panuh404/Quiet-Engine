@@ -1,7 +1,6 @@
 #pragma once
-//-----------------------------------------------------------------------------
+
 // FOR USE BY QUIET APPLICATIONS
-//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // [SECTION] Core
@@ -14,6 +13,8 @@
 #include "Quiet/Core/Timestep.h"
 
 #include "Quiet/ImGui/ImGuiLayer.h"
+#include "Quiet/Debug/Instrumentor.h"
+
 
 //-----------------------------------------------------------------------------
 // [SECTION] Input
@@ -25,7 +26,7 @@
 #include "Quiet/Renderer/CameraController.h"
 
 //-----------------------------------------------------------------------------
-// [SECTION] Renderer Area
+// [SECTION] Renderer
 //-----------------------------------------------------------------------------
 #include "Quiet/Renderer/Renderer.h"
 #include "Quiet/Renderer/Renderer2D.h"
