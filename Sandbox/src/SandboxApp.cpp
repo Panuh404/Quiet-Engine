@@ -10,7 +10,7 @@ class Sandbox : public Quiet::Application
 public:
 	Sandbox()
 	{
-		// PushLayer(new TestLayer());
+		//PushLayer(new ExampleLayer());
 		PushLayer(new Sandbox2D());
 	}
 

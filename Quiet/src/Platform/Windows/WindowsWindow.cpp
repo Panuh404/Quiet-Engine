@@ -4,6 +4,8 @@
 #include "Quiet/Events/MouseEvent.h"
 #include "Quiet/Events/ApplicationEvent.h"
 
+#include "Quiet/Renderer/Renderer.h"
+
 #include "Platform/Windows/WindowsWindow.h"
 #include "Platform/OpenGL/OpenGLContext.h"
 
@@ -14,11 +16,6 @@ namespace Quiet
 	static void GLFWerrorCallback(int error, const char* description)
 	{
 		QT_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
-	}
-
-	std::unique_ptr<Window> Window::Create(const WindowProps& props)
-	{
-		return std::make_unique<WindowsWindow>(props);
 	}
 
 	WindowsWindow::WindowsWindow(const WindowProps& props)
@@ -53,6 +50,11 @@ namespace Quiet
 
 		{
 			QT_PROFILE_SCOPE("glfwCreateWindow");
+
+			#if defined(QT_DEBUG)
+			if (Renderer::GetAPI() == RendererAPI::API::OpenGL)	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+			#endif
+
 			m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
 			++s_GLFWWindowCount;
 		}

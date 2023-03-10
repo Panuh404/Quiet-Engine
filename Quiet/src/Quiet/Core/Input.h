@@ -16,6 +16,8 @@ namespace Quiet
 		static float GetMouseX()							{ return s_Instance->GetMouseXImpl(); }
 		static float GetMouseY()							{ return s_Instance->GetMouseYImpl(); }
 
+		static std::unique_ptr<Input> Create();
+
 	protected:
 		Input() = default;
 
@@ -26,6 +28,6 @@ namespace Quiet
 		virtual float GetMouseYImpl() = 0;
 
 	private:
-		static Input* s_Instance;
+		static std::unique_ptr<Input> s_Instance;
 	};
 }
