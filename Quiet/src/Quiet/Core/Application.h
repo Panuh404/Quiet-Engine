@@ -9,6 +9,8 @@
 
 #include "Quiet/ImGui/ImGuiLayer.h"
 
+int main(int argc, char** argv);
+
 namespace Quiet
 {
 	class Application
@@ -17,7 +19,6 @@ namespace Quiet
 		Application();
 		virtual ~Application();
 
-		void Run();
 		void OnEvent(Event& e);
 
 		void PushLayer(Layer* layer);
@@ -27,10 +28,13 @@ namespace Quiet
 		Window& GetWindow() { return *m_Window; }
 
 	private:
+		void Run();
 		bool OnWindowClose(WindowCloseEvent& e);
 		bool OnWindowResize(WindowResizeEvent& e);
 
 		static Application* s_Instance;
+		friend int ::main(int argc, char** argv);
+
 		std::unique_ptr<Window> m_Window;
 		ImGuiLayer* m_ImGuiLayer;
 		LayerStack m_LayerStack;
