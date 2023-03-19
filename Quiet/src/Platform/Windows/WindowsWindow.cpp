@@ -42,7 +42,6 @@ namespace Quiet
 		if (s_GLFWWindowCount == 0)
 		{
 			QT_PROFILE_SCOPE("glfwInit");
-			QT_CORE_INFO("Initializing GLFW");
 			int success = glfwInit();
 			QT_CORE_ASSERT(success, "Could not initialize GLFW!");
 			glfwSetErrorCallback(GLFWerrorCallback);
