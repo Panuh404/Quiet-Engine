@@ -4,6 +4,7 @@ bin-int/
 
 # Quiet Files
 *.log
+*.json
 
 # Visual Studio
 .vs/

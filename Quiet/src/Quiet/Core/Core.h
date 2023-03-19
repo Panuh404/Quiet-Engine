@@ -65,7 +65,7 @@
 // [DEBUG]
 //----------------------------------------------------------------------------- 
 #ifdef QT_DEBUG
-	#define QT_PROFILE 1
+	#define QT_PROFILE 0
 	#define QT_ENABLE_ASSERTS
 #endif
 
