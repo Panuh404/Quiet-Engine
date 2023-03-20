@@ -43,21 +43,21 @@ namespace Quiet {
 				// Subsequent profiling output meant for the original session will end up in the
 				// newly opened session instead.  That's better than having badly formatted
 				// profiling output.
-				if (Quiet::Log::GetCoreLogger()) // Edge case: BeginSession() might be before Log::Init()
+				if (Log::GetCoreLogger()) // Edge case: BeginSession() might be before Log::Init()
 				{ 
 					QT_CORE_ERROR("Instrumentor::BeginSession('{0}') when session '{1}' already open.", name, m_CurrentSession->Name);
 				}
 				InternalEndSession();
 			}
 			m_OutputStream.open(filepath);
-			if (m_OutputStream.is_open()) 
+			if (m_OutputStream.is_open())
 			{
 				m_CurrentSession = new InstrumentationSession({ name });
 				WriteHeader();
 			}
 			else 
 			{
-				if (Quiet::Log::GetCoreLogger()) // Edge case: BeginSession() might be before Log::Init()
+				if (Log::GetCoreLogger()) // Edge case: BeginSession() might be before Log::Init()
 				{ 
 					QT_CORE_ERROR("Instrumentor could not open results file '{0}'.", filepath);
 				}
@@ -81,7 +81,7 @@ namespace Quiet {
 			json << ",{";
 			json << "\"cat\":\"function\",";
 			json << "\"dur\":" << (result.ElapsedTime.count()) << ',';
-			json << "\"name\":\"" << name << "\",";
+			json << "\"name\":\"" << result.Name << "\",";
 			json << "\"ph\":\"X\",";
 			json << "\"pid\":0,";
 			json << "\"tid\":" << result.ThreadID << ",";
@@ -96,13 +96,13 @@ namespace Quiet {
 			}
 		}
 
-		static Instrumentor& Get() {
+		static Instrumentor& Get()
+		{
 			static Instrumentor instance;
 			return instance;
 		}
 
 	private:
-
 		void WriteHeader()
 		{
 			m_OutputStream << "{\"otherData\": {},\"traceEvents\":[{}";
@@ -117,15 +117,16 @@ namespace Quiet {
 
 		// Note: you must already own lock on m_Mutex before
 		// calling InternalEndSession()
-		void InternalEndSession() {
-			if (m_CurrentSession) {
+		void InternalEndSession()
+		{
+			if (m_CurrentSession) 
+			{
 				WriteFooter();
 				m_OutputStream.close();
 				delete m_CurrentSession;
 				m_CurrentSession = nullptr;
 			}
 		}
-
 	};
 
 	class InstrumentationTimer
@@ -155,7 +156,37 @@ namespace Quiet {
 		const char* m_Name;
 		std::chrono::time_point<std::chrono::steady_clock> m_StartTimepoint;
 		bool m_Stopped;
-};
+	};
+
+
+	namespace InstrumentorUtils {
+
+		template <size_t N>
+		struct ChangeResult
+		{
+			char Data[N];
+		};
+
+		template <size_t N, size_t K>
+		constexpr auto CleanupOutputString(const char(&expr)[N], const char(&remove)[K])
+		{
+			ChangeResult<N> result = {};
+
+			size_t srcIndex = 0;
+			size_t dstIndex = 0;
+			while (srcIndex < N)
+			{
+				size_t matchIndex = 0;
+				while (matchIndex < K - 1 && srcIndex + matchIndex < N - 1 && expr[srcIndex + matchIndex] == remove[matchIndex])
+					matchIndex++;
+				if (matchIndex == K - 1)
+					srcIndex += matchIndex;
+				result.Data[dstIndex++] = expr[srcIndex] == '"' ? '\'' : expr[srcIndex];
+				srcIndex++;
+			}
+			return result;
+		}
+	}
 }
 #if QT_PROFILE
 	// Resolve which function signature macro will be used. Note that this only
@@ -165,7 +196,7 @@ namespace Quiet {
 		#define QT_FUNC_SIG __PRETTY_FUNCTION__
 	#elif defined(__DMC__) && (__DMC__ >= 0x810)
 		#define QT_FUNC_SIG __PRETTY_FUNCTION__
-	#elif defined(__FUNCSIG__)
+	#elif (defined(__FUNCSIG__) || (_MSC_VER))
 		#define QT_FUNC_SIG __FUNCSIG__
 	#elif (defined(__INTEL_COMPILER) && (__INTEL_COMPILER >= 600)) || (defined(__IBMCPP__) && (__IBMCPP__ >= 500))
 		#define QT_FUNC_SIG __FUNCTION__
@@ -181,7 +212,8 @@ namespace Quiet {
 
 	#define QT_PROFILE_BEGIN_SESSION(name, filepath) ::Quiet::Instrumentor::Get().BeginSession(name, filepath)
 	#define QT_PROFILE_END_SESSION() ::Quiet::Instrumentor::Get().EndSession()
-	#define QT_PROFILE_SCOPE(name) ::Quiet::InstrumentationTimer timer##__LINE__(name);
+	#define QT_PROFILE_SCOPE(name) constexpr auto fixedName = ::Quiet::InstrumentorUtils::CleanupOutputString(name, "__cdecl ");\
+															  ::Quiet::InstrumentationTimer timer##__LINE__(fixedName.Data)
 	#define QT_PROFILE_FUNCTION() QT_PROFILE_SCOPE(QT_FUNC_SIG)
 #else
 	#define QT_PROFILE_BEGIN_SESSION(name, filepath)

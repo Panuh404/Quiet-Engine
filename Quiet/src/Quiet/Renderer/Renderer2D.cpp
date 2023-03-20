@@ -129,6 +129,9 @@ namespace Quiet
 
 	void Renderer2D::Flush()
 	{
+		if (s_Data.QuadIndexCount == 0)
+			return; // Nothing to draw
+
 		// Bind Textures
 		for(uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
 		{
