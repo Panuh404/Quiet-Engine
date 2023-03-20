@@ -64,13 +64,11 @@ void Sandbox2D::OnImGuiRender()
 	ImGui::Begin("Settings");
 
 	auto stats = Quiet::Renderer2D::GetStats();
-	ImGui::Text("Renderer2D Stats:");
+	ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Renderer2D Stats");
 	ImGui::Text("Draw Calls: %d", stats.DrawCalls);
 	ImGui::Text("Quads: %d", stats.QuadCount);
 	ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
 	ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
-
-	ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Profiling");
 	ImGui::Separator();
 
 	ImGui::TextColored({ 0.3f, 0.4f, 0.8f, 1.0f }, "Colors");
