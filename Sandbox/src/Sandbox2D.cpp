@@ -10,6 +10,11 @@ void Sandbox2D::OnAttach()
 {
 	QT_PROFILE_FUNCTION();
 	m_CheckerboardTexture = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
+
+	Quiet::FramebufferSpecification framebufferSpec;
+	framebufferSpec.Width = 1280;
+	framebufferSpec.Height = 720;
+	m_Framebuffer = Quiet::Framebuffer::Create(framebufferSpec);
 }
 
 void Sandbox2D::OnDetach()
@@ -28,6 +33,7 @@ void Sandbox2D::OnUpdate(Quiet::Timestep dt)
 	Quiet::Renderer2D::ResetStats();
 	{
 		QT_PROFILE_SCOPE("Renderer::Prep");
+		m_Framebuffer->Bind();
 		Quiet::RendererCommand::SetClearColor({ 0.1f,0.1f,0.1f,1 });
 		Quiet::RendererCommand::Clear();
 	}
@@ -55,6 +61,7 @@ void Sandbox2D::OnUpdate(Quiet::Timestep dt)
 			}
 		}
 		Quiet::Renderer2D::EndScene();
+		m_Framebuffer->Unbind();
 	}
 }
 
@@ -62,7 +69,6 @@ void Sandbox2D::OnImGuiRender()
 {
 	QT_PROFILE_FUNCTION();
 
-	// Note: Switch this to true to enable dockspace
 	static bool dockingEnabled = true;
 	if (dockingEnabled)
 	{
@@ -89,15 +95,7 @@ void Sandbox2D::OnImGuiRender()
 			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 		}
 
-		// When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background
-		// and handle the pass-thru hole, so we ask Begin() to not render a background.
 		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode) window_flags |= ImGuiWindowFlags_NoBackground;
-
-		// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-		// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive, 
-		// all active windows docked into it will lose their parent and become undocked.
-		// We cannot preserve the docking relationship between an active window and an inactive docking, otherwise 
-		// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Dockspace Quiet", &dockspaceOpen, window_flags);
@@ -118,8 +116,6 @@ void Sandbox2D::OnImGuiRender()
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				// Disabling fullscreen would allow the window to be moved to the front of other windows, 
-				// which we can't undo at the moment without finer window depth/z control.
 				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
 				if (ImGui::MenuItem("Exit")) Quiet::Application::Get().Close();
 				ImGui::EndMenu();
@@ -139,8 +135,8 @@ void Sandbox2D::OnImGuiRender()
 
 		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
 
-		uint32_t textureID = m_CheckerboardTexture->GetRendererID();
-		ImGui::Image((void*)textureID, ImVec2{ 256.0f, 256.0f });
+		uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
+		ImGui::Image((void*)textureID, ImVec2{ 1280, 720 });
 		ImGui::End();
 
 		ImGui::End();
@@ -159,7 +155,7 @@ void Sandbox2D::OnImGuiRender()
 		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
 
 		uint32_t textureID = m_CheckerboardTexture->GetRendererID();
-		ImGui::Image((void*)textureID, ImVec2{ 256.0f, 256.0f });
+		ImGui::Image((void*)textureID, ImVec2{ 1280, 720 });
 		ImGui::End();
 	}
 }

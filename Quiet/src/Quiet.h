@@ -34,6 +34,7 @@
 
 #include "Quiet/Renderer/Buffer.h"
 #include "Quiet/Renderer/Shader.h"
+#include "Quiet/Renderer/Framebuffer.h"
 #include "Quiet/Renderer/Texture.h"
 #include "Quiet/Renderer/VertexArray.h"
 

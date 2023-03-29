@@ -62,7 +62,7 @@ namespace Quiet
 		{
 			(*it)->OnEvent(e);
 				break;
-			if (e.Handled);
+				if (e.Handled);
 		}
 	}
 
