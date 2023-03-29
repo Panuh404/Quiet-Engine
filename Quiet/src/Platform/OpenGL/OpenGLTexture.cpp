@@ -33,7 +33,7 @@ namespace Quiet
 		stbi_set_flip_vertically_on_load(1);
 		stbi_uc* data = nullptr;
 		{
-			QT_PROFILE_SCOPE("stbi_load - OpenGLTexture2D::OpenGLTexture2D")
+			QT_PROFILE_SCOPE("stbi_load - OpenGLTexture2D::OpenGLTexture2D");
 			data = stbi_load(path.c_str(), &width, &height, &channels, 0);			
 		}
 		QT_CORE_ASSERT(data, "Failed to load image!");

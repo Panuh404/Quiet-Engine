@@ -66,6 +66,12 @@ namespace Quiet
 		}
 	}
 
+	void Application::Close()
+	{
+		m_Running = false;
+	}
+
+
 	void Application::Run()
 	{
 		QT_PROFILE_FUNCTION();
