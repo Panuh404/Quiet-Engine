@@ -10,11 +10,6 @@ void Sandbox2D::OnAttach()
 {
 	QT_PROFILE_FUNCTION();
 	m_CheckerboardTexture = Quiet::Texture2D::Create("res/textures/Checkerboard.png");
-
-	Quiet::FramebufferSpecification framebufferSpec;
-	framebufferSpec.Width = 1280;
-	framebufferSpec.Height = 720;
-	m_Framebuffer = Quiet::Framebuffer::Create(framebufferSpec);
 }
 
 void Sandbox2D::OnDetach()
@@ -33,7 +28,6 @@ void Sandbox2D::OnUpdate(Quiet::Timestep dt)
 	Quiet::Renderer2D::ResetStats();
 	{
 		QT_PROFILE_SCOPE("Renderer::Prep");
-		m_Framebuffer->Bind();
 		Quiet::RendererCommand::SetClearColor({ 0.1f,0.1f,0.1f,1 });
 		Quiet::RendererCommand::Clear();
 	}
@@ -61,7 +55,6 @@ void Sandbox2D::OnUpdate(Quiet::Timestep dt)
 			}
 		}
 		Quiet::Renderer2D::EndScene();
-		m_Framebuffer->Unbind();
 	}
 }
 
@@ -69,95 +62,18 @@ void Sandbox2D::OnImGuiRender()
 {
 	QT_PROFILE_FUNCTION();
 
-	static bool dockingEnabled = true;
-	if (dockingEnabled)
-	{
-		static bool dockspaceOpen = true;
-		static bool opt_fullscreen_persistant = true;
+	ImGui::Begin("Settings");
 
-		bool opt_fullscreen = opt_fullscreen_persistant;
-		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+	auto stats = Quiet::Renderer2D::GetStats();
+	ImGui::Text("Renderer Stats:");
+	ImGui::Text("Draw Calls: %d", stats.DrawCalls);
+	ImGui::Text("Quads: %d", stats.QuadCount);
+	ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
+	ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
 
-		// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-		// because it would be confusing to have two docking targets within each others.
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-		if (opt_fullscreen)
-		{
-			ImGuiViewport* viewport = ImGui::GetMainViewport();
-			ImGui::SetNextWindowPos(viewport->Pos);
-			ImGui::SetNextWindowSize(viewport->Size);
-			ImGui::SetNextWindowViewport(viewport->ID);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
 
-
-			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-		}
-
-		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode) window_flags |= ImGuiWindowFlags_NoBackground;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Dockspace Quiet", &dockspaceOpen, window_flags);
-		ImGui::PopStyleVar();
-
-		if (opt_fullscreen)
-			ImGui::PopStyleVar(2);
-
-		// Dockspace
-		ImGuiIO& io = ImGui::GetIO();
-		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-		{
-			ImGuiID dockspace_id = ImGui::GetID("Dockspace");
-			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-		}
-
-		if (ImGui::BeginMenuBar())
-		{
-			if (ImGui::BeginMenu("File"))
-			{
-				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
-				if (ImGui::MenuItem("Exit")) Quiet::Application::Get().Close();
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMenuBar();
-		}
-
-		ImGui::Begin("Settings");
-
-		auto stats = Quiet::Renderer2D::GetStats();
-		ImGui::Text("Renderer Stats:");
-		ImGui::Text("Draw Calls: %d", stats.DrawCalls);
-		ImGui::Text("Quads: %d", stats.QuadCount);
-		ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
-		ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
-
-		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
-
-		uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-		ImGui::Image((void*)textureID, ImVec2{ 1280, 720 });
-		ImGui::End();
-
-		ImGui::End();
-	}
-	else
-	{
-		ImGui::Begin("Settings");
-
-		auto stats = Quiet::Renderer2D::GetStats();
-		ImGui::Text("Renderer Stats:");
-		ImGui::Text("Draw Calls: %d", stats.DrawCalls);
-		ImGui::Text("Quads: %d", stats.QuadCount);
-		ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
-		ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
-
-		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
-
-		uint32_t textureID = m_CheckerboardTexture->GetRendererID();
-		ImGui::Image((void*)textureID, ImVec2{ 1280, 720 });
-		ImGui::End();
-	}
+	ImGui::End();
 }
 
 void Sandbox2D::OnEvent(Quiet::Event& event)

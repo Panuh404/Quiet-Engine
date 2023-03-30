@@ -11,7 +11,7 @@ namespace Quiet
 {
 	Application* Application::s_Instance = nullptr;
 
-	Application::Application()
+	Application::Application(const std::string& name)
 	{
 		QT_PROFILE_FUNCTION();
 		// Create Application Instance
@@ -19,7 +19,7 @@ namespace Quiet
 		s_Instance = this;
 
 		// Create Window
-		m_Window = Window::Create();
+		m_Window = Window::Create(WindowProps(name));
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 		m_Window->SetVSync(true);
 

@@ -22,9 +22,14 @@ IncludeDir["ImGui"] = "Quiet/vendor/ImGui"
 IncludeDir["glm"] = "Quiet/vendor/glm"
 IncludeDir["stb"] = "Quiet/vendor/stb"
 
---include premake file for vendor 
-include "Quiet/vendor"
+--include vendor dependencies group
+group "Dependencies"
+    include "Quiet/vendor"
 
+group ""
+---------------------------------------------
+--- QUIET ENGINE ----------------------------
+---------------------------------------------
 project "Quiet"
     location "Quiet"
     kind "StaticLib"
@@ -91,6 +96,56 @@ project "Quiet"
         runtime "Release"
         optimize "on"
 
+---------------------------------------------
+--- QUIET EDITOR ----------------------------
+---------------------------------------------
+project "Quiet-Editor"
+    location "Quiet-Editor"
+    kind "ConsoleApp"
+    language "C++"
+    cppdialect "C++17"
+    staticruntime "on"
+
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+    files{
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp"
+    }
+
+    includedirs{
+        "Quiet/src",
+        "Quiet/vendor/",
+        "Quiet/vendor/spdlog/include",
+        "%{IncludeDir.glm}"
+    }
+
+    links{
+        "Quiet"
+    }
+
+    filter "system:windows"
+        systemversion "latest"
+
+    filter "configurations:Debug"
+        defines "QT_DEBUG"
+        runtime "Debug"
+        symbols "on"
+
+    filter "configurations:Release"
+        defines "QT_RELEASE"
+        runtime "Release"
+        optimize "on"
+
+    filter "configurations:Dist"
+        defines "QT_DIST"
+        runtime "Release"
+        optimize "on"
+
+---------------------------------------------
+--- SANDBOX APPLICATION ---------------------
+---------------------------------------------
 project "Sandbox"
     location "Sandbox"
     kind "ConsoleApp"
