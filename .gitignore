@@ -1,6 +1,6 @@
 # Binaries
-bin/
-bin-int/
+_bin/
+_int/
 
 # Quiet Files
 *.log

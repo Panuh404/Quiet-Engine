@@ -11,7 +11,6 @@ namespace Quiet
 	public:
 		QuietEditor() : Application("Quiet Editor")
 		{
-			//PushLayer(new ExampleLayer());
 			PushLayer(new EditorLayer());
 		}
 

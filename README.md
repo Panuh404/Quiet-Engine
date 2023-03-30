@@ -9,48 +9,14 @@
 You need to run the script to generate the visual studio (/scripts/GenProject_VS2022.bat)
 
 ## Roadmap
-* Renderer
+* Renderer 2D
+* Renderer 3D
 * Render API Abstraction (OpenGL, Vulkan, Direct3D)
 * Debugging Support (Logging, Profiling, etc)
 * Scripting Language
 * Memory Systems
 * Physics
 * File I/O, VFS
-
-## Details
-- Engine Project -> Quiet   -> Static Library `.lib`
-- Test Project   -> Sandbox -> Executable `.exe`
-
-* Logging:
-    - Quiet Core Logger   -> Quiet Logging Tool (QT_CORE_TRACE)
-    - Quiet Client Logger -> App Logging Tool (QT_TRACE)
-
-* Event System:
-    - Application Events
-    - Key Events
-    - Mouse Events
-    - Event Dispatcher
-    
-- Window Class -> Windows Window (Platform `Windows`)
-
-* User Interface:
-    - ImGui Layer
-    - ImGui OpenGL Renderer
-    - ImGui Events
-
-* Input:
-    - Input Class -> Windows Input -> GLFW Input System
-    - Input Polling (Quiet::Key::{KeyCode})
-    - Key and Mouse Codes
-
-- ImGuiBuild -> Implementation of Dear ImGui Backend (OpenGL / glfw)
-- Dockspace - Viewports
-
-* Renderer:
-    - OpenGL Rendering
-    - Shaders GLSL
-    - Cameras
-    - Textures
 
 ## Vendor information
 * [spdlog](https://github.com/gabime/spdlog) -> Fast C++ logging library 
@@ -105,7 +71,7 @@ Programming
 
 ## Main features to come:
 - Fast 2D rendering (UI, particles, sprites, etc.)
-- High-fidelity Physically-Based 3D rendering (this will be expanded later, 2D to come first)
+- High-fidelity Physically-Based 3D rendering (2D to come first)
 - Ray Tracing
 - Support for Mac, Linux
 - Native rendering API support (DirectX, Vulkan)

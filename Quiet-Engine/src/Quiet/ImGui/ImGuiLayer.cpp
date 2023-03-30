@@ -61,8 +61,7 @@ namespace Quiet
 		e.Handled |= e.IsInCategory(EventCategoryMouse)		& io.WantCaptureMouse;
 		e.Handled |= e.IsInCategory(EventCategoryKeyboard)	& io.WantCaptureKeyboard;
 	}
-
-
+	
 	void ImGuiLayer::Begin()
 	{
 		QT_PROFILE_FUNCTION();

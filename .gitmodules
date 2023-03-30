@@ -1,16 +1,16 @@
-[submodule "Quiet/vendor/spdlog"]
-	path = Quiet/vendor/spdlog
+[submodule "Quiet-Engine/vendor/spdlog"]
+	path = Quiet-Engine/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
 	branch = v1.x
-[submodule "Quiet/vendor/GLFW"]
-	path = Quiet/vendor/GLFW
+[submodule "Quiet-Engine/vendor/GLFW"]
+	path = Quiet-Engine/vendor/GLFW
 	url = https://github.com/glfw/glfw.git
 	branch = master
-[submodule "Quiet/vendor/ImGui"]
-	path = Quiet/vendor/ImGui
+[submodule "Quiet-Engine/vendor/ImGui"]
+	path = Quiet-Engine/vendor/ImGui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "Quiet/vendor/glm"]
-	path = Quiet/vendor/glm
+[submodule "Quiet-Engine/vendor/glm"]
+	path = Quiet-Engine/vendor/glm
 	url = https://github.com/g-truc/glm\
 	branch = master

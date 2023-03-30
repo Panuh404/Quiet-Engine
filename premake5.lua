@@ -1,6 +1,6 @@
 workspace "Quiet"
     architecture "x86_64"
-    startproject "Sandbox"
+    startproject "Quiet-Editor"
 
     configurations{
         "Debug",
@@ -16,32 +16,32 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 --include directories relative to root folder (solution directory)
 IncludeDir = {}
-IncludeDir["GLFW"] = "Quiet/vendor/GLFW/include"
-IncludeDir["Glad"] = "Quiet/vendor/Glad/include"
-IncludeDir["ImGui"] = "Quiet/vendor/ImGui"
-IncludeDir["glm"] = "Quiet/vendor/glm"
-IncludeDir["stb"] = "Quiet/vendor/stb"
+IncludeDir["GLFW"] = "Quiet-Engine/vendor/GLFW/include"
+IncludeDir["Glad"] = "Quiet-Engine/vendor/Glad/include"
+IncludeDir["ImGui"] = "Quiet-Engine/vendor/ImGui"
+IncludeDir["glm"] = "Quiet-Engine/vendor/glm"
+IncludeDir["stb"] = "Quiet-Engine/vendor/stb"
 
 --include vendor dependencies group
 group "Dependencies"
-    include "Quiet/vendor"
+    include "Quiet-Engine/vendor"
 
 group ""
 ---------------------------------------------
 --- QUIET ENGINE ----------------------------
 ---------------------------------------------
-project "Quiet"
-    location "Quiet"
+project "Quiet-Engine"
+    location "Quiet-Engine"
     kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
 	staticruntime "on"
 
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+    targetdir ("_bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("_int/" .. outputdir .. "/%{prj.name}")
 
     pchheader "qtpch.h"
-    pchsource "Quiet/src/qtpch.cpp"
+    pchsource "Quiet-Engine/src/qtpch.cpp"
 
     files{
         "%{prj.name}/src/**.h",
@@ -106,8 +106,8 @@ project "Quiet-Editor"
     cppdialect "C++17"
     staticruntime "on"
 
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+    targetdir ("_bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("_int/" .. outputdir .. "/%{prj.name}")
 
     files{
         "%{prj.name}/src/**.h",
@@ -115,14 +115,14 @@ project "Quiet-Editor"
     }
 
     includedirs{
-        "Quiet/src",
-        "Quiet/vendor/",
-        "Quiet/vendor/spdlog/include",
+        "Quiet-Engine/src",
+        "Quiet-Engine/vendor/",
+        "Quiet-Engine/vendor/spdlog/include",
         "%{IncludeDir.glm}"
     }
 
     links{
-        "Quiet"
+        "Quiet-Engine"
     }
 
     filter "system:windows"
@@ -153,8 +153,8 @@ project "Sandbox"
     cppdialect "C++17"
     staticruntime "on"
 
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+    targetdir ("_bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("_int/" .. outputdir .. "/%{prj.name}")
 
     files{
         "%{prj.name}/src/**.h",
@@ -162,14 +162,14 @@ project "Sandbox"
     }
 
     includedirs{
-        "Quiet/src",
-        "Quiet/vendor/",
-        "Quiet/vendor/spdlog/include",
+        "Quiet-Engine/src",
+        "Quiet-Engine/vendor/",
+        "Quiet-Engine/vendor/spdlog/include",
         "%{IncludeDir.glm}"
     }
 
     links{
-        "Quiet"
+        "Quiet-Engine"
     }
 
     filter "system:windows"
