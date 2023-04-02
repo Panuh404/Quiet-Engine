@@ -6,6 +6,9 @@
 
 ## Project Setup
 (This project is compatible with Visual Studio 2017 and 2022, other IDE has not been tested yet.)
+
+Start cloning the repository with `git clone --recursive https://github.com/Panuh404/Quiet-Engine.git`.
+If the repository was cloned non-recursively previously, use `git submodule update --init` to clone the necessary submodules.
 You need to run the script to generate the visual studio (/scripts/GenProject_VS2022.bat)
 
 ## Roadmap
