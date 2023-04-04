@@ -29,6 +29,9 @@ namespace Quiet
 		virtual void* GetNativeWindow() const { return m_Window; }
 
 	private:
+		virtual void Init(const WindowProps& props);
+		virtual void Shutdown();
+
 		GLFWwindow* m_Window;
 		std::unique_ptr<GraphicsContext> m_Context;
 
@@ -41,8 +44,5 @@ namespace Quiet
 			EventCallbackFn EventCallback;
 		};
 		WindowData m_Data;
-
-		virtual void Init(const WindowProps& props);
-		virtual void Shutdown();
 	};
 }

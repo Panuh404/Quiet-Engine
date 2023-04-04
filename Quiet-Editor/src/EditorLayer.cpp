@@ -6,7 +6,10 @@
 
 namespace Quiet
 {
-	EditorLayer::EditorLayer() : Layer("EditorLayer"), m_CameraController(1280.0f / 720.0f) {}
+	EditorLayer::EditorLayer()
+		: Layer("EditorLayer"), m_CameraController(1280.0f / 720.0f), m_SquareColor({ 0.2f, 0.3f, 0.8f, 1.0f })
+	{
+	}
 
 	void EditorLayer::OnAttach()
 	{
@@ -29,7 +32,8 @@ namespace Quiet
 		QT_PROFILE_SCOPE("EditorLayer::OnUpdate");
 
 		// Update Camera
-		m_CameraController.OnUpdate(dt);
+		if(m_ViewportFocused)
+			m_CameraController.OnUpdate(dt);
 
 		// Render Setup
 		Renderer2D::ResetStats();
@@ -73,7 +77,6 @@ namespace Quiet
 
 		static bool dockspaceOpen = true;
 		static bool opt_fullscreen_persistant = true;
-
 		bool opt_fullscreen = opt_fullscreen_persistant;
 		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 
@@ -123,34 +126,37 @@ namespace Quiet
 			ImGui::EndMenuBar();
 		}
 
+		// SETTINGS TAB
 		ImGui::Begin("Settings");
-		{
-			auto stats = Renderer2D::GetStats();
-			ImGui::Text("Renderer Stats:");
-			ImGui::Text("Draw Calls: %d", stats.DrawCalls);
-			ImGui::Text("Quads: %d", stats.QuadCount);
-			ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
-			ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
+		
+		auto stats = Renderer2D::GetStats();
+		ImGui::Text("Renderer Stats:");
+		ImGui::Text("Draw Calls: %d", stats.DrawCalls);
+		ImGui::Text("Quads: %d", stats.QuadCount);
+		ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
+		ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
 
-			ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
-		}
+		ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
+		
 		ImGui::End();
 
+		// VIEWPORT TAB
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
-		{
-			ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-			if (m_ViewportSize != *((glm::vec2*)&viewportPanelSize))
-			{
-				m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
-				m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-				m_CameraController.OnResize(viewportPanelSize.x, viewportPanelSize.y);
-			}
 
+		m_ViewportFocused = ImGui::IsWindowFocused();
+		m_ViewportHovered = ImGui::IsWindowHovered();
+		Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused || !m_ViewportHovered);
+
+		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+		if (m_ViewportSize != *((glm::vec2*)&viewportPanelSize))
+		{
+			m_Framebuffer->Resize((uint32_t)viewportPanelSize.x, (uint32_t)viewportPanelSize.y);
 			m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
-			uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0,1 }, ImVec2{ 1,0 });
+			m_CameraController.OnResize(viewportPanelSize.x, viewportPanelSize.y);
 		}
+		uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
+		ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 		ImGui::End();
 		ImGui::PopStyleVar();
 

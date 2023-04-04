@@ -13,7 +13,7 @@ namespace Quiet
 {
 	static uint8_t s_GLFWWindowCount = 0;
 
-	static void GLFWerrorCallback(int error, const char* description)
+	static void GLFWErrorCallback(int error, const char* description)
 	{
 		QT_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
 	}
@@ -37,23 +37,22 @@ namespace Quiet
 		m_Data.Width = props.Width;
 		m_Data.Height = props.Height;
 
-		QT_CORE_INFO("Creating window {0} ({1}:{2})", props.Title, props.Width, props.Height);
+		QT_CORE_INFO("Creating window {0} ({1}, {2})", props.Title, props.Width, props.Height);
 
 		if (s_GLFWWindowCount == 0)
 		{
 			QT_PROFILE_SCOPE("glfwInit");
 			int success = glfwInit();
 			QT_CORE_ASSERT(success, "Could not initialize GLFW!");
-			glfwSetErrorCallback(GLFWerrorCallback);
+			glfwSetErrorCallback(GLFWErrorCallback);
 		}
 
 		{
 			QT_PROFILE_SCOPE("glfwCreateWindow");
-
-			#if defined(QT_DEBUG)
-			if (Renderer::GetAPI() == RendererAPI::API::OpenGL)	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+			#if defined(HZ_DEBUG)
+			if (Renderer::GetAPI() == RendererAPI::API::OpenGL)
+				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 			#endif
-
 			m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
 			++s_GLFWWindowCount;
 		}
@@ -79,6 +78,7 @@ namespace Quiet
 			data.EventCallback(event);
 		});
 
+
 		// Window Close Callback
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
 		{
@@ -93,32 +93,32 @@ namespace Quiet
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 			switch (action)
 			{
-				case GLFW_PRESS:
-				{
-					KeyPressedEvent event(key, 0);
-					data.EventCallback(event);
-					break;
-				}
-				case GLFW_RELEASE:
-				{
-					KeyReleasedEvent event(key);
-					data.EventCallback(event);
-					break;
-				}
-				case GLFW_REPEAT:
-				{
-					KeyPressedEvent event(key, 1);
-					data.EventCallback(event);
-					break;
-				}
+			case GLFW_PRESS:
+			{
+				KeyPressedEvent event(static_cast<KeyCode>(key), 0);
+				data.EventCallback(event);
+				break;
+			}
+			case GLFW_RELEASE:
+			{
+				KeyReleasedEvent event(static_cast<KeyCode>(key));
+				data.EventCallback(event);
+				break;
+			}
+			case GLFW_REPEAT:
+			{
+				KeyPressedEvent event(static_cast<KeyCode>(key), 1);
+				data.EventCallback(event);
+				break;
+			}
 			}
 		});
 
 		// Character Callback
-		glfwSetCharCallback(m_Window, [](GLFWwindow* window, uint32_t keycode)
+		glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
 		{
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
-			KeyTypedEvent event(keycode);
+			KeyTypedEvent event(static_cast<KeyCode>(keycode));
 			data.EventCallback(event);
 		});
 
@@ -128,18 +128,18 @@ namespace Quiet
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 			switch (action)
 			{
-				case GLFW_PRESS:
-				{
-					MouseButtonPressedEvent event(button);
-					data.EventCallback(event);
-					break;
-				}
-				case GLFW_RELEASE:
-				{
-					MouseButtonReleasedEvent event(button);
-					data.EventCallback(event);
-					break;
-				}
+			case GLFW_PRESS:
+			{
+				MouseButtonPressedEvent event(static_cast<MouseCode>(button));
+				data.EventCallback(event);
+				break;
+			}
+			case GLFW_RELEASE:
+			{
+				MouseButtonReleasedEvent event(static_cast<MouseCode>(button));
+				data.EventCallback(event);
+				break;
+			}
 			}
 		});
 

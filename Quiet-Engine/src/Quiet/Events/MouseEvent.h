@@ -1,7 +1,7 @@
-
 #pragma once
 
 #include "Quiet/Events/Event.h"
+#include "Quiet/Core/Input.h"
 
 namespace Quiet
 {
@@ -35,7 +35,8 @@ namespace Quiet
 	class MouseScrolledEvent : public Event
 	{
 	public:
-		MouseScrolledEvent(float xOffset, float yOffset) : m_XOffset(xOffset), m_YOffset(yOffset) {}
+		MouseScrolledEvent(float xOffset, float yOffset)
+			: m_XOffset(xOffset), m_YOffset(yOffset) {}
 
 		float GetXOffset() const { return m_XOffset; }
 		float GetYOffset() const { return m_YOffset; }
@@ -46,9 +47,9 @@ namespace Quiet
 			ss << "MouseScrolledEvent: " << GetXOffset() << ", " << GetYOffset();
 			return ss.str();
 		}
-		EVENT_CLASS_TYPE(MouseScrolled)
-		EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
 
+		EVENT_CLASS_TYPE(MouseScrolled)
+			EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
 	private:
 		float m_XOffset, m_YOffset;
 	};
@@ -59,12 +60,13 @@ namespace Quiet
 	class MouseButtonEvent : public Event
 	{
 	public:
-		int GetMouseButton() const { return m_Button; }
+		MouseCode GetMouseButton() const { return m_Button; }
 		EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
-
 	protected:
-		MouseButtonEvent(int button) : m_Button(button) {}
-		int m_Button;
+		MouseButtonEvent(MouseCode button)
+			: m_Button(button) {}
+
+		MouseCode m_Button;
 	};
 
 	//-----------------------------------------------------------------------------
@@ -73,7 +75,8 @@ namespace Quiet
 	class MouseButtonPressedEvent : public MouseButtonEvent
 	{
 	public:
-		MouseButtonPressedEvent(int button) : MouseButtonEvent(button) {}
+		MouseButtonPressedEvent(MouseCode button)
+			: MouseButtonEvent(button) {}
 
 		std::string ToString() const override
 		{
@@ -81,6 +84,7 @@ namespace Quiet
 			ss << "MouseButtonPressedEvent: " << m_Button;
 			return ss.str();
 		}
+
 		EVENT_CLASS_TYPE(MouseButtonPressed)
 	};
 
@@ -90,7 +94,8 @@ namespace Quiet
 	class MouseButtonReleasedEvent : public MouseButtonEvent
 	{
 	public:
-		MouseButtonReleasedEvent(int button) : MouseButtonEvent(button) {}
+		MouseButtonReleasedEvent(MouseCode button)
+			: MouseButtonEvent(button) {}
 
 		std::string ToString() const override
 		{
@@ -98,6 +103,7 @@ namespace Quiet
 			ss << "MouseButtonReleasedEvent: " << m_Button;
 			return ss.str();
 		}
+
 		EVENT_CLASS_TYPE(MouseButtonReleased)
 	};
 }

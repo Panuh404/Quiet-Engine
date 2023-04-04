@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Quiet/Events/Event.h"
+#include "Quiet/Core/Input.h"
 
 namespace Quiet
 {
@@ -10,12 +11,13 @@ namespace Quiet
 	class KeyEvent : public Event
 	{
 	public:
-		int GetKeyCode() const { return m_KeyCode; }
+		KeyCode GetKeyCode() const { return m_KeyCode; }
 		EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
-
 	protected:
-		KeyEvent(int keycode) : m_KeyCode(keycode) {}
-		int m_KeyCode;
+		KeyEvent(KeyCode keycode)
+			: m_KeyCode(keycode) {}
+
+		KeyCode m_KeyCode;
 	};
 
 	//-----------------------------------------------------------------------------
@@ -24,7 +26,9 @@ namespace Quiet
 	class KeyPressedEvent : public KeyEvent
 	{
 	public:
-		KeyPressedEvent(int keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount) {}
+		KeyPressedEvent(KeyCode keycode, int repeatCount)
+			: KeyEvent(keycode), m_RepeatCount(repeatCount) {}
+
 		int GetRepeatCount() const { return m_RepeatCount; }
 
 		std::string ToString() const override
@@ -33,8 +37,8 @@ namespace Quiet
 			ss << "KeyPressedEvent: " << m_KeyCode << " (" << m_RepeatCount << " repeats)";
 			return ss.str();
 		}
-		EVENT_CLASS_TYPE(KeyPressed)
 
+		EVENT_CLASS_TYPE(KeyPressed)
 	private:
 		int m_RepeatCount;
 	};
@@ -45,7 +49,8 @@ namespace Quiet
 	class KeyReleasedEvent : public KeyEvent
 	{
 	public:
-		KeyReleasedEvent(int key) : KeyEvent(key) {}
+		KeyReleasedEvent(KeyCode keycode)
+			: KeyEvent(keycode) {}
 
 		std::string ToString() const override
 		{
@@ -53,6 +58,7 @@ namespace Quiet
 			ss << "KeyReleasedEvent: " << m_KeyCode;
 			return ss.str();
 		}
+
 		EVENT_CLASS_TYPE(KeyReleased)
 	};
 
@@ -62,7 +68,8 @@ namespace Quiet
 	class KeyTypedEvent : public KeyEvent
 	{
 	public:
-		KeyTypedEvent(int key) : KeyEvent(key) {}
+		KeyTypedEvent(KeyCode keycode)
+			: KeyEvent(keycode) {}
 
 		std::string ToString() const override
 		{
@@ -70,6 +77,7 @@ namespace Quiet
 			ss << "KeyTypedEvent: " << m_KeyCode;
 			return ss.str();
 		}
+
 		EVENT_CLASS_TYPE(KeyTyped)
 	};
 }

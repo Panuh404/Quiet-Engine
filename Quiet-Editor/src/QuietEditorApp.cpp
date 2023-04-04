@@ -1,7 +1,6 @@
 #include <Quiet.h>
 #include "Quiet/Core/EntryPoint.h"
 
-// Scenes
 #include "EditorLayer.h"
 
 namespace Quiet

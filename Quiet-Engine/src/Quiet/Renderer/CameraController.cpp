@@ -8,15 +8,14 @@
 namespace Quiet
 {
 	OrthographicCameraController::OrthographicCameraController(float aspectRatio, bool rotation)
-		: m_AspectRatio(aspectRatio),
-		  m_Camera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio* m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel),
-		  m_Rotation(rotation)
-	{}
+		: m_AspectRatio(aspectRatio), m_Camera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio* m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel), m_Rotation(rotation)
+	{
+	}
 
 	void OrthographicCameraController::OnUpdate(Timestep ts)
 	{
 		QT_PROFILE_FUNCTION();
-		// Camera Translation
+
 		if (Input::IsKeyPressed(Key::A))
 		{
 			m_CameraPosition.x -= cos(glm::radians(m_CameraRotation)) * m_CameraTranslationSpeed * ts;
@@ -39,15 +38,14 @@ namespace Quiet
 			m_CameraPosition.y -= cos(glm::radians(m_CameraRotation)) * m_CameraTranslationSpeed * ts;
 		}
 
-		// Camera Rotation
-		if(m_Rotation)
+		if (m_Rotation)
 		{
 			if (Input::IsKeyPressed(Key::Q))
-				m_CameraRotation -= m_CameraRotationSpeed * ts;
-			if (Input::IsKeyPressed(Key::E))
 				m_CameraRotation += m_CameraRotationSpeed * ts;
+			if (Input::IsKeyPressed(Key::E))
+				m_CameraRotation -= m_CameraRotationSpeed * ts;
 
-			if (m_CameraRotation > 180.0f) 
+			if (m_CameraRotation > 180.0f)
 				m_CameraRotation -= 360.0f;
 			else if (m_CameraRotation <= -180.0f)
 				m_CameraRotation += 360.0f;
@@ -87,4 +85,5 @@ namespace Quiet
 		OnResize((float)e.GetWidth(), (float)e.GetHeight());
 		return false;
 	}
+
 }
