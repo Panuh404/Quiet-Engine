@@ -11,9 +11,11 @@ namespace Quiet
 	{
 		#ifdef QT_PLATFORM_WINDOWS
 			return std::make_unique<WindowsWindow>(props);
+
 		#else
 			QT_CORE_ASSERT(false, "Unknown platform!");
 			return nullptr;
+
 		#endif
 	}
 }

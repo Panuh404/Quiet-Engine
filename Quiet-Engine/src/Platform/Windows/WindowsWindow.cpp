@@ -1,5 +1,7 @@
 #include "qtpch.h"
 
+#include "Quiet/Core/Input.h"
+
 #include "Quiet/Events/KeyEvent.h"
 #include "Quiet/Events/MouseEvent.h"
 #include "Quiet/Events/ApplicationEvent.h"

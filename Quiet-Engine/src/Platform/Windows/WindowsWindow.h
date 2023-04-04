@@ -18,8 +18,8 @@ namespace Quiet
 
 		void OnUpdate() override;
 
-		unsigned int GetWidth() const override { return m_Data.Width; }
-		unsigned int GetHeight() const override { return m_Data.Height; }
+		uint32_t GetWidth() const override { return m_Data.Width; }
+		uint32_t GetHeight() const override { return m_Data.Height; }
 
 		// Window attributes
 		void SetEventCallback(const EventCallbackFn& callback) override { m_Data.EventCallback = callback; }
@@ -38,7 +38,8 @@ namespace Quiet
 		struct WindowData
 		{
 			std::string Title;
-			uint32_t Width, Height;
+			uint32_t Width;
+			uint32_t Height;
 			bool VSync;
 
 			EventCallbackFn EventCallback;
