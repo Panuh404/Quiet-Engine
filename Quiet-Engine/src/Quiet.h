@@ -15,6 +15,10 @@
 #include "Quiet/ImGui/ImGuiLayer.h"
 #include "Quiet/Debug/Instrumentor.h"
 
+
+#include "Quiet/Scene/Scene.h"
+#include "Quiet/Scene/Components.h"
+
 //-----------------------------------------------------------------------------
 // [SECTION] Input
 //-----------------------------------------------------------------------------

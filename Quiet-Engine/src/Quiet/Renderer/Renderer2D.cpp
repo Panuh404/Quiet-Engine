@@ -152,12 +152,7 @@ namespace Quiet
 	//-----------------------------------------------------------------------------
 	// [SECTION] Primitives
 	//-----------------------------------------------------------------------------
-	// Draw Quad with color
-	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color)
-	{
-		DrawQuad({ position.x, position.y, 0.0f }, size, color);
-	}
-	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
+	void Renderer2D::DrawQuad(const glm::mat4 transform, const glm::vec4& color)
 	{
 		QT_PROFILE_FUNCTION();
 
@@ -166,11 +161,8 @@ namespace Quiet
 		const float textureIndex = 0.0f; // White Texture
 		const float tilingFactor = 1.0f;
 
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices) 
+		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
 			FlushAndReset();
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-							* glm::scale(glm::mat4(1.0f), { size.x,size.y, 1.0f });
 
 		for (size_t i = 0; i < quadVertexCount; i++)
 		{
@@ -185,12 +177,8 @@ namespace Quiet
 		s_Data.Stats.QuadCount++;
 	}
 
-	// Draw Quad with Texture
-	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const std::shared_ptr<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
-	{
-		DrawQuad({ position.x, position.y, 0.0f }, size, texture, tilingFactor, tintColor);
-	}
-	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const std::shared_ptr<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	void Renderer2D::DrawQuad(const glm::mat4 transform, const std::shared_ptr<Texture2D>& texture, float tilingFactor,
+		const glm::vec4& tintColor)
 	{
 		QT_PROFILE_FUNCTION();
 
@@ -219,9 +207,6 @@ namespace Quiet
 			s_Data.TextureSlotIndex++;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-							* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
 		for (size_t i = 0; i < quadVertexCount; i++)
 		{
 			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPositions[i];
@@ -233,6 +218,34 @@ namespace Quiet
 		}
 		s_Data.QuadIndexCount += 6;
 		s_Data.Stats.QuadCount++;
+	}
+
+	// Draw Quad with color
+	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color)
+	{
+		DrawQuad({ position.x, position.y, 0.0f }, size, color);
+	}
+	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
+	{
+		QT_PROFILE_FUNCTION();
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), { size.x,size.y, 1.0f });
+		DrawQuad(transform, color);
+	}
+
+	// Draw Quad with Texture
+	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const std::shared_ptr<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	{
+		DrawQuad({ position.x, position.y, 0.0f }, size, texture, tilingFactor, tintColor);
+	}
+	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const std::shared_ptr<Texture2D>& texture, float tilingFactor, const glm::vec4& tintColor)
+	{
+		QT_PROFILE_FUNCTION();
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
+			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+
+		DrawQuad(transform, texture, tilingFactor, tintColor);
 	}
 
 	// Draw Quad + Rotation with color

@@ -21,6 +21,7 @@ IncludeDir["Glad"] = "Quiet-Engine/vendor/Glad/include"
 IncludeDir["ImGui"] = "Quiet-Engine/vendor/ImGui"
 IncludeDir["glm"] = "Quiet-Engine/vendor/glm"
 IncludeDir["stb"] = "Quiet-Engine/vendor/stb"
+IncludeDir["entt"] = "Quiet-Engine/vendor/entt/include"
 
 --include vendor dependencies group
 group "Dependencies"
@@ -63,7 +64,8 @@ project "Quiet-Engine"
         "%{IncludeDir.Glad}",
         "%{IncludeDir.ImGui}",
         "%{IncludeDir.glm}",
-        "%{IncludeDir.stb}"
+        "%{IncludeDir.stb}",
+        "%{IncludeDir.entt}"
 	}
 
     links{
@@ -118,7 +120,8 @@ project "Quiet-Editor"
         "Quiet-Engine/src",
         "Quiet-Engine/vendor/",
         "Quiet-Engine/vendor/spdlog/include",
-        "%{IncludeDir.glm}"
+        "%{IncludeDir.glm}",
+        "%{IncludeDir.entt}"
     }
 
     links{

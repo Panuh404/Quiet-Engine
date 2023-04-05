@@ -20,6 +20,7 @@ You need to run the script to generate the visual studio (/scripts/GenProject_VS
 * Memory Systems
 * Physics
 * File I/O, VFS
+* Entity Component System
 
 ## Vendor information
 * [spdlog](https://github.com/gabime/spdlog) -> Fast C++ logging library 
@@ -29,6 +30,7 @@ You need to run the script to generate the visual studio (/scripts/GenProject_VS
 * [Dear ImGui](https://github.com/ocornut/imgui) -> Bloat-free Graphical User interface for C++ 
 * [glm](https://github.com/g-truc/glm) -> OpenGL Mathematics 
 * [stb](https://github.com/nothings/stb) -> single-file public domain libraries (stb_image.h only)
+* [EnTT](https://github.com/skypjack/entt.git) -> Entity Component System
 
 ## Resources
 GameEngine Stuff
