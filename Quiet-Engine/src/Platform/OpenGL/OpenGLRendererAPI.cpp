@@ -6,15 +6,23 @@
 
 namespace Quiet
 {
-	void OpenGLMessageCallback(unsigned source, unsigned type, unsigned id, unsigned severity, int length, const char* message, const void* userParam)
+	void OpenGLMessageCallback(
+		unsigned source,
+		unsigned type,
+		unsigned id,
+		unsigned severity,
+		int length,
+		const char* message,
+		const void* userParam)
 	{
 		switch (severity)
 		{
-			case GL_DEBUG_SEVERITY_HIGH:         QT_CORE_CRITICAL(message); return;
-			case GL_DEBUG_SEVERITY_MEDIUM:       QT_CORE_ERROR(message); return;
-			case GL_DEBUG_SEVERITY_LOW:          QT_CORE_WARN(message); return;
-			case GL_DEBUG_SEVERITY_NOTIFICATION: QT_CORE_TRACE(message); return;
+		case GL_DEBUG_SEVERITY_HIGH:         QT_CORE_CRITICAL(message); return;
+		case GL_DEBUG_SEVERITY_MEDIUM:       QT_CORE_ERROR(message); return;
+		case GL_DEBUG_SEVERITY_LOW:          QT_CORE_WARN(message); return;
+		case GL_DEBUG_SEVERITY_NOTIFICATION: QT_CORE_TRACE(message); return;
 		}
+
 		QT_CORE_ASSERT(false, "Unknown severity level!");
 	}
 
@@ -22,15 +30,15 @@ namespace Quiet
 	{
 		QT_PROFILE_FUNCTION();
 
-		#ifdef QT_DEBUG
+#ifdef QT_DEBUG
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 		glDebugMessageCallback(OpenGLMessageCallback, nullptr);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
-		#endif
-
+#endif
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		glEnable(GL_DEPTH_TEST);
 	}
 

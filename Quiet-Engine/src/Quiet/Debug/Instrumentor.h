@@ -26,13 +26,10 @@ namespace Quiet {
 
 	class Instrumentor
 	{
-	private:
-		std::mutex m_Mutex;
-		InstrumentationSession* m_CurrentSession;
-		std::ofstream m_OutputStream;
 
 	public:
-		Instrumentor() : m_CurrentSession(nullptr) {}
+		Instrumentor(const Instrumentor&) = delete;
+		Instrumentor(Instrumentor&&) = delete;
 
 		void BeginSession(const std::string& name, const std::string& filepath = "results.json")
 		{
@@ -103,6 +100,16 @@ namespace Quiet {
 		}
 
 	private:
+		Instrumentor()
+			: m_CurrentSession(nullptr)
+		{
+		}
+
+		~Instrumentor()
+		{
+			EndSession();
+		}
+
 		void WriteHeader()
 		{
 			m_OutputStream << "{\"otherData\": {},\"traceEvents\":[{}";
@@ -127,6 +134,10 @@ namespace Quiet {
 				m_CurrentSession = nullptr;
 			}
 		}
+
+		std::mutex m_Mutex;
+		InstrumentationSession* m_CurrentSession;
+		std::ofstream m_OutputStream;
 	};
 
 	class InstrumentationTimer
@@ -212,8 +223,10 @@ namespace Quiet {
 
 	#define QT_PROFILE_BEGIN_SESSION(name, filepath) ::Quiet::Instrumentor::Get().BeginSession(name, filepath)
 	#define QT_PROFILE_END_SESSION() ::Quiet::Instrumentor::Get().EndSession()
-	#define QT_PROFILE_SCOPE(name) constexpr auto fixedName = ::Quiet::InstrumentorUtils::CleanupOutputString(name, "__cdecl ");\
-															  ::Quiet::InstrumentationTimer timer##__LINE__(fixedName.Data)
+	#define QT_PROFILE_SCOPE_LINE2(name, line) constexpr auto fixedName##line = ::Quiet::InstrumentorUtils::CleanupOutputString(name, "__cdecl ");\
+																				::Quiet::InstrumentationTimer timer##line(fixedName##line.Data)
+	#define QT_PROFILE_SCOPE_LINE(name, line) QT_PROFILE_SCOPE_LINE2(name, line)
+	#define QT_PROFILE_SCOPE(name) QT_PROFILE_SCOPE_LINE(name, __LINE__)
 	#define QT_PROFILE_FUNCTION() QT_PROFILE_SCOPE(QT_FUNC_SIG)
 #else
 	#define QT_PROFILE_BEGIN_SESSION(name, filepath)

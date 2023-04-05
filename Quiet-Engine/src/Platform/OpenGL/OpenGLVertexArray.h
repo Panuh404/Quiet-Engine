@@ -11,7 +11,7 @@ namespace Quiet
 	{
 	public:
 		OpenGLVertexArray();
-		virtual ~OpenGLVertexArray();
+		~OpenGLVertexArray() override;
 
 		void Bind() const override;
 		void Unbind() const override;
@@ -21,6 +21,7 @@ namespace Quiet
 
 		const std::vector<std::shared_ptr<VertexBuffer>>& GetVertexBuffers() const override { return m_VertexBuffers; }
 		const std::shared_ptr<IndexBuffer>& GetIndexBuffer() const override { return m_IndexBuffer; }
+
 	private:
 		uint32_t m_RendererID;
 		uint32_t m_VertexBufferIndex = 0;
