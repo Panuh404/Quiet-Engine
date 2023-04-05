@@ -25,9 +25,8 @@ namespace Quiet
 
 		// Create Scene
 		m_ActiveScene = std::make_shared<Scene>();
-		auto square = m_ActiveScene->CreateEntity();
-		m_ActiveScene->Reg().emplace<TransformComponent>(square);
-		m_ActiveScene->Reg().emplace<SpriteRendererComponent>(square, glm::vec4{ 0.0f,1.0f,0.0f,1.0f });
+		auto square = m_ActiveScene->CreateEntity("Green Square");
+		square.AddComponent<SpriteRendererComponent>(glm::vec4{ 0.0f,1.0f,0.0f,1.0f });
 		m_SquareEntity = square;
 	}
 
@@ -95,7 +94,6 @@ namespace Quiet
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
-
 			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 		}
@@ -139,9 +137,16 @@ namespace Quiet
 		ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
 		ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
 
-		auto& square_Color = m_ActiveScene->Reg().get<SpriteRendererComponent>(m_SquareEntity).Color;
-		ImGui::ColorEdit4("Square Color", glm::value_ptr(square_Color));
-		
+		if(m_SquareEntity)
+		{
+			ImGui::Separator();
+			auto& tag = m_SquareEntity.GetComponent<TagComponent>().Tag;
+			ImGui::Text("%s", tag.c_str());
+
+			auto& squareColor = m_SquareEntity.GetComponent<SpriteRendererComponent>().Color;
+			ImGui::ColorEdit4("Square Color", glm::value_ptr(squareColor));
+			ImGui::Separator();			
+		}		
 		ImGui::End();
 
 		// VIEWPORT TAB

@@ -1,8 +1,10 @@
 #include "qtpch.h"
+
 #include "Quiet/Scene/Scene.h"
+#include "Quiet/Scene/Entity.h"
+#include "Quiet/Scene/Components.h"
 
 #include "Quiet/Renderer/Renderer2D.h"
-#include "Quiet/Scene/Components.h"
 
 namespace Quiet
 {
@@ -45,9 +47,13 @@ namespace Quiet
 
 	Scene::~Scene()	{}
 
-	entt::entity Scene::CreateEntity()
+	Entity Scene::CreateEntity(const std::string& name)
 	{
-		return m_Registry.create();
+		Entity entity = { m_Registry.create(), this };
+		entity.AddComponent<TransformComponent>();
+		auto& tag = entity.AddComponent<TagComponent>();
+		tag.Tag = name.empty() ? "Entity" : name;
+		return entity;
 	}
 
 	void Scene::OnUpdate(Timestep ts)
