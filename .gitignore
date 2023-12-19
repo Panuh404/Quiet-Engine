@@ -1,15 +1,16 @@
 # Binaries
-_bin/
-_int/
+Binaries/
+Intermediate/
 
 # Quiet Files
 *.log
 *.json
 
+# Editor Intermediates
+Editor/obj/**
+
 # Visual Studio
 .vs/
-**.sln
-**.vcxproj
 **.vcxproj.filters
 **.vcxproj.user
-**.csproj
+**.csproj.user
