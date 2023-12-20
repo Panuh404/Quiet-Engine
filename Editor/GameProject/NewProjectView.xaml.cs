@@ -18,11 +18,12 @@ namespace Editor.GameProject
     /// <summary>
     /// Interaction logic for CreateProjectView.xaml
     /// </summary>
-    public partial class CreateProjectView : UserControl
+    public partial class NewProjectView : UserControl
     {
-        public CreateProjectView()
+        public NewProjectView()
         {
             InitializeComponent();
+
         }
     }
 }
