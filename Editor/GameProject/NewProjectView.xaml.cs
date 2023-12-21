@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -24,6 +25,22 @@ namespace Editor.GameProject
         {
             InitializeComponent();
 
+        }
+
+        private void OnCreate_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            var dc = DataContext as NewProject;
+            var projectPath = dc.CreateProject(TemplateListBox.SelectedItem as ProjectTemplate);
+            bool dialogResult = false;
+
+            var window = Window.GetWindow(this);
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                dialogResult = true;
+            }
+
+            window.DialogResult = dialogResult;
+            window.Close();
         }
     }
 }
