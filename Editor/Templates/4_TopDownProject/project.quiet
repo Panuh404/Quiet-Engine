@@ -9,6 +9,7 @@
     
     <Scenes>
         <Scene z:Id="i2">
+            <IsActive>true</IsActive>
             <Name>Default Scene</Name>
             <Project z:Ref="i1"/>
         </Scene>

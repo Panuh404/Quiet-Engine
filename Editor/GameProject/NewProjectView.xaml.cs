@@ -29,14 +29,16 @@ namespace Editor.GameProject
 
         private void OnCreate_ButtonClick(object sender, RoutedEventArgs e)
         {
-            var dc = DataContext as NewProject;
-            var projectPath = dc.CreateProject(TemplateListBox.SelectedItem as ProjectTemplate);
+            var dataContext = DataContext as NewProject;
+            var projectPath = dataContext.CreateProject(TemplateListBox.SelectedItem as ProjectTemplate);
             bool dialogResult = false;
 
             var window = Window.GetWindow(this);
             if (!string.IsNullOrEmpty(projectPath))
             {
                 dialogResult = true;
+                var project = OpenProject.Open(new ProjectData() { ProjectName = dataContext.ProjectName, ProjectPath = projectPath });
+                window.DataContext = project;
             }
 
             window.DialogResult = dialogResult;
