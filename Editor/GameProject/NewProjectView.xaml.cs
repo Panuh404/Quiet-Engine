@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Editor.GameProject
+namespace QEditor.GameProject
 {
     /// <summary>
     /// Interaction logic for CreateProjectView.xaml

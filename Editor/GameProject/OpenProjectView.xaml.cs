@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Editor.GameProject
+namespace QEditor.GameProject
 {
     /// <summary>
     /// Interaction logic for OpenProjectView.xaml
@@ -23,6 +23,13 @@ namespace Editor.GameProject
         public OpenProjectView()
         {
             InitializeComponent();
+
+            Loaded += (s, e) =>
+            {
+                var item = projectsListBox.ItemContainerGenerator.
+                    ContainerFromIndex(projectsListBox.SelectedIndex) as ListBoxItem;
+                item?.Focus();
+            };
         }
 
         private void OnOpen_ButtonClick(object sender, RoutedEventArgs e)

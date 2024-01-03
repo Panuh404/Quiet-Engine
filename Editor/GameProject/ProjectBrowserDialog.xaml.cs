@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace Editor.GameProject
+namespace QEditor.GameProject
 {
     /// <summary>
     /// Interaction logic for ProjectBrowserDialog.xaml

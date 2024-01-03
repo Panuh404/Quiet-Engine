@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Editor.GameProject
+namespace QEditor.GameProject
 {
     [DataContract]
     public class Scene : ViewModelBase

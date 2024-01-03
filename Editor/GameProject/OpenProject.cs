@@ -7,9 +7,9 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using Editor.Utilities;
+using QEditor.Utilities;
 
-namespace Editor.GameProject
+namespace QEditor.GameProject
 {
     [DataContract]
     public class ProjectData

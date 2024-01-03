@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace Editor
+namespace QEditor
 {
     [DataContract(IsReference = true)]
     public class ViewModelBase : INotifyPropertyChanged
