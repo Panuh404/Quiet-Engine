@@ -7,7 +7,9 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Windows.Shapes;
 using QEditor.Utilities;
+using Path = System.IO.Path;
 
 namespace QEditor.GameProject
 {
@@ -163,9 +165,9 @@ namespace QEditor.GameProject
             }
             catch (Exception e)
             {
-                // TODO: Log error
                 Debug.WriteLine(e.Message);
-                return string.Empty;
+                Logger.Log(MessageType.Error, $"Failed to create {ProjectName}");
+                throw;
             }
         }
 
@@ -194,8 +196,10 @@ namespace QEditor.GameProject
             }
             catch (Exception e)
             {
-                // TODO: Log error
                 Debug.WriteLine(e.Message);
+                Logger.Log(MessageType.Error, $"Failed to read project templates");
+                throw;
+
             }
         }
     }

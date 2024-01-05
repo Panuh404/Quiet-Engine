@@ -22,8 +22,9 @@ namespace QEditor.Utilities
             }
             catch (Exception e)
             {
-                // TODO: log error
                 Debug.WriteLine(e.Message);
+                Logger.Log(MessageType.Error, $"Failed to serialize {instance} to {path}");
+                throw;
             }
         }
 
@@ -38,9 +39,9 @@ namespace QEditor.Utilities
             }
             catch (Exception e)
             {
-                // TODO: log error
                 Debug.WriteLine(e.Message);
-                return default(T);
+                Logger.Log(MessageType.Error, $"Failed to deserialize {path}");
+                throw;
             }
         }
     }
