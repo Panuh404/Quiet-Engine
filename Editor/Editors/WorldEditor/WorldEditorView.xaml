@@ -39,7 +39,7 @@
 
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
-                <TabControl>
+                <TabControl Grid.Row="1">
                     <TabItem Header="History">
                         <utils:UndoRedoView DataContext="{Binding UndoRedo}"/>
                     </TabItem>
@@ -60,7 +60,7 @@
 
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
-                <local:ProjectLayoutView/>
+                <local:ProjectLayoutView Grid.Row="0"/>
                 <local:GameEntityView Grid.Row="1"/>
             </Grid>
         </Grid>

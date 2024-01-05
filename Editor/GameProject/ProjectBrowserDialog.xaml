@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QEditor.GameProject"
         mc:Ignorable="d" 
-        ResizeMode="NoResize"
+        ResizeMode="NoResize" Topmost="True"
         WindowStartupLocation="CenterScreen" 
         Title="Project Browser" Height="500" Width="800">
     <Grid>
