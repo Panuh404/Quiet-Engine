@@ -6,7 +6,9 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using QEditor.GameProject;
+using QEditor.Utilities;
 
 namespace QEditor.Components
 {
@@ -15,7 +17,6 @@ namespace QEditor.Components
     public class GameEntity : ViewModelBase
     {
         private string _name;
-
         [DataMember] public string Name
         {
             get => _name;
@@ -29,11 +30,28 @@ namespace QEditor.Components
             }
         }
 
+        private bool _isEnabled = true;
+        [DataMember] public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                if (_isEnabled != value)
+                {
+                    _isEnabled = value;
+                    OnPropertyChanged(nameof(IsEnabled));
+                }
+            }
+        }
+
         [DataMember] public Scene ParentScene { get; private set; }
 
         [DataMember(Name = nameof(Components))]
         private readonly ObservableCollection<Component> _components = new ObservableCollection<Component>();
         public ReadOnlyObservableCollection<Component> Components { get; private set; }
+
+        public ICommand RenameCommand { set; get; }
+        public ICommand IsEnabledCommand { set; get;}
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -43,6 +61,20 @@ namespace QEditor.Components
                 Components = new ReadOnlyObservableCollection<Component>(_components);
                 OnPropertyChanged(nameof(Components));
             }
+
+            RenameCommand = new RelayCommand<string>(x =>
+            {
+                var oldName = _name;
+                Name = x;
+                Project.UndoRedo.Add(new UndoRedoAction(nameof(Name), this, oldName, x, $"Rename entity '{oldName}' to '{x}'"));
+            }, x => x != _name);
+
+            IsEnabledCommand = new RelayCommand<bool>(x =>
+            {
+                var oldValue = _isEnabled;
+                IsEnabled = x;
+                Project.UndoRedo.Add(new UndoRedoAction(nameof(IsEnabled), this, oldValue, x, x ? $"Enable '{Name}'" : $"Disable '{Name}'"));
+            });
         }
 
         public GameEntity(Scene scene)
@@ -50,6 +82,7 @@ namespace QEditor.Components
             Debug.Assert(scene != null);
             ParentScene = scene;
             _components.Add(new Transform(this));
+            OnDeserialized(new StreamingContext());
         }
     }
 }
