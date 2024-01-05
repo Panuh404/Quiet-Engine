@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using QEditor.Components;
 using QEditor.GameProject;
 
 namespace QEditor.Editors
@@ -24,6 +25,19 @@ namespace QEditor.Editors
         public ProjectLayoutView()
         {
             InitializeComponent();
+        }
+
+        private void OnAddGameEntity_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var dataContext = button.DataContext as Scene;
+            dataContext.AddGameEntityCommand.Execute(new GameEntity(dataContext) { Name = "Empty Game Entity"});
+        }
+
+        private void OnGameEntities_ListBoxSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var entity = (sender as ListBox).SelectedItems[0];
+            GameEntityView.Instance.DataContext = entity;
         }
     }
 }
