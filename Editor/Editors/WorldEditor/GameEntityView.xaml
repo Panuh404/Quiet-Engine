@@ -6,8 +6,8 @@
              xmlns:local="clr-namespace:QEditor.Editors"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <!-- Hide Scroll viewer when no entity selected -->
         <ScrollViewer.Style>
             <Style TargetType="ScrollViewer">
@@ -45,12 +45,13 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="Name" Grid.Column="0" Margin="5,0,0,0"/>
-                <TextBox Text="{Binding Name}" Grid.Column="1" Tag="{Binding RenameCommand}"/>
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=Explicit}" Grid.Column="1"
+                         GotKeyboardFocus="OnName_TextBoxGotKeyboardFocus"
+                         LostKeyboardFocus="OnName_TextBoxLostKeyboardFocus"/>
                 <StackPanel Orientation="Horizontal" Grid.Column="2">
                     <TextBlock Text="Enabled" Margin="5,0,0,0"/>
                     <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}" 
-                              Command="{Binding IsEnabledCommand}"
-                              CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}"
+                              Click="OnIsEnabled_CheckboxClick"
                               Margin="5,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
@@ -63,6 +64,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

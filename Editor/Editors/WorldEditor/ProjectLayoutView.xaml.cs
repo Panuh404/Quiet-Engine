@@ -31,34 +31,35 @@ namespace QEditor.Editors
         private void OnAddGameEntity_ButtonClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            var dataContext = button.DataContext as Scene;
-            dataContext.AddGameEntityCommand.Execute(new GameEntity(dataContext) { Name = "Empty Game Entity"});
+            var dc = button.DataContext as Scene;
+            dc.AddGameEntityCommand.Execute(new GameEntity(dc) { Name = "Empty Game Entity"});
         }
 
         private void OnGameEntities_ListBoxSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            GameEntityView.Instance.DataContext = null;
-            var ListBox = sender as ListBox;
-            if (e.AddedItems.Count > 0)
-            {
-                GameEntityView.Instance.DataContext = (sender as ListBox).SelectedItems[0];
-            }
-
-            var newSelection = ListBox.SelectedItems.Cast<GameEntity>().ToList();
+            var listBox = sender as ListBox;
+            var newSelection = listBox.SelectedItems.Cast<GameEntity>().ToList();
             var previousSelection = newSelection.Except(e.AddedItems.Cast<GameEntity>()).Concat(e.RemovedItems.Cast<GameEntity>()).ToList();
 
             Project.UndoRedo.Add(new UndoRedoAction(
                 () =>
                 {
-                    ListBox.UnselectAll();
-                    previousSelection.ForEach(x=> (ListBox.ItemContainerGenerator.ContainerFromItem(x) as ListBoxItem).IsSelected = true);
+                    listBox.UnselectAll();
+                    previousSelection.ForEach(x=> (listBox.ItemContainerGenerator.ContainerFromItem(x) as ListBoxItem).IsSelected = true);
                 },
                 () =>
                 {
-                    ListBox.UnselectAll();
-                    newSelection.ForEach(x => (ListBox.ItemContainerGenerator.ContainerFromItem(x) as ListBoxItem).IsSelected = true);
+                    listBox.UnselectAll();
+                    newSelection.ForEach(x => (listBox.ItemContainerGenerator.ContainerFromItem(x) as ListBoxItem).IsSelected = true);
                 },
                 "Selection changed"));
+
+            MSGameEntity msEntity = null;
+            if (newSelection.Any())
+            {
+                msEntity = new MSGameEntity(newSelection);
+            }
+            GameEntityView.Instance.DataContext = msEntity;
         }
     }
 }

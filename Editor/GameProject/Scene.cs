@@ -13,7 +13,7 @@ using QEditor.Utilities;
 namespace QEditor.GameProject
 {
     [DataContract]
-    public class Scene : ViewModelBase
+    class Scene : ViewModelBase
     {
         private string _name;
         [DataMember] public string Name
