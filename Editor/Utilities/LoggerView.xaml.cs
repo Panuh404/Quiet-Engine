@@ -23,14 +23,6 @@ namespace QEditor.Utilities
         public LoggerView()
         {
             InitializeComponent();
-
-            // Debug
-            Loaded += (s, e) =>
-            {
-                Logger.Log(MessageType.Info, "Information Message");
-                Logger.Log(MessageType.Warning, "Warning Message");
-                Logger.Log(MessageType.Error, "Error Message");
-            };
         }
 
         private void OnClear_ButtonClick(object sender, RoutedEventArgs e)
