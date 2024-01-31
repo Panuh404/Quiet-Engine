@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QEditor", "Editor\QEditor.c
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QEngine", "Engine\Engine.vcxproj", "{69BF9F6D-B453-41E3-A0F2-56F209CA3D21}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Sandbox", "Sandbox\Sandbox.vcxproj", "{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -20,6 +22,10 @@ Global
 		{69BF9F6D-B453-41E3-A0F2-56F209CA3D21}.Debug|x64.Build.0 = Debug|x64
 		{69BF9F6D-B453-41E3-A0F2-56F209CA3D21}.Release|x64.ActiveCfg = Release|x64
 		{69BF9F6D-B453-41E3-A0F2-56F209CA3D21}.Release|x64.Build.0 = Release|x64
+		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Debug|x64.ActiveCfg = Debug|x64
+		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Debug|x64.Build.0 = Debug|x64
+		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Release|x64.ActiveCfg = Release|x64
+		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
