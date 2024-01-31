@@ -34,7 +34,7 @@ namespace QEditor.GameProject
     class NewProject : ViewModelBase
     {
         // TODO: get the path from the installation location
-        private readonly string _templatePath = @"..\..\..\Editor\Templates";
+        private readonly string _templatePath = @"..\..\Editor\Templates";
 
         private string _projectName = "NewProject";
         public string ProjectName

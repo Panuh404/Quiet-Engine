@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QEngine", "Engine\Engine.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Sandbox", "Sandbox\Sandbox.vcxproj", "{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QEngineDLL", "QEngineDLL\QEngineDLL.vcxproj", "{2721FEF9-30C0-4F6E-A8A6-44B5488E5DFE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -26,6 +28,10 @@ Global
 		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Debug|x64.Build.0 = Debug|x64
 		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Release|x64.ActiveCfg = Release|x64
 		{9DADFA0C-0735-4471-A075-74AF9A1AC1BF}.Release|x64.Build.0 = Release|x64
+		{2721FEF9-30C0-4F6E-A8A6-44B5488E5DFE}.Debug|x64.ActiveCfg = Debug|x64
+		{2721FEF9-30C0-4F6E-A8A6-44B5488E5DFE}.Debug|x64.Build.0 = Debug|x64
+		{2721FEF9-30C0-4F6E-A8A6-44B5488E5DFE}.Release|x64.ActiveCfg = Release|x64
+		{2721FEF9-30C0-4F6E-A8A6-44B5488E5DFE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

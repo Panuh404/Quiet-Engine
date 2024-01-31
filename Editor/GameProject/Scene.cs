@@ -52,15 +52,25 @@ namespace QEditor.GameProject
         public ICommand AddGameEntityCommand { get; private set; }
         public ICommand RemoveGameEntityCommand { get; private set; }
 
-        private void AddGameEntity(GameEntity entity)
+        private void AddGameEntity(GameEntity entity, int index = -1)
         {
             Debug.Assert(!_gameEntities.Contains(entity));
-            _gameEntities.Add(entity);
+            entity.IsActive = IsActive;
+            if (index == -1)
+            {
+                _gameEntities.Add(entity);
+            }
+            else
+            {
+                _gameEntities.Insert(index, entity);
+            }
         }
 
         private void RemoveGameEntity(GameEntity entity)
         {
             Debug.Assert(_gameEntities.Contains(entity));
+            entity.IsActive = false;
+
             _gameEntities.Remove(entity);
         }
 
@@ -73,6 +83,11 @@ namespace QEditor.GameProject
                 OnPropertyChanged(nameof(GameEntities));
             }
 
+            foreach (var entity in _gameEntities)
+            {
+                entity.IsActive = IsActive;
+            }
+
             AddGameEntityCommand = new RelayCommand<GameEntity>(x =>
             {
                 AddGameEntity(x);
@@ -80,17 +95,17 @@ namespace QEditor.GameProject
 
                 Project.UndoRedo.Add(new UndoRedoAction(
                     () => RemoveGameEntity(x),
-                    () => _gameEntities.Insert(entityIndex, x),
+                    () => AddGameEntity(x, entityIndex),
                     $"Add {x.Name} to {Name}"));
             });
 
             RemoveGameEntityCommand = new RelayCommand<GameEntity>(x =>
             {
-                var sceneIndex = _gameEntities.IndexOf(x);
+                var entityIndex = _gameEntities.IndexOf(x);
                 RemoveGameEntity(x);
 
                 Project.UndoRedo.Add(new UndoRedoAction(
-                    () => _gameEntities.Insert(sceneIndex, x),
+                    () => AddGameEntity(x, entityIndex),
                     () => RemoveGameEntity(x),
                     $"Remove {x.Name} from {Name}"));
             });
