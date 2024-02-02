@@ -37,5 +37,25 @@ namespace QEditor.Dictionaries
                 Keyboard.ClearFocus();
             }
         }
+
+        private void OnClose_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            var window = (Window)((FrameworkElement)sender).TemplatedParent;
+            window.Close();
+        }
+
+        private void OnMaximizeRestore_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            var window = (Window)((FrameworkElement)sender).TemplatedParent;
+            window.WindowState = (window.WindowState == WindowState.Normal) ? 
+                WindowState.Maximized : WindowState.Normal;
+            
+        }
+
+        private void OnMinimizeRestore_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            var window = (Window)((FrameworkElement)sender).TemplatedParent;
+            window.WindowState = WindowState.Minimized;
+        }
     }
 }

@@ -12,50 +12,56 @@
         <local:NewProject/>
     </UserControl.DataContext>
 
-    <StackPanel Background="White">
+    <Border CornerRadius="3" Background="{DynamicResource Editor.Window.GrayBrush3}" 
+            Width="700"
+            HorizontalAlignment="Center"
+            Margin="0,30">
+        <StackPanel>
 
-        <!-- Project List / Screenshots-->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <ListBox Width="195" Height="250" ItemsSource="{Binding ProjectTemplates}" x:Name="TemplateListBox" SelectedIndex="0">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{Binding Icon}" Margin="0,0,5,0" Width="30" Height="30"/>
-                            <TextBlock Text="{Binding ProjectType}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>    
-            </ListBox>
+            <!-- Project List / Screenshots-->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <ListBox Width="195" Height="250" ItemsSource="{Binding ProjectTemplates}" x:Name="TemplateListBox" SelectedIndex="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="{Binding Icon}" Margin="0,0,5,0" Width="30" Height="30"/>
+                                <TextBlock Text="{Binding ProjectType}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>    
+                </ListBox>
 
-            <Border Width="400" Height="250" Margin="5,0,0,0">
-                <Border.Background>
-                    <ImageBrush ImageSource="{Binding Path=SelectedItem.Screenshot, ElementName=TemplateListBox}"/>
-                </Border.Background>
-            </Border>
+                <Border Width="400" Height="250" Margin="5,0,0,0">
+                    <Border.Background>
+                        <ImageBrush ImageSource="{Binding Path=SelectedItem.Screenshot, ElementName=TemplateListBox}"/>
+                    </Border.Background>
+                </Border>
+            </StackPanel>
+
+            <!-- Input Name -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 10, 0, 0">
+                <TextBlock Text="Name" Width="50" Style="{DynamicResource LightTextBlockStyle}"/>
+                <TextBox Width="550" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+
+            <!-- Input Path -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 5, 0, 0">
+                <TextBlock Text="Path" Width="50" Style="{DynamicResource LightTextBlockStyle}"/>
+                <TextBox Width="500" Text="{Binding ProjectPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Content="Browse" Width="45" Margin="5,0,0,0"/>
+            </StackPanel>
+
+            <!-- Error Message -->
+            <TextBlock Text="{Binding ErrorMsg}" Foreground="{DynamicResource Editor.RedBrush}"
+                       Width="600" Margin="0,2,0,2" HorizontalAlignment="Center"/>
+
+            <!-- Create/Exit Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 5, 0, 0">
+                <Button Content="Create" Width="100" IsDefault="True"
+                        IsEnabled="{Binding IsValid}" Click="OnCreate_ButtonClick"/>
+                <Button Content="Exit" Width="100" Margin="30,0,0,0" IsCancel="True"/>
+            </StackPanel>
+
         </StackPanel>
-
-        <!-- Input Name -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 10, 0, 0">
-            <TextBlock Text="Name" Width="50"/>
-            <TextBox Width="550" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
-
-        <!-- Input Path -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 5, 0, 0">
-            <TextBlock Text="Path" Width="50"/>
-            <TextBox Width="500" Text="{Binding ProjectPath, UpdateSourceTrigger=PropertyChanged}"/>
-            <Button Content="Browse" Width="45" Margin="5,0,0,0"/>
-        </StackPanel>
-
-        <!-- Error Message -->
-        <TextBlock Text="{Binding ErrorMsg}" Width="600" Margin="0,2,0,2" HorizontalAlignment="Center"/>
-
-        <!-- Create/Exit Buttons -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 5, 0, 0">
-            <Button Content="Create" Width="100" IsDefault="True"
-                    IsEnabled="{Binding IsValid}" Click="OnCreate_ButtonClick"/>
-            <Button Content="Exit" Width="100" Margin="30,0,0,0" IsCancel="True"/>
-        </StackPanel>
-
-    </StackPanel>
+    </Border>
 </UserControl>

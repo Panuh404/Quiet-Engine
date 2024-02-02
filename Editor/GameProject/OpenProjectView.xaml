@@ -11,40 +11,45 @@
         <local:OpenProject/>
     </UserControl.DataContext>
 
-    <StackPanel Background="White">
+    <Border CornerRadius="3" Background="{DynamicResource Editor.Window.GrayBrush3}" 
+            Width="700"
+            HorizontalAlignment="Center"
+            Margin="0,30">
+        <StackPanel>
 
-        <!-- Project List / Screenshots-->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <ListBox Width="195" Height="250" ItemsSource="{Binding Projects}"
-                     x:Name="projectsListBox" SelectedIndex="0">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <EventSetter Event="MouseDoubleClick" Handler="OnOpen_MouseDoubleClick"></EventSetter>
-                    </Style>
-                </ListBox.ItemContainerStyle>
+            <!-- Project List / Screenshots-->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <ListBox Width="195" Height="250" ItemsSource="{Binding Projects}"
+                         x:Name="projectsListBox" SelectedIndex="0">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <EventSetter Event="MouseDoubleClick" Handler="OnOpen_MouseDoubleClick"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
 
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{Binding Icon}" Margin="0,0,5,0" Width="30" Height="30"/>
-                            <TextBlock Text="{Binding ProjectName}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="{Binding Icon}" Margin="0,0,5,0" Width="30" Height="30"/>
+                                <TextBlock Text="{Binding ProjectName}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
 
-            <Border Width="400" Height="250" Margin="5,0,0,0">
-                <Border.Background>
-                    <ImageBrush ImageSource="{Binding Path=SelectedItem.Screenshot, ElementName=projectsListBox}"/>
-                </Border.Background>
-            </Border>
+                <Border Width="400" Height="250" Margin="5,0,0,0">
+                    <Border.Background>
+                        <ImageBrush ImageSource="{Binding Path=SelectedItem.Screenshot, ElementName=projectsListBox}"/>
+                    </Border.Background>
+                </Border>
+            </StackPanel>
+
+            <!-- Create/Exit Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 20, 0, 0">
+                <Button Content="Open" Width="100" IsDefault="True" Click="OnOpen_ButtonClick"/>
+                <Button Content="Exit" Width="100" Margin="30,0,0,0" IsCancel="True"/>
+            </StackPanel>
+
         </StackPanel>
-
-        <!-- Create/Exit Buttons -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 20, 0, 0">
-            <Button Content="Open" Width="100" IsDefault="True" Click="OnOpen_ButtonClick"/>
-            <Button Content="Exit" Width="100" Margin="30,0,0,0" IsCancel="True"/>
-        </StackPanel>
-
-    </StackPanel>
+    </Border>
 </UserControl>

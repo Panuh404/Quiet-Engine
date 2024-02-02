@@ -8,7 +8,9 @@
         mc:Ignorable="d"
         WindowStartupLocation="CenterOwner"
         WindowState="Maximized"
-        Title="Quiet Editor" Height="1080" Width="1920">
+        Title="Quiet Editor" Height="1080" Width="1920"
+        Style="{StaticResource QuietWindowStyle}">
+
     <Grid>
         <editors:WorldEditorView/>
     </Grid>

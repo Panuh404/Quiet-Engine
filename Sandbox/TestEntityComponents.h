@@ -71,6 +71,7 @@ private:
 				assert(!game_entity::is_alive(entity));
 				++_removed;
 			}
+
 			--count;
 		}
 	}
