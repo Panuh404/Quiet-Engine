@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,22 +12,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using QEditor.GameProject;
 
 namespace QEditor.Editors
 {
-    public partial class WorldEditorView : UserControl
+    /// <summary>
+    /// Interaction logic for TransformView.xaml
+    /// </summary>
+    public partial class TransformView : UserControl
     {
-        public WorldEditorView()
+        public TransformView()
         {
             InitializeComponent();
-            Loaded += OnWorldEditorViewLoaded;
-        }
-
-        private void OnWorldEditorViewLoaded(object sender, RoutedEventArgs e)
-        {
-            Loaded -= OnWorldEditorViewLoaded;
-            Focus();
         }
     }
 }

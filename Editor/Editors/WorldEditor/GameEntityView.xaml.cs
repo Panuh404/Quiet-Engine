@@ -18,9 +18,6 @@ using QEditor.Utilities;
 
 namespace QEditor.Editors
 {
-    /// <summary>
-    /// Interaction logic for GameEntityView.xaml
-    /// </summary>
     public partial class GameEntityView : UserControl
     {
         private Action _undoAction;
