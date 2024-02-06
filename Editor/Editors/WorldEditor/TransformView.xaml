@@ -29,15 +29,24 @@
 
             <TextBlock Text="Position" Grid.Column="0" Grid.Row="0"/>
             <util:VectorBox X="{Binding PosX}" Y="{Binding PosY}" Z="{Binding PosZ}"
-                            Grid.Column="1" Grid.Row="0"/>
+                            Grid.Column="1" Grid.Row="0"
+                            PreviewMouseLeftButtonDown="OnPosition_VectorBox_PreviewMouseLBD"
+                            PreviewMouseLeftButtonUp="OnPosition_VectorBox_PreviewMouseLBU"
+                            LostKeyboardFocus="OnPosition_VectorBox_LostKeyboardFocus"/>
 
             <TextBlock Text="Rotation" Grid.Column="0" Grid.Row="1"/>
             <util:VectorBox X="{Binding RotX}" Y="{Binding RotY}" Z="{Binding RotZ}"
-                            Grid.Column="1" Grid.Row="1"/>
+                            Grid.Column="1" Grid.Row="1"
+                            PreviewMouseLeftButtonDown="OnRotation_VectorBox_PreviewMouseLBD"
+                            PreviewMouseLeftButtonUp="OnRotation_VectorBox_PreviewMouseLBU"
+                            LostKeyboardFocus="OnRotation_VectorBox_LostKeyboardFocus"/>
 
             <TextBlock Text="Scale" Grid.Column="0" Grid.Row="2"/>
             <util:VectorBox X="{Binding ScaleX}" Y="{Binding ScaleY}" Z="{Binding ScaleZ}"
-                            Grid.Column="1" Grid.Row="2"/>
+                            Grid.Column="1" Grid.Row="2"
+                            PreviewMouseLeftButtonDown="OnScale_VectorBox_PreviewMouseLBD"
+                            PreviewMouseLeftButtonUp="OnScale_VectorBox_PreviewMouseLBU"
+                            LostKeyboardFocus="OnScale_VectorBox_LostKeyboardFocus"/>
         </Grid>
     </local:ComponentView>
 </UserControl>

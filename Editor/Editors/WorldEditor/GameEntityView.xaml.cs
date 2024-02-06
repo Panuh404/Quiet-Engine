@@ -63,6 +63,7 @@ namespace QEditor.Editors
 
         private void OnName_TextBoxGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
+            _propertyName = string.Empty;
             _undoAction = GetRenameAction();
         }
 
