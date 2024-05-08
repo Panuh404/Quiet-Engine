@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <type_traits>
+#include <memory>
 
 // Windows Specific Headers
 #if defined(_WIN64)

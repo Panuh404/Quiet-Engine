@@ -15,6 +15,7 @@ If the repository was cloned non-recursively previously, use `git submodule upda
 ## Documentation
 - [Data-Oriented Entity System](https://bitsquid.blogspot.com/2014/08/building-data-oriented-entity-system.html)
 - [MSVC floatin point behavior setting](https://learn.microsoft.com/en-us/cpp/build/reference/fp-specify-floating-point-behavior?view=msvc-170&viewFallbackFrom=vs-2019#fast)
+- [What Every Programmer Should Know About Memory](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf)
 
 ## License
 Quiet engine is licensed under MIT License. See [LICENSE](LICENSE) file.

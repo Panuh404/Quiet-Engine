@@ -11,7 +11,7 @@ namespace quiet::transform
 		util::vector<math::v3>	scales;
 	}
 
-	component create_transform(const init_info& info, game_entity::entity entity)
+	component create(init_info info, game_entity::entity entity)
 	{
 		assert(entity.is_valid());
 		const id::id_type entity_index{ id::index(entity.get_id()) };
@@ -33,7 +33,7 @@ namespace quiet::transform
 		return component(transform_id{ entity.get_id() });
 	}
 
-	void remove_transform(component c)
+	void remove(component c)
 	{
 		assert(c.is_valid());
 	}

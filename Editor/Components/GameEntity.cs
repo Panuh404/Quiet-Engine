@@ -171,7 +171,7 @@ namespace QEditor.Components
             }
         }
 
-        public static float?GetMixedValue<T>(List<T> objects, Func<T, float> getProperty)
+        public static float? GetMixedValue<T>(List<T> objects, Func<T, float> getProperty)
         {
             var value = getProperty(objects.First());
             return objects.Skip(1).Any(x => !getProperty(x).IsTheSameAs(value)) ? (float?)null : value;

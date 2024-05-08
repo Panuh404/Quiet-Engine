@@ -1,10 +1,13 @@
 #pragma once
 
-#include "../Components/ComponentsCommon.h"
-#include "TransformComponent.h"
+#include <memory>
 
-namespace quiet::game_entity
-{
+#include "..\Components\ComponentsCommon.h"
+#include "TransformComponent.h"
+#include "ScriptComponent.h"
+
+namespace quiet {
+namespace game_entity {
 	DEFINE_TYPED_ID(entity_id);
 
 	class entity
@@ -16,7 +19,36 @@ namespace quiet::game_entity
 		constexpr bool is_valid() const { return id::is_valid(_id); }
 
 		transform::component transform() const;
+		script::component script() const;
 	private:
 		entity_id _id;
 	};
+} // namespace game_entity end
+
+namespace script
+{
+	class entity_script : public game_entity::entity
+	{
+	public:
+		virtual ~entity_script() = default;
+		virtual void begin_play() {}
+		virtual void update(float) {}
+	protected:
+		constexpr explicit entity_script(game_entity::entity entity)
+			: game_entity::entity{ entity.get_id() } {}
+	};
+
+	namespace detail {
+		using script_ptr = std::unique_ptr<entity_script>;
+		using script_creator = script_ptr(*)(game_entity::entity entity);
+
+		template<class script_class>
+		script_ptr create_script(game_entity::entity entity)
+		{
+			assert(entity.is_valid());
+			return std::make_unique<script_class>(entity);
+		}
+	} // namespace detail end
+} // namespace script end
+
 }
