@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <type_traits>
 #include <memory>
+#include <unordered_map>
 
 // Windows Specific Headers
 #if defined(_WIN64)
