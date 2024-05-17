@@ -29,6 +29,7 @@ namespace QEditor.GameProject
         public string IconFilePath { get; set; }
         public string ScreenshotFilePath { get; set; }
         public string ProjectFilePath { get; set; }
+        public string TemplatePath { get; set; }
     }
 
     class NewProject : ViewModelBase
@@ -161,6 +162,8 @@ namespace QEditor.GameProject
                 var projectPath = Path.GetFullPath(Path.Combine(path, $"{ProjectName}{Project.Extension}"));
                 File.WriteAllText(projectPath, projectXML);
 
+                CreateMSVCSolution(template, path);
+
                 return path;
             }
             catch (Exception e)
@@ -169,6 +172,34 @@ namespace QEditor.GameProject
                 Logger.Log(MessageType.Error, $"Failed to create {ProjectName}");
                 throw;
             }
+        }
+
+        private void CreateMSVCSolution(ProjectTemplate template, string projectPath)
+        {
+            Debug.Assert(File.Exists(Path.Combine(template.TemplatePath, "MSVCSolution")));
+            Debug.Assert(File.Exists(Path.Combine(template.TemplatePath, "MSVCProject")));
+
+            var engineApiPath = Path.Combine(MainWindow.QuietPath, @"Engine\EngineAPI\");
+            Debug.Assert(Directory.Exists(engineApiPath));
+
+            var _0 = ProjectName;
+            var _1 = "{" + Guid.NewGuid().ToString().ToUpper() + "}";
+            var _2 = engineApiPath;
+            var _3 = MainWindow.QuietPath;
+
+            var projectType = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";
+            var solutionGuid = "{" + Guid.NewGuid().ToString().ToUpper() + "}";
+
+            // Create sln solution file 
+            var solution = File.ReadAllText(Path.Combine(template.TemplatePath, "MSVCSolution"));
+            solution = string.Format(solution, _0, _1, solutionGuid, projectType);
+            File.WriteAllText(Path.GetFullPath(Path.Combine(projectPath, $"{_0}.sln")), solution);
+            
+            // Create vcxproj project file
+            var project = File.ReadAllText(Path.Combine(template.TemplatePath, "MSVCProject"));
+            project = string.Format(project, _0, _1, _2, _3);
+            File.WriteAllText(Path.GetFullPath(Path.Combine(projectPath, $@"Code\{_0}.vcxproj")), project);
+
         }
 
         public NewProject()
@@ -189,6 +220,7 @@ namespace QEditor.GameProject
                     template.Screenshot = File.ReadAllBytes(template.ScreenshotFilePath);
                     
                     template.ProjectFilePath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file), template.ProjectFile));
+                    template.TemplatePath = Path.GetDirectoryName(file);
 
                     _projectTemplates.Add(template);
                 }

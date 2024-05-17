@@ -58,7 +58,7 @@ namespace script
 	class TYPE;													\
 	namespace													\
 	{															\
-		const u8 _reg##TYPE {									\
+		const u8 _reg_##TYPE {									\
 			quiet::script::detail::register_script(				\
 			quiet::script::detail::string_hash()(#TYPE),		\
 			&quiet::script::detail::create_script<TYPE>) };		\
