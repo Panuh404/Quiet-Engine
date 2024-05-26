@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using QEditor.GameDev;
 using QEditor.GameProject;
 
 namespace QEditor.Editors
@@ -29,6 +30,11 @@ namespace QEditor.Editors
         {
             Loaded -= OnWorldEditorViewLoaded;
             Focus();
+        }
+
+        private void OnNewScript_Button_Click(object sender, RoutedEventArgs e)
+        {
+            new NewScriptDialog().ShowDialog();
         }
     }
 }

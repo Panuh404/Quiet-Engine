@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using QEditor.GameDev;
 using QEditor.Utilities;
 
 namespace QEditor.GameProject
@@ -20,9 +21,10 @@ namespace QEditor.GameProject
         public static string Extension { get; } = ".quiet";
 
         [DataMember] public string Name { get; private set; } = "New Project";
-        [DataMember] public string Path { get; private set; }
+        [DataMember] public string  Path { get; private set; }
 
-        public string FullPath => $@"{Path}{Name}\{Name}{Extension}";
+        public string FullPath => $@"{Path}{Name}{Extension}";
+        public string Solution => $@"{Path}{Name}.sln";
 
         [DataMember(Name = "Scenes")] private ObservableCollection<Scene> _scenes = new ObservableCollection<Scene>();
         public ReadOnlyObservableCollection<Scene> Scenes { get; private set; }
@@ -55,6 +57,7 @@ namespace QEditor.GameProject
 
         public ICommand SaveCommand { get; private set; }
 
+
         private void AddScene(string sceneName)
         {
             Debug.Assert(!string.IsNullOrEmpty(sceneName.Trim()));
@@ -76,6 +79,7 @@ namespace QEditor.GameProject
 
         public void Unload()
         {
+            VisualStudio.CloseVisualStudio();
             UndoRedo.Reset();
         }
 
@@ -126,9 +130,7 @@ namespace QEditor.GameProject
         {
             Name = name;
             Path = path;
-
-
-
+            
             OnDeserialized(new StreamingContext());
         }
     }
