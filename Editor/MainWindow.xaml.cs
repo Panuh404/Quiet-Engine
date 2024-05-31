@@ -24,14 +24,14 @@ namespace QEditor
     /// </summary>
     public partial class MainWindow : Window
     {
+        public static string QuietPath { get; private set; }
+
         public MainWindow()
         {
             InitializeComponent();
             Loaded += OnMainWindowLoaded;
             Closing += OnMainWindowClosing;
         }
-
-        public static string QuietPath { get; private set; } = @"D:\Code\Quiet-Engine";
 
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
         {

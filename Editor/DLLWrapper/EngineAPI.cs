@@ -28,33 +28,42 @@ namespace QEditor.DLLWrapper
 {
     static class EngineAPI
     {
-        private const string _dllName = "QEngineDLL.dll";
+        private const string _engineDll = "QEngineDLL.dll";
 
-        [DllImport(_dllName)]
-        private static extern int CreateGameEntity(GameEntityDescriptor desc);
+        [DllImport(_engineDll, CharSet = CharSet.Ansi)]
+        public static extern int LoadGameCodeDll(string dllPath);
 
-        public static int CreateGameEntity(GameEntity entity)
+        [DllImport(_engineDll, CharSet = CharSet.Ansi)]
+        public static extern int UnloadGameCodeDll();
+
+        internal static class EntityAPI
         {
-            GameEntityDescriptor desc = new GameEntityDescriptor();
+            [DllImport(_engineDll)]
+            private static extern int CreateGameEntity(GameEntityDescriptor desc);
 
-            // Transform Component
+            public static int CreateGameEntity(GameEntity entity)
             {
-                var c = entity.GetComponent<Transform>();
-                desc.Transform.Position = c.Position;
-                desc.Transform.Rotation = c.Rotation;
-                desc.Transform.Scale = c.Scale;
+                GameEntityDescriptor desc = new GameEntityDescriptor();
+
+                // Transform Component
+                {
+                    var c = entity.GetComponent<Transform>();
+                    desc.Transform.Position = c.Position;
+                    desc.Transform.Rotation = c.Rotation;
+                    desc.Transform.Scale = c.Scale;
+                }
+
+                return CreateGameEntity(desc);
             }
 
-            return CreateGameEntity(desc);
-        }
+            [DllImport(_engineDll)]
+            private static extern void RemoveGameEntity(int id);
 
-        [DllImport(_dllName)]
-        private static extern void RemoveGameEntity(int id);
+            public static void RemoveGameEntity(GameEntity entity)
+            {
 
-        public static void RemoveGameEntity(GameEntity entity)
-        {
-
-            RemoveGameEntity(entity.EntityId);
+                RemoveGameEntity(entity.EntityId);
+            }
         }
     }
 }
