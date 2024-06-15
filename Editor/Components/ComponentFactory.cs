@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 
 namespace QuietEditor.Components
 {
@@ -26,6 +27,16 @@ namespace QuietEditor.Components
         {
             Debug.Assert((int)componentType < _function.Length);
             return _function[(int)componentType];
+        }
+
+        public static ComponentType ToEnumType(this Component component)
+        {
+            return component switch
+            {
+                Transform _ => ComponentType.Transform,
+                Script _ => ComponentType.Script,
+                _ => throw new ArgumentException("Unknown Component Type"),
+            };
         }
     }
 }

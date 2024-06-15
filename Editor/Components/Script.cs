@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,6 +27,13 @@ namespace QuietEditor.Components
         }
 
         public override IMSComponent GetMultiselectionComponent(MSEntity msEntity) => new MSScript(msEntity);
+
+        public override void WriteToBinary(BinaryWriter bw)
+        {
+            var nameBytes = Encoding.UTF8.GetBytes(Name);
+            bw.Write(nameBytes.Length);
+            bw.Write(nameBytes);
+        }
 
         public Script(GameEntity owner) : base(owner) { }
     }
