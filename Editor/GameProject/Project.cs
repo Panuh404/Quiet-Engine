@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using EnvDTE80;
-using QEditor.DLLWrapper;
-using QEditor.GameDev;
-using QEditor.Utilities;
+using QuietEditor.DLLWrapper;
+using QuietEditor.GameDev;
+using QuietEditor.Utilities;
 
-namespace QEditor.GameProject
+namespace QuietEditor.GameProject
 {
     enum BuildConfiguration
     {
@@ -54,6 +54,20 @@ namespace QEditor.GameProject
 
         public BuildConfiguration StandAloneBuildConfig => BuildConfig == 0 ? BuildConfiguration.Debug : BuildConfiguration.Release;
         public BuildConfiguration DllBuildConfig => BuildConfig == 0 ? BuildConfiguration.DebugEditor : BuildConfiguration.ReleaseEditor;
+
+        private string[] _availableScripts;
+        public string[] AvailableScripts
+        {
+            get => _availableScripts;
+            set
+            {
+                if (_availableScripts != value)
+                {
+                    _availableScripts = value;
+                    OnPropertyChanged(nameof(AvailableScripts));
+                }
+            }
+        }
 
         [DataMember(Name = "Scenes")] private ObservableCollection<Scene> _scenes = new ObservableCollection<Scene>();
         public ReadOnlyObservableCollection<Scene> Scenes { get; private set; }
@@ -179,9 +193,11 @@ namespace QEditor.GameProject
         {
             var configName = GetConfigurationName(DllBuildConfig);
             var dll = $@"{Path}Binaries\{configName}-x64\{Name}.dll";
+            AvailableScripts = null;
 
             if (File.Exists(dll) && EngineAPI.LoadGameCodeDll(dll) != 0)
             {
+                AvailableScripts = EngineAPI.GetScriptNames();
                 Logger.Log(MessageType.Info, "Game code DLL loaded successfully");
             }
             else
@@ -194,6 +210,7 @@ namespace QEditor.GameProject
         {
             if (EngineAPI.UnloadGameCodeDll() != 0)
             {
+                AvailableScripts = null;
                 Logger.Log(MessageType.Info, "Game code DLL unloaded");
             }
         }

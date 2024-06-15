@@ -13,10 +13,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using QEditor.GameDev;
-using QEditor.GameProject;
+using QuietEditor.GameDev;
+using QuietEditor.GameProject;
 
-namespace QEditor.Editors
+namespace QuietEditor.Editors
 {
     public partial class WorldEditorView : UserControl
     {

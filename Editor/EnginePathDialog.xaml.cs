@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Path = System.IO.Path;
 
-namespace QEditor
+namespace QuietEditor
 {
     /// <summary>
     /// Interaction logic for EnginePathDialog.xaml

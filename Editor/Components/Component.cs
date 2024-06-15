@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QEditor.Components
+namespace QuietEditor.Components
 {
     interface IMSComponent { }
 
@@ -32,12 +32,12 @@ namespace QEditor.Components
         public List<T> SelectedComponents { get; }
 
         protected abstract bool UpdateComponents(string propertyName);
-        protected abstract bool UpdateMSComponents();
+        protected abstract bool UpdateMSComponent();
 
         public void Refresh()
         {
             _enableUpdates = false;
-            UpdateMSComponents();
+            UpdateMSComponent();
             _enableUpdates = true;
         }
 

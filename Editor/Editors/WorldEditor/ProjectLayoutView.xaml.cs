@@ -12,11 +12,11 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using QEditor.Components;
-using QEditor.GameProject;
-using QEditor.Utilities;
+using QuietEditor.Components;
+using QuietEditor.GameProject;
+using QuietEditor.Utilities;
 
-namespace QEditor.Editors
+namespace QuietEditor.Editors
 {
     public partial class ProjectLayoutView : UserControl
     {

@@ -12,7 +12,7 @@ using System.Windows.Interop;
 using System.Windows.Shapes;
 using Path = System.IO.Path;
 
-namespace QEditor.Utilities
+namespace QuietEditor.Utilities
 {
     enum MessageType
     {

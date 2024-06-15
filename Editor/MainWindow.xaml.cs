@@ -14,10 +14,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using QEditor.GameProject;
+using QuietEditor.GameProject;
 using Path = System.IO.Path;
 
-namespace QEditor
+namespace QuietEditor
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

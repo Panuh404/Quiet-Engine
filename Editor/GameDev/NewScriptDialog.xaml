@@ -1,9 +1,9 @@
-﻿<Window x:Class="QEditor.GameDev.NewScriptDialog"
+﻿<Window x:Class="QuietEditor.GameDev.NewScriptDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:QEditor.GameDev"
+        xmlns:local="clr-namespace:QuietEditor.GameDev"
         mc:Ignorable="d" Style="{StaticResource QuietDialogStyle}"
         ResizeMode="NoResize" ShowInTaskbar="false" WindowStartupLocation="CenterOwner"
         Title="New Script" Height="230" Width="400">

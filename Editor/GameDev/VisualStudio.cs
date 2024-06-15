@@ -8,10 +8,10 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using QEditor.GameProject;
-using QEditor.Utilities;
+using QuietEditor.GameProject;
+using QuietEditor.Utilities;
 
-namespace QEditor.GameDev
+namespace QuietEditor.GameDev
 {
     static class VisualStudio
     {

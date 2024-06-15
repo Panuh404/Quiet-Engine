@@ -8,9 +8,9 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Shapes;
-using QEditor.Utilities;
+using QuietEditor.Utilities;
 
-namespace QEditor.GameProject
+namespace QuietEditor.GameProject
 {
     [DataContract]
     public class ProjectData

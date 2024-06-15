@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using static QEditor.Utilities.Controls.VectorBox;
+using static QuietEditor.Utilities.Controls.VectorBox;
 
-namespace QEditor.Utilities.Controls
+namespace QuietEditor.Utilities.Controls
 {
     public enum VectorType
     {

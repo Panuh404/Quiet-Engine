@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace QEditor.Utilities.Controls
+namespace QuietEditor.Utilities.Controls
 {
     [TemplatePart(Name = "PART_textBlock", Type = typeof(TextBlock))]
     [TemplatePart(Name = "PART_textBox", Type = typeof(TextBox))]

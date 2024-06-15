@@ -9,11 +9,11 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Xml.Linq;
-using QEditor.Utilities;
-using QEditor.GameProject;
+using QuietEditor.Utilities;
+using QuietEditor.GameProject;
 using Path = System.IO.Path;
 
-namespace QEditor.GameDev
+namespace QuietEditor.GameDev
 {
 
     public partial class NewScriptDialog : Window

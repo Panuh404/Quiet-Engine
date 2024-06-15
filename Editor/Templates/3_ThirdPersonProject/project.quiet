@@ -1,6 +1,6 @@
 <Game 
     z:Id="i1" 
-    xmlns="http://schemas.datacontract.org/2004/07/QEditor.GameProject" 
+    xmlns="http://schemas.datacontract.org/2004/07/QuietEditor.GameProject" 
     xmlns:i="http://www.w3.org/2001/XMLSchema-instance" 
     xmlns:z="http://schemas.microsoft.com/2003/10/Serialization/">
     
@@ -9,7 +9,7 @@
     
     <Scenes>
         <Scene z:Id="i2">
-            <GameEntities xmlns:a="http://schemas.datacontract.org/2004/07/QEditor.Components"/>
+            <GameEntities xmlns:a="http://schemas.datacontract.org/2004/07/QuietEditor.Components"/>
             <IsActive>true</IsActive>
             <Name>Default Scene</Name>
             <Project z:Ref="i1"/>

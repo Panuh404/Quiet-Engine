@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QEditor.Utilities
+namespace QuietEditor.Utilities
 {
     public static class Serializer
     {

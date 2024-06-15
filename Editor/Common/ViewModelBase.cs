@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace QEditor
+namespace QuietEditor
 {
     [DataContract(IsReference = true)]
     public class ViewModelBase : INotifyPropertyChanged

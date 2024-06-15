@@ -5,9 +5,9 @@ using System.Numerics;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using QEditor.Utilities;
+using QuietEditor.Utilities;
 
-namespace QEditor.Components
+namespace QuietEditor.Components
 {
     [DataContract]
     class Transform : Component
@@ -216,7 +216,7 @@ namespace QEditor.Components
             return false;
         }
 
-        protected override bool UpdateMSComponents()
+        protected override bool UpdateMSComponent()
         {
             PosX = MSEntity.GetMixedValue(SelectedComponents, new Func<Transform, float>(x => x.Position.X));
             PosY = MSEntity.GetMixedValue(SelectedComponents, new Func<Transform, float>(y => y.Position.Y));

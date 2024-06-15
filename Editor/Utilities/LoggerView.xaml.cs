@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QEditor.Utilities
+namespace QuietEditor.Utilities
 {
     /// <summary>
     /// Interaction logic for LoggerView.xaml

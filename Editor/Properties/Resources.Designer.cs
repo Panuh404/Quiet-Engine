@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace QEditor.Properties
+namespace QuietEditor.Properties
 {
 
 

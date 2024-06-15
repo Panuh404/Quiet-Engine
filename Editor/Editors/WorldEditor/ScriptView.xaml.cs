@@ -13,14 +13,14 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QuietEditor.Utilities
+namespace QuietEditor.Editors
 {
     /// <summary>
-    /// Interaction logic for UndoRedoView.xaml
+    /// Interaction logic for ScriptView.xaml
     /// </summary>
-    public partial class UndoRedoView : UserControl
+    public partial class ScriptView : UserControl
     {
-        public UndoRedoView()
+        public ScriptView()
         {
             InitializeComponent();
         }

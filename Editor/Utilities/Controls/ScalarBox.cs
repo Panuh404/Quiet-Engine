@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace QEditor.Utilities.Controls
+namespace QuietEditor.Utilities.Controls
 {
     class ScalarBox : NumberBox
     {

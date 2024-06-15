@@ -8,10 +8,10 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Windows.Shapes;
-using QEditor.Utilities;
+using QuietEditor.Utilities;
 using Path = System.IO.Path;
 
-namespace QEditor.GameProject
+namespace QuietEditor.GameProject
 {
     [DataContract]
     public class ProjectTemplate

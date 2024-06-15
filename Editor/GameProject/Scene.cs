@@ -7,10 +7,10 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using QEditor.Components;
-using QEditor.Utilities;
+using QuietEditor.Components;
+using QuietEditor.Utilities;
 
-namespace QEditor.GameProject
+namespace QuietEditor.GameProject
 {
     [DataContract]
     class Scene : ViewModelBase

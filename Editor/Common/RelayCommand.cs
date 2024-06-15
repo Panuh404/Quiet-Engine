@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace QEditor
+namespace QuietEditor
 {
     class RelayCommand<T> : ICommand
     {

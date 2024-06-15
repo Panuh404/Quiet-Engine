@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace QEditor.Dictionaries
+namespace QuietEditor.Dictionaries
 {
     public partial class ControlTemplates : ResourceDictionary
     {

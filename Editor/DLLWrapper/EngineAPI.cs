@@ -1,13 +1,13 @@
-﻿using QEditor.EngineAPIStructs;
+﻿using QuietEditor.EngineAPIStructs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using QEditor.Components;
+using QuietEditor.Components;
 
-namespace QEditor.EngineAPIStructs
+namespace QuietEditor.EngineAPIStructs
 {
     [StructLayout(LayoutKind.Sequential)]
     class TransformComponent
@@ -30,7 +30,7 @@ namespace QEditor.EngineAPIStructs
     }
 }
 
-namespace QEditor.DLLWrapper
+namespace QuietEditor.DLLWrapper
 {
     static class EngineAPI
     {
@@ -68,7 +68,6 @@ namespace QEditor.DLLWrapper
                 }
                 // Script Component
                 {
-                    // TODO: Script Class 
                     //var c = entity.GetComponent<Script>();
                 }
                 return CreateGameEntity(desc);

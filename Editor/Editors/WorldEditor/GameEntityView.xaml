@@ -1,18 +1,55 @@
-﻿<UserControl x:Class="QEditor.Editors.GameEntityView"
+﻿<UserControl x:Class="QuietEditor.Editors.GameEntityView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:QEditor.Editors"
-             xmlns:vm="clr-namespace:QEditor.Components"
-             mc:Ignorable="d" 
+             xmlns:local="clr-namespace:QuietEditor.Editors"
+             xmlns:vm="clr-namespace:QuietEditor.Components"
+             mc:Ignorable="d" Background="{StaticResource Editor.Window.GrayBrush3}"
+             d:DataContext="{d:DesignInstance Type=vm:MSGameEntity, IsDesignTimeCreatable=True}"
              d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
+        <!-- Transform Component Template -->
         <DataTemplate DataType="{x:Type vm:MSTransform}">
             <local:TransformView/>
         </DataTemplate>
+
+        <!-- Script Component Template -->
+        <DataTemplate DataType="{x:Type vm:MSScript}">
+            <local:ScriptView/>
+        </DataTemplate>
+
+        <!-- Add Component Menu -->
+        <ContextMenu x:Key="addComponentMenu" 
+                     IsOpen="{Binding Path=IsChecked, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ToggleButton}}}">
+            <MenuItem Header="Geometry"/>
+            <MenuItem Header="Physics">
+                <MenuItem Header="Rigidbody"/>
+            </MenuItem>
+            <MenuItem Header="Script" ItemsSource="{Binding SelectedEntities[0].ParentScene.Project.AvailableScripts}">
+                <MenuItem.Style>
+                    <Style TargetType="{x:Type MenuItem}">
+                        <Setter Property="Padding" Value="5,3,2,3"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedEntities[0].ParentScene.Project.AvailableScripts}" 
+                                         Value="{x:Null}">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </MenuItem.Style>
+                <MenuItem.ItemContainerStyle>
+                    <Style TargetType="{x:Type MenuItem}">
+                        <Setter Property="Padding" Value="5,3,2,3"/>
+                        <Setter Property="Header" Value="{Binding}"/>
+                        <EventSetter Event="Click" Handler="OnAddScriptComponent"/>
+                    </Style>
+                </MenuItem.ItemContainerStyle>
+            </MenuItem>
+        </ContextMenu>
     </UserControl.Resources>
+    
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <!-- Hide Scroll viewer when no entity selected -->
@@ -26,11 +63,12 @@
             </Style>
         </ScrollViewer.Style>
 
-        <StackPanel>
+        <StackPanel Background="{StaticResource Editor.Window.GrayBrush4}" VerticalAlignment="Top">
             <!-- Add Component Button -->
-            <Border Height="32">
-                <ToggleButton x:Name="addComponent" VerticalAlignment="Center"
-                              HorizontalAlignment="Left" Margin="5,0,0,0">
+            <Border Height="32" Background="{StaticResource Editor.Window.GrayBrush3}">
+                <ToggleButton x:Name="addComponent" VerticalAlignment="Center" ClickMode="Press" Focusable="False"
+                              HorizontalAlignment="Left" Margin="5,0,0,0" 
+                              PreviewMouseLeftButtonDown="OnAddComponent_Button_PreviewMouse_LBD">
                     <ToggleButton.Content>
                         <DockPanel>
                             <TextBlock Text="Add Component" Margin="5,0"/>
@@ -44,19 +82,22 @@
             </Border>
 
             <!-- Game Entity -->
-            <Grid>
+            <Grid Margin="0,1" Background="{StaticResource Editor.Window.GrayBrush3}" 
+                  SnapsToDevicePixels="True" Height="32">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="Name" Grid.Column="0" Margin="5,0,0,0"/>
+                <TextBlock Text="Name" Grid.Column="0" Margin="5,0,0,0" 
+                           Style="{StaticResource LightTextBlockStyle}"/>
                 <TextBox Text="{Binding Name, UpdateSourceTrigger=Explicit}" Grid.Column="1"
                          GotKeyboardFocus="OnName_TextBoxGotKeyboardFocus"
                          LostKeyboardFocus="OnName_TextBoxLostKeyboardFocus"/>
                 <StackPanel Orientation="Horizontal" Grid.Column="2">
-                    <TextBlock Text="Enabled" Margin="5,0,0,0"/>
+                    <TextBlock Text="Enabled" Margin="5,0,0,0" 
+                               Style="{StaticResource LightTextBlockStyle}"/>
                     <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}" 
                               Click="OnIsEnabled_CheckboxClick"
                               Margin="5,0" VerticalAlignment="Center"/>

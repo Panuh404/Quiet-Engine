@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QEditor.Utilities
+namespace QuietEditor.Utilities
 {
     public interface IUndoRedo
     {

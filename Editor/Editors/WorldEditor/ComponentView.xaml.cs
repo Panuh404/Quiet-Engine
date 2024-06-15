@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QEditor.Editors
+namespace QuietEditor.Editors
 {
     [ContentProperty("ComponentContent")]
     public partial class ComponentView : UserControl
