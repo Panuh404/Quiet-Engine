@@ -1,10 +1,9 @@
-#pragma comment(lib, "QEngine.lib")
 
 #include "Common.h"
 #include "CommonHeaders.h"
 #include "Id.h"
-#include "../Engine/Components/Entity.h"
-#include "../Engine/Components/Transform.h"
+#include "..\Engine\Components\Entity.h"
+#include "..\Engine\Components\Transform.h"
 
 using namespace quiet;
 

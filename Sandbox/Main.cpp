@@ -1,5 +1,5 @@
 
-#pragma comment(lib, "QEngine.lib")
+#pragma comment(lib, "Engine.lib")
 
 #include "TestEntityComponents.h"
 

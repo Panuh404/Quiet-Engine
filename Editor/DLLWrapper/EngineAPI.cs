@@ -18,6 +18,12 @@ namespace QEditor.EngineAPIStructs
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    class ScriptComponent
+    {
+        public IntPtr ScriptCreator;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     class GameEntityDescriptor
     {
         public TransformComponent Transform = new TransformComponent();
@@ -28,13 +34,21 @@ namespace QEditor.DLLWrapper
 {
     static class EngineAPI
     {
-        private const string _engineDll = "QEngineDLL.dll";
+        private const string _engineDll = "EngineDLL.dll";
 
         [DllImport(_engineDll, CharSet = CharSet.Ansi)]
         public static extern int LoadGameCodeDll(string dllPath);
 
-        [DllImport(_engineDll, CharSet = CharSet.Ansi)]
+        [DllImport(_engineDll)]
         public static extern int UnloadGameCodeDll();
+
+        [DllImport(_engineDll)]
+        public static extern IntPtr GetScriptCreator(string name);
+
+        [DllImport(_engineDll)] 
+        [return: MarshalAs(UnmanagedType.SafeArray)]
+        public static extern string[] GetScriptNames();
+
 
         internal static class EntityAPI
         {
@@ -52,7 +66,11 @@ namespace QEditor.DLLWrapper
                     desc.Transform.Rotation = c.Rotation;
                     desc.Transform.Scale = c.Scale;
                 }
-
+                // Script Component
+                {
+                    // TODO: Script Class 
+                    //var c = entity.GetComponent<Script>();
+                }
                 return CreateGameEntity(desc);
             }
 

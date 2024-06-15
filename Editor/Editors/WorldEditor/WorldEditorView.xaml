@@ -33,7 +33,7 @@
             <Button Content="Redo" Command="{Binding RedoCommand}" Margin="5,0"/>
             <Button Content="New Script" Click="OnNewScript_Button_Click"
                     IsEnabled="{Binding Path=IsEnabled, ElementName=buildButton}"/>
-            <Button x:Name="buildButton" Content="Build" Margin="5,0"
+            <Button Content="Build" x:Name="buildButton" Margin="5,0"
                     Command="{Binding BuildCommand}" 
                     CommandParameter="{StaticResource True}"/>
             <ComboBox x:Name="runConfig" VerticalAlignment="Center"

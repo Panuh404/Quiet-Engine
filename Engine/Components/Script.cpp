@@ -1,6 +1,7 @@
 #include "Script.h"
 #include "Entity.h"
 #include <filesystem>
+#include <OleCtl.h>
 
 namespace quiet::script
 {
@@ -13,15 +14,26 @@ namespace quiet::script
 		util::vector<script_id>				free_ids;
 
 		using script_registry = std::unordered_map<size_t, detail::script_creator>;
-		script_registry& registery()
+		script_registry& registry()
 		{
 			// NOTE: we put this static variable in a function because of
 			//		 the initialization order of static data. This way, we can
 			//		 be certain that the data is initialized before accessing it.
-
 			static script_registry reg;
 			return reg;
 		}
+
+		#ifdef USE_WITH_EDITOR
+		util::vector<std::string>& script_names()
+		{
+			// NOTE: we put this static variable in a function because of
+			//		 the initialization order of static data. This way, we can
+			//		 be certain that the data is initialized before accessing it.
+			static util::vector<std::string> names;
+			return names;
+		}
+		#endif
+
 
 		bool exists(script_id id)
 		{
@@ -39,10 +51,26 @@ namespace quiet::script
 	{
 		u8 register_script(size_t tag, script_creator func)
 		{
-			bool result{ registery().insert(script_registry::value_type{tag, func}).second };
+			bool result{ registry().insert(script_registry::value_type{tag, func}).second };
 			assert(result);
 			return result;
 		}
+
+		script_creator get_script_creator(size_t tag)
+		{
+			auto script = quiet::script::registry().find(tag);
+			assert(script != quiet::script::registry().end() && script->first == tag);
+			return script->second;
+		}
+
+		#ifdef USE_WITH_EDITOR
+		u8 add_script_name(const char* name)
+		{
+			script_names().emplace_back(name);
+			return true;
+		}
+		#endif
+
 	}
 
 	component create(init_info info, game_entity::entity entity)
@@ -84,3 +112,23 @@ namespace quiet::script
 		id_mapping[id::index(id)] = id::invalid_id;
 	}
 }
+
+#ifdef USE_WITH_EDITOR
+#include <atlsafe.h>
+
+extern "C" __declspec(dllexport)
+LPSAFEARRAY get_script_names()
+{
+	const u32 size{ (u32)quiet::script::script_names().size() };
+	if (!size)
+	{
+		return nullptr;
+	}
+	CComSafeArray<BSTR> names(size);
+	for (u32 i{ 0 }; i < size; ++i)
+	{
+		names.SetAt(i, A2BSTR_EX(quiet::script::script_names()[i].c_str()), false);
+	}
+	return names.Detach();
+}
+#endif
