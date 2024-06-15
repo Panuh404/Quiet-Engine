@@ -5,7 +5,9 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
+using QuietEditor.GameProject;
 using QuietEditor.Components;
+using QuietEditor.Utilities;
 
 namespace QuietEditor.EngineAPIStructs
 {
@@ -27,6 +29,7 @@ namespace QuietEditor.EngineAPIStructs
     class GameEntityDescriptor
     {
         public TransformComponent Transform = new TransformComponent();
+        public ScriptComponent Script = new ScriptComponent();
     }
 }
 
@@ -68,7 +71,21 @@ namespace QuietEditor.DLLWrapper
                 }
                 // Script Component
                 {
-                    //var c = entity.GetComponent<Script>();
+                    // NOTE: here we also check if current project is not null, so we can tell whether the game code DLL
+                    //       has been loaded or not. This way, creation of entities with a script component is deferred
+                    //       until the DLL has been loaded.
+                    var c = entity.GetComponent<Script>();
+                    if (c != null && Project.Current != null)
+                    {
+                        if (Project.Current.AvailableScripts.Contains(c.Name))
+                        {
+                            desc.Script.ScriptCreator = GetScriptCreator(c.Name);
+                        }
+                        else
+                        {
+                            Logger.Log(MessageType.Error, $"Unable to find script with name {c.Name}. Game entity will be created without script component!");
+                        }
+                    }
                 }
                 return CreateGameEntity(desc);
             }

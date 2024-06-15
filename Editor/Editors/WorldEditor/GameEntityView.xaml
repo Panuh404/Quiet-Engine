@@ -10,6 +10,8 @@
              d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
+        <local:NullableBoolToBoolConverter x:Key="nullableBoolToBoolConverter"/>
+
         <!-- Transform Component Template -->
         <DataTemplate DataType="{x:Type vm:MSTransform}">
             <local:TransformView/>
@@ -68,7 +70,8 @@
             <Border Height="32" Background="{StaticResource Editor.Window.GrayBrush3}">
                 <ToggleButton x:Name="addComponent" VerticalAlignment="Center" ClickMode="Press" Focusable="False"
                               HorizontalAlignment="Left" Margin="5,0,0,0" 
-                              PreviewMouseLeftButtonDown="OnAddComponent_Button_PreviewMouse_LBD">
+                              PreviewMouseLeftButtonDown="OnAddComponent_Button_PreviewMouse_LBD"
+                              IsEnabled="{Binding IsEnabled, Converter={StaticResource nullableBoolToBoolConverter}}">
                     <ToggleButton.Content>
                         <DockPanel>
                             <TextBlock Text="Add Component" Margin="5,0"/>
@@ -94,7 +97,8 @@
                            Style="{StaticResource LightTextBlockStyle}"/>
                 <TextBox Text="{Binding Name, UpdateSourceTrigger=Explicit}" Grid.Column="1"
                          GotKeyboardFocus="OnName_TextBoxGotKeyboardFocus"
-                         LostKeyboardFocus="OnName_TextBoxLostKeyboardFocus"/>
+                         LostKeyboardFocus="OnName_TextBoxLostKeyboardFocus"
+                         IsEnabled="{Binding IsEnabled, Converter={StaticResource nullableBoolToBoolConverter}}"/>
                 <StackPanel Orientation="Horizontal" Grid.Column="2">
                     <TextBlock Text="Enabled" Margin="5,0,0,0" 
                                Style="{StaticResource LightTextBlockStyle}"/>
@@ -105,7 +109,8 @@
             </Grid>
 
             <!-- Components -->
-            <ItemsControl ItemsSource="{Binding Components}">
+            <ItemsControl ItemsSource="{Binding Components}" IsTabStop="False" SnapsToDevicePixels="True"
+                          IsEnabled="{Binding IsEnabled, Converter={StaticResource nullableBoolToBoolConverter}}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel/>
