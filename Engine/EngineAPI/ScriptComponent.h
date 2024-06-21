@@ -1,5 +1,5 @@
 #pragma once
-#include "../Components/ComponentsCommon.h"
+#include "CommonHeaders.h"
 
 namespace quiet::script
 {

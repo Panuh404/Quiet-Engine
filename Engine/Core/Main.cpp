@@ -42,5 +42,4 @@
 		return 0;
 	}
 	#endif
-
 #endif
