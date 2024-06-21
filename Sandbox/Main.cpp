@@ -1,29 +1,62 @@
-
 #pragma comment(lib, "Engine.lib")
 
-#include "TestEntityComponents.h"
+// TESTS 
+#define TEST_ENTITY_COMPONENT 0
+#define TEST_WINDOW 1
 
-#define TEST_ENTITY_COMPONENT 1
 
+// CHECK TEST ENABLED
 #if TEST_ENTITY_COMPONENT
-
+	#include "TestEntityComponents.h"
+#elif TEST_WINDOW
+	#include "TestWindow.h"
 #else
-#error One of the tests need to be enabled
+	#error One of the tests need to be enabled
 #endif
 
-int main()
-{
-#if _DEBUG
-	// Check for memory leaks
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
-	new float[4];
-	engine_test test{};
 
-	if(test.initialize())
+// ENTRY POINT - WINDOWS x64 PLATFORM
+#ifdef _WIN64
+	#include <Windows.h>
+
+	int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
-		test.run();
-	}
+		#if _DEBUG
+	    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+		#endif
 
-	test.shutdown();
-}
+	    engine_test test{};
+	    if (test.initialize())
+	    {
+	        MSG msg{};
+	        bool is_running{ true };
+	        while (is_running)
+	        {
+	            while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	            {
+	                TranslateMessage(&msg);
+	                DispatchMessage(&msg);
+	                is_running &= (msg.message != WM_QUIT);
+	            }
+
+	            test.run();
+	        }
+	    }
+	    test.shutdown();
+	    return 0;
+	}
+#else
+	int main()
+	{
+		#if _DEBUG
+	    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+		#endif
+
+	    engine_test test{};
+	    if (test.initialize())
+	    {
+	        test.run();
+	    }
+	    test.shutdown();
+	}
+#endif
