@@ -35,7 +35,7 @@ namespace QuietEditor.Components
             {
                 Transform _ => ComponentType.Transform,
                 Script _ => ComponentType.Script,
-                _ => throw new ArgumentException("Unknown Component Type"),
+                _ => throw new ArgumentException("Unknown component type"),
             };
         }
     }

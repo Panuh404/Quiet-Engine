@@ -25,7 +25,7 @@
 			bool is_running{ true };
 
 			// Engine Update
-			while(is_running)
+			while (is_running)
 			{
 				// Removes and dispatches messages from the message queue, until there are no messages left to process.
 				while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -34,6 +34,7 @@
 					DispatchMessage(&msg);
 					is_running &= (msg.message != WM_QUIT);
 				}
+
 				engine_update();
 			}
 		}

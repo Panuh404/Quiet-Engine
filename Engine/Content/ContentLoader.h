@@ -7,7 +7,5 @@ namespace quiet::content
 {
 	bool load_game();
 	void unload_game();
-
-	
 }
 #endif
