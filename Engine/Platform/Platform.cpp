@@ -210,16 +210,17 @@ namespace quiet::platform
 
 		// Window info
 		window_info info{};
-		RECT rc{ info.client_area };
-		AdjustWindowRect(&rc, info.style, FALSE);	// Adjust window size for correct device
+		info.client_area.right = (init_info && init_info->width) ? info.client_area.left + init_info->width : info.client_area.right;
+		info.client_area.bottom = (init_info && init_info->height) ? info.client_area.top + init_info->height : info.client_area.bottom;
+
+		RECT rect{ info.client_area };
+		AdjustWindowRect(&rect, info.style, FALSE);	// Adjust window size for correct device
 
 		const wchar_t* caption{ (init_info && init_info->caption) ? init_info->caption : L"Quiet Game" };
-
-		const s32 left{ (init_info && init_info->left) ? init_info->left : info.client_area.left };
-		const s32 top{ (init_info && init_info->top) ? init_info->top : info.client_area.top };
-
-		const s32 width{ (init_info && init_info->width) ? init_info->width : rc.right - rc.left };
-		const s32 height{ (init_info && init_info->height) ? init_info->height : rc.bottom - rc.top };
+		const s32 left{ init_info ? init_info->left : info.top_left.x };
+		const s32 top{ init_info ? init_info->top : info.top_left.y };
+		const s32 width{ rect.right - rect.left };
+		const s32 height{ rect.bottom - rect.top };
 
 		info.style |= parent ? WS_CHILD : WS_OVERLAPPEDWINDOW;
 
@@ -238,12 +239,12 @@ namespace quiet::platform
 
 		if (info.hwnd)
 		{
-			SetLastError(0);
+			DEBUG_OP(SetLastError(0));
 			const window_id id{ add_to_windows(info) };
 			SetWindowLongPtr(info.hwnd, GWLP_USERDATA, (LONG_PTR)id);
 
 			if (callback) SetWindowLongPtr(info.hwnd, 0, (LONG_PTR)callback);
-			assert(GetLastError() == 0);
+			DEBUG_OP(assert(GetLastError() == 0));
 
 			ShowWindow(info.hwnd, SW_SHOWNORMAL);
 			UpdateWindow(info.hwnd);
@@ -259,7 +260,8 @@ namespace quiet::platform
 		remove_from_windows(id);
 	}
 
-	#elif
+	#else
+	#error "Must Import at least one platform"
 	#endif // _WIN64
 
 	//////////////////////////////////////
