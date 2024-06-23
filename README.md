@@ -17,6 +17,7 @@ If the repository was cloned non-recursively previously, use `git submodule upda
 - [MSVC floatin point behavior setting](https://learn.microsoft.com/en-us/cpp/build/reference/fp-specify-floating-point-behavior?view=msvc-170&viewFallbackFrom=vs-2019#fast)
 - [What Every Programmer Should Know About Memory](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf)
 - [EnvDTE80 - Visual Studio core automation](https://learn.microsoft.com/en-us/dotnet/api/envdte80?view=visualstudiosdk-2022)
+- [Hosting Win32 Content in WPF](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/hosting-win32-content-in-wpf?view=netframeworkdesktop-4.8)
 
 ## License
 Quiet engine is licensed under MIT License. See [LICENSE](LICENSE) file.

@@ -141,13 +141,11 @@ namespace quiet::platform
 					GetWindowRect(info.hwnd, &rect);
 					info.top_left.x = rect.left;
 					info.top_left.y = rect.top;
-					info.style = 0;
-					SetWindowLongPtr(info.hwnd, GWL_STYLE, info.style);
+					SetWindowLongPtr(info.hwnd, GWL_STYLE, 0);
 					ShowWindow(info.hwnd, SW_MAXIMIZE);
 				}
 				else
 				{
-					info.style = WS_VISIBLE | WS_OVERLAPPEDWINDOW;
 					SetWindowLongPtr(info.hwnd, GWL_STYLE, info.style);
 					resize_window(info, info.client_area);
 					ShowWindow(info.hwnd, SW_SHOWNORMAL);
@@ -212,6 +210,7 @@ namespace quiet::platform
 		window_info info{};
 		info.client_area.right = (init_info && init_info->width) ? info.client_area.left + init_info->width : info.client_area.right;
 		info.client_area.bottom = (init_info && init_info->height) ? info.client_area.top + init_info->height : info.client_area.bottom;
+		info.style |= parent ? WS_CHILD : WS_OVERLAPPEDWINDOW;
 
 		RECT rect{ info.client_area };
 		AdjustWindowRect(&rect, info.style, FALSE);	// Adjust window size for correct device
@@ -221,8 +220,6 @@ namespace quiet::platform
 		const s32 top{ init_info ? init_info->top : info.top_left.y };
 		const s32 width{ rect.right - rect.left };
 		const s32 height{ rect.bottom - rect.top };
-
-		info.style |= parent ? WS_CHILD : WS_OVERLAPPEDWINDOW;
 
 		// Create an instance of the window class
 		info.hwnd = CreateWindowEx(

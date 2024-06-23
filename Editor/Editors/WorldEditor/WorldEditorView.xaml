@@ -59,12 +59,8 @@
                     <RowDefinition/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
-
-                <Border Background="{StaticResource Editor.Selected.BackgroundBrush}">
-                    <StackPanel VerticalAlignment="Center">
-
-                    </StackPanel>
-                </Border>
+                
+                <utils:RenderSurfaceView/>
 
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"  Background="Transparent"/>
