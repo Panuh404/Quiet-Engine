@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "fUuXK/HG688=",
+  "success": true,
+  "projectFilePath": "D:\\Code\\Quiet-Engine\\QEditor\\QEditor.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\gasto\\.nuget\\packages\\envdte\\17.10.40170\\envdte.17.10.40170.nupkg.sha512",
+    "C:\\Users\\gasto\\.nuget\\packages\\envdte80\\17.10.40170\\envdte80.17.10.40170.nupkg.sha512",
+    "C:\\Users\\gasto\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",
+    "C:\\Users\\gasto\\.nuget\\packages\\microsoft.visualstudio.interop\\17.10.40170\\microsoft.visualstudio.interop.17.10.40170.nupkg.sha512",
+    "C:\\Users\\gasto\\.nuget\\packages\\system.data.datasetextensions\\4.5.0\\system.data.datasetextensions.4.5.0.nupkg.sha512"
+  ],
+  "logs": []
+}

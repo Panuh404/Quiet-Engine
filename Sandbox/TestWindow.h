@@ -1,7 +1,7 @@
 #pragma once
 #include "test.h"
-#include "..\Platform\PlatformTypes.h"
-#include "..\Platform\Platform.h"
+#include "..\QEngine\Platform\PlatformTypes.h"
+#include "..\QEngine\Platform\Platform.h"
 
 using namespace quiet;
 

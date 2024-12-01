@@ -1,4 +1,4 @@
-#pragma comment(lib, "Engine.lib")
+#pragma comment(lib, "QEngine.lib")
 
 // TESTS 
 #define TEST_ENTITY_COMPONENT 0

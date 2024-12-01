@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Test.h"
-#include "../Engine/Components/Entity.h"
-#include "../Engine/Components/Transform.h"
+#include "../QEngine/Components/Entity.h"
+#include "../QEngine/Components/Transform.h"
 
 #include <iostream>
 #include <ctime>
