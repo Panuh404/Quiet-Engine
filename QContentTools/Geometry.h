@@ -30,7 +30,7 @@ namespace quiet::tools
 		// Initial data
 		util::vector<math::v3>						positions;
 		util::vector<math::v3>						normals;
-		util::vector<math::v3>						tangents;
+		util::vector<math::v4>						tangents;
 		util::vector<util::vector<math::v2>>		uv_sets;
 
 		util::vector<u32>							raw_indices;
@@ -76,5 +76,5 @@ namespace quiet::tools
 	};
 
 	void process_scene(scene& scene, const geometry_import_settings& settings);
-	void pack_data(const scene scene, scene_data& data);
+	void pack_data(const scene& scene, scene_data& data);
 }

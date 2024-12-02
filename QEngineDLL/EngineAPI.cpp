@@ -6,11 +6,12 @@
 #include "..\Platform\PlatformTypes.h"
 #include "..\Platform\Platform.h"
 
-#ifndef WIND32_MEAN_AND_LEAN
-#define WIN32_MEAN_AND_LEAN
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 
 #include <Windows.h>
+#include <atlsafe.h>
 
 using namespace quiet;
 

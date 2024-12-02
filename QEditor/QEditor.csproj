@@ -46,9 +46,13 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="obj\**" />
     <Compile Remove="Templates\**" />
+    <EmbeddedResource Remove="obj\**" />
     <EmbeddedResource Remove="Templates\**" />
+    <None Remove="obj\**" />
     <None Remove="Templates\**" />
+    <Page Remove="obj\**" />
     <Page Remove="Templates\**" />
   </ItemGroup>
 
