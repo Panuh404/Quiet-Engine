@@ -18,6 +18,7 @@ If the repository was cloned non-recursively previously, use `git submodule upda
 - [What Every Programmer Should Know About Memory](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf)
 - [EnvDTE80 - Visual Studio core automation](https://learn.microsoft.com/en-us/dotnet/api/envdte80?view=visualstudiosdk-2022)
 - [Hosting Win32 Content in WPF](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/hosting-win32-content-in-wpf?view=netframeworkdesktop-4.8)
+- [Routed Events](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/routed-events-overview?view=netframeworkdesktop-4.8)
 
 ## License
 Quiet engine is licensed under MIT License. See [LICENSE](LICENSE) file.

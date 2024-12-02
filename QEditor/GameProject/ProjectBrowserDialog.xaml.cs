@@ -15,9 +15,6 @@ using System.Windows.Shapes;
 
 namespace QEditor.GameProject
 {
-    /// <summary>
-    /// Interaction logic for ProjectBrowserDialog.xaml
-    /// </summary>
     public partial class ProjectBrowserDialog : Window
     {
         private readonly CubicEase _easing = new CubicEase() { EasingMode = EasingMode.EaseInOut };
@@ -38,7 +35,6 @@ namespace QEditor.GameProject
                 OnToggleButton_Click(createProjectButton, new RoutedEventArgs());
             }
         }
-
 
         private void AnimateToCreateProject()
         {

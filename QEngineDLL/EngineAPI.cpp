@@ -71,12 +71,12 @@ EDITOR_INTERFACE LPSAFEARRAY GetScriptNames()
 ////////////
 EDITOR_INTERFACE u32 CreateRenderSurface(HWND host, s32 width, s32 height)
 {
-	assert(host);
-	platform::window_init_info info{ nullptr, host, nullptr, 0, 0, width, height };
-	graphics::render_surface surface{ platform::create_window(&info), {} };
-	assert(surface.window.is_valid());
-	surfaces.emplace_back(surface);
-	return (u32)surfaces.size() - 1;
+    assert(host);
+    platform::window_init_info info{ nullptr, host, nullptr, 0, 0, width, height };
+    graphics::render_surface surface{ platform::create_window(&info), {} };
+    assert(surface.window.is_valid());
+    surfaces.emplace_back(surface);
+    return (u32)surfaces.size() - 1;
 }
 
 EDITOR_INTERFACE void RemoveRenderSurface(u32 id)

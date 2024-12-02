@@ -9,8 +9,8 @@
 
 	namespace quiet::platform {
 
-	    using window_proc = LRESULT(*)(HWND, UINT, WPARAM, LPARAM);
-	    using window_handle = HWND;
+		using window_proc = LRESULT(*)(HWND, UINT, WPARAM, LPARAM);
+		using window_handle = HWND;
 
 	    struct window_init_info
 	    {

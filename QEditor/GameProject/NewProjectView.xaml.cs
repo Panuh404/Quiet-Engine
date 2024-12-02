@@ -16,9 +16,6 @@ using System.Windows.Shapes;
 
 namespace QEditor.GameProject
 {
-    /// <summary>
-    /// Interaction logic for CreateProjectView.xaml
-    /// </summary>
     public partial class NewProjectView : UserControl
     {
         public NewProjectView()

@@ -15,9 +15,6 @@ using System.Windows.Shapes;
 
 namespace QEditor.Editors
 {
-    /// <summary>
-    /// Interaction logic for ScriptView.xaml
-    /// </summary>
     public partial class ScriptView : UserControl
     {
         public ScriptView()

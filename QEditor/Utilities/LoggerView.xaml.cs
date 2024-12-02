@@ -15,9 +15,6 @@ using System.Windows.Shapes;
 
 namespace QEditor.Utilities
 {
-    /// <summary>
-    /// Interaction logic for LoggerView.xaml
-    /// </summary>
     public partial class LoggerView : UserControl
     {
         public LoggerView()

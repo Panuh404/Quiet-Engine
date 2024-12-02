@@ -15,9 +15,6 @@ using System.Windows.Shapes;
 
 namespace QEditor.Utilities
 {
-    /// <summary>
-    /// Interaction logic for UndoRedoView.xaml
-    /// </summary>
     public partial class UndoRedoView : UserControl
     {
         public UndoRedoView()

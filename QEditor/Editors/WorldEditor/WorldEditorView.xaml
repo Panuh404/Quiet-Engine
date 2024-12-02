@@ -46,6 +46,7 @@
                 <ComboBoxItem Content="Debug"/>
                 <ComboBoxItem Content="Release"/>
             </ComboBox>
+            <Button Content="Primitive Mesh" Click="OnCreatePrimitiveMesh_Button_Click" Margin="5,0"/>
         </StackPanel>
     
         <Grid Grid.Row="1">
@@ -60,7 +61,7 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <utils:RenderSurfaceView Margin="0" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <utils:RenderSurfaceView/>
 
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"  Background="Transparent"/>

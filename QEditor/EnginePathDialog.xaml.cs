@@ -15,9 +15,6 @@ using Path = System.IO.Path;
 
 namespace QEditor
 {
-    /// <summary>
-    /// Interaction logic for EnginePathDialog.xaml
-    /// </summary>
     public partial class EnginePathDialog : Window
     {
         public string QuietPath { get; private set; }

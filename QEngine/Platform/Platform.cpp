@@ -211,7 +211,7 @@ namespace quiet::platform
 		wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wc.hbrBackground = CreateSolidBrush(RGB(26, 48, 76));
 		wc.lpszMenuName = NULL;
-		wc.lpszClassName = L"PrimalWindow";
+		wc.lpszClassName = L"QuietWindow";
 		wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
 		// Register window class
@@ -315,7 +315,7 @@ namespace quiet::platform
 		math::u32v4 s{ size() };
 		// To calculate the width, we subtract
 		// the left position with the right position
-		return s.z - s.x; 
+		return s.z - s.x;
 	}
 
 	u32 window::height() const

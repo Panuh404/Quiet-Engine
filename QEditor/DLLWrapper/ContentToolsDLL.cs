@@ -55,17 +55,17 @@ namespace QEditor.ContentToolsAPIStructs
 
 namespace QEditor.DLLWrapper
 {
-    static class ContentToolsDLL
+    static class ContentToolsAPI
     {
         private const string _toolsDLL = "QContentTools.dll";
 
         [DllImport(_toolsDLL)]
-        private static extern void CreatePrimitiveMesh([In, Out]SceneData data, PrimitiveInitInfo info);
+        private static extern void CreatePrimitiveMesh([In, Out] SceneData data, PrimitiveInitInfo info);
 
         public static void CreatePrimitiveMesh(Content.Geometry geometry, PrimitiveInitInfo info)
         {
             Debug.Assert(geometry != null);
-            var sceneData = new SceneData();
+            using var sceneData = new SceneData();
             try
             {
                 CreatePrimitiveMesh(sceneData, info);
@@ -74,9 +74,9 @@ namespace QEditor.DLLWrapper
                 Marshal.Copy(sceneData.Data, data, 0, sceneData.DataSize);
                 geometry.FromRawData(data);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Logger.Log(MessageType.Error, $"Failed to create {info.Type} primitive mesh.");
+                Logger.Log(MessageType.Error, $"failed to create {info.Type} primitive mesh.");
                 Debug.WriteLine(ex.Message);
             }
         }

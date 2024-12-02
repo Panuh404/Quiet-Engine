@@ -19,9 +19,6 @@ using Path = System.IO.Path;
 
 namespace QEditor
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         public static string QuietPath { get; private set; }
