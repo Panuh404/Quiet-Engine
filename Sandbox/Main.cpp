@@ -2,7 +2,8 @@
 
 // TESTS 
 #define TEST_ENTITY_COMPONENT 0
-#define TEST_WINDOW 1
+#define TEST_WINDOW 0
+#define TEST_RENDERER 1
 
 
 // CHECK TEST ENABLED
@@ -10,6 +11,8 @@
 	#include "TestEntityComponents.h"
 #elif TEST_WINDOW
 	#include "TestWindow.h"
+#elif TEST_RENDERER
+	#include "TestRenderer.h"
 #else
 	#error One of the tests need to be enabled
 #endif

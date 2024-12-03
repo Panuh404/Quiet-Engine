@@ -12,4 +12,12 @@ namespace quiet::graphics
         platform::window window{};
         surface surface{};
     };
+
+    enum graphics_platform : u32
+    {
+	    direct3d12 = 0,
+    };
+
+    bool initialize(graphics_platform platform);
+    void shutdown();
 }
