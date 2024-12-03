@@ -40,7 +40,8 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	  <XamlDebuggingInformation>True</XamlDebuggingInformation>
+	  <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <BaseIntermediateOutputPath>..\Intermediate</BaseIntermediateOutputPath>
   </PropertyGroup>
@@ -57,6 +58,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <None Remove="Resources\PrimitiveMeshView\Checkermap.png" />
     <None Remove="Resources\PrimitiveMeshView\GridTexture.png" />
   </ItemGroup>
 
@@ -79,6 +81,7 @@
     <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Resources\PrimitiveMeshView\Checkermap.png" />
     <Resource Include="Resources\PrimitiveMeshView\GridTexture.png" />
   </ItemGroup>
   <ItemGroup>

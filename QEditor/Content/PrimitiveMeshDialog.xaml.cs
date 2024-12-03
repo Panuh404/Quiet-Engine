@@ -39,6 +39,7 @@ namespace QEditor.Content
 
             var primitiveType = (PrimitiveMeshType)primTypeComboBox.SelectedItem;
             var info = new PrimitiveInitInfo() { Type = primitiveType };
+            var smoothingAngle = 0;
 
             switch (primitiveType)
             {
@@ -53,7 +54,15 @@ namespace QEditor.Content
                 case PrimitiveMeshType.Cube:
                     return;
                 case PrimitiveMeshType.UvSphere:
-                    return;
+                    {
+                        info.SegmentX = (int)xSliderUvSphere.Value;
+                        info.SegmentY = (int)ySliderUvSphere.Value;
+                        info.Size.X = Value(xScalarBoxUvSphere, 0.001f);
+                        info.Size.Y = Value(xScalarBoxUvSphere, 0.001f);
+                        info.Size.Z = Value(xScalarBoxUvSphere, 0.001f);
+                        smoothingAngle = (int)angleSliderUvSphere.Value;
+                    }
+                    break;
                 case PrimitiveMeshType.IcoSphere:
                     return;
                 case PrimitiveMeshType.Cylinder:
@@ -65,6 +74,7 @@ namespace QEditor.Content
             }
 
             var geometry = new Geometry();
+            geometry.ImportSettings.SmoothingAngle = smoothingAngle;
             ContentToolsAPI.CreatePrimitiveMesh(geometry, info);
             (DataContext as GeometryEditor).SetAsset(geometry);
             OnTexture_CheckBox_Click(textureCheckBox, null);
@@ -74,7 +84,9 @@ namespace QEditor.Content
         {
             var uris = new List<Uri>
             {
-                new Uri("pack://application:,,,/Resources/PrimitiveMeshView/GridTexture.png")
+                new Uri("pack://application:,,,/Resources/PrimitiveMeshView/GridTexture.png"), // Plane
+                new Uri("pack://application:,,,/Resources/PrimitiveMeshView/GridTexture.png"), // Cube
+                new Uri("pack://application:,,,/Resources/PrimitiveMeshView/Checkermap.png"),  // UvSphere
             };
 
             _textures.Clear();
