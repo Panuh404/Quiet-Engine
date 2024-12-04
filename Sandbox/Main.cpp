@@ -1,9 +1,5 @@
+#include "Test.h"
 #pragma comment(lib, "QEngine.lib")
-
-// TESTS 
-#define TEST_ENTITY_COMPONENT 0
-#define TEST_WINDOW 0
-#define TEST_RENDERER 1
 
 
 // CHECK TEST ENABLED

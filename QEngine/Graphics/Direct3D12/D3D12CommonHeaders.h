@@ -11,6 +11,11 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 
+namespace quiet::graphics::d3d12
+{
+	constexpr u32 frame_buffer_count{ 3 };
+}
+
 // Asset that COM call to D3D API Succeeded
 #ifdef _DEBUG
 	#ifndef DXCall
@@ -38,6 +43,15 @@
 #ifdef _DEBUG
 	// Sets the name of the COM object and outputs a debug string int Visual Studio's output panel.
 	#define NAME_D3D12_OBJECT(obj, name) obj->SetName(name); OutputDebugString(L"::D3D12 Object Created: "); OutputDebugString(name); OutputDebugString(L"\n");
+	#define NAME_D3D12_OBJECT_INDEXED(obj, n, name)     \
+	{                                                   \
+	wchar_t full_name[128];                             \
+	if (swprintf_s(full_name, L"%s[%u]", name, n) >0 ){ \
+	    obj->SetName(full_name);                        \
+	    OutputDebugString(L"::D3D12 Object Created: "); \
+	    OutputDebugString(full_name);                   \
+	    OutputDebugString(L"\n");                       \
+	}}
 #else
 	#define NAME_D3D12_OBJECT(x, name)
 #endif // _DEBUG

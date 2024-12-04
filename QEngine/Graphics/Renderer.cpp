@@ -31,4 +31,9 @@ namespace quiet::graphics
 	{
 		gfx.shutdown();
 	}
+
+	void render ()
+	{
+		gfx.render();
+	}
 }

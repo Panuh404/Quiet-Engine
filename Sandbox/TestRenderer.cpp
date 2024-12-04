@@ -1,11 +1,14 @@
+
+
 #include "..\QEngine\Platform\PlatformTypes.h"
 #include "..\QEngine\Platform\Platform.h"
 #include "..\QEngine\Graphics\Renderer.h"
 #include "TestRenderer.h"
+#if TEST_RENDERER
 
 using namespace quiet;
 
-graphics::render_surface _surfaces[4];
+graphics::render_surface _surfaces[1];
 
 LRESULT win_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -58,10 +61,10 @@ bool engine_test::initialize()
 
     platform::window_init_info info[]
     {
-        {&win_proc, nullptr, L"Test window 1", 100, 100, 400, 800},
-        {&win_proc, nullptr, L"Test window 2", 150, 150, 800, 400},
-        {&win_proc, nullptr, L"Test window 3", 200, 200, 400, 400},
-        {&win_proc, nullptr, L"Test window 4", 250, 250, 800, 600},
+        {&win_proc, nullptr, L"Test window", 100, 100, 800, 600},
+//        {&win_proc, nullptr, L"Test window 2", 150, 150, 800, 400},
+//        {&win_proc, nullptr, L"Test window 3", 200, 200, 400, 400},
+//        {&win_proc, nullptr, L"Test window 4", 250, 250, 800, 600},
     };
     static_assert(_countof(info) == _countof(_surfaces));
 
@@ -74,6 +77,7 @@ bool engine_test::initialize()
 void engine_test::run()
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    graphics::render();
 }
 
 void engine_test::shutdown()
@@ -85,3 +89,4 @@ void engine_test::shutdown()
 }
 
 
+#endif
