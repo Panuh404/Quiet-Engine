@@ -11,6 +11,7 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 
+
 namespace quiet::graphics::d3d12
 {
 	constexpr u32 frame_buffer_count{ 3 };

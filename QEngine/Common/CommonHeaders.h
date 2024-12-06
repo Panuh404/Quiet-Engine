@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <memory>
 #include <unordered_map>
+#include <mutex>
 
 // Windows Specific Headers
 #if defined(_WIN64)
@@ -22,7 +23,6 @@
 #include "Id.h"
 
 // Macros
-
 #ifdef _DEBUG
 #define DEBUG_OP(x) x
 #else

@@ -19,6 +19,8 @@ If the repository was cloned non-recursively previously, use `git submodule upda
 - [EnvDTE80 - Visual Studio core automation](https://learn.microsoft.com/en-us/dotnet/api/envdte80?view=visualstudiosdk-2022)
 - [Hosting Win32 Content in WPF](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/hosting-win32-content-in-wpf?view=netframeworkdesktop-4.8)
 - [Routed Events](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/routed-events-overview?view=netframeworkdesktop-4.8)
+- [DirectX Samples](https://github.com/microsoft/DirectX-Graphics-Samples)
+- [Descriptor Heaps](https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps)
 
 ## License
 Quiet engine is licensed under MIT License. See [LICENSE](LICENSE) file.
