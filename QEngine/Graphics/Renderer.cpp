@@ -20,7 +20,7 @@ namespace quiet::graphics
 			}
 			return true;
 		}
-	}
+	} 	
 
 	bool initialize(graphics_platform platform)
 	{
@@ -32,8 +32,38 @@ namespace quiet::graphics
 		gfx.shutdown();
 	}
 
-	void render ()
+	surface create_surface(platform::window window)
 	{
-		gfx.render();
+		return gfx.surface.create(window);
+	}
+
+	void remove_surface(surface_id id)
+	{
+		assert(id::is_valid(id));
+		gfx.surface.remove(id);
+	}
+
+	void surface::resize(u32 width, u32 height) const
+	{
+		assert(is_valid());
+		gfx.surface.resize(_id, width, height);
+	}
+
+	u32 surface::width() const
+	{
+		assert(is_valid());
+		return gfx.surface.width(_id);
+	}
+
+	u32 surface::height() const
+	{
+		assert(is_valid());
+		return gfx.surface.height(_id);
+	}
+
+	void surface::render() const
+	{
+		assert(is_valid());
+		gfx.surface.render(_id);
 	}
 }

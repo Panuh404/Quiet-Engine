@@ -21,6 +21,14 @@ If the repository was cloned non-recursively previously, use `git submodule upda
 - [Routed Events](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/routed-events-overview?view=netframeworkdesktop-4.8)
 - [DirectX Samples](https://github.com/microsoft/DirectX-Graphics-Samples)
 - [Descriptor Heaps](https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps)
+- [DXGI Overview](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi)
+
+- [The Care and Feeding of Modern Swap Chains 1](https://walbourn.github.io/care-and-feeding-of-modern-swapchains/)
+- [The Care and Feeding of Modern Swap Chains 2](https://walbourn.github.io/care-and-feeding-of-modern-swap-chains-2/)
+- [The Care and Feeding of Modern Swap Chains 3](https://walbourn.github.io/care-and-feeding-of-modern-swap-chains-3/)
+
+
+
 
 ## License
 Quiet engine is licensed under MIT License. See [LICENSE](LICENSE) file.
