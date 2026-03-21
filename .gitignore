@@ -1,0 +1,85 @@
+# Build output
+/build/
+/build-*/
+/out/
+/bin/
+/lib/
+/dist/
+/Build
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+Makefile
+install_manifest.txt
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.opendb
+*.sln.docstates
+*.vcxproj.user
+
+# JetBrains / CLion
+.idea/
+cmake-build-*/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Linux
+.directory
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Compiled binaries / libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.obj
+*.o
+*.pdb
+*.idb
+*.ilk
+
+# Shader build outputs (keep source, ignore generated)
+*.spv
+*.spirv
+
+# Archives / packaged outputs
+*.zip
+*.7z
+*.tar
+*.gz
+
+# Runtime-generated cache / save data (adjust later if needed)
+Saved/
+Cache/
+Temp/
+
+# Python cache, if we add pipeline scripts later
+__pycache__/
+*.pyc
