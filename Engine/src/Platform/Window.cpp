@@ -1,0 +1,61 @@
+#include "Quiet/Platform/Window.h"
+#include <GLFW/glfw3.h>
+#include <stdexcept>
+
+namespace Quiet::Platform
+{
+    Window::Window(const WindowDesc &desc) : m_Desc(desc)
+    {
+        if (glfwInit() != GLFW_TRUE)
+        {
+            throw std::runtime_error("Failed to initialize GLFW");
+        }
+
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, m_Desc.Resizable ? GLFW_TRUE : GLFW_FALSE);
+
+        m_Handle = glfwCreateWindow(
+            static_cast<int>(m_Desc.Width),
+            static_cast<int>(m_Desc.Height),
+            m_Desc.Title.c_str(),
+            nullptr,
+            nullptr);
+
+        if (!m_Handle)
+        {
+            glfwTerminate();
+            throw std::runtime_error("Failed to create GLFW window");
+        }
+    }
+
+    Window::~Window()
+    {
+        if (m_Handle)
+        {
+            glfwDestroyWindow(m_Handle);
+            m_Handle = nullptr;
+        }
+        glfwTerminate();
+    }
+
+    void Window::PollEvents()
+    {
+        glfwPollEvents();
+    }
+
+    std::vector<const char*> Window::GetRequiredVulkanInstanceExtensions() const
+    {
+        std::uint32_t count = 0;
+        const char** extensions = glfwGetRequiredInstanceExtensions(&count);
+
+        if (!extensions)
+        {
+            return {};
+        }
+        return { extensions, extensions + count };
+    }
+
+    bool Window::ShouldClose() const { return glfwWindowShouldClose(m_Handle) == GLFW_TRUE; }
+    bool Window::IsVulkanSupported() const { return glfwVulkanSupported() == GLFW_TRUE; }
+    void* Window::GetNativeHandle() const  { return m_Handle; }
+}

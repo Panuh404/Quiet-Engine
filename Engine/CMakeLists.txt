@@ -4,8 +4,10 @@ add_library(Quiet_Engine STATIC)
 target_sources(Quiet_Engine
     PRIVATE
         src/Core/Application.cpp
+        src/Platform/Window.cpp
     PUBLIC
         include/Quiet/Core/Application.h
+        include/Quiet/Platform/Window.h
 )
 
 target_include_directories(Quiet_Engine
@@ -15,6 +17,11 @@ target_include_directories(Quiet_Engine
 
 target_compile_features(Quiet_Engine PUBLIC cxx_std_20)
 
+target_link_libraries(Quiet_Engine
+    PUBLIC
+        glfw
+        Vulkan::Vulkan
+)
 
 if (MSVC)
     target_compile_options(Quiet_Engine PRIVATE /W4 /permissive- /EHsc)
