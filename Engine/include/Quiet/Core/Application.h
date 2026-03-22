@@ -23,6 +23,7 @@ namespace Quiet::Core
     public:
         explicit Application(AppSpec spec);
         ~Application();
+
         int Run();
 
     private:

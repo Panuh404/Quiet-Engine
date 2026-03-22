@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Quiet/Core/Log.h"
+
 namespace
 {
     std::string FormatVulkanVersion(std::uint32_t version)
@@ -42,6 +44,8 @@ namespace Quiet::Core
     Application::Application(AppSpec spec)
         : m_Spec(std::move(spec))
     {
+        Log::Init();
+
         Quiet::Platform::WindowDesc windowDesc{};
         windowDesc.Width = m_Spec.Width;
         windowDesc.Height = m_Spec.Height;
@@ -50,28 +54,31 @@ namespace Quiet::Core
         m_Window = std::make_unique<Quiet::Platform::Window>(windowDesc);
     }
 
-    Application::~Application() = default;
+    Application::~Application()
+    {
+        Log::Shutdown();
+    }
 
     int Application::Run()
     {
-        std::cout << "[Quiet] Starting application: " << m_Spec.Name << '\n';
+        QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
 
         if (!m_Window->IsVulkanSupported())
         {
+            QUIET_CORE_ERROR("GLFW reports that Vulkan is not available.");
             throw std::runtime_error(
                 "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
             );
         }
 
         const std::uint32_t apiVersion = QueryLoaderInstanceVersion();
-        std::cout << "[Quiet] Vulkan loader instance API version: "
-                  << FormatVulkanVersion(apiVersion) << '\n';
+        QUIET_CORE_INFO("Vulkan loader instance API version: {}", FormatVulkanVersion(apiVersion));
 
         const auto extensions = m_Window->GetRequiredVulkanInstanceExtensions();
-        std::cout << "[Quiet] Required Vulkan instance extensions:\n";
+        QUIET_CORE_INFO("Required Vulkan instance extensions:");
         for (const char* extension : extensions)
         {
-            std::cout << "  - " << extension << '\n';
+            QUIET_CORE_INFO("  - {}", extension);
         }
 
         while (m_Running && !m_Window->ShouldClose())
@@ -79,7 +86,7 @@ namespace Quiet::Core
             m_Window->PollEvents();
         }
 
-        std::cout << "[Quiet] Shutting down.\n";
+        QUIET_CORE_INFO("Shutting down.");
         return 0;
     }
 }

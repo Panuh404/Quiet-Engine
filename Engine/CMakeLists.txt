@@ -4,9 +4,11 @@ add_library(Quiet_Engine STATIC)
 target_sources(Quiet_Engine
     PRIVATE
         src/Core/Application.cpp
+        src/Core/Log.cpp
         src/Platform/Window.cpp
     PUBLIC
         include/Quiet/Core/Application.h
+        include/Quiet/Core/Log.h
         include/Quiet/Platform/Window.h
 )
 
@@ -21,6 +23,7 @@ target_link_libraries(Quiet_Engine
     PUBLIC
         glfw
         Vulkan::Vulkan
+        spdlog::spdlog
 )
 
 if (MSVC)
