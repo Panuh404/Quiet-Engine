@@ -4,6 +4,10 @@
 #include <memory>
 #include <string>
 
+namespace Quiet::Renderer::Vulkan {
+    class VulkanInstance;
+}
+
 namespace Quiet::Platform
 {
     class Window;
@@ -29,6 +33,7 @@ namespace Quiet::Core
     private:
         AppSpec m_Spec;
         std::unique_ptr<Quiet::Platform::Window> m_Window;
+        std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
         bool m_Running = true;
     };
 }

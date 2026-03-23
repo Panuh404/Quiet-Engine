@@ -1,14 +1,11 @@
+#include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
+#include "Renderer/Vulkan/VulkanInstance.h"
 
-#include <vulkan/vulkan.h>
-
-#include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <utility>
 
-#include "Quiet/Core/Log.h"
 
 namespace
 {
@@ -52,17 +49,6 @@ namespace Quiet::Core
         windowDesc.Title = m_Spec.Name;
 
         m_Window = std::make_unique<Quiet::Platform::Window>(windowDesc);
-    }
-
-    Application::~Application()
-    {
-        Log::Shutdown();
-    }
-
-    int Application::Run()
-    {
-        QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
-
         if (!m_Window->IsVulkanSupported())
         {
             QUIET_CORE_ERROR("GLFW reports that Vulkan is not available.");
@@ -71,15 +57,22 @@ namespace Quiet::Core
             );
         }
 
-        const std::uint32_t apiVersion = QueryLoaderInstanceVersion();
-        QUIET_CORE_INFO("Vulkan loader instance API version: {}", FormatVulkanVersion(apiVersion));
+        m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
+            m_Spec.Name,
+            m_Window->GetRequiredVulkanInstanceExtensions()
+        );
+    }
 
-        const auto extensions = m_Window->GetRequiredVulkanInstanceExtensions();
-        QUIET_CORE_INFO("Required Vulkan instance extensions:");
-        for (const char* extension : extensions)
-        {
-            QUIET_CORE_INFO("  - {}", extension);
-        }
+    Application::~Application()
+    {
+        m_VulkanInstance.reset();
+        m_Window.reset();
+        Log::Shutdown();
+    }
+
+    int Application::Run()
+    {
+        QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
 
         while (m_Running && !m_Window->ShouldClose())
         {

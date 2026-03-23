@@ -6,6 +6,8 @@ target_sources(Quiet_Engine
         src/Core/Application.cpp
         src/Core/Log.cpp
         src/Platform/Window.cpp
+        src/Renderer/Vulkan/VulkanInstance.cpp
+        src/Renderer/Vulkan/VulkanInstance.h
     PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/Log.h
@@ -15,6 +17,8 @@ target_sources(Quiet_Engine
 target_include_directories(Quiet_Engine
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_compile_features(Quiet_Engine PUBLIC cxx_std_20)
