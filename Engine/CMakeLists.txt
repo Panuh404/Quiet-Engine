@@ -12,6 +12,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanSurface.h
         src/Renderer/Vulkan/PhysicalDevice.cpp
         src/Renderer/Vulkan/PhysicalDevice.h
+        src/Renderer/Vulkan/LogicalDevice.cpp
+        src/Renderer/Vulkan/LogicalDevice.h
 
     PUBLIC
         include/Quiet/Core/Application.h

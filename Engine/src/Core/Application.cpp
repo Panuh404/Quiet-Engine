@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Renderer/Vulkan/LogicalDevice.h"
+
 namespace Quiet::Core
 {
     Application::Application(AppSpec spec)
@@ -44,10 +46,15 @@ namespace Quiet::Core
             m_VulkanSurface->GetHandle(),
             m_VulkanInstance->GetApiVersion()
         );
+
+        m_LogicalDevice = std::make_unique<Quiet::Renderer::Vulkan::LogicalDevice>(
+            *m_PhysicalDevice
+        );
     }
 
     Application::~Application()
     {
+        m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
         m_VulkanSurface.reset();
         m_VulkanInstance.reset();

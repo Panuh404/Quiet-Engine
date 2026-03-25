@@ -8,6 +8,7 @@ namespace Quiet::Renderer::Vulkan {
     class VulkanInstance;
     class VulkanSurface;
     class PhysicalDevice;
+    class LogicalDevice;
 }
 
 namespace Quiet::Platform
@@ -38,6 +39,7 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;
         std::unique_ptr<Quiet::Renderer::Vulkan::PhysicalDevice> m_PhysicalDevice;
+        std::unique_ptr<Quiet::Renderer::Vulkan::LogicalDevice> m_LogicalDevice;
         bool m_Running = true;
     };
 }
