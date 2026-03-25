@@ -2,39 +2,11 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
 #include "Renderer/Vulkan/VulkanInstance.h"
+#include "Renderer/Vulkan/VulkanSurface.h"
+#include "Renderer/Vulkan/PhysicalDevice.h"
 
 #include <stdexcept>
 #include <utility>
-
-
-namespace
-{
-    std::string FormatVulkanVersion(std::uint32_t version)
-    {
-        std::ostringstream out;
-        out << VK_API_VERSION_MAJOR(version) << '.'
-            << VK_API_VERSION_MINOR(version) << '.'
-            << VK_API_VERSION_PATCH(version);
-        return out.str();
-    }
-
-    std::uint32_t QueryLoaderInstanceVersion()
-    {
-        std::uint32_t version = VK_API_VERSION_1_0;
-
-        auto enumerateInstanceVersion =
-            reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
-                vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion")
-            );
-
-        if (enumerateInstanceVersion != nullptr)
-        {
-            if (enumerateInstanceVersion(&version) != VK_SUCCESS)
-                throw std::runtime_error("Failed to query Vulkan instance version.");
-        }
-        return version;
-    }
-}
 
 namespace Quiet::Core
 {
@@ -61,10 +33,23 @@ namespace Quiet::Core
             m_Spec.Name,
             m_Window->GetRequiredVulkanInstanceExtensions()
         );
+
+        m_VulkanSurface = std::make_unique<Quiet::Renderer::Vulkan::VulkanSurface>(
+            m_VulkanInstance->GetHandle(),
+            *m_Window
+        );
+
+        m_PhysicalDevice = std::make_unique<Quiet::Renderer::Vulkan::PhysicalDevice>(
+            m_VulkanInstance->GetHandle(),
+            m_VulkanSurface->GetHandle(),
+            m_VulkanInstance->GetApiVersion()
+        );
     }
 
     Application::~Application()
     {
+        m_PhysicalDevice.reset();
+        m_VulkanSurface.reset();
         m_VulkanInstance.reset();
         m_Window.reset();
         Log::Shutdown();

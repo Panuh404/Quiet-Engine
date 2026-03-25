@@ -8,6 +8,11 @@ target_sources(Quiet_Engine
         src/Platform/Window.cpp
         src/Renderer/Vulkan/VulkanInstance.cpp
         src/Renderer/Vulkan/VulkanInstance.h
+        src/Renderer/Vulkan/VulkanSurface.cpp
+        src/Renderer/Vulkan/VulkanSurface.h
+        src/Renderer/Vulkan/PhysicalDevice.cpp
+        src/Renderer/Vulkan/PhysicalDevice.h
+
     PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/Log.h

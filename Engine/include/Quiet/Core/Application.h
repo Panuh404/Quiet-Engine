@@ -6,6 +6,8 @@
 
 namespace Quiet::Renderer::Vulkan {
     class VulkanInstance;
+    class VulkanSurface;
+    class PhysicalDevice;
 }
 
 namespace Quiet::Platform
@@ -34,6 +36,8 @@ namespace Quiet::Core
         AppSpec m_Spec;
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
+        std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;
+        std::unique_ptr<Quiet::Renderer::Vulkan::PhysicalDevice> m_PhysicalDevice;
         bool m_Running = true;
     };
 }
