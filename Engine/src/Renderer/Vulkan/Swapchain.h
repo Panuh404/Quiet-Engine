@@ -32,7 +32,8 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkSwapchainKHR GetHandle() const { return m_Swapchain; }
         [[nodiscard]] VkFormat GetImageFormat() const { return m_ImageFormat; }
         [[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
-        const std::vector<VkImage>& GetImages() const { return m_Images; }
+        [[nodiscard]] const std::vector<VkImage>& GetImages() const { return m_Images; }
+        [[nodiscard]] const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }
 
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
@@ -40,5 +41,6 @@ namespace Quiet::Renderer::Vulkan
         VkFormat m_ImageFormat = VK_FORMAT_UNDEFINED;
         VkExtent2D m_Extent{};
         std::vector<VkImage> m_Images;
+        std::vector<VkImageView> m_ImageViews;
     };
 }

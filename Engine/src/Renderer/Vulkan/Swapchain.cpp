@@ -53,6 +53,35 @@ namespace
 
         return actualExtent;
     }
+
+    VkImageView CreateColorImageView(VkDevice device, VkImage image, VkFormat format)
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = image;
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = format;
+
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        VkImageView view = VK_NULL_HANDLE;
+        if (vkCreateImageView(device, &createInfo, nullptr, &view) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create swapchain image view.");
+        }
+
+        return view;
+
+    }
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -130,9 +159,36 @@ namespace Quiet::Renderer::Vulkan
         m_ImageFormat = surfaceFormat.format;
         m_Extent = extent;
 
+        m_ImageViews.reserve(m_Images.size());
+        try
+        {
+            for (VkImage image : m_Images)
+            {
+                m_ImageViews.push_back(CreateColorImageView(m_Device, image, m_ImageFormat));
+            }
+        }
+        catch (...)
+        {
+            for (VkImageView view : m_ImageViews)
+            {
+                if (view != VK_NULL_HANDLE)
+                    vkDestroyImageView(m_Device, view, nullptr);
+            }
+            m_ImageViews.clear();
+
+            if (m_Swapchain != VK_NULL_HANDLE)
+            {
+                vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
+                m_Swapchain = VK_NULL_HANDLE;
+            }
+
+            throw;
+        }
+
         QUIET_CORE_INFO(
-            "Created swapchain. images={} format={} extent={}x{} presentMode={}",
+            "Created swapchain. images={} imageViews={} format={} extent={}x{} presentMode={}",
             m_Images.size(),
+            m_ImageViews.size(),
             static_cast<int>(m_ImageFormat),
             m_Extent.width,
             m_Extent.height,
@@ -142,6 +198,15 @@ namespace Quiet::Renderer::Vulkan
 
     Swapchain::~Swapchain()
     {
+        for (VkImageView view : m_ImageViews)
+        {
+            if (view != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_Device, view, nullptr);
+            }
+        }
+        m_ImageViews.clear();
+
         if (m_Swapchain != VK_NULL_HANDLE)
         {
             vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
