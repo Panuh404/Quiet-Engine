@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <utility>
 
 struct GLFWwindow;
 
@@ -28,13 +29,15 @@ namespace Quiet::Platform
         Window& operator=(Window&&) = delete;
 
         void PollEvents();
-        bool ShouldClose() const;
+        [[nodiscard]] bool ShouldClose() const;
 
-        bool IsVulkanSupported() const;
-        std::vector<const char*> GetRequiredVulkanInstanceExtensions() const;
+        [[nodiscard]] bool IsVulkanSupported() const;
+        [[nodiscard]] std::vector<const char*> GetRequiredVulkanInstanceExtensions() const;
 
-        void* GetNativeHandle() const;
-        const WindowDesc& GetDesc() const { return m_Desc; }
+        [[nodiscard]] std::pair<std::uint32_t, std::uint32_t> GetFramebufferSize() const;
+
+        [[nodiscard]] void* GetNativeHandle() const;
+        [[nodiscard]] const WindowDesc& GetDesc() const { return m_Desc; }
 
     private:
         WindowDesc m_Desc;

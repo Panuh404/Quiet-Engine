@@ -55,6 +55,18 @@ namespace Quiet::Platform
         return { extensions, extensions + count };
     }
 
+    std::pair<std::uint32_t, std::uint32_t> Window::GetFramebufferSize() const
+    {
+        int width = 0;
+        int height = 0;
+        glfwGetFramebufferSize(m_Handle, &width, &height);
+
+        return {
+            static_cast<std::uint32_t>(width),
+            static_cast<std::uint32_t>(height)
+        };
+    }
+
     bool Window::ShouldClose() const { return glfwWindowShouldClose(m_Handle) == GLFW_TRUE; }
     bool Window::IsVulkanSupported() const { return glfwVulkanSupported() == GLFW_TRUE; }
     void* Window::GetNativeHandle() const  { return m_Handle; }

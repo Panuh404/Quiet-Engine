@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/Swapchain.h"
 
 namespace Quiet::Core
 {
@@ -50,10 +51,17 @@ namespace Quiet::Core
         m_LogicalDevice = std::make_unique<Quiet::Renderer::Vulkan::LogicalDevice>(
             *m_PhysicalDevice
         );
+
+        m_Swapchain = std::make_unique<Quiet::Renderer::Vulkan::Swapchain>(
+            *m_Window,
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_VulkanSurface);
     }
 
     Application::~Application()
     {
+        m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
         m_VulkanSurface.reset();

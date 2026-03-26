@@ -5,6 +5,7 @@
 #include <string>
 
 namespace Quiet::Renderer::Vulkan {
+    class Swapchain;
     class VulkanInstance;
     class VulkanSurface;
     class PhysicalDevice;
@@ -40,6 +41,7 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;
         std::unique_ptr<Quiet::Renderer::Vulkan::PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<Quiet::Renderer::Vulkan::LogicalDevice> m_LogicalDevice;
+        std::unique_ptr<Quiet::Renderer::Vulkan::Swapchain> m_Swapchain;
         bool m_Running = true;
     };
 }
