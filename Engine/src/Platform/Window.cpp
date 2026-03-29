@@ -2,14 +2,25 @@
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 
+namespace
+{
+    void FramebufferSizeCallback(GLFWwindow* window, int, int)
+    {
+        auto* quietWindow = static_cast<Quiet::Platform::Window*>(glfwGetWindowUserPointer(window));
+        if (quietWindow)
+        {
+            quietWindow->MarkFramebufferResized();
+        }
+    }
+}
+
+
 namespace Quiet::Platform
 {
     Window::Window(const WindowDesc &desc) : m_Desc(desc)
     {
         if (glfwInit() != GLFW_TRUE)
-        {
             throw std::runtime_error("Failed to initialize GLFW");
-        }
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, m_Desc.Resizable ? GLFW_TRUE : GLFW_FALSE);
@@ -26,6 +37,9 @@ namespace Quiet::Platform
             glfwTerminate();
             throw std::runtime_error("Failed to create GLFW window");
         }
+
+        glfwSetWindowUserPointer(m_Handle, this);
+        glfwSetFramebufferSizeCallback(m_Handle, FramebufferSizeCallback);
     }
 
     Window::~Window()
@@ -41,6 +55,11 @@ namespace Quiet::Platform
     void Window::PollEvents()
     {
         glfwPollEvents();
+    }
+
+    void Window::WaitEvents()
+    {
+        glfwWaitEvents();
     }
 
     std::vector<const char*> Window::GetRequiredVulkanInstanceExtensions() const

@@ -39,6 +39,7 @@ namespace Quiet::Core
     private:
         void DrawFrame();
         void RecordClearCommandBuffer(std::uint32_t imageIndex);
+        void RecreateSwapchain();
 
     private:
         bool m_Running = true;

@@ -104,6 +104,12 @@ namespace Quiet::Core
 
     void Application::DrawFrame()
     {
+        if (m_Window->WasFramebufferResized())
+        {
+            RecreateSwapchain();
+            return;
+        }
+
         const VkDevice device = m_LogicalDevice->GetHandle();
         const VkFence inFlightFence = m_FrameSync->GetInFlightFence();
 
@@ -124,18 +130,19 @@ namespace Quiet::Core
         );
 
         if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
-            throw std::runtime_error("Swapchain is out of date. Recreation is not implemented yet.");
-
+        {
+            RecreateSwapchain();
+            return;
+        }
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
         RecordClearCommandBuffer(imageIndex);
 
-        const VkSemaphore renderFinishedSemaphore = m_FrameSync->GetRenderFinishedSemaphore(imageIndex);
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
         const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
-        const VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+        const VkSemaphore signalSemaphores[] = { m_FrameSync->GetRenderFinishedSemaphore(imageIndex) };
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -159,12 +166,13 @@ namespace Quiet::Core
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapchains;
         presentInfo.pImageIndices = &imageIndex;
-        presentInfo.pResults = nullptr;
 
         const VkResult presentResult = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
-
-        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
-            throw std::runtime_error("Swapchain is out of date or suboptimal. Recreation is not implemented yet.");
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || m_Window->WasFramebufferResized())
+        {
+            RecreateSwapchain();
+            return;
+        }
 
         if (presentResult != VK_SUCCESS)
             throw std::runtime_error("Failed to present swapchain image.");
@@ -250,5 +258,46 @@ namespace Quiet::Core
             throw std::runtime_error("Failed to end graphics command buffer.");
 
         m_Swapchain->SetTrackedLayout(imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    }
+
+    void Application::RecreateSwapchain()
+    {
+        auto [width, height] = m_Window->GetFramebufferSize();
+        while (width == 0 || height == 0)
+        {
+            m_Window->WaitEvents();
+            std::tie(width, height) = m_Window->GetFramebufferSize();
+        }
+
+        if (vkDeviceWaitIdle(m_LogicalDevice->GetHandle()) != VK_SUCCESS)
+            throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
+
+        m_FrameSync.reset();
+        m_GraphicsCommands.reset();
+
+        auto oldSwapchain = std::move(m_Swapchain);
+
+        m_Swapchain = std::make_unique<Quiet::Renderer::Vulkan::Swapchain>(
+            *m_Window,
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_VulkanSurface,
+            oldSwapchain ? oldSwapchain->GetHandle() : VK_NULL_HANDLE
+        );
+
+        m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain
+        );
+
+        m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
+            *m_LogicalDevice,
+            *m_Swapchain
+        );
+
+        oldSwapchain.reset();
+        m_Window->ResetFramebufferResizedFlag();
+        QUIET_CORE_INFO("Recreated swapchain-dependent resources.");
     }
 }

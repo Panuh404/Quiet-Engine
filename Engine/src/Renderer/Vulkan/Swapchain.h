@@ -21,7 +21,8 @@ namespace Quiet::Renderer::Vulkan
         Swapchain(const Quiet::Platform::Window& window,
                   const PhysicalDevice& physicalDevice,
                   const LogicalDevice& logicalDevice,
-                  const VulkanSurface& surface);
+                  const VulkanSurface& surface,
+                  VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
         ~Swapchain();
 
         Swapchain(const Swapchain&) = delete;

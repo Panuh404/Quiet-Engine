@@ -33,6 +33,8 @@ namespace Quiet::Renderer::Vulkan
     public:
         PhysicalDevice(VkInstance instance, VkSurfaceKHR surface, std::uint32_t targetApiVersion);
 
+        [[nodiscard]] SwapchainSupportDetails QuerySwapchainSupport(VkSurfaceKHR surface) const;
+
         [[nodiscard]] VkPhysicalDevice GetHandle() const { return m_Device; }
         [[nodiscard]] const QueueFamilyIndices& GetQueueFamilies() const { return m_QueueFamilies; }
         [[nodiscard]] const SwapchainSupportDetails& GetSwapchainSupport() const { return m_SwapchainSupport; }

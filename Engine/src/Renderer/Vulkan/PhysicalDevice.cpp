@@ -64,26 +64,7 @@ namespace
         return indices;
     }
 
-    bool SupportsRequiredExtensions(VkPhysicalDevice device)
-    {
-        std::uint32_t count = 0;
-        if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr) != VK_SUCCESS)
-            throw std::runtime_error("Failed to enumerate Vulkan device extensions.");
-
-        std::vector<VkExtensionProperties> extensions(count);
-        if (count > 0 && vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data()) != VK_SUCCESS)
-            throw std::runtime_error("Failed to read Vulkan device extensions.");
-
-        std::set<std::string> missing(std::begin(kRequiredDeviceExtensions), std::end(kRequiredDeviceExtensions));
-        for (const auto& ext : extensions)
-        {
-            missing.erase(ext.extensionName);
-        }
-
-        return missing.empty();
-    }
-
-    Quiet::Renderer::Vulkan::SwapchainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+    Quiet::Renderer::Vulkan::SwapchainSupportDetails QuerySwapchainSupportLocal(VkPhysicalDevice device, VkSurfaceKHR surface)
     {
         Quiet::Renderer::Vulkan::SwapchainSupportDetails details{};
 
@@ -113,6 +94,25 @@ namespace
         }
 
         return details;
+    }
+
+    bool SupportsRequiredExtensions(VkPhysicalDevice device)
+    {
+        std::uint32_t count = 0;
+        if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr) != VK_SUCCESS)
+            throw std::runtime_error("Failed to enumerate Vulkan device extensions.");
+
+        std::vector<VkExtensionProperties> extensions(count);
+        if (count > 0 && vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data()) != VK_SUCCESS)
+            throw std::runtime_error("Failed to read Vulkan device extensions.");
+
+        std::set<std::string> missing(std::begin(kRequiredDeviceExtensions), std::end(kRequiredDeviceExtensions));
+        for (const auto& ext : extensions)
+        {
+            missing.erase(ext.extensionName);
+        }
+
+        return missing.empty();
     }
 
     int ScoreDevice(const VkPhysicalDeviceProperties& properties, std::uint32_t targetApiVersion)
@@ -148,7 +148,7 @@ namespace Quiet::Renderer::Vulkan
                 hasExtensions &&
                 [&]()
                 {
-                    swapchainSupport = QuerySwapchainSupport(device, surface);
+                    swapchainSupport = QuerySwapchainSupportLocal(device, surface);
                     return !swapchainSupport.Formats.empty() && !swapchainSupport.PresentModes.empty();
                 }();
 
@@ -189,5 +189,10 @@ namespace Quiet::Renderer::Vulkan
             m_QueueFamilies.GraphicsFamily.value(),
             m_QueueFamilies.PresentFamily.value()
         );
+    }
+
+    SwapchainSupportDetails PhysicalDevice::QuerySwapchainSupport(VkSurfaceKHR surface) const
+    {
+        return QuerySwapchainSupportLocal(m_Device, surface);
     }
 }

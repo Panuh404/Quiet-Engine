@@ -86,13 +86,14 @@ namespace
 
 namespace Quiet::Renderer::Vulkan
 {
-    Swapchain::Swapchain(const Quiet::Platform::Window &window,
-                         const PhysicalDevice &physicalDevice,
-                         const LogicalDevice &logicalDevice,
-                         const VulkanSurface &surface)
+    Swapchain::Swapchain(const Quiet::Platform::Window& window,
+                         const PhysicalDevice& physicalDevice,
+                         const LogicalDevice& logicalDevice,
+                         const VulkanSurface& surface,
+                         VkSwapchainKHR oldSwapchain)
             : m_Device(logicalDevice.GetHandle())
     {
-        const auto& swapchainSupport = physicalDevice.GetSwapchainSupport();
+        const auto swapchainSupport = physicalDevice.QuerySwapchainSupport(surface.GetHandle());
         const auto& queueFamilies = physicalDevice.GetQueueFamilies();
 
         const VkSurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(swapchainSupport.Formats);
@@ -118,7 +119,6 @@ namespace Quiet::Renderer::Vulkan
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
         createInfo.imageExtent = extent;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         if (queueFamilies.GraphicsFamily != queueFamilies.PresentFamily)
         {
@@ -146,7 +146,7 @@ namespace Quiet::Renderer::Vulkan
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = presentMode;
         createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = VK_NULL_HANDLE;
+        createInfo.oldSwapchain = oldSwapchain;
 
         if (vkCreateSwapchainKHR(m_Device, &createInfo, nullptr, &m_Swapchain) != VK_SUCCESS)
         {
@@ -170,7 +170,7 @@ namespace Quiet::Renderer::Vulkan
 
         m_ImageViews.reserve(m_Images.size());
         m_ImageLayouts.resize(m_Images.size(), VK_IMAGE_LAYOUT_UNDEFINED);
-        
+
         try
         {
             for (VkImage image : m_Images)
