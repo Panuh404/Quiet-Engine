@@ -8,14 +8,14 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Renderer/Vulkan/FrameSync.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 
 namespace Quiet::Core
 {
-    Application::Application(AppSpec spec)
-        : m_Spec(std::move(spec))
+    Application::Application(AppSpec spec) : m_Spec(std::move(spec))
     {
         Log::Init();
 
@@ -63,10 +63,21 @@ namespace Quiet::Core
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_Swapchain);
+
+        m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
+            *m_LogicalDevice,
+            *m_Swapchain
+        );
     }
 
     Application::~Application()
     {
+        if (m_LogicalDevice)
+        {
+            vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+        }
+
+        m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
@@ -84,9 +95,160 @@ namespace Quiet::Core
         while (m_Running && !m_Window->ShouldClose())
         {
             m_Window->PollEvents();
+            DrawFrame();
         }
 
         QUIET_CORE_INFO("Shutting down.");
         return 0;
+    }
+
+    void Application::DrawFrame()
+    {
+        const VkDevice device = m_LogicalDevice->GetHandle();
+        const VkFence inFlightFence = m_FrameSync->GetInFlightFence();
+
+        if (vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
+            throw std::runtime_error("Failed to wait for in-flight fence.");
+
+        if (vkResetFences(device, 1, &inFlightFence) != VK_SUCCESS)
+            throw std::runtime_error("Failed to reset in-flight fence.");
+
+        std::uint32_t imageIndex = 0;
+        const VkResult acquireResult = vkAcquireNextImageKHR(
+            device,
+            m_Swapchain->GetHandle(),
+            UINT64_MAX,
+            m_FrameSync->GetImageAvailableSemaphore(),
+            VK_NULL_HANDLE,
+            &imageIndex
+        );
+
+        if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+            throw std::runtime_error("Swapchain is out of date. Recreation is not implemented yet.");
+
+        if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
+            throw std::runtime_error("Failed to acquire swapchain image.");
+
+        RecordClearCommandBuffer(imageIndex);
+
+        const VkSemaphore renderFinishedSemaphore = m_FrameSync->GetRenderFinishedSemaphore(imageIndex);
+        const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
+        const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
+        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
+        const VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, inFlightFence) != VK_SUCCESS)
+            throw std::runtime_error("Failed to submit graphics command buffer.");
+
+        const VkSwapchainKHR swapchains[] = { m_Swapchain->GetHandle() };
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapchains;
+        presentInfo.pImageIndices = &imageIndex;
+        presentInfo.pResults = nullptr;
+
+        const VkResult presentResult = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
+
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+            throw std::runtime_error("Swapchain is out of date or suboptimal. Recreation is not implemented yet.");
+
+        if (presentResult != VK_SUCCESS)
+            throw std::runtime_error("Failed to present swapchain image.");
+    }
+
+    void Application::RecordClearCommandBuffer(std::uint32_t imageIndex)
+    {
+        const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
+
+        if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
+            throw std::runtime_error("Failed to reset graphics command buffer.");
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+            throw std::runtime_error("Failed to begin graphics command buffer.");
+
+        const VkImage image = m_Swapchain->GetImages().at(imageIndex);
+        const VkImageLayout oldLayout = m_Swapchain->GetTrackedLayout(imageIndex);
+
+        VkImageSubresourceRange range{};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = 1;
+        range.baseArrayLayer = 0;
+        range.layerCount = 1;
+
+        VkImageMemoryBarrier toTransfer{};
+        toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toTransfer.srcAccessMask = 0;
+        toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toTransfer.oldLayout = oldLayout;
+        toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.image = image;
+        toTransfer.subresourceRange = range;
+
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &toTransfer
+        );
+
+        VkClearColorValue clearColor = { { 0.05f, 0.07f, 0.12f, 1.0f } };
+
+        vkCmdClearColorImage(
+            commandBuffer,
+            image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            &clearColor,
+            1,
+            &range
+        );
+
+        VkImageMemoryBarrier toPresent{};
+        toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toPresent.dstAccessMask = 0;
+        toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toPresent.image = image;
+        toPresent.subresourceRange = range;
+
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &toPresent
+        );
+
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+            throw std::runtime_error("Failed to end graphics command buffer.");
+
+        m_Swapchain->SetTrackedLayout(imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
 }

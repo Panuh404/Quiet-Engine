@@ -18,8 +18,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Swapchain.h
         src/Renderer/Vulkan/GraphicsCommands.h
         src/Renderer/Vulkan/GraphicsCommands.cpp
+        src/Renderer/Vulkan/FrameSync.h
+        src/Renderer/Vulkan/FrameSync.cpp
 
-        PUBLIC
+    PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/Log.h
         include/Quiet/Platform/Window.h

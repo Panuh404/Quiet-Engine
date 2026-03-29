@@ -133,6 +133,15 @@ namespace Quiet::Renderer::Vulkan
             createInfo.pQueueFamilyIndices = nullptr;
         }
 
+        const auto supportedUsageFlags = swapchainSupport.Capabilities.supportedUsageFlags;
+        if ((supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) == 0)
+        {
+            throw std::runtime_error("Swapchain images do not support VK_IMAGE_USAGE_TRANSFER_DST_BIT on this surface.");
+        }
+        createInfo.imageUsage =
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
         createInfo.preTransform = swapchainSupport.Capabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = presentMode;
@@ -160,6 +169,8 @@ namespace Quiet::Renderer::Vulkan
         m_Extent = extent;
 
         m_ImageViews.reserve(m_Images.size());
+        m_ImageLayouts.resize(m_Images.size(), VK_IMAGE_LAYOUT_UNDEFINED);
+        
         try
         {
             for (VkImage image : m_Images)

@@ -11,6 +11,7 @@ namespace Quiet::Renderer::Vulkan {
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
+    class FrameSync;
 }
 
 namespace Quiet::Platform
@@ -36,7 +37,13 @@ namespace Quiet::Core
         int Run();
 
     private:
+        void DrawFrame();
+        void RecordClearCommandBuffer(std::uint32_t imageIndex);
+
+    private:
+        bool m_Running = true;
         AppSpec m_Spec;
+
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;
@@ -44,6 +51,6 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::LogicalDevice> m_LogicalDevice;
         std::unique_ptr<Quiet::Renderer::Vulkan::Swapchain> m_Swapchain;
         std::unique_ptr<Quiet::Renderer::Vulkan::GraphicsCommands> m_GraphicsCommands;
-        bool m_Running = true;
+        std::unique_ptr<Quiet::Renderer::Vulkan::FrameSync> m_FrameSync;
     };
 }

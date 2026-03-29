@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -24,6 +25,7 @@ namespace Quiet::Renderer::Vulkan
         GraphicsCommands& operator=(GraphicsCommands&&) = delete;
 
         [[nodiscard]] VkCommandPool GetCommandPool() const { return m_CommandPool; }
+        [[nodiscard]] VkCommandBuffer GetCommandBuffer(std::uint32_t imageIndex) const { return m_CommandBuffers.at(imageIndex); }
         [[nodiscard]] const std::vector<VkCommandBuffer>& GetCommandBuffers() const { return m_CommandBuffers; }
 
     private:
