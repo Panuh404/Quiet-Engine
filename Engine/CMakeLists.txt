@@ -16,7 +16,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/LogicalDevice.h
         src/Renderer/Vulkan/Swapchain.cpp
         src/Renderer/Vulkan/Swapchain.h
-
+        src/Renderer/Vulkan/GraphicsCommands.h
+        src/Renderer/Vulkan/GraphicsCommands.cpp
 
         PUBLIC
         include/Quiet/Core/Application.h

@@ -17,9 +17,9 @@ namespace Quiet::Renderer::Vulkan
         LogicalDevice(LogicalDevice&&) = delete;
         LogicalDevice& operator=(LogicalDevice&&) = delete;
 
-        VkDevice GetHandle() const { return m_Device; }
-        VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
-        VkQueue GetPresentQueue() const { return m_PresentQueue; }
+        [[nodiscard]] VkDevice GetHandle() const { return m_Device; }
+        [[nodiscard]] VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
+        [[nodiscard]] VkQueue GetPresentQueue() const { return m_PresentQueue; }
 
     private:
         VkDevice m_Device = VK_NULL_HANDLE;

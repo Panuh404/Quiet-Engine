@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/Vulkan.h>
+#include <vulkan/vulkan.h>
 
 namespace Quiet::Platform
 {

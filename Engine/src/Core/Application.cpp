@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 
@@ -57,10 +58,16 @@ namespace Quiet::Core
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_VulkanSurface);
+
+        m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain);
     }
 
     Application::~Application()
     {
+        m_GraphicsCommands.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
