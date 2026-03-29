@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Renderer/Vulkan/DepthResources.h"
 #include "Renderer/Vulkan/FrameSync.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
@@ -59,6 +60,12 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_VulkanSurface);
 
+        m_DepthResources = std::make_unique<Quiet::Renderer::Vulkan::DepthResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain
+        );
+
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
@@ -79,6 +86,7 @@ namespace Quiet::Core
 
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
+        m_DepthResources.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
@@ -274,6 +282,7 @@ namespace Quiet::Core
 
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
+        m_DepthResources.reset();
 
         auto oldSwapchain = std::move(m_Swapchain);
 
@@ -283,6 +292,12 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_VulkanSurface,
             oldSwapchain ? oldSwapchain->GetHandle() : VK_NULL_HANDLE
+        );
+
+        m_DepthResources = std::make_unique<Quiet::Renderer::Vulkan::DepthResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain
         );
 
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(

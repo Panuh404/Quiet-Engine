@@ -182,6 +182,8 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to find a suitable Vulkan physical device.");
         }
 
+        vkGetPhysicalDeviceMemoryProperties(m_Device, &m_MemoryProperties);
+
         QUIET_CORE_INFO(
             "Selected GPU: {} | api={} | graphicsQueueFamily={} | presentQueueFamily={}",
             m_Properties.deviceName,
@@ -194,5 +196,16 @@ namespace Quiet::Renderer::Vulkan
     SwapchainSupportDetails PhysicalDevice::QuerySwapchainSupport(VkSurfaceKHR surface) const
     {
         return QuerySwapchainSupportLocal(m_Device, surface);
+    }
+
+    std::uint32_t PhysicalDevice::FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const
+    {
+        for (std::uint32_t i = 0; i < m_MemoryProperties.memoryTypeCount; ++i)
+        {
+            const bool typeSupported = (typeFilter & (1u << i)) != 0;
+            const bool hasProperties = (m_MemoryProperties.memoryTypes[i].propertyFlags & properties) == properties;
+            if (typeSupported && hasProperties) return i;
+        }
+        throw std::runtime_error("Failed to find suitable Vulkan memory type.");
     }
 }

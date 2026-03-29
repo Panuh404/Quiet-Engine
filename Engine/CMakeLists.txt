@@ -20,6 +20,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/GraphicsCommands.cpp
         src/Renderer/Vulkan/FrameSync.h
         src/Renderer/Vulkan/FrameSync.cpp
+        src/Renderer/Vulkan/DepthResources.h
+        src/Renderer/Vulkan/DepthResources.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

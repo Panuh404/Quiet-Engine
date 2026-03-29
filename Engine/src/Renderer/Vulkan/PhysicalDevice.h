@@ -34,6 +34,7 @@ namespace Quiet::Renderer::Vulkan
         PhysicalDevice(VkInstance instance, VkSurfaceKHR surface, std::uint32_t targetApiVersion);
 
         [[nodiscard]] SwapchainSupportDetails QuerySwapchainSupport(VkSurfaceKHR surface) const;
+        [[nodiscard]] std::uint32_t FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
         [[nodiscard]] VkPhysicalDevice GetHandle() const { return m_Device; }
         [[nodiscard]] const QueueFamilyIndices& GetQueueFamilies() const { return m_QueueFamilies; }
@@ -45,5 +46,6 @@ namespace Quiet::Renderer::Vulkan
         QueueFamilyIndices m_QueueFamilies ;
         SwapchainSupportDetails m_SwapchainSupport;
         VkPhysicalDeviceProperties m_Properties{};
+        VkPhysicalDeviceMemoryProperties m_MemoryProperties{};
     };
 }

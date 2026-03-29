@@ -5,6 +5,7 @@
 #include <string>
 
 namespace Quiet::Renderer::Vulkan {
+    class DepthResources;
     class Swapchain;
     class VulkanInstance;
     class VulkanSurface;
@@ -51,6 +52,7 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<Quiet::Renderer::Vulkan::LogicalDevice> m_LogicalDevice;
         std::unique_ptr<Quiet::Renderer::Vulkan::Swapchain> m_Swapchain;
+        std::unique_ptr<Quiet::Renderer::Vulkan::DepthResources> m_DepthResources;
         std::unique_ptr<Quiet::Renderer::Vulkan::GraphicsCommands> m_GraphicsCommands;
         std::unique_ptr<Quiet::Renderer::Vulkan::FrameSync> m_FrameSync;
     };
