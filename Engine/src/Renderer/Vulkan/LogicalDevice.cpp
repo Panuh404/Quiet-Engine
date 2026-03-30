@@ -41,7 +41,27 @@ namespace Quiet::Renderer::Vulkan
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        VkPhysicalDeviceFeatures deviceFeatures{};
+        VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
+        dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+
+        VkPhysicalDeviceFeatures2 supportedFeatures{};
+        supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        supportedFeatures.pNext = &dynamicRenderingFeatures;
+
+        vkGetPhysicalDeviceFeatures2(physicalDevice.GetHandle(), &supportedFeatures);
+
+        if (dynamicRenderingFeatures.dynamicRendering != VK_TRUE)
+        {
+            throw std::runtime_error("Selected GPU does not support dynamic rendering.");
+        }
+
+        VkPhysicalDeviceDynamicRenderingFeatures enabledDynamicRendering{};
+        enabledDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+        enabledDynamicRendering.dynamicRendering = VK_TRUE;
+
+        VkPhysicalDeviceFeatures2 enabledFeatures{};
+        enabledFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        enabledFeatures.pNext = &enabledDynamicRendering;
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -49,7 +69,8 @@ namespace Quiet::Renderer::Vulkan
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.enabledExtensionCount = static_cast<std::uint32_t>(std::size(kRequiredDeviceExtensions));
         createInfo.ppEnabledExtensionNames = kRequiredDeviceExtensions;
-        createInfo.pEnabledFeatures = &deviceFeatures;
+        createInfo.pNext = &enabledFeatures;
+        createInfo.pEnabledFeatures = nullptr;
         createInfo.enabledLayerCount = 0;
         createInfo.ppEnabledLayerNames = nullptr;
 

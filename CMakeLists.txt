@@ -59,3 +59,30 @@ endif()
 if (QUIET_BUILD_EDITOR)
     add_subdirectory(Editor)
 endif()
+
+# Shaders
+set(QUIET_SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Engine/Shaders")
+set(QUIET_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/Build/Binaries/$<CONFIG>/Shaders")
+set(QUIET_SHADER_SOURCES
+        "${QUIET_SHADER_SOURCE_DIR}/Triangle.vert"
+        "${QUIET_SHADER_SOURCE_DIR}/Triangle.frag"
+)
+set(QUIET_SHADER_OUTPUTS)
+
+foreach(SHADER ${QUIET_SHADER_SOURCES})
+    get_filename_component(SHADER_NAME "${SHADER}" NAME)
+    set(SHADER_OUTPUT "${QUIET_SHADER_OUTPUT_DIR}/${SHADER_NAME}.spv")
+
+    add_custom_command(
+            OUTPUT "${SHADER_OUTPUT}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${QUIET_SHADER_OUTPUT_DIR}"
+            COMMAND "${Vulkan_GLSLC_EXECUTABLE}" "${SHADER}" -o "${SHADER_OUTPUT}"
+            DEPENDS "${SHADER}"
+            VERBATIM
+    )
+
+    list(APPEND QUIET_SHADER_OUTPUTS "${SHADER_OUTPUT}")
+endforeach()
+
+add_custom_target(Quiet_Shaders ALL DEPENDS ${QUIET_SHADER_OUTPUTS})
+add_dependencies(Quiet_Sandbox Quiet_Shaders)

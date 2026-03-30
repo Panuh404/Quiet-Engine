@@ -13,6 +13,8 @@ namespace Quiet::Renderer::Vulkan {
     class LogicalDevice;
     class GraphicsCommands;
     class FrameSync;
+
+    class TrianglePipeline;
 }
 
 namespace Quiet::Platform
@@ -45,6 +47,9 @@ namespace Quiet::Core
     private:
         bool m_Running = true;
         AppSpec m_Spec;
+
+        void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
+        std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;

@@ -22,6 +22,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/FrameSync.cpp
         src/Renderer/Vulkan/DepthResources.h
         src/Renderer/Vulkan/DepthResources.cpp
+        src/Renderer/Vulkan/TrianglePipeline.h
+        src/Renderer/Vulkan/TrianglePipeline.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

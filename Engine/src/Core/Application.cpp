@@ -13,6 +13,7 @@
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
+#include "Renderer/Vulkan/TrianglePipeline.h"
 
 namespace Quiet::Core
 {
@@ -66,6 +67,12 @@ namespace Quiet::Core
             *m_Swapchain
         );
 
+        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
+            *m_LogicalDevice,
+            *m_Swapchain,
+            *m_DepthResources
+        );
+
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
@@ -86,6 +93,7 @@ namespace Quiet::Core
 
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
+        m_TrianglePipeline.reset();
         m_DepthResources.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
@@ -145,11 +153,12 @@ namespace Quiet::Core
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
-        RecordClearCommandBuffer(imageIndex);
+        //RecordClearCommandBuffer(imageIndex);
+        RecordTriangleCommandBuffer(imageIndex);
 
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
-        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
+        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT  };
         const VkSemaphore signalSemaphores[] = { m_FrameSync->GetRenderFinishedSemaphore(imageIndex) };
 
         VkSubmitInfo submitInfo{};
@@ -300,6 +309,12 @@ namespace Quiet::Core
             *m_Swapchain
         );
 
+        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
+            *m_LogicalDevice,
+            *m_Swapchain,
+            *m_DepthResources
+        );
+
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
@@ -314,5 +329,162 @@ namespace Quiet::Core
         oldSwapchain.reset();
         m_Window->ResetFramebufferResizedFlag();
         QUIET_CORE_INFO("Recreated swapchain-dependent resources.");
+    }
+
+    void Application::RecordTriangleCommandBuffer(std::uint32_t imageIndex)
+    {
+        const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
+
+        vkResetCommandBuffer(commandBuffer, 0);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+            throw std::runtime_error("Failed to begin graphics command buffer.");
+
+        const VkImage colorImage = m_Swapchain->GetImages().at(imageIndex);
+        const VkImageLayout oldColorLayout = m_Swapchain->GetTrackedLayout(imageIndex);
+
+        VkImageSubresourceRange colorRange{};
+        colorRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        colorRange.baseMipLevel = 0;
+        colorRange.levelCount = 1;
+        colorRange.baseArrayLayer = 0;
+        colorRange.layerCount = 1;
+
+        VkImageMemoryBarrier colorToAttachment{};
+        colorToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        colorToAttachment.oldLayout = oldColorLayout;
+        colorToAttachment.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        colorToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        colorToAttachment.image = colorImage;
+        colorToAttachment.subresourceRange = colorRange;
+        colorToAttachment.srcAccessMask = 0;
+        colorToAttachment.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &colorToAttachment
+        );
+
+        if (m_DepthResources->GetTrackedLayout() != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        {
+            VkImageSubresourceRange depthRange{};
+            depthRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            depthRange.baseMipLevel = 0;
+            depthRange.levelCount = 1;
+            depthRange.baseArrayLayer = 0;
+            depthRange.layerCount = 1;
+
+            VkImageMemoryBarrier depthToAttachment{};
+            depthToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            depthToAttachment.oldLayout = m_DepthResources->GetTrackedLayout();
+            depthToAttachment.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depthToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            depthToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            depthToAttachment.image = m_DepthResources->GetImage();
+            depthToAttachment.subresourceRange = depthRange;
+            depthToAttachment.srcAccessMask = 0;
+            depthToAttachment.dstAccessMask =
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            vkCmdPipelineBarrier(
+                commandBuffer,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                0,
+                0, nullptr,
+                0, nullptr,
+                1, &depthToAttachment
+            );
+
+            m_DepthResources->SetTrackedLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        }
+
+        VkClearValue colorClear{};
+        colorClear.color = { { 0.05f, 0.07f, 0.12f, 1.0f } };
+
+        VkClearValue depthClear{};
+        depthClear.depthStencil = { 1.0f, 0 };
+
+        VkRenderingAttachmentInfo colorAttachment{};
+        colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachment.imageView = m_Swapchain->GetImageViews().at(imageIndex);
+        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.clearValue = colorClear;
+
+        VkRenderingAttachmentInfo depthAttachment{};
+        depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        depthAttachment.imageView = m_DepthResources->GetImageView();
+        depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.clearValue = depthClear;
+
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.renderArea.offset = { 0, 0 };
+        renderingInfo.renderArea.extent = m_Swapchain->GetExtent();
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachment;
+        renderingInfo.pDepthAttachment = &depthAttachment;
+
+        vkCmdBeginRendering(commandBuffer, &renderingInfo);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(m_Swapchain->GetExtent().width);
+        viewport.height = static_cast<float>(m_Swapchain->GetExtent().height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent = m_Swapchain->GetExtent();
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        vkCmdEndRendering(commandBuffer);
+
+        VkImageMemoryBarrier toPresent{};
+        toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toPresent.image = colorImage;
+        toPresent.subresourceRange = colorRange;
+        toPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        toPresent.dstAccessMask = 0;
+
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &toPresent
+        );
+
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+            throw std::runtime_error("Failed to end graphics command buffer.");
+
+        m_Swapchain->SetTrackedLayout(imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
 }
