@@ -15,6 +15,7 @@ namespace Quiet::Renderer::Vulkan {
     class FrameSync;
 
     class TrianglePipeline;
+    class TriangleMesh;
 }
 
 namespace Quiet::Platform
@@ -49,6 +50,7 @@ namespace Quiet::Core
         AppSpec m_Spec;
 
         void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
+        std::unique_ptr<Quiet::Renderer::Vulkan::TriangleMesh> m_TriangleMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;

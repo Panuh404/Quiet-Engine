@@ -24,6 +24,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/DepthResources.cpp
         src/Renderer/Vulkan/TrianglePipeline.h
         src/Renderer/Vulkan/TrianglePipeline.cpp
+        src/Renderer/Vulkan/TriangleMesh.h
+        src/Renderer/Vulkan/TriangleMesh.cpp
+        src/Renderer/Vulkan/VulkanBuffer.h
+        src/Renderer/Vulkan/VulkanBuffer.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

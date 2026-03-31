@@ -13,6 +13,7 @@
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
+#include "Renderer/Vulkan/TriangleMesh.h"
 #include "Renderer/Vulkan/TrianglePipeline.h"
 
 namespace Quiet::Core
@@ -37,23 +38,19 @@ namespace Quiet::Core
 
         m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
             m_Spec.Name,
-            m_Window->GetRequiredVulkanInstanceExtensions()
-        );
+            m_Window->GetRequiredVulkanInstanceExtensions());
 
         m_VulkanSurface = std::make_unique<Quiet::Renderer::Vulkan::VulkanSurface>(
             m_VulkanInstance->GetHandle(),
-            *m_Window
-        );
+            *m_Window);
 
         m_PhysicalDevice = std::make_unique<Quiet::Renderer::Vulkan::PhysicalDevice>(
             m_VulkanInstance->GetHandle(),
             m_VulkanSurface->GetHandle(),
-            m_VulkanInstance->GetApiVersion()
-        );
+            m_VulkanInstance->GetApiVersion());
 
         m_LogicalDevice = std::make_unique<Quiet::Renderer::Vulkan::LogicalDevice>(
-            *m_PhysicalDevice
-        );
+            *m_PhysicalDevice);
 
         m_Swapchain = std::make_unique<Quiet::Renderer::Vulkan::Swapchain>(
             *m_Window,
@@ -64,24 +61,26 @@ namespace Quiet::Core
         m_DepthResources = std::make_unique<Quiet::Renderer::Vulkan::DepthResources>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
-            *m_Swapchain
-        );
-
-        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
-            *m_LogicalDevice,
-            *m_Swapchain,
-            *m_DepthResources
-        );
+            *m_Swapchain);
 
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_Swapchain);
 
+        m_TriangleMesh = std::make_unique<Quiet::Renderer::Vulkan::TriangleMesh>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_GraphicsCommands);
+
+        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
+            *m_LogicalDevice,
+            *m_Swapchain,
+            *m_DepthResources);
+
         m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
             *m_LogicalDevice,
-            *m_Swapchain
-        );
+            *m_Swapchain);
     }
 
     Application::~Application()
@@ -94,6 +93,7 @@ namespace Quiet::Core
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_TrianglePipeline.reset();
+        m_TriangleMesh.reset();
         m_DepthResources.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
@@ -457,7 +457,12 @@ namespace Quiet::Core
         scissor.extent = m_Swapchain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
+        const VkDeviceSize offsets[] = { 0 };
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdDraw(commandBuffer, m_TriangleMesh->GetVertexCount(), 1, 0, 0);
 
         vkCmdEndRendering(commandBuffer);
 

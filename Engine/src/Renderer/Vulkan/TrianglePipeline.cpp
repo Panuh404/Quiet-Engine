@@ -8,6 +8,7 @@
 #include "LogicalDevice.h"
 #include "Swapchain.h"
 #include "DepthResources.h"
+#include "TriangleMesh.h"
 
 namespace
 {
@@ -75,8 +76,16 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to create triangle pipeline layout.");
         }
 
+        const auto bindingDescription = Vertex::GetBindingDescription();
+        const auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.vertexBindingDescriptionCount = 1;
+        vertexInput.pVertexBindingDescriptions = &bindingDescription;
+        vertexInput.vertexAttributeDescriptionCount =
+            static_cast<std::uint32_t>(attributeDescriptions.size());
+        vertexInput.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
