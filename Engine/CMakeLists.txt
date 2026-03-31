@@ -49,6 +49,7 @@ target_link_libraries(Quiet_Engine
         glfw
         Vulkan::Vulkan
         spdlog::spdlog
+        glm
 )
 
 if (MSVC)

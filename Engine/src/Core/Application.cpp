@@ -16,6 +16,13 @@
 #include "Renderer/Vulkan/TriangleMesh.h"
 #include "Renderer/Vulkan/TrianglePipeline.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "Renderer/Vulkan/TriangleTypes.h"
+
 namespace Quiet::Core
 {
     Application::Application(AppSpec spec) : m_Spec(std::move(spec))
@@ -153,7 +160,6 @@ namespace Quiet::Core
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
-        //RecordClearCommandBuffer(imageIndex);
         RecordTriangleCommandBuffer(imageIndex);
 
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
@@ -193,88 +199,6 @@ namespace Quiet::Core
 
         if (presentResult != VK_SUCCESS)
             throw std::runtime_error("Failed to present swapchain image.");
-    }
-
-    void Application::RecordClearCommandBuffer(std::uint32_t imageIndex)
-    {
-        const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
-
-        if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
-            throw std::runtime_error("Failed to reset graphics command buffer.");
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-            throw std::runtime_error("Failed to begin graphics command buffer.");
-
-        const VkImage image = m_Swapchain->GetImages().at(imageIndex);
-        const VkImageLayout oldLayout = m_Swapchain->GetTrackedLayout(imageIndex);
-
-        VkImageSubresourceRange range{};
-        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        range.baseMipLevel = 0;
-        range.levelCount = 1;
-        range.baseArrayLayer = 0;
-        range.layerCount = 1;
-
-        VkImageMemoryBarrier toTransfer{};
-        toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        toTransfer.srcAccessMask = 0;
-        toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        toTransfer.oldLayout = oldLayout;
-        toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toTransfer.image = image;
-        toTransfer.subresourceRange = range;
-
-        vkCmdPipelineBarrier(
-            commandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &toTransfer
-        );
-
-        VkClearColorValue clearColor = { { 0.05f, 0.07f, 0.12f, 1.0f } };
-
-        vkCmdClearColorImage(
-            commandBuffer,
-            image,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            &clearColor,
-            1,
-            &range
-        );
-
-        VkImageMemoryBarrier toPresent{};
-        toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        toPresent.dstAccessMask = 0;
-        toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toPresent.image = image;
-        toPresent.subresourceRange = range;
-
-        vkCmdPipelineBarrier(
-            commandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &toPresent
-        );
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-            throw std::runtime_error("Failed to end graphics command buffer.");
-
-        m_Swapchain->SetTrackedLayout(imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
 
     void Application::RecreateSwapchain()
@@ -441,7 +365,45 @@ namespace Quiet::Core
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+        const float aspect =
+            static_cast<float>(m_Swapchain->GetExtent().width) /
+            static_cast<float>(m_Swapchain->GetExtent().height);
+
+        const auto now = std::chrono::steady_clock::now();
+        static const auto start = now;
+        const float timeSeconds = std::chrono::duration<float>(now - start).count();
+
+        glm::mat4 model = glm::rotate(
+            glm::mat4(1.0f),
+            timeSeconds * glm::radians(45.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f)
+        );
+
+        glm::mat4 view = glm::lookAt(
+            glm::vec3(0.0f, 0.0f, 2.5f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+
+        glm::mat4 proj = glm::perspective(
+            glm::radians(60.0f),
+            aspect,
+            0.1f,
+            10.0f
+        );
+
+        proj[1][1] *= -1.0f;
+        Renderer::Vulkan::TransformPushConstants push{};
+        push.MVP = proj * view * model;
+
+        vkCmdPushConstants(
+            commandBuffer,
+            m_TrianglePipeline->GetLayout(),
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(Renderer::Vulkan::TransformPushConstants),
+            &push
+        );
 
         VkViewport viewport{};
         viewport.x = 0.0f;

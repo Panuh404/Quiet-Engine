@@ -9,6 +9,7 @@
 #include "Swapchain.h"
 #include "DepthResources.h"
 #include "TriangleMesh.h"
+#include "TriangleTypes.h"
 
 namespace
 {
@@ -66,8 +67,15 @@ namespace Quiet::Renderer::Vulkan
 
         VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
 
+        VkPushConstantRange pushConstantRange{};
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = sizeof(TransformPushConstants);
+
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layoutInfo.pushConstantRangeCount = 1;
+        layoutInfo.pPushConstantRanges = &pushConstantRange;
 
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
         {

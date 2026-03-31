@@ -11,9 +11,9 @@ namespace
     std::array<Quiet::Renderer::Vulkan::Vertex, 3> MakeTriangleVertices()
     {
         return {{
-            {{  0.0f, -0.5f }, { 1.0f, 0.2f, 0.2f }},
-            {{  0.5f,  0.5f }, { 0.2f, 1.0f, 0.2f }},
-            {{ -0.5f,  0.5f }, { 0.2f, 0.4f, 1.0f }}
+            {{  0.0f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f }},
+            {{  0.5f,  0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f }},
+            {{ -0.5f,  0.5f, 0.0f }, { 0.2f, 0.4f, 1.0f }}
         }};
     }
 
@@ -87,7 +87,7 @@ namespace Quiet::Renderer::Vulkan
 
         attributes[0].location = 0;
         attributes[0].binding = 0;
-        attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributes[0].offset = offsetof(Vertex, Position);
 
         attributes[1].location = 1;

@@ -17,7 +17,7 @@ namespace Quiet::Renderer::Vulkan
 
     struct Vertex
     {
-        float Position[2];
+        float Position[3];
         float Color[3];
 
         static VkVertexInputBindingDescription GetBindingDescription();
