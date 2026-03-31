@@ -402,11 +402,13 @@ namespace Quiet::Core
         renderingInfo.pDepthAttachment = &depthAttachment;
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
 
         const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
         const VkDeviceSize offsets[] = { 0 };
-        (commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, m_TriangleMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
         const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
         vkCmdBindDescriptorSets(
@@ -419,6 +421,7 @@ namespace Quiet::Core
             0,
             nullptr
         );
+
         const auto now = std::chrono::steady_clock::now();
         static const auto start = now;
         const float timeSeconds = std::chrono::duration<float>(now - start).count();
@@ -453,8 +456,7 @@ namespace Quiet::Core
         scissor.extent = m_Swapchain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdDraw(commandBuffer, m_TriangleMesh->GetVertexCount(), 1, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, m_TriangleMesh->GetIndexCount(), 1, 0, 0, 0);
 
         vkCmdEndRendering(commandBuffer);
 

@@ -8,13 +8,19 @@
 
 namespace
 {
-    std::array<Quiet::Renderer::Vulkan::Vertex, 3> MakeTriangleVertices()
+    std::array<Quiet::Renderer::Vulkan::Vertex, 4> MakeQuadVertices()
     {
         return {{
-            {{  0.0f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f }},
-            {{  0.5f,  0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f }},
-            {{ -0.5f,  0.5f, 0.0f }, { 0.2f, 0.4f, 1.0f }}
+            {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f }},
+              {{  0.5f, -0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f }},
+              {{  0.5f,  0.5f, 0.0f }, { 0.2f, 0.4f, 1.0f }},
+              {{ -0.5f,  0.5f, 0.0f }, { 1.0f, 1.0f, 0.2f }}
         }};
+    }
+
+    std::array<std::uint16_t, 6> MakeQuadIndices()
+    {
+        return {{ 0, 1, 2, 2, 3, 0 }};
     }
 
     void CopyBufferOneShot(VkDevice device,
@@ -102,35 +108,69 @@ namespace Quiet::Renderer::Vulkan
                                const LogicalDevice &logicalDevice,
                                const GraphicsCommands &graphicsCommands)
     {
-        const auto vertices = MakeTriangleVertices();
-        const VkDeviceSize bufferSize = sizeof(vertices);
-        m_VertexCount = static_cast<std::uint32_t>(vertices.size());
+        const auto vertices = MakeQuadVertices();
+        const auto indices = MakeQuadIndices();
 
-        VulkanBuffer stagingBuffer(
-            physicalDevice,
-            logicalDevice,
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        const VkDeviceSize vertexBufferSize = sizeof(vertices);
+        const VkDeviceSize indexBufferSize = sizeof(indices);
 
-        void* mapped = stagingBuffer.Map();
-        std::memcpy(mapped, vertices.data(), static_cast<std::size_t>(bufferSize));
-        stagingBuffer.Unmap();
+        {
+            VulkanBuffer stagingVertexBuffer(
+                physicalDevice,
+                logicalDevice,
+                vertexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-        m_VertexBuffer = std::make_unique<VulkanBuffer>(
-            physicalDevice,
-            logicalDevice,
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            void* mapped = stagingVertexBuffer.Map();
+            std::memcpy(mapped, vertices.data(), static_cast<std::size_t>(vertexBufferSize));
+            stagingVertexBuffer.Unmap();
 
-        CopyBufferOneShot(
-            logicalDevice.GetHandle(),
-            graphicsCommands.GetCommandPool(),
-            logicalDevice.GetGraphicsQueue(),
-            stagingBuffer.GetHandle(),
-            m_VertexBuffer->GetHandle(),
-            bufferSize);
+            m_VertexBuffer = std::make_unique<VulkanBuffer>(
+                physicalDevice,
+                logicalDevice,
+                vertexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            CopyBufferOneShot(
+                logicalDevice.GetHandle(),
+                graphicsCommands.GetCommandPool(),
+                logicalDevice.GetGraphicsQueue(),
+                stagingVertexBuffer.GetHandle(),
+                m_VertexBuffer->GetHandle(),
+                vertexBufferSize);
+        }
+
+        {
+            VulkanBuffer stagingIndexBuffer(
+                physicalDevice,
+                logicalDevice,
+                indexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+            void* mapped = stagingIndexBuffer.Map();
+            std::memcpy(mapped, indices.data(), static_cast<std::size_t>(indexBufferSize));
+            stagingIndexBuffer.Unmap();
+
+            m_IndexBuffer =std::make_unique<VulkanBuffer>(
+                physicalDevice,
+                logicalDevice,
+                indexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            CopyBufferOneShot(
+                logicalDevice.GetHandle(),
+                graphicsCommands.GetCommandPool(),
+                logicalDevice.GetGraphicsQueue(),
+                stagingIndexBuffer.GetHandle(),
+                m_IndexBuffer->GetHandle(),
+                indexBufferSize);
+        }
+
+        m_IndexCount = static_cast<uint32_t>(indices.size());
     }
 
     TriangleMesh::~TriangleMesh() = default;
@@ -138,5 +178,10 @@ namespace Quiet::Renderer::Vulkan
     VkBuffer TriangleMesh::GetVertexBuffer() const
     {
         return m_VertexBuffer->GetHandle();
+    }
+
+    VkBuffer TriangleMesh::GetIndexBuffer() const
+    {
+        return m_IndexBuffer->GetHandle();
     }
 }

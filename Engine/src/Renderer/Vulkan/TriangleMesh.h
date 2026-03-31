@@ -38,10 +38,12 @@ namespace Quiet::Renderer::Vulkan
         TriangleMesh& operator=(TriangleMesh&&) = delete;
 
         [[nodiscard]] VkBuffer GetVertexBuffer() const;
-        [[nodiscard]] std::uint32_t GetVertexCount() const { return m_VertexCount; }
+        [[nodiscard]] VkBuffer GetIndexBuffer() const;
+        [[nodiscard]] std::uint32_t GetIndexCount() const { return m_IndexCount; }
 
     private:
         std::unique_ptr<VulkanBuffer> m_VertexBuffer;
-        std::uint32_t m_VertexCount = 0;
+        std::unique_ptr<VulkanBuffer> m_IndexBuffer;
+        std::uint32_t m_IndexCount = 0;
     };
 }
