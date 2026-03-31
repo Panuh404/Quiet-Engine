@@ -8,6 +8,11 @@
 #include <stdexcept>
 #include <utility>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Renderer/Vulkan/DepthResources.h"
 #include "Renderer/Vulkan/FrameSync.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
@@ -15,13 +20,9 @@
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/TriangleMesh.h"
 #include "Renderer/Vulkan/TrianglePipeline.h"
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
+#include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/TriangleTypes.h"
+
 
 namespace Quiet::Core
 {
@@ -80,10 +81,18 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_GraphicsCommands);
 
+        m_CameraResources = std::make_unique<Quiet::Renderer::Vulkan::CameraResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain
+        );
+
+
         m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
-            *m_DepthResources);
+            *m_DepthResources,
+            m_CameraResources->GetDescriptorSetLayout());
 
         m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
             *m_LogicalDevice,
@@ -100,8 +109,9 @@ namespace Quiet::Core
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_TrianglePipeline.reset();
-        m_TriangleMesh.reset();
+        m_CameraResources.reset();
         m_DepthResources.reset();
+        m_TriangleMesh.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
@@ -160,6 +170,26 @@ namespace Quiet::Core
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
+        const float aspect =
+           static_cast<float>(m_Swapchain->GetExtent().width) /
+           static_cast<float>(m_Swapchain->GetExtent().height);
+
+        Quiet::Renderer::Vulkan::CameraUniformData camera{};
+        camera.View = glm::lookAt(
+            glm::vec3(0.0f, 0.0f, 2.5f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+        camera.Projection = glm::perspective(
+            glm::radians(60.0f),
+            aspect,
+            0.1f,
+            10.0f
+        );
+        camera.Projection[1][1] *= -1.0f;
+
+        m_CameraResources->Update(imageIndex, camera);
+
         RecordTriangleCommandBuffer(imageIndex);
 
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
@@ -215,6 +245,8 @@ namespace Quiet::Core
 
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
+        m_TrianglePipeline.reset();
+        m_CameraResources.reset();
         m_DepthResources.reset();
 
         auto oldSwapchain = std::move(m_Swapchain);
@@ -233,10 +265,16 @@ namespace Quiet::Core
             *m_Swapchain
         );
 
+        m_CameraResources = std::make_unique<Quiet::Renderer::Vulkan::CameraResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain);
+
         m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
-            *m_DepthResources
+            *m_DepthResources,
+            m_CameraResources->GetDescriptorSetLayout()
         );
 
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
@@ -364,44 +402,40 @@ namespace Quiet::Core
         renderingInfo.pDepthAttachment = &depthAttachment;
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
 
-        const float aspect =
-            static_cast<float>(m_Swapchain->GetExtent().width) /
-            static_cast<float>(m_Swapchain->GetExtent().height);
+        const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
+        const VkDeviceSize offsets[] = { 0 };
+        (commandBuffer, 0, 1, vertexBuffers, offsets);
 
+        const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            m_TrianglePipeline->GetLayout(),
+            0,
+            1,
+            &descriptorSet,
+            0,
+            nullptr
+        );
         const auto now = std::chrono::steady_clock::now();
         static const auto start = now;
         const float timeSeconds = std::chrono::duration<float>(now - start).count();
 
-        glm::mat4 model = glm::rotate(
+        Quiet::Renderer::Vulkan::TransformPushConstants push{};
+        push.Model = glm::rotate(
             glm::mat4(1.0f),
             timeSeconds * glm::radians(45.0f),
             glm::vec3(0.0f, 0.0f, 1.0f)
         );
-
-        glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 2.5f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f)
-        );
-
-        glm::mat4 proj = glm::perspective(
-            glm::radians(60.0f),
-            aspect,
-            0.1f,
-            10.0f
-        );
-
-        proj[1][1] *= -1.0f;
-        Renderer::Vulkan::TransformPushConstants push{};
-        push.MVP = proj * view * model;
 
         vkCmdPushConstants(
             commandBuffer,
             m_TrianglePipeline->GetLayout(),
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
-            sizeof(Renderer::Vulkan::TransformPushConstants),
+            sizeof(Quiet::Renderer::Vulkan::TransformPushConstants),
             &push
         );
 
@@ -419,10 +453,6 @@ namespace Quiet::Core
         scissor.extent = m_Swapchain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
-        const VkDeviceSize offsets[] = { 0 };
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdDraw(commandBuffer, m_TriangleMesh->GetVertexCount(), 1, 0, 0);
 

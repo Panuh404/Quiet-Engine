@@ -15,6 +15,7 @@ namespace Quiet::Renderer::Vulkan {
     class FrameSync;
 
     class TrianglePipeline;
+    class CameraResources;
     class TriangleMesh;
 }
 
@@ -42,7 +43,6 @@ namespace Quiet::Core
 
     private:
         void DrawFrame();
-        void RecordClearCommandBuffer(std::uint32_t imageIndex);
         void RecreateSwapchain();
 
     private:
@@ -52,6 +52,7 @@ namespace Quiet::Core
         void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
         std::unique_ptr<Quiet::Renderer::Vulkan::TriangleMesh> m_TriangleMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
+        std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;

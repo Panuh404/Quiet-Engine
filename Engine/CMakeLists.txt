@@ -28,6 +28,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/TriangleMesh.cpp
         src/Renderer/Vulkan/VulkanBuffer.h
         src/Renderer/Vulkan/VulkanBuffer.cpp
+        src/Renderer/Vulkan/CameraResources.h
+        src/Renderer/Vulkan/CameraResources.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

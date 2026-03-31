@@ -44,7 +44,8 @@ namespace Quiet::Renderer::Vulkan
 {
     TrianglePipeline::TrianglePipeline(const LogicalDevice& logicalDevice,
                                        const Swapchain& swapchain,
-                                       const DepthResources& depthResources)
+                                       const DepthResources& depthResources,
+                                       VkDescriptorSetLayout cameraSetLayout)
         : m_Device(logicalDevice.GetHandle())
     {
         const auto vertCode = ReadFile("Shaders/Triangle.vert.spv");
@@ -74,6 +75,8 @@ namespace Quiet::Renderer::Vulkan
 
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layoutInfo.setLayoutCount = 1;
+        layoutInfo.pSetLayouts = &cameraSetLayout;
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &pushConstantRange;
 

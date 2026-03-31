@@ -13,7 +13,8 @@ namespace Quiet::Renderer::Vulkan
     public:
         TrianglePipeline(const LogicalDevice& logicalDevice,
                          const Swapchain& swapchain,
-                         const DepthResources& depthResources);
+                         const DepthResources& depthResources,
+                         VkDescriptorSetLayout cameraSetLayout);
         ~TrianglePipeline();
 
         TrianglePipeline(const TrianglePipeline&) = delete;
