@@ -24,6 +24,11 @@ namespace Quiet::Platform
     class Window;
 }
 
+namespace Quiet::Scene
+{
+    class FlyCamera;
+}
+
 namespace Quiet::Core
 {
     struct AppSpec
@@ -53,6 +58,8 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::TriangleMesh> m_TriangleMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
+
+        std::unique_ptr<Quiet::Scene::FlyCamera> m_FlyCamera;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;

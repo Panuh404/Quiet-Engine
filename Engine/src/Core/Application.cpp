@@ -1,9 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
-#include "Renderer/Vulkan/VulkanInstance.h"
-#include "Renderer/Vulkan/VulkanSurface.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
+#include "Scene/FlyCamera.h"
 
 #include <stdexcept>
 #include <utility>
@@ -13,6 +11,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "GLFW/glfw3.h"
+#include "Renderer/Vulkan/VulkanInstance.h"
+#include "Renderer/Vulkan/VulkanSurface.h"
+#include "Renderer/Vulkan/PhysicalDevice.h"
 #include "Renderer/Vulkan/DepthResources.h"
 #include "Renderer/Vulkan/FrameSync.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
@@ -22,7 +24,6 @@
 #include "Renderer/Vulkan/TrianglePipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/TriangleTypes.h"
-
 
 namespace Quiet::Core
 {
@@ -43,6 +44,9 @@ namespace Quiet::Core
                 "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
             );
         }
+        m_Window->SetCursorDisabled(true);
+        m_Window->EnableRawMouseMotionIfSupported(true);
+        m_FlyCamera = std::make_unique<Quiet::Scene::FlyCamera>();
 
         m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
             m_Spec.Name,
@@ -87,7 +91,6 @@ namespace Quiet::Core
             *m_Swapchain
         );
 
-
         m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
@@ -117,6 +120,7 @@ namespace Quiet::Core
         m_PhysicalDevice.reset();
         m_VulkanSurface.reset();
         m_VulkanInstance.reset();
+        m_FlyCamera.reset();
         m_Window.reset();
         Log::Shutdown();
     }
@@ -124,10 +128,17 @@ namespace Quiet::Core
     int Application::Run()
     {
         QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
+        double previousTime = glfwGetTime();
 
         while (m_Running && !m_Window->ShouldClose())
         {
             m_Window->PollEvents();
+
+            const double currentTime =glfwGetTime();
+            const float deltaTime = static_cast<float>(currentTime - previousTime);
+            previousTime = currentTime;
+
+            m_FlyCamera->Update(*m_Window, deltaTime);
             DrawFrame();
         }
 
@@ -174,20 +185,7 @@ namespace Quiet::Core
            static_cast<float>(m_Swapchain->GetExtent().width) /
            static_cast<float>(m_Swapchain->GetExtent().height);
 
-        Quiet::Renderer::Vulkan::CameraUniformData camera{};
-        camera.View = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 2.5f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f)
-        );
-        camera.Projection = glm::perspective(
-            glm::radians(60.0f),
-            aspect,
-            0.1f,
-            10.0f
-        );
-        camera.Projection[1][1] *= -1.0f;
-
+        const auto camera = m_FlyCamera->BuildUniformData(aspect);
         m_CameraResources->Update(imageIndex, camera);
 
         RecordTriangleCommandBuffer(imageIndex);
@@ -427,11 +425,7 @@ namespace Quiet::Core
         const float timeSeconds = std::chrono::duration<float>(now - start).count();
 
         Quiet::Renderer::Vulkan::TransformPushConstants push{};
-        push.Model = glm::rotate(
-            glm::mat4(1.0f),
-            timeSeconds * glm::radians(45.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f)
-        );
+        push.Model = glm::mat4(1.0f);
 
         vkCmdPushConstants(
             commandBuffer,

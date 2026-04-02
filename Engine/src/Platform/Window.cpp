@@ -89,4 +89,30 @@ namespace Quiet::Platform
     bool Window::ShouldClose() const { return glfwWindowShouldClose(m_Handle) == GLFW_TRUE; }
     bool Window::IsVulkanSupported() const { return glfwVulkanSupported() == GLFW_TRUE; }
     void* Window::GetNativeHandle() const  { return m_Handle; }
+
+    bool Window::IsKeyDown(int key) const
+    {
+        return glfwGetKey(m_Handle, key) == GLFW_PRESS;
+    }
+
+    std::pair<double, double> Window::GetCursorPosition() const
+    {
+        double x = 0.0f;
+        double y = 0.0f;
+        glfwGetCursorPos(m_Handle, &x, &y);
+        return {x, y};
+    }
+
+    void Window::SetCursorDisabled(bool disabled)
+    {
+        glfwSetInputMode(m_Handle, GLFW_CURSOR, disabled ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+
+    void Window::EnableRawMouseMotionIfSupported(bool enabled)
+    {
+        if (glfwRawMouseMotionSupported())
+        {
+            glfwSetInputMode(m_Handle, GLFW_RAW_MOUSE_MOTION, enabled ? GLFW_TRUE : GLFW_FALSE);
+        }
+    }
 }

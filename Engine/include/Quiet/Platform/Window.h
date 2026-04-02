@@ -46,6 +46,11 @@ namespace Quiet::Platform
         [[nodiscard]] void* GetNativeHandle() const;
         [[nodiscard]] const WindowDesc& GetDesc() const { return m_Desc; }
 
+        bool IsKeyDown(int key) const;
+        std::pair<double, double> GetCursorPosition() const;
+        void SetCursorDisabled(bool disabled);
+        void EnableRawMouseMotionIfSupported(bool enabled);
+
     private:
         WindowDesc m_Desc;
         GLFWwindow* m_Handle = nullptr;

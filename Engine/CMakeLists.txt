@@ -1,5 +1,7 @@
 # ENGINE
-add_library(Quiet_Engine STATIC)
+add_library(Quiet_Engine STATIC
+        src/Scene/FlyCamera.cpp
+        src/Scene/FlyCamera.h)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -30,6 +32,9 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanBuffer.cpp
         src/Renderer/Vulkan/CameraResources.h
         src/Renderer/Vulkan/CameraResources.cpp
+
+        src/Scene/FlyCamera.h
+        src/Scene/FlyCamera.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

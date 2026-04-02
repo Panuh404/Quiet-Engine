@@ -4,8 +4,8 @@ int main()
 {
     Quiet::Core::AppSpec spec{};
     spec.Name = "Quiet Sandbox";
-    spec.Width = 1920;
-    spec.Height = 1080;
+    spec.Width = 1200;
+    spec.Height = 800;
 
     Quiet::Core::Application app(spec);
     return app.Run();
