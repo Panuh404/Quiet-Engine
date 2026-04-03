@@ -1,7 +1,7 @@
 # ENGINE
 add_library(Quiet_Engine STATIC
-        src/Scene/EditorCamera.cpp
-        src/Scene/EditorCamera.h
+        src/Scene/FreeCamera.cpp
+        src/Scene/FreeCamera.h
         src/Scene/Transform.h
         src/Scene/Actor.h
         src/Scene/Scene.cpp
@@ -42,8 +42,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/CameraResources.h
         src/Renderer/Vulkan/CameraResources.cpp
 
-        src/Scene/EditorCamera.h
-        src/Scene/EditorCamera.cpp
+        src/Scene/FreeCamera.h
+        src/Scene/FreeCamera.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

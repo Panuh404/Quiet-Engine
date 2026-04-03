@@ -1,5 +1,9 @@
 #pragma once
+
 #include <utility>
+
+#include "KeyCodes.h"
+#include "MouseCodes.h"
 
 namespace Quiet::Platform
 {
@@ -15,7 +19,8 @@ namespace Quiet::Input
 
         void Update();
 
-        bool IsKeyDown(int key) const;
+        bool IsKeyDown(KeyCode key) const;
+        bool IsMouseButtonDown(MouseCode button) const;
 
         std::pair<double, double> GetMousePosition() const;
         std::pair<double, double> GetMouseDelta() const;

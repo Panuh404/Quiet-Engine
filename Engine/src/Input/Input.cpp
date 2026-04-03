@@ -27,10 +27,16 @@ namespace Quiet::Input
         m_LastMouseY = m_MouseY;
     }
 
-    bool Input::IsKeyDown(int key) const
+    bool Input::IsKeyDown(KeyCode key) const
     {
         auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());
-        return glfwGetKey(handle, key) == GLFW_PRESS;
+        return glfwGetKey(handle, static_cast<int>(key)) == GLFW_PRESS;
+    }
+
+    bool Input::IsMouseButtonDown(MouseCode button) const
+    {
+        auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());
+        return glfwGetMouseButton(handle, static_cast<int>(button)) == GLFW_PRESS;
     }
 
     std::pair<double, double> Input::GetMousePosition() const

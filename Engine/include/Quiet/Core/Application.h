@@ -31,7 +31,7 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
-    class EditorCamera;
+    class FreeCamera;
     class Scene;
 }
 
@@ -65,11 +65,11 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Input::Input> m_Input;
         std::unique_ptr<Quiet::Scene::Scene> m_Scene;
 
-        std::unique_ptr<Quiet::Renderer::Vulkan::StaticMesh> m_TriangleMesh;
+        std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> m_StaticMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
 
-        std::unique_ptr<Quiet::Scene::EditorCamera> m_FlyCamera;
+        std::unique_ptr<Quiet::Scene::FreeCamera> m_FreeCamera;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;

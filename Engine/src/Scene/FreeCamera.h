@@ -13,11 +13,11 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
-    class EditorCamera
+    class FreeCamera
     {
     public:
-        EditorCamera();
-        ~EditorCamera();
+        FreeCamera();
+        ~FreeCamera();
 
         void Update(const Quiet::Input::Input& input, float deltaTime);
         [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect) const;

@@ -1,4 +1,4 @@
-#include "EditorCamera.h"
+#include "FreeCamera.h"
 #include "Quiet/Platform/Window.h"
 
 #include "GLFW/glfw3.h"
@@ -7,13 +7,14 @@
 #include <algorithm>
 
 #include "Input/Input.h"
+#include "Input/KeyCodes.h"
 
 namespace Quiet::Scene
 {
-    EditorCamera::EditorCamera() = default;
-    EditorCamera::~EditorCamera() = default;
+    FreeCamera::FreeCamera() = default;
+    FreeCamera::~FreeCamera() = default;
 
-    void EditorCamera::Update(const Quiet::Input::Input& input, float deltaTime)
+    void FreeCamera::Update(const Quiet::Input::Input& input, float deltaTime)
     {
         auto [deltaX, deltaY] = input.GetMouseDelta();
 
@@ -26,18 +27,18 @@ namespace Quiet::Scene
         const glm::vec3 up (0.0f,1.0f,0.0f);
 
         float speed = m_MoveSpeed;
-        if (input.IsKeyDown(GLFW_KEY_LEFT_SHIFT)) { speed *= 2.f; }
+        if (input.IsKeyDown(Quiet::Input::KeyCode::LeftShift)) { speed *= 2.f; }
 
         const float move = speed * deltaTime;
-        if (input.IsKeyDown(GLFW_KEY_W)) m_Position += forward * move;
-        if (input.IsKeyDown(GLFW_KEY_S)) m_Position -= forward * move;
-        if (input.IsKeyDown(GLFW_KEY_D)) m_Position += right * move;
-        if (input.IsKeyDown(GLFW_KEY_A)) m_Position -= right * move;
-        if (input.IsKeyDown(GLFW_KEY_SPACE)) m_Position += up * move;
-        if (input.IsKeyDown(GLFW_KEY_LEFT_CONTROL)) m_Position -= up * move;
+        if (input.IsKeyDown(Input::KeyCode::W)) m_Position += forward * move;
+        if (input.IsKeyDown(Input::KeyCode::S)) m_Position -= forward * move;
+        if (input.IsKeyDown(Input::KeyCode::D)) m_Position += right * move;
+        if (input.IsKeyDown(Input::KeyCode::A)) m_Position -= right * move;
+        if (input.IsKeyDown(Input::KeyCode::Space)) m_Position += up * move;
+        if (input.IsKeyDown(Input::KeyCode::LeftControl)) m_Position -= up * move;
     }
 
-    Quiet::Renderer::Vulkan::CameraUniformData EditorCamera::BuildUniformData(float aspect) const
+    Quiet::Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect) const
     {
         Quiet::Renderer::Vulkan::CameraUniformData camera{};
         const glm::vec3 forward = GetForward();
@@ -48,7 +49,7 @@ namespace Quiet::Scene
         return camera;
     }
 
-    glm::vec3 EditorCamera::GetForward() const
+    glm::vec3 FreeCamera::GetForward() const
     {
         const float yawRad = glm::radians(m_Yaw);
         const float pitchRad = glm::radians(m_Pitch);
@@ -61,7 +62,7 @@ namespace Quiet::Scene
         return glm::normalize(forward);
     }
 
-    glm::vec3 EditorCamera::GetRight() const
+    glm::vec3 FreeCamera::GetRight() const
     {
         return glm::normalize(glm::cross(GetForward(), glm::vec3(0.0f, 1.0f, 0.0f)));
     }

@@ -1,7 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
-#include "Scene/EditorCamera.h"
+#include "Scene/FreeCamera.h"
 
 #include <stdexcept>
 #include <utility>
@@ -46,14 +46,11 @@ namespace Quiet::Core
                 "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
             );
         }
-        m_Window->SetCursorDisabled(true);
-        m_Window->EnableRawMouseMotionIfSupported(true);
-
         m_Input = std::make_unique<Quiet::Input::Input>(*m_Window);
         m_Input->SetCursorDisabled(true);
         m_Input->EnableRawMouseMotionIfSupported(true);
 
-        m_FlyCamera = std::make_unique<Quiet::Scene::EditorCamera>();
+        m_FreeCamera = std::make_unique<Quiet::Scene::FreeCamera>();
         m_Scene = std::make_unique<Quiet::Scene::Scene>();
 
         m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
@@ -88,7 +85,7 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
-        m_TriangleMesh = std::make_unique<Quiet::Renderer::Vulkan::StaticMesh>(
+        m_StaticMesh = std::make_shared<Quiet::Renderer::Vulkan::StaticMesh>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_GraphicsCommands);
@@ -108,6 +105,11 @@ namespace Quiet::Core
         m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
             *m_LogicalDevice,
             *m_Swapchain);
+
+        for (auto& actor : m_Scene->GetActors())
+        {
+            actor.StaticMesh = Quiet::Scene::StaticMeshComponent{ m_StaticMesh, true };
+        }
     }
 
     Application::~Application()
@@ -123,13 +125,13 @@ namespace Quiet::Core
         m_TrianglePipeline.reset();
         m_CameraResources.reset();
         m_DepthResources.reset();
-        m_TriangleMesh.reset();
+        m_StaticMesh.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
         m_VulkanSurface.reset();
         m_VulkanInstance.reset();
-        m_FlyCamera.reset();
+        m_FreeCamera.reset();
         m_Window.reset();
         Log::Shutdown();
     }
@@ -148,7 +150,7 @@ namespace Quiet::Core
             const float deltaTime = static_cast<float>(currentTime - previousTime);
             previousTime = currentTime;
 
-            m_FlyCamera->Update(*m_Input, deltaTime);
+            m_FreeCamera->Update(*m_Input, deltaTime);
             m_Scene->Update(deltaTime);
             DrawFrame();
         }
@@ -196,7 +198,7 @@ namespace Quiet::Core
            static_cast<float>(m_Swapchain->GetExtent().width) /
            static_cast<float>(m_Swapchain->GetExtent().height);
 
-        const auto camera = m_FlyCamera->BuildUniformData(aspect);
+        const auto camera = m_FreeCamera->BuildUniformData(aspect);
         m_CameraResources->Update(imageIndex, camera);
 
         RecordTriangleCommandBuffer(imageIndex);
@@ -414,11 +416,11 @@ namespace Quiet::Core
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
 
-        const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
+        const VkBuffer vertexBuffers[] = { m_StaticMesh->GetVertexBuffer() };
         const VkDeviceSize offsets[] = { 0 };
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, m_TriangleMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(commandBuffer, m_StaticMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
         const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
         vkCmdBindDescriptorSets(
@@ -448,6 +450,9 @@ namespace Quiet::Core
 
         for (const auto& actor : m_Scene->GetActors())
         {
+            if (!actor.StaticMesh.has_value() || !actor.StaticMesh->IsValid() || !actor.StaticMesh->Visible)
+                continue;
+
             Quiet::Renderer::Vulkan::TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
 
@@ -460,7 +465,7 @@ namespace Quiet::Core
                 &push
             );
 
-            vkCmdDrawIndexed(commandBuffer, m_TriangleMesh->GetIndexCount(), 1, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, m_StaticMesh->GetIndexCount(), 1, 0, 0, 0);
         }
 
         vkCmdEndRendering(commandBuffer);
