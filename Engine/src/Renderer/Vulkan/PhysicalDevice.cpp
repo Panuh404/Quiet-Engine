@@ -1,4 +1,5 @@
 #include "PhysicalDevice.h"
+
 #include "Quiet/Core/Log.h"
 
 #include <algorithm>

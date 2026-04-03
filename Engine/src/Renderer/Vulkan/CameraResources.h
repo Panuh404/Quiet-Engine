@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+
 #include <vulkan/vulkan.h>
 
 namespace Quiet::Renderer::Vulkan

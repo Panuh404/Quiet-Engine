@@ -13,7 +13,6 @@ namespace Quiet::Renderer::Vulkan {
     class LogicalDevice;
     class GraphicsCommands;
     class FrameSync;
-
     class StaticMeshPipeline;
     class StaticMeshRenderSystem;
     class CameraResources;

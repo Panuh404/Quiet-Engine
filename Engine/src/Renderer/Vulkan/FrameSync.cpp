@@ -2,8 +2,9 @@
 
 #include <stdexcept>
 
-#include "LogicalDevice.h"
-#include "Swapchain.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/Swapchain.h"
+
 #include "Quiet/Core/Log.h"
 
 namespace Quiet::Renderer::Vulkan

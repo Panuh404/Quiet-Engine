@@ -1,6 +1,6 @@
 #include "MeshLibrary.h"
 
-#include "StaticMesh.h"
+#include "Renderer/Vulkan/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
 {

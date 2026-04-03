@@ -7,7 +7,6 @@
 
 #include <vulkan/vulkan.h>
 
-
 namespace Quiet::Renderer::Vulkan
 {
     struct QueueFamilyIndices

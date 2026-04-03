@@ -2,9 +2,9 @@
 
 #include <cstring>
 
-#include "GraphicsCommands.h"
-#include "LogicalDevice.h"
-#include "VulkanBuffer.h"
+#include "Renderer/Vulkan/GraphicsCommands.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/VulkanBuffer.h"
 
 namespace
 {

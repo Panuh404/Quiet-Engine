@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+
 #include <vulkan/vulkan.h>
 
 namespace Quiet::Renderer::Vulkan

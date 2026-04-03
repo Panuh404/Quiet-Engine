@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 
-#include "LogicalDevice.h"
-#include "PhysicalDevice.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/PhysicalDevice.h"
 
 namespace Quiet::Renderer::Vulkan
 {

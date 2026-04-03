@@ -3,14 +3,13 @@
 #include <cstdint>
 #include <fstream>
 #include <stdexcept>
-#include <vector>
 
-#include "LogicalDevice.h"
-#include "Swapchain.h"
-#include "DepthResources.h"
-#include "StaticMesh.h"
-#include "RenderTypes.h"
-#include "ShaderModule.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/Swapchain.h"
+#include "Renderer/Vulkan/DepthResources.h"
+#include "Renderer/Vulkan/StaticMesh.h"
+#include "Renderer/Vulkan/RenderTypes.h"
+#include "Renderer/Vulkan/ShaderModule.h"
 
 
 namespace Quiet::Renderer::Vulkan

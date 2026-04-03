@@ -3,7 +3,6 @@
 #include <fstream>
 #include <vector>
 
-
 namespace Quiet::Renderer::Vulkan
 {
     ShaderModule::ShaderModule(VkDevice device, const std::string &path)

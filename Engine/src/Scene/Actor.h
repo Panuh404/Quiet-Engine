@@ -3,9 +3,9 @@
 #include <optional>
 #include <string>
 
-#include "RotatorComponent.h"
-#include "StaticMeshComponent.h"
-#include "TransformComponent.h"
+#include "Scene/RotatorComponent.h"
+#include "Scene/StaticMeshComponent.h"
+#include "Scene/TransformComponent.h"
 
 namespace Quiet::Scene
 {

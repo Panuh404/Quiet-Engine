@@ -5,9 +5,10 @@
 #include <limits>
 #include <stdexcept>
 
-#include "LogicalDevice.h"
-#include "PhysicalDevice.h"
-#include "VulkanSurface.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/PhysicalDevice.h"
+#include "Renderer/Vulkan/VulkanSurface.h"
+
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 

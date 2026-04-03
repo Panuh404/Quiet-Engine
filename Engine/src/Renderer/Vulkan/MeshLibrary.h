@@ -3,13 +3,11 @@
 #include <memory>
 #include <unordered_map>
 
-#include "GraphicsCommands.h"
-
 namespace Quiet::Renderer::Vulkan
 {
     class PhysicalDevice;
     class LogicalDevice;
-    class GraphicsCommand;
+    class GraphicsCommands;
     class StaticMesh;
 
     class MeshLibrary

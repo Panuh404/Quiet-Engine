@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <string>
 
-
 namespace Quiet::Renderer::Vulkan
 {
     bool ShaderCompiler::CompileFile(const std::string& sourcePath, const std::string& outputPath)

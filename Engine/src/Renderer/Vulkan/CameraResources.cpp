@@ -2,10 +2,10 @@
 
 #include <cstring>
 
-#include "LogicalDevice.h"
-#include "Swapchain.h"
-#include "RenderTypes.h"
-#include "VulkanBuffer.h"
+#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/Swapchain.h"
+#include "Renderer/Vulkan/RenderTypes.h"
+#include "Renderer/Vulkan/VulkanBuffer.h"
 
 namespace Quiet::Renderer::Vulkan
 {
