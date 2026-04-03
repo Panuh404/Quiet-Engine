@@ -8,19 +8,19 @@ namespace Quiet::Renderer::Vulkan
     class Swapchain;
     class DepthResources;
 
-    class TrianglePipeline
+    class StaticMeshPipeline
     {
     public:
-        TrianglePipeline(const LogicalDevice& logicalDevice,
+        StaticMeshPipeline(const LogicalDevice& logicalDevice,
                          const Swapchain& swapchain,
                          const DepthResources& depthResources,
                          VkDescriptorSetLayout cameraSetLayout);
-        ~TrianglePipeline();
+        ~StaticMeshPipeline();
 
-        TrianglePipeline(const TrianglePipeline&) = delete;
-        TrianglePipeline& operator=(const TrianglePipeline&) = delete;
-        TrianglePipeline(TrianglePipeline&&) = delete;
-        TrianglePipeline& operator=(TrianglePipeline&&) = delete;
+        StaticMeshPipeline(const StaticMeshPipeline&) = delete;
+        StaticMeshPipeline& operator=(const StaticMeshPipeline&) = delete;
+        StaticMeshPipeline(StaticMeshPipeline&&) = delete;
+        StaticMeshPipeline& operator=(StaticMeshPipeline&&) = delete;
 
         [[nodiscard]] VkPipelineLayout GetLayout() const { return m_PipelineLayout; }
         [[nodiscard]] VkPipeline GetHandle() const { return m_Pipeline; }

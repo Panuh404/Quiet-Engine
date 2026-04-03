@@ -22,7 +22,7 @@
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/StaticMesh.h"
-#include "Renderer/Vulkan/TrianglePipeline.h"
+#include "Renderer/Vulkan/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/RenderTypes.h"
@@ -100,7 +100,7 @@ namespace Quiet::Core
             *m_Swapchain
         );
 
-        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
+        m_StaticMeshPipeline = std::make_unique<Quiet::Renderer::Vulkan::StaticMeshPipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
             *m_DepthResources,
@@ -129,7 +129,7 @@ namespace Quiet::Core
         m_Scene.reset();
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
-        m_TrianglePipeline.reset();
+        m_StaticMeshPipeline.reset();
         m_CameraResources.reset();
         m_DepthResources.reset();
         m_MeshLibrary.reset();
@@ -263,7 +263,7 @@ namespace Quiet::Core
 
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
-        m_TrianglePipeline.reset();
+        m_StaticMeshPipeline.reset();
         m_CameraResources.reset();
         m_DepthResources.reset();
 
@@ -288,7 +288,7 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
-        m_TrianglePipeline = std::make_unique<Quiet::Renderer::Vulkan::TrianglePipeline>(
+        m_StaticMeshPipeline = std::make_unique<Quiet::Renderer::Vulkan::StaticMeshPipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
             *m_DepthResources,
@@ -420,13 +420,13 @@ namespace Quiet::Core
         renderingInfo.pDepthAttachment = &depthAttachment;
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_StaticMeshPipeline->GetHandle());
 
         const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
         vkCmdBindDescriptorSets(
             commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            m_TrianglePipeline->GetLayout(),
+            m_StaticMeshPipeline->GetLayout(),
             0,
             1,
             &descriptorSet,
@@ -466,7 +466,7 @@ namespace Quiet::Core
 
             vkCmdPushConstants(
                 commandBuffer,
-                m_TrianglePipeline->GetLayout(),
+                m_StaticMeshPipeline->GetLayout(),
                 VK_SHADER_STAGE_VERTEX_BIT,
                 0,
                 sizeof(Quiet::Renderer::Vulkan::TransformPushConstants),

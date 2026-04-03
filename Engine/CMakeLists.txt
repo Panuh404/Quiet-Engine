@@ -33,8 +33,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/FrameSync.cpp
         src/Renderer/Vulkan/DepthResources.h
         src/Renderer/Vulkan/DepthResources.cpp
-        src/Renderer/Vulkan/TrianglePipeline.h
-        src/Renderer/Vulkan/TrianglePipeline.cpp
+        src/Renderer/Vulkan/StaticMeshPipeline.h
+        src/Renderer/Vulkan/StaticMeshPipeline.cpp
         src/Renderer/Vulkan/StaticMesh.h
         src/Renderer/Vulkan/StaticMesh.cpp
         src/Renderer/Vulkan/VulkanBuffer.h
@@ -43,6 +43,9 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/CameraResources.cpp
         src/Renderer/Vulkan/MeshLibrary.h
         src/Renderer/Vulkan/MeshLibrary.cpp
+        src/Renderer/Vulkan/ShaderModule.h
+        src/Renderer/Vulkan/ShaderModule.cpp
+
         src/Scene/FreeCamera.h
         src/Scene/FreeCamera.cpp
 

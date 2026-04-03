@@ -1,4 +1,4 @@
-#include "TrianglePipeline.h"
+#include "StaticMeshPipeline.h"
 
 #include <cstdint>
 #include <fstream>
@@ -10,63 +10,24 @@
 #include "DepthResources.h"
 #include "StaticMesh.h"
 #include "RenderTypes.h"
+#include "ShaderModule.h"
 
-namespace
-{
-    std::vector<char> ReadFile(const std::string& path)
-    {
-        std::ifstream file(path, std::ios::ate | std::ios::binary);
-        if (!file) throw std::runtime_error("Failed to open shader file: " + path);
-
-        const std::streamsize size = file.tellg();
-        std::vector<char> buffer(static_cast<std::size_t>(size));
-        file.seekg(0);
-        file.read(buffer.data(), size);
-        return buffer;
-    }
-
-    VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code)
-    {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const std::uint32_t*>(code.data());
-
-        VkShaderModule shaderModule = VK_NULL_HANDLE;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("Failed to create shader module.");
-
-        return shaderModule;
-    }
-}
 
 namespace Quiet::Renderer::Vulkan
 {
-    TrianglePipeline::TrianglePipeline(const LogicalDevice& logicalDevice,
+    StaticMeshPipeline::StaticMeshPipeline(const LogicalDevice& logicalDevice,
                                        const Swapchain& swapchain,
                                        const DepthResources& depthResources,
                                        VkDescriptorSetLayout cameraSetLayout)
         : m_Device(logicalDevice.GetHandle())
     {
-        const auto vertCode = ReadFile("Shaders/Triangle.vert.spv");
-        const auto fragCode = ReadFile("Shaders/Triangle.frag.spv");
+        ShaderModule vertShader(m_Device, "Shaders/Triangle.vert.spv");
+        ShaderModule fragShader(m_Device, "Shaders/Triangle.frag.spv");
 
-        VkShaderModule vertShader = CreateShaderModule(m_Device, vertCode);
-        VkShaderModule fragShader = CreateShaderModule(m_Device, fragCode);
-
-        VkPipelineShaderStageCreateInfo vertStage{};
-        vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertStage.module = vertShader;
-        vertStage.pName = "main";
-
-        VkPipelineShaderStageCreateInfo fragStage{};
-        fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragStage.module = fragShader;
-        fragStage.pName = "main";
-
-        VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+        VkPipelineShaderStageCreateInfo stages[] = {
+            vertShader.MakeStageInfo(VK_SHADER_STAGE_VERTEX_BIT),
+            fragShader.MakeStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT),
+        };
 
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -82,8 +43,6 @@ namespace Quiet::Renderer::Vulkan
 
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
         {
-            vkDestroyShaderModule(m_Device, fragShader, nullptr);
-            vkDestroyShaderModule(m_Device, vertShader, nullptr);
             throw std::runtime_error("Failed to create triangle pipeline layout.");
         }
 
@@ -183,21 +142,23 @@ namespace Quiet::Renderer::Vulkan
         if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline) != VK_SUCCESS)
         {
             vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
-            vkDestroyShaderModule(m_Device, fragShader, nullptr);
-            vkDestroyShaderModule(m_Device, vertShader, nullptr);
+            m_PipelineLayout = VK_NULL_HANDLE;
             throw std::runtime_error("Failed to create triangle graphics pipeline.");
         }
-
-        vkDestroyShaderModule(m_Device, fragShader, nullptr);
-        vkDestroyShaderModule(m_Device, vertShader, nullptr);
     }
 
-    TrianglePipeline::~TrianglePipeline()
+    StaticMeshPipeline::~StaticMeshPipeline()
     {
         if (m_Pipeline != VK_NULL_HANDLE)
+        {
             vkDestroyPipeline(m_Device, m_Pipeline, nullptr);
+            m_Pipeline = VK_NULL_HANDLE;
+        }
 
         if (m_PipelineLayout != VK_NULL_HANDLE)
+        {
             vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
+            m_PipelineLayout = VK_NULL_HANDLE;
+        }
     }
 }
