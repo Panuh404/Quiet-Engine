@@ -4,22 +4,22 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "Renderer/Vulkan/TriangleTypes.h"
+#include "Renderer/Vulkan/RenderTypes.h"
 
-namespace Quiet::Platform
+namespace Quiet::Input
 {
-    class Window;
+    class Input;
 }
 
 namespace Quiet::Scene
 {
-    class FlyCamera
+    class EditorCamera
     {
     public:
-        FlyCamera();
-        ~FlyCamera();
+        EditorCamera();
+        ~EditorCamera();
 
-        void Update(const Quiet::Platform::Window& window, float deltaTime);
+        void Update(const Quiet::Input::Input& input, float deltaTime);
         [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect) const;
 
     private:

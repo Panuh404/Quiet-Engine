@@ -16,7 +16,7 @@ namespace Quiet::Renderer::Vulkan {
 
     class TrianglePipeline;
     class CameraResources;
-    class TriangleMesh;
+    class StaticMesh;
 }
 
 namespace Quiet::Platform
@@ -24,10 +24,15 @@ namespace Quiet::Platform
     class Window;
 }
 
+namespace Quiet::Input
+{
+    class Input;
+}
+
 namespace Quiet::Scene
 {
-    class FlyCamera;
-    class SimpleScene;
+    class EditorCamera;
+    class Scene;
 }
 
 namespace Quiet::Core
@@ -57,13 +62,14 @@ namespace Quiet::Core
 
         void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
 
-        std::unique_ptr<Quiet::Scene::SimpleScene> m_Scene;
+        std::unique_ptr<Quiet::Input::Input> m_Input;
+        std::unique_ptr<Quiet::Scene::Scene> m_Scene;
 
-        std::unique_ptr<Quiet::Renderer::Vulkan::TriangleMesh> m_TriangleMesh;
+        std::unique_ptr<Quiet::Renderer::Vulkan::StaticMesh> m_TriangleMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
 
-        std::unique_ptr<Quiet::Scene::FlyCamera> m_FlyCamera;
+        std::unique_ptr<Quiet::Scene::EditorCamera> m_FlyCamera;
 
         std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;

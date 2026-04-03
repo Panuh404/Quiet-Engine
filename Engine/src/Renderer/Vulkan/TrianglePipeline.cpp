@@ -8,8 +8,8 @@
 #include "LogicalDevice.h"
 #include "Swapchain.h"
 #include "DepthResources.h"
-#include "TriangleMesh.h"
-#include "TriangleTypes.h"
+#include "StaticMesh.h"
+#include "RenderTypes.h"
 
 namespace
 {

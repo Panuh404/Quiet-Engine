@@ -4,7 +4,7 @@
 
 #include "LogicalDevice.h"
 #include "Swapchain.h"
-#include "TriangleTypes.h"
+#include "RenderTypes.h"
 #include "VulkanBuffer.h"
 
 namespace Quiet::Renderer::Vulkan

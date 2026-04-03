@@ -1,4 +1,4 @@
-#include "TriangleMesh.h"
+#include "StaticMesh.h"
 
 #include <cstring>
 
@@ -104,7 +104,7 @@ namespace Quiet::Renderer::Vulkan
         return attributes;
     }
 
-    TriangleMesh::TriangleMesh(const PhysicalDevice &physicalDevice,
+    StaticMesh::StaticMesh(const PhysicalDevice &physicalDevice,
                                const LogicalDevice &logicalDevice,
                                const GraphicsCommands &graphicsCommands)
     {
@@ -173,14 +173,14 @@ namespace Quiet::Renderer::Vulkan
         m_IndexCount = static_cast<uint32_t>(indices.size());
     }
 
-    TriangleMesh::~TriangleMesh() = default;
+    StaticMesh::~StaticMesh() = default;
 
-    VkBuffer TriangleMesh::GetVertexBuffer() const
+    VkBuffer StaticMesh::GetVertexBuffer() const
     {
         return m_VertexBuffer->GetHandle();
     }
 
-    VkBuffer TriangleMesh::GetIndexBuffer() const
+    VkBuffer StaticMesh::GetIndexBuffer() const
     {
         return m_IndexBuffer->GetHandle();
     }

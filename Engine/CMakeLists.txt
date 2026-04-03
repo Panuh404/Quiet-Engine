@@ -1,11 +1,16 @@
 # ENGINE
 add_library(Quiet_Engine STATIC
-        src/Scene/FlyCamera.cpp
-        src/Scene/FlyCamera.h
+        src/Scene/EditorCamera.cpp
+        src/Scene/EditorCamera.h
         src/Scene/Transform.h
-        src/Scene/SceneObject.h
-        src/Scene/SimpleScene.cpp
-        src/Scene/SimpleScene.h)
+        src/Scene/Actor.h
+        src/Scene/Scene.cpp
+        src/Scene/Scene.h
+        src/Input/Input.cpp
+        src/Input/Input.h
+        src/Scene/StaticMeshComponent.h
+        src/Scene/TransformComponent.h
+        src/Scene/RotatorComponent.h)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -30,15 +35,15 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/DepthResources.cpp
         src/Renderer/Vulkan/TrianglePipeline.h
         src/Renderer/Vulkan/TrianglePipeline.cpp
-        src/Renderer/Vulkan/TriangleMesh.h
-        src/Renderer/Vulkan/TriangleMesh.cpp
+        src/Renderer/Vulkan/StaticMesh.h
+        src/Renderer/Vulkan/StaticMesh.cpp
         src/Renderer/Vulkan/VulkanBuffer.h
         src/Renderer/Vulkan/VulkanBuffer.cpp
         src/Renderer/Vulkan/CameraResources.h
         src/Renderer/Vulkan/CameraResources.cpp
 
-        src/Scene/FlyCamera.h
-        src/Scene/FlyCamera.cpp
+        src/Scene/EditorCamera.h
+        src/Scene/EditorCamera.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

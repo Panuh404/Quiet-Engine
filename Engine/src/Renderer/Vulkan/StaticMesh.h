@@ -24,18 +24,18 @@ namespace Quiet::Renderer::Vulkan
         static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
     };
 
-    class TriangleMesh
+    class StaticMesh
     {
     public:
-        TriangleMesh(const PhysicalDevice& physicalDevice,
+        StaticMesh(const PhysicalDevice& physicalDevice,
                      const LogicalDevice& logicalDevice,
                      const GraphicsCommands& graphicsCommands);
-        ~TriangleMesh();
+        ~StaticMesh();
 
-        TriangleMesh(const TriangleMesh&) = delete;
-        TriangleMesh& operator=(const TriangleMesh&) = delete;
-        TriangleMesh(TriangleMesh&&) = delete;
-        TriangleMesh& operator=(TriangleMesh&&) = delete;
+        StaticMesh(const StaticMesh&) = delete;
+        StaticMesh& operator=(const StaticMesh&) = delete;
+        StaticMesh(StaticMesh&&) = delete;
+        StaticMesh& operator=(StaticMesh&&) = delete;
 
         [[nodiscard]] VkBuffer GetVertexBuffer() const;
         [[nodiscard]] VkBuffer GetIndexBuffer() const;

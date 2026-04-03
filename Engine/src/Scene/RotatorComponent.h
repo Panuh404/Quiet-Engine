@@ -1,12 +1,9 @@
 #pragma once
 
-#include "Transform.h"
-
 namespace Quiet::Scene
 {
-    struct SceneObject
+    struct RotatorComponent
     {
-        Transform TransformData {};
         float RotationSpeedDegreesPerSecond = 0.0f;
     };
 }

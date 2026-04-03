@@ -1,7 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
-#include "Scene/FlyCamera.h"
+#include "Scene/EditorCamera.h"
 
 #include <stdexcept>
 #include <utility>
@@ -12,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "GLFW/glfw3.h"
+#include "Input/Input.h"
 #include "Renderer/Vulkan/VulkanInstance.h"
 #include "Renderer/Vulkan/VulkanSurface.h"
 #include "Renderer/Vulkan/PhysicalDevice.h"
@@ -20,11 +21,11 @@
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
-#include "Renderer/Vulkan/TriangleMesh.h"
+#include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/TrianglePipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
-#include "Renderer/Vulkan/TriangleTypes.h"
-#include "Scene/SimpleScene.h"
+#include "Renderer/Vulkan/RenderTypes.h"
+#include "Scene/Scene.h"
 
 namespace Quiet::Core
 {
@@ -48,8 +49,12 @@ namespace Quiet::Core
         m_Window->SetCursorDisabled(true);
         m_Window->EnableRawMouseMotionIfSupported(true);
 
-        m_FlyCamera = std::make_unique<Quiet::Scene::FlyCamera>();
-        m_Scene = std::make_unique<Quiet::Scene::SimpleScene>();
+        m_Input = std::make_unique<Quiet::Input::Input>(*m_Window);
+        m_Input->SetCursorDisabled(true);
+        m_Input->EnableRawMouseMotionIfSupported(true);
+
+        m_FlyCamera = std::make_unique<Quiet::Scene::EditorCamera>();
+        m_Scene = std::make_unique<Quiet::Scene::Scene>();
 
         m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
             m_Spec.Name,
@@ -83,7 +88,7 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
-        m_TriangleMesh = std::make_unique<Quiet::Renderer::Vulkan::TriangleMesh>(
+        m_TriangleMesh = std::make_unique<Quiet::Renderer::Vulkan::StaticMesh>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_GraphicsCommands);
@@ -137,12 +142,13 @@ namespace Quiet::Core
         while (m_Running && !m_Window->ShouldClose())
         {
             m_Window->PollEvents();
+            m_Input->Update();
 
             const double currentTime = glfwGetTime();
             const float deltaTime = static_cast<float>(currentTime - previousTime);
             previousTime = currentTime;
 
-            m_FlyCamera->Update(*m_Window, deltaTime);
+            m_FlyCamera->Update(*m_Input, deltaTime);
             m_Scene->Update(deltaTime);
             DrawFrame();
         }
@@ -440,10 +446,10 @@ namespace Quiet::Core
         scissor.extent = m_Swapchain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        for (const auto& object : m_Scene->GetObjects())
+        for (const auto& actor : m_Scene->GetActors())
         {
             Quiet::Renderer::Vulkan::TransformPushConstants push{};
-            push.Model = object.TransformData.ToMatrix();
+            push.Model = actor.Transform.WorldTransform.ToMatrix();
 
             vkCmdPushConstants(
                 commandBuffer,
