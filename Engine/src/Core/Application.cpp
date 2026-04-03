@@ -24,6 +24,7 @@
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
+#include "Renderer/Vulkan/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Renderer/Vulkan/StaticMeshRenderSystem.h"
@@ -87,6 +88,19 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
+        m_ImGuiLayer = std::make_unique<Quiet::Renderer::Vulkan::ImGuiLayer>(
+            static_cast<GLFWwindow*>(m_Window->GetNativeHandle()),
+            m_VulkanInstance->GetHandle(),
+            m_PhysicalDevice->GetHandle(),
+            m_LogicalDevice->GetHandle(),
+            m_PhysicalDevice->GetQueueFamilies().GraphicsFamily.value(),
+            m_LogicalDevice->GetGraphicsQueue(),
+            2,
+            static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
+            m_Swapchain->GetImageFormat(),
+            m_DepthResources->GetFormat()
+        );
+
         m_MeshLibrary = std::make_unique<Quiet::Renderer::Vulkan::MeshLibrary>();
         m_MeshLibrary->CreateQuad("Quad", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
         m_MeshLibrary->CreateCube("Cube", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
@@ -136,6 +150,7 @@ namespace Quiet::Core
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
         m_CameraResources.reset();
+        m_ImGuiLayer.reset();
         m_DepthResources.reset();
         m_MeshLibrary.reset();
         m_Swapchain.reset();
@@ -151,16 +166,30 @@ namespace Quiet::Core
     int Application::Run()
     {
         QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
+
+        // deltaTime
         double previousTime = glfwGetTime();
+        const double currentTime = glfwGetTime();
+        const float deltaTime = static_cast<float>(currentTime - previousTime);
+        previousTime = currentTime;
 
         while (m_Running && !m_Window->ShouldClose())
         {
             m_Window->PollEvents();
             m_Input->Update();
 
-            const double currentTime = glfwGetTime();
-            const float deltaTime = static_cast<float>(currentTime - previousTime);
-            previousTime = currentTime;
+            m_ImGuiLayer->BeginFrame();
+            {
+                Quiet::Renderer::Vulkan::ImGuiStats stats{};
+                stats.FrameTimeMs = deltaTime * 1000.0f;
+                stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
+                stats.ActorCount = static_cast<std::uint32_t>(m_Scene->GetActors().size());
+                stats.MeshCount = static_cast<std::uint32_t>(m_MeshLibrary->GetCount());
+                stats.SwapchainExtent = m_Swapchain->GetExtent();
+                stats.CameraPosition = m_FreeCamera->GetPosition();
+                m_ImGuiLayer->BuildDebugWindow(stats);
+            }
+            m_ImGuiLayer->EndFrame();
 
             m_FreeCamera->Update(*m_Input, deltaTime);
             m_Scene->Update(deltaTime);
@@ -266,6 +295,7 @@ namespace Quiet::Core
         if (vkDeviceWaitIdle(m_LogicalDevice->GetHandle()) != VK_SUCCESS)
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
+        m_ImGuiLayer.reset();
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
@@ -309,6 +339,19 @@ namespace Quiet::Core
         m_FrameSync = std::make_unique<Quiet::Renderer::Vulkan::FrameSync>(
             *m_LogicalDevice,
             *m_Swapchain
+        );
+
+        m_ImGuiLayer = std::make_unique<Quiet::Renderer::Vulkan::ImGuiLayer>(
+        static_cast<GLFWwindow*>(m_Window->GetNativeHandle()),
+            m_VulkanInstance->GetHandle(),
+            m_PhysicalDevice->GetHandle(),
+            m_LogicalDevice->GetHandle(),
+            m_PhysicalDevice->GetQueueFamilies().GraphicsFamily.value(),
+            m_LogicalDevice->GetGraphicsQueue(),
+            2,
+            static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
+            m_Swapchain->GetImageFormat(),
+            m_DepthResources->GetFormat()
         );
 
         oldSwapchain.reset();
@@ -435,6 +478,7 @@ namespace Quiet::Core
         renderContext.Extent = m_Swapchain->GetExtent();
 
         m_StaticMeshRenderSystem->Record(renderContext);
+        m_ImGuiLayer->Render(commandBuffer);
 
         vkCmdEndRendering(commandBuffer);
 

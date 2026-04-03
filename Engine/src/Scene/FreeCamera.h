@@ -22,6 +22,10 @@ namespace Quiet::Scene
         void Update(const Quiet::Input::Input& input, float deltaTime);
         [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect) const;
 
+        [[nodiscard]] glm::vec3 GetPosition() const { return m_Position; }
+        [[nodiscard]] float GetYaw() const { return m_Yaw; }
+        [[nodiscard]] float GetPitch() const { return m_Pitch; }
+
     private:
         [[nodiscard]] glm::vec3 GetForward() const;
         [[nodiscard]] glm::vec3 GetRight() const;

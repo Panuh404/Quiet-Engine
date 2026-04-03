@@ -4,7 +4,10 @@
 #include <memory>
 #include <string>
 
-namespace Quiet::Renderer::Vulkan {
+#pragma region Forward declarations
+
+namespace Quiet::Renderer::Vulkan
+{
     class DepthResources;
     class Swapchain;
     class VulkanInstance;
@@ -18,6 +21,9 @@ namespace Quiet::Renderer::Vulkan {
     class CameraResources;
     class StaticMesh;
     class MeshLibrary;
+
+    class ImGuiLayer;
+    struct ImGuiStats;
 }
 
 namespace Quiet::Platform
@@ -35,6 +41,8 @@ namespace Quiet::Scene
     class FreeCamera;
     class Scene;
 }
+
+#pragma endregion
 
 namespace Quiet::Core
 {
@@ -72,6 +80,8 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshRenderSystem> m_StaticMeshRenderSystem;
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
+
+        std::unique_ptr<Quiet::Renderer::Vulkan::ImGuiLayer> m_ImGuiLayer;
 
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;

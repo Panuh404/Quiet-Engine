@@ -54,7 +54,15 @@ FetchContent_Declare(
         GIT_SHALLOW    TRUE
 )
 
-FetchContent_MakeAvailable(glfw spdlog glm)
+# Imgui
+FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.92.2b
+        GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(glfw spdlog glm imgui)
 
 find_package(Vulkan REQUIRED)
 

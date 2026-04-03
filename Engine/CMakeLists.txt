@@ -36,6 +36,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/FrameSync.h
         src/Renderer/Vulkan/GraphicsCommands.cpp
         src/Renderer/Vulkan/GraphicsCommands.h
+        src/Renderer/Vulkan/ImGuiLayer.cpp
+        src/Renderer/Vulkan/ImGuiLayer.h
         src/Renderer/Vulkan/LogicalDevice.cpp
         src/Renderer/Vulkan/LogicalDevice.h
         src/Renderer/Vulkan/MeshLibrary.cpp
@@ -62,6 +64,15 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanSurface.cpp
         src/Renderer/Vulkan/VulkanSurface.h
 
+        # ImGui
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+
     PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/Log.h
@@ -73,6 +84,8 @@ target_include_directories(Quiet_Engine
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
 )
 
 target_compile_features(Quiet_Engine PUBLIC cxx_std_20)

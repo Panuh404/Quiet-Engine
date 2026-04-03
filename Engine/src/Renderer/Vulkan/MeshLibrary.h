@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +36,8 @@ namespace Quiet::Renderer::Vulkan
 
         static std::vector<Vertex> BuildCubeVertices();
         static std::vector<std::uint16_t> BuildCubeIndices();
+
+        [[nodiscard]] std::size_t GetCount() const { return m_Meshes.size(); }
 
     private:
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_Meshes;
