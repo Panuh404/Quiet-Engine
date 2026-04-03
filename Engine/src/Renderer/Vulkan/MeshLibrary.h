@@ -2,9 +2,11 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace Quiet::Renderer::Vulkan
 {
+    struct Vertex;
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
@@ -20,8 +22,19 @@ namespace Quiet::Renderer::Vulkan
                         const LogicalDevice &logicalDevice,
                         const GraphicsCommands& graphicsCommands);
 
+        void CreateCube(const std::string& name,
+                        const PhysicalDevice& physicalDevice,
+                        const LogicalDevice& logicalDevice,
+                        const GraphicsCommands& graphicsCommands);
+
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
         bool Has(const std::string& name) const;
+
+        static std::vector<Vertex> BuildQuadVertices();
+        static std::vector<std::uint16_t> BuildQuadIndices();
+
+        static std::vector<Vertex> BuildCubeVertices();
+        static std::vector<std::uint16_t> BuildCubeIndices();
 
     private:
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_Meshes;

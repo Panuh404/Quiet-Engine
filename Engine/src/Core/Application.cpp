@@ -88,12 +88,8 @@ namespace Quiet::Core
             *m_Swapchain);
 
         m_MeshLibrary = std::make_unique<Quiet::Renderer::Vulkan::MeshLibrary>();
-        m_MeshLibrary->CreateQuad(
-            "Quad",
-            *m_PhysicalDevice,
-            *m_LogicalDevice,
-            *m_GraphicsCommands
-        );
+        m_MeshLibrary->CreateQuad("Quad", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
+        m_MeshLibrary->CreateCube("Cube", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
 
         m_CameraResources = std::make_unique<Quiet::Renderer::Vulkan::CameraResources>(
             *m_PhysicalDevice,
@@ -112,12 +108,17 @@ namespace Quiet::Core
             *m_Swapchain);
 
         m_StaticMeshRenderSystem = std::make_unique<Quiet::Renderer::Vulkan::StaticMeshRenderSystem>();
-        for (auto& actor : m_Scene->GetActors())
+
+        auto& actors = m_Scene->GetActors();
+        if (actors.size() >= 3)
         {
-            actor.StaticMesh = Quiet::Scene::StaticMeshComponent{
-                m_MeshLibrary->Get("Quad"),
-                true
-            };
+            actors[0].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Cube"), true };
+            actors[1].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Quad"), true };
+            actors[2].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Cube"), true };
+
+            actors[0].Transform.WorldTransform.Position = { 0.0f, 0.0f, 0.0f };
+            actors[1].Transform.WorldTransform.Position = { -2.0f, 0.0f, 0.0f };
+            actors[2].Transform.WorldTransform.Position = { 2.0f, 0.0f, -1.0f };
         }
         QUIET_CORE_INFO("Assigned mesh resource 'Quad' to {} actors.", m_Scene->GetActors().size());
     }

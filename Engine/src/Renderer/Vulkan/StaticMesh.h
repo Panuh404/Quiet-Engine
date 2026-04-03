@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -29,7 +30,9 @@ namespace Quiet::Renderer::Vulkan
     public:
         StaticMesh(const PhysicalDevice& physicalDevice,
                    const LogicalDevice& logicalDevice,
-                   const GraphicsCommands& graphicsCommands);
+                   const GraphicsCommands& graphicsCommands,
+                   const std::vector<Vertex>& vertices,
+                   const std::vector<std::uint16_t>& indices);
         ~StaticMesh();
 
         StaticMesh(const StaticMesh&) = delete;

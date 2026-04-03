@@ -9,20 +9,6 @@
 
 namespace
 {
-    std::array<Quiet::Renderer::Vulkan::Vertex, 4> MakeQuadVertices()
-    {
-        return {{
-            {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f }},
-              {{  0.5f, -0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f }},
-              {{  0.5f,  0.5f, 0.0f }, { 0.2f, 0.4f, 1.0f }},
-              {{ -0.5f,  0.5f, 0.0f }, { 1.0f, 1.0f, 0.2f }}
-        }};
-    }
-
-    std::array<std::uint16_t, 6> MakeQuadIndices()
-    {
-        return {{ 0, 1, 2, 2, 3, 0 }};
-    }
 
     void CopyBufferOneShot(VkDevice device,
                            VkCommandPool commandPool,
@@ -105,15 +91,14 @@ namespace Quiet::Renderer::Vulkan
         return attributes;
     }
 
-    StaticMesh::StaticMesh(const PhysicalDevice &physicalDevice,
-                               const LogicalDevice &logicalDevice,
-                               const GraphicsCommands &graphicsCommands)
+    StaticMesh::StaticMesh(const PhysicalDevice& physicalDevice,
+                           const LogicalDevice& logicalDevice,
+                           const GraphicsCommands& graphicsCommands,
+                           const std::vector<Vertex>& vertices,
+                           const std::vector<std::uint16_t>& indices)
     {
-        const auto vertices = MakeQuadVertices();
-        const auto indices = MakeQuadIndices();
-
-        const VkDeviceSize vertexBufferSize = sizeof(vertices);
-        const VkDeviceSize indexBufferSize = sizeof(indices);
+        const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(Vertex);
+        const VkDeviceSize indexBufferSize = indices.size() * sizeof(std::uint16_t);
 
         {
             VulkanBuffer stagingVertexBuffer(
@@ -142,7 +127,7 @@ namespace Quiet::Renderer::Vulkan
                 m_VertexBuffer->GetHandle(),
                 vertexBufferSize);
         }
-        m_VertexCount = static_cast<uint32_t>(vertices.size());
+        m_VertexCount = static_cast<std::uint32_t>(vertices.size());
 
         {
             VulkanBuffer stagingIndexBuffer(
@@ -171,7 +156,7 @@ namespace Quiet::Renderer::Vulkan
                 m_IndexBuffer->GetHandle(),
                 indexBufferSize);
         }
-        m_IndexCount = static_cast<uint32_t>(indices.size());
+        m_IndexCount = static_cast<std::uint32_t>(indices.size());
 
         QUIET_CORE_INFO(
             "Created static mesh. vertices={} indices={}",
