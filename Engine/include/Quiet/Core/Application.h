@@ -17,6 +17,7 @@ namespace Quiet::Renderer::Vulkan {
     class TrianglePipeline;
     class CameraResources;
     class StaticMesh;
+    class MeshLibrary;
 }
 
 namespace Quiet::Platform
@@ -65,7 +66,7 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Input::Input> m_Input;
         std::unique_ptr<Quiet::Scene::Scene> m_Scene;
 
-        std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> m_StaticMesh;
+        std::unique_ptr<Quiet::Renderer::Vulkan::MeshLibrary> m_MeshLibrary;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
 

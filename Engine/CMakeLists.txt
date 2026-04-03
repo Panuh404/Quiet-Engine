@@ -41,7 +41,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanBuffer.cpp
         src/Renderer/Vulkan/CameraResources.h
         src/Renderer/Vulkan/CameraResources.cpp
-
+        src/Renderer/Vulkan/MeshLibrary.h
+        src/Renderer/Vulkan/MeshLibrary.cpp
         src/Scene/FreeCamera.h
         src/Scene/FreeCamera.cpp
 

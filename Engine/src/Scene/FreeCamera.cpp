@@ -35,7 +35,8 @@ namespace Quiet::Scene
         if (input.IsKeyDown(Input::KeyCode::D)) m_Position += right * move;
         if (input.IsKeyDown(Input::KeyCode::A)) m_Position -= right * move;
         if (input.IsKeyDown(Input::KeyCode::Space)) m_Position += up * move;
-        if (input.IsKeyDown(Input::KeyCode::LeftControl)) m_Position -= up * move;
+        if (input.IsKeyDown(Input::KeyCode::Q)) m_Position -= up * move;
+        if (input.IsKeyDown(Input::KeyCode::E)) m_Position += up * move;
     }
 
     Quiet::Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect) const

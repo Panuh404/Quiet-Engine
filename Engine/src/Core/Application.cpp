@@ -24,6 +24,7 @@
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/TrianglePipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
+#include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Scene/Scene.h"
 
@@ -85,10 +86,13 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
-        m_StaticMesh = std::make_shared<Quiet::Renderer::Vulkan::StaticMesh>(
+        m_MeshLibrary = std::make_unique<Quiet::Renderer::Vulkan::MeshLibrary>();
+        m_MeshLibrary->CreateQuad(
+            "Quad",
             *m_PhysicalDevice,
             *m_LogicalDevice,
-            *m_GraphicsCommands);
+            *m_GraphicsCommands
+        );
 
         m_CameraResources = std::make_unique<Quiet::Renderer::Vulkan::CameraResources>(
             *m_PhysicalDevice,
@@ -108,7 +112,10 @@ namespace Quiet::Core
 
         for (auto& actor : m_Scene->GetActors())
         {
-            actor.StaticMesh = Quiet::Scene::StaticMeshComponent{ m_StaticMesh, true };
+            actor.StaticMesh = Quiet::Scene::StaticMeshComponent{
+                m_MeshLibrary->Get("Quad"),
+                true
+            };
         }
     }
 
@@ -125,7 +132,7 @@ namespace Quiet::Core
         m_TrianglePipeline.reset();
         m_CameraResources.reset();
         m_DepthResources.reset();
-        m_StaticMesh.reset();
+        m_MeshLibrary.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
@@ -413,14 +420,7 @@ namespace Quiet::Core
         renderingInfo.pDepthAttachment = &depthAttachment;
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
-
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
-
-        const VkBuffer vertexBuffers[] = { m_StaticMesh->GetVertexBuffer() };
-        const VkDeviceSize offsets[] = { 0 };
-
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, m_StaticMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
         const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
         vkCmdBindDescriptorSets(
@@ -453,6 +453,14 @@ namespace Quiet::Core
             if (!actor.StaticMesh.has_value() || !actor.StaticMesh->IsValid() || !actor.StaticMesh->Visible)
                 continue;
 
+            const auto& mesh = actor.StaticMesh->Mesh;
+
+            const VkBuffer vertexBuffers[] = { mesh->GetVertexBuffer() };
+            const VkDeviceSize offsets[] = { 0 };
+
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+            vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
+
             Quiet::Renderer::Vulkan::TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
 
@@ -465,7 +473,7 @@ namespace Quiet::Core
                 &push
             );
 
-            vkCmdDrawIndexed(commandBuffer, m_StaticMesh->GetIndexCount(), 1, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, mesh->GetIndexCount(), 1, 0, 0, 0);
         }
 
         vkCmdEndRendering(commandBuffer);
