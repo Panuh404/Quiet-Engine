@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include "Quiet/Core/Log.h"
+#include "Scene/Scene.h"
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -78,34 +79,97 @@ namespace Quiet::Renderer::Vulkan
         ImGui::NewFrame();
     }
 
-    void ImGuiLayer::BuildDebugWindow(const ImGuiStats &stats)
+    void ImGuiLayer::BuildEditorUI(const ImGuiStats &stats,
+                                   Scene::Scene &scene,
+                                   std::optional<std::size_t> &selectedActorIndex)
     {
         ImGui::Begin("Quiet Debug");
+        {
+            ImGui::Text("FPS: %.1f", stats.FPS);
+            ImGui::Text("Frame Time: %.3f ms", stats.FrameTimeMs);
+            ImGui::Separator();
 
-        ImGui::Text("FPS: %.1f", stats.FPS);
-        ImGui::Text("Frame Time: %.3f ms", stats.FrameTimeMs);
-        ImGui::Separator();
+            ImGui::Text("Actors: %u", stats.ActorCount);
+            ImGui::Text("Mesh Resources: %u", stats.MeshCount);
+            ImGui::Text("Swapchain Extent: %u x %u",
+                        stats.SwapchainExtent.width,
+                        stats.SwapchainExtent.height);
+            ImGui::Separator();
 
-        ImGui::Text("Actors: %u", stats.ActorCount);
-        ImGui::Text("Mesh Resources: %u", stats.MeshCount);
-        ImGui::Text("Swapchain Extent: %u x %u",
-                    stats.SwapchainExtent.width,
-                    stats.SwapchainExtent.height);
-        ImGui::Separator();
-
-        ImGui::Text("Camera:");
-        ImGui::Text("Press Shift + F1 to toggle Cursor Capture");
-        ImGui::Text("Mouse Capture: %s", stats.MouseCaptured ? "True" : "False");
-        ImGui::Text("X: %.2f", stats.CameraPosition.x);
-        ImGui::Text("Y: %.2f", stats.CameraPosition.y);
-        ImGui::Text("Z: %.2f", stats.CameraPosition.z);
-
+            ImGui::Text("Camera:");
+            ImGui::Text("Press Shift + F1 to toggle Cursor Capture");
+            ImGui::Text("Mouse Capture: %s", stats.MouseCaptured ? "True" : "False");
+            ImGui::Text("X: %.2f", stats.CameraPosition.x);
+            ImGui::Text("Y: %.2f", stats.CameraPosition.y);
+            ImGui::Text("Z: %.2f", stats.CameraPosition.z);
+        }
         ImGui::End();
 
-        if (m_ShowDemoWindow)
+        ImGui::Begin("Inspector");
         {
-            ImGui::ShowDemoWindow(&m_ShowDemoWindow);
+            if (!selectedActorIndex.has_value())
+            {
+                ImGui::Text("No actor selected.");
+            }
+            else if (selectedActorIndex.value() >= scene.GetActors().size())
+            {
+                ImGui::Text("Selected actor index is invalid.");
+                selectedActorIndex.reset();
+            }
+            else
+            {
+                auto& actor = scene.GetActors()[selectedActorIndex.value()];
+
+                ImGui::Text("Actor");
+                ImGui::Separator();
+
+                char nameBuffer[256]{};
+                std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
+
+                if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
+                {
+                    actor.Name = nameBuffer;
+                }
+
+                ImGui::Separator();
+                ImGui::Text("Transform");
+
+                auto& transform = actor.Transform.WorldTransform;
+                ImGui::DragFloat3("Position", &transform.Position.x, 0.1f);
+                ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f);
+                ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f);
+
+                ImGui::Separator();
+                ImGui::Text("Components");
+                ImGui::Text("StaticMesh: %s", (actor.StaticMesh.has_value() && actor.StaticMesh->IsValid()) ? "Yes" : "No");
+                ImGui::Text("Rotator: %s", actor.Rotator.has_value() ? "Yes" : "No");
+
+                if (actor.Rotator.has_value())
+                {
+                    ImGui::DragFloat("Rotation Speed", &actor.Rotator->RotationSpeedDegreesPerSecond, 1.0f);
+                }
+            }
         }
+        ImGui::End();
+
+        ImGui::Begin("Scene Hierarchy");
+        {
+            auto& actors = scene.GetActors();
+            for (std::size_t i = 0; i < actors.size(); ++i)
+            {
+                const bool isSelected =
+                    selectedActorIndex.has_value() && selectedActorIndex.value() == i;
+
+                const char* actorName =
+                    actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name.c_str();
+
+                if (ImGui::Selectable(actorName, isSelected))
+                {
+                    selectedActorIndex = i;
+                }
+            }
+        }
+        ImGui::End();
     }
 
     void ImGuiLayer::EndFrame()

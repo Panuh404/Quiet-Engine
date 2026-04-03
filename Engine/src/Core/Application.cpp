@@ -203,7 +203,8 @@ namespace Quiet::Core
                 stats.SwapchainExtent = m_Swapchain->GetExtent();
                 stats.MouseCaptured = m_MouseCaptureEnabled;
                 stats.CameraPosition = m_FreeCamera->GetPosition();
-                m_ImGuiLayer->BuildDebugWindow(stats);
+
+                m_ImGuiLayer->BuildEditorUI(stats, *m_Scene, m_EditorState.SelectedActorIndex);
             }
             m_ImGuiLayer->EndFrame();
 

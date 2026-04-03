@@ -75,6 +75,7 @@ target_sources(Quiet_Engine
 
     PUBLIC
         include/Quiet/Core/Application.h
+        include/Quiet/Core/EditorState.h
         include/Quiet/Core/Log.h
         include/Quiet/Platform/Window.h
 )

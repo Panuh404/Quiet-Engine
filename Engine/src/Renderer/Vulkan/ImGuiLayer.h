@@ -1,11 +1,17 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <vulkan/vulkan.h>
 #include "glm/vec3.hpp"
 
 struct GLFWwindow;
 struct ImDrawData;
+
+namespace Quiet::Scene
+{
+    class Scene;
+}
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -41,7 +47,9 @@ namespace Quiet::Renderer::Vulkan
         ImGuiLayer& operator=(const ImGuiLayer&) = delete;
 
         void BeginFrame();
-        void BuildDebugWindow(const ImGuiStats& stats);
+        void BuildEditorUI(const ImGuiStats& stats,
+                           Scene::Scene& scene,
+                           std::optional<std::size_t>& selectedActorIndex);
         void EndFrame();
         void Render(VkCommandBuffer commandBuffer) const;
 
@@ -55,6 +63,5 @@ namespace Quiet::Renderer::Vulkan
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
-        bool m_ShowDemoWindow = false;
     };
 }

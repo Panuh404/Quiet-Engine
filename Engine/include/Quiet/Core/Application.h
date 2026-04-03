@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#include "EditorState.h"
+
 #pragma region Forward declarations
 
 namespace Quiet::Renderer::Vulkan
@@ -72,6 +74,7 @@ namespace Quiet::Core
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
         AppSpec m_Spec;
+        EditorState m_EditorState{};
 
         void RecordFrameCommandBuffer(std::uint32_t imageIndex);
 
