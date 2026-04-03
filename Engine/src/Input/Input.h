@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <utility>
 
 #include "KeyCodes.h"
@@ -19,18 +20,33 @@ namespace Quiet::Input
 
         void Update();
 
-        bool IsKeyDown(KeyCode key) const;
-        bool IsMouseButtonDown(MouseCode button) const;
+        [[nodiscard]] bool IsKeyDown(KeyCode key) const;
+        [[nodiscard]] bool IsKeyPressed(KeyCode key) const;
 
-        std::pair<double, double> GetMousePosition() const;
-        std::pair<double, double> GetMouseDelta() const;
+        [[nodiscard]] bool IsMouseButtonDown(MouseCode button) const;
+        [[nodiscard]] bool IsMouseButtonPressed(MouseCode button) const;
+
+
+        [[nodiscard]] std::pair<double, double> GetMousePosition() const;
+        [[nodiscard]] std::pair<double, double> GetMouseDelta() const;
 
         void SetCursorDisabled(bool disabled);
         void EnableRawMouseMotionIfSupported(bool enabled);
         void ResetMouseDelta();
 
     private:
+        static constexpr std::size_t KeyCount = 512;
+        static constexpr std::size_t MouseButtonCount = 8;
+
+    private:
         const Quiet::Platform::Window* m_Window = nullptr;
+
+        std::array<bool, KeyCount> m_CurrentKeys{};
+        std::array<bool, KeyCount> m_PreviousKeys{};
+
+        std::array<bool, MouseButtonCount> m_CurrentMouseButtons{};
+        std::array<bool, MouseButtonCount> m_PreviousMouseButtons{};
+
         bool m_FirstMouseSample = true;
 
         double m_MouseX = 0.0;

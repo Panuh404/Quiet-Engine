@@ -50,8 +50,7 @@ namespace Quiet::Core
             );
         }
         m_Input = std::make_unique<Quiet::Input::Input>(*m_Window);
-        m_Input->SetCursorDisabled(true);
-        m_Input->EnableRawMouseMotionIfSupported(true);
+        SetMouseCaptureEnabled(true);
 
         m_FreeCamera = std::make_unique<Quiet::Scene::FreeCamera>();
         m_Scene = std::make_unique<Quiet::Scene::Scene>();
@@ -169,14 +168,30 @@ namespace Quiet::Core
 
         // deltaTime
         double previousTime = glfwGetTime();
-        const double currentTime = glfwGetTime();
-        const float deltaTime = static_cast<float>(currentTime - previousTime);
-        previousTime = currentTime;
 
         while (m_Running && !m_Window->ShouldClose())
         {
             m_Window->PollEvents();
             m_Input->Update();
+
+            const bool shiftDown =
+                m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
+                m_Input->IsKeyDown(Input::KeyCode::RightShift);
+
+            if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
+            {
+                ToggleMouseCapture();
+            }
+
+            const double currentTime = glfwGetTime();
+            const float deltaTime = static_cast<float>(currentTime - previousTime);
+            previousTime = currentTime;
+
+            if (m_MouseCaptureEnabled)
+            {
+                m_FreeCamera->Update(*m_Input, deltaTime);
+            }
+            m_Scene->Update(deltaTime);
 
             m_ImGuiLayer->BeginFrame();
             {
@@ -186,13 +201,12 @@ namespace Quiet::Core
                 stats.ActorCount = static_cast<std::uint32_t>(m_Scene->GetActors().size());
                 stats.MeshCount = static_cast<std::uint32_t>(m_MeshLibrary->GetCount());
                 stats.SwapchainExtent = m_Swapchain->GetExtent();
+                stats.MouseCaptured = m_MouseCaptureEnabled;
                 stats.CameraPosition = m_FreeCamera->GetPosition();
                 m_ImGuiLayer->BuildDebugWindow(stats);
             }
             m_ImGuiLayer->EndFrame();
 
-            m_FreeCamera->Update(*m_Input, deltaTime);
-            m_Scene->Update(deltaTime);
             DrawFrame();
         }
 
@@ -357,6 +371,25 @@ namespace Quiet::Core
         oldSwapchain.reset();
         m_Window->ResetFramebufferResizedFlag();
         QUIET_CORE_INFO("Recreated swapchain-dependent resources.");
+    }
+
+    void Application::SetMouseCaptureEnabled(bool enabled)
+    {
+        m_MouseCaptureEnabled = enabled;
+
+        m_Input->SetCursorDisabled(enabled);
+        m_Input->EnableRawMouseMotionIfSupported(enabled);
+        m_Input->ResetMouseDelta();
+
+        QUIET_CORE_TRACE(
+            "Mouse capture: {}. Toggle with Shift+F1.",
+            enabled ? "enabled" : "disabled"
+        );
+    }
+
+    void Application::ToggleMouseCapture()
+    {
+        SetMouseCaptureEnabled(!m_MouseCaptureEnabled);
     }
 
     void Application::RecordFrameCommandBuffer(std::uint32_t imageIndex)

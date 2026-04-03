@@ -93,13 +93,12 @@ namespace Quiet::Renderer::Vulkan
                     stats.SwapchainExtent.height);
         ImGui::Separator();
 
-        ImGui::Text("Camera Position:");
+        ImGui::Text("Camera:");
+        ImGui::Text("Press Shift + F1 to toggle Cursor Capture");
+        ImGui::Text("Mouse Capture: %s", stats.MouseCaptured ? "True" : "False");
         ImGui::Text("X: %.2f", stats.CameraPosition.x);
         ImGui::Text("Y: %.2f", stats.CameraPosition.y);
         ImGui::Text("Z: %.2f", stats.CameraPosition.z);
-
-        ImGui::Separator();
-        ImGui::Checkbox("Show Demo Window", &m_ShowDemoWindow);
 
         ImGui::End();
 

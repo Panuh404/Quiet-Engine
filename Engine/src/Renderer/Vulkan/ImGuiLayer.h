@@ -18,6 +18,7 @@ namespace Quiet::Renderer::Vulkan
         std::uint32_t ActorCount = 0;
         std::uint32_t MeshCount = 0;
         VkExtent2D SwapchainExtent{};
+        bool MouseCaptured = false;
         glm::vec3 CameraPosition = glm::vec3(0.0f);
     };
 

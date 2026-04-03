@@ -65,8 +65,12 @@ namespace Quiet::Core
         void DrawFrame();
         void RecreateSwapchain();
 
+        void SetMouseCaptureEnabled(bool enabled);
+        void ToggleMouseCapture();
+
     private:
         bool m_Running = true;
+        bool m_MouseCaptureEnabled = true;
         AppSpec m_Spec;
 
         void RecordFrameCommandBuffer(std::uint32_t imageIndex);
