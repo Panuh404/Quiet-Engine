@@ -1,16 +1,5 @@
 # ENGINE
-add_library(Quiet_Engine STATIC
-        src/Scene/FreeCamera.cpp
-        src/Scene/FreeCamera.h
-        src/Scene/Transform.h
-        src/Scene/Actor.h
-        src/Scene/Scene.cpp
-        src/Scene/Scene.h
-        src/Input/Input.cpp
-        src/Input/Input.h
-        src/Scene/StaticMeshComponent.h
-        src/Scene/TransformComponent.h
-        src/Scene/RotatorComponent.h)
+add_library(Quiet_Engine STATIC)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -45,9 +34,15 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/MeshLibrary.cpp
         src/Renderer/Vulkan/ShaderModule.h
         src/Renderer/Vulkan/ShaderModule.cpp
-
+        src/Renderer/Vulkan/StaticMeshRenderSystem.h
+        src/Renderer/Vulkan/StaticMeshRenderSystem.cpp
+        src/Renderer/Vulkan/RenderTypes.h
+        src/Renderer/Vulkan/ShaderCompiler.h
+        src/Renderer/Vulkan/ShaderCompiler.cpp
         src/Scene/FreeCamera.h
         src/Scene/FreeCamera.cpp
+        src/Scene/Scene.h
+        src/Scene/Scene.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h

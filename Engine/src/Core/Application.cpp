@@ -26,6 +26,7 @@
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/RenderTypes.h"
+#include "Renderer/Vulkan/StaticMeshRenderSystem.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Core
@@ -110,6 +111,7 @@ namespace Quiet::Core
             *m_LogicalDevice,
             *m_Swapchain);
 
+        m_StaticMeshRenderSystem = std::make_unique<Quiet::Renderer::Vulkan::StaticMeshRenderSystem>();
         for (auto& actor : m_Scene->GetActors())
         {
             actor.StaticMesh = Quiet::Scene::StaticMeshComponent{
@@ -128,6 +130,7 @@ namespace Quiet::Core
 
         m_Scene.reset();
         m_FrameSync.reset();
+        m_StaticMeshRenderSystem.reset();
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
         m_CameraResources.reset();
@@ -420,61 +423,16 @@ namespace Quiet::Core
         renderingInfo.pDepthAttachment = &depthAttachment;
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_StaticMeshPipeline->GetHandle());
 
-        const VkDescriptorSet descriptorSet = m_CameraResources->GetDescriptorSet(imageIndex);
-        vkCmdBindDescriptorSets(
-            commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            m_StaticMeshPipeline->GetLayout(),
-            0,
-            1,
-            &descriptorSet,
-            0,
-            nullptr
-        );
+        Quiet::Renderer::Vulkan::StaticMeshRenderContext renderContext{};
+        renderContext.CommandBuffer = commandBuffer;
+        renderContext.ImageIndex = imageIndex;
+        renderContext.Pipeline = m_StaticMeshPipeline.get();
+        renderContext.Camera = m_CameraResources.get();
+        renderContext.SceneData = m_Scene.get();
+        renderContext.Extent = m_Swapchain->GetExtent();
 
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(m_Swapchain->GetExtent().width);
-        viewport.height = static_cast<float>(m_Swapchain->GetExtent().height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
-        scissor.extent = m_Swapchain->GetExtent();
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        for (const auto& actor : m_Scene->GetActors())
-        {
-            if (!actor.StaticMesh.has_value() || !actor.StaticMesh->IsValid() || !actor.StaticMesh->Visible)
-                continue;
-
-            const auto& mesh = actor.StaticMesh->Mesh;
-
-            const VkBuffer vertexBuffers[] = { mesh->GetVertexBuffer() };
-            const VkDeviceSize offsets[] = { 0 };
-
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-            vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
-
-            Quiet::Renderer::Vulkan::TransformPushConstants push{};
-            push.Model = actor.Transform.WorldTransform.ToMatrix();
-
-            vkCmdPushConstants(
-                commandBuffer,
-                m_StaticMeshPipeline->GetLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(Quiet::Renderer::Vulkan::TransformPushConstants),
-                &push
-            );
-
-            vkCmdDrawIndexed(commandBuffer, mesh->GetIndexCount(), 1, 0, 0, 0);
-        }
+        m_StaticMeshRenderSystem->Record(renderContext);
 
         vkCmdEndRendering(commandBuffer);
 
