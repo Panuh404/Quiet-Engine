@@ -24,6 +24,7 @@
 #include "Renderer/Vulkan/TrianglePipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/TriangleTypes.h"
+#include "Scene/SimpleScene.h"
 
 namespace Quiet::Core
 {
@@ -46,7 +47,9 @@ namespace Quiet::Core
         }
         m_Window->SetCursorDisabled(true);
         m_Window->EnableRawMouseMotionIfSupported(true);
+
         m_FlyCamera = std::make_unique<Quiet::Scene::FlyCamera>();
+        m_Scene = std::make_unique<Quiet::Scene::SimpleScene>();
 
         m_VulkanInstance = std::make_unique<Quiet::Renderer::Vulkan::VulkanInstance>(
             m_Spec.Name,
@@ -109,6 +112,7 @@ namespace Quiet::Core
             vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
         }
 
+        m_Scene.reset();
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_TrianglePipeline.reset();
@@ -134,11 +138,12 @@ namespace Quiet::Core
         {
             m_Window->PollEvents();
 
-            const double currentTime =glfwGetTime();
+            const double currentTime = glfwGetTime();
             const float deltaTime = static_cast<float>(currentTime - previousTime);
             previousTime = currentTime;
 
             m_FlyCamera->Update(*m_Window, deltaTime);
+            m_Scene->Update(deltaTime);
             DrawFrame();
         }
 
@@ -401,10 +406,11 @@ namespace Quiet::Core
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
+
         const VkBuffer vertexBuffers[] = { m_TriangleMesh->GetVertexBuffer() };
         const VkDeviceSize offsets[] = { 0 };
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TrianglePipeline->GetHandle());
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, m_TriangleMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
@@ -418,22 +424,6 @@ namespace Quiet::Core
             &descriptorSet,
             0,
             nullptr
-        );
-
-        const auto now = std::chrono::steady_clock::now();
-        static const auto start = now;
-        const float timeSeconds = std::chrono::duration<float>(now - start).count();
-
-        Quiet::Renderer::Vulkan::TransformPushConstants push{};
-        push.Model = glm::mat4(1.0f);
-
-        vkCmdPushConstants(
-            commandBuffer,
-            m_TrianglePipeline->GetLayout(),
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(Quiet::Renderer::Vulkan::TransformPushConstants),
-            &push
         );
 
         VkViewport viewport{};
@@ -450,7 +440,22 @@ namespace Quiet::Core
         scissor.extent = m_Swapchain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDrawIndexed(commandBuffer, m_TriangleMesh->GetIndexCount(), 1, 0, 0, 0);
+        for (const auto& object : m_Scene->GetObjects())
+        {
+            Quiet::Renderer::Vulkan::TransformPushConstants push{};
+            push.Model = object.TransformData.ToMatrix();
+
+            vkCmdPushConstants(
+                commandBuffer,
+                m_TrianglePipeline->GetLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(Quiet::Renderer::Vulkan::TransformPushConstants),
+                &push
+            );
+
+            vkCmdDrawIndexed(commandBuffer, m_TriangleMesh->GetIndexCount(), 1, 0, 0, 0);
+        }
 
         vkCmdEndRendering(commandBuffer);
 

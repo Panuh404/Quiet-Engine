@@ -27,6 +27,7 @@ namespace Quiet::Platform
 namespace Quiet::Scene
 {
     class FlyCamera;
+    class SimpleScene;
 }
 
 namespace Quiet::Core
@@ -55,6 +56,9 @@ namespace Quiet::Core
         AppSpec m_Spec;
 
         void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
+
+        std::unique_ptr<Quiet::Scene::SimpleScene> m_Scene;
+
         std::unique_ptr<Quiet::Renderer::Vulkan::TriangleMesh> m_TriangleMesh;
         std::unique_ptr<Quiet::Renderer::Vulkan::TrianglePipeline> m_TrianglePipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;

@@ -1,7 +1,11 @@
 # ENGINE
 add_library(Quiet_Engine STATIC
         src/Scene/FlyCamera.cpp
-        src/Scene/FlyCamera.h)
+        src/Scene/FlyCamera.h
+        src/Scene/Transform.h
+        src/Scene/SceneObject.h
+        src/Scene/SimpleScene.cpp
+        src/Scene/SimpleScene.h)
 
 target_sources(Quiet_Engine
     PRIVATE
