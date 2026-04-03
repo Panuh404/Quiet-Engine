@@ -1,5 +1,6 @@
 #include "MeshLibrary.h"
 
+#include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -9,9 +10,14 @@ namespace Quiet::Renderer::Vulkan
                                  const LogicalDevice &logicalDevice,
                                  const GraphicsCommands& graphicsCommands)
     {
-        if (Has(name)) throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
+        if (Has(name))
+        {
+            QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
+            throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
+        }
 
         m_Meshes[name] = std::make_shared<StaticMesh>(physicalDevice, logicalDevice, graphicsCommands);
+        QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
 
     std::shared_ptr<StaticMesh> MeshLibrary::Get(const std::string& name) const

@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/StaticMeshPipeline.h"
@@ -53,12 +54,16 @@ namespace Quiet::Renderer::Vulkan
         scissor.extent = context.Extent;
         vkCmdSetScissor(context.CommandBuffer, 0, 1, &scissor);
 
+        std::uint32_t drawCount = 0;
+        std::uint32_t skippedCount = 0;
+
         for (const auto& actor : context.SceneData->GetActors())
         {
             if (!actor.StaticMesh.has_value() ||
                !actor.StaticMesh->IsValid() ||
                !actor.StaticMesh->Visible)
             {
+                ++skippedCount;
                 continue;
             }
 
@@ -85,6 +90,12 @@ namespace Quiet::Renderer::Vulkan
             vkCmdDrawIndexed(
                 context.CommandBuffer, mesh->GetIndexCount(),
                 1, 0, 0, 0);
+            ++drawCount;
         }
+        // QUIET_CORE_TRACE(
+        //     "StaticMeshRenderSystem: drew {} actors, skipped {}.",
+        //     drawCount,
+        //     skippedCount
+        // );
     }
 }

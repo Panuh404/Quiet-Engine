@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stdexcept>
 
+#include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/DepthResources.h"
@@ -144,6 +145,12 @@ namespace Quiet::Renderer::Vulkan
             m_PipelineLayout = VK_NULL_HANDLE;
             throw std::runtime_error("Failed to create triangle graphics pipeline.");
         }
+
+        QUIET_CORE_INFO(
+            "Created static mesh pipeline. colorFormat={} depthFormat={}",
+            static_cast<int>(swapchain.GetImageFormat()),
+            static_cast<int>(depthResources.GetFormat())
+        );
     }
 
     StaticMeshPipeline::~StaticMeshPipeline()

@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/RenderTypes.h"
@@ -89,6 +90,11 @@ namespace Quiet::Renderer::Vulkan
 
             vkUpdateDescriptorSets(m_Device, 1, &write, 0, nullptr);
         }
+
+        QUIET_CORE_INFO(
+            "Created camera resources for {} swapchain images.",
+            m_DescriptorSets.size()
+        );
     }
 
     CameraResources::~CameraResources()

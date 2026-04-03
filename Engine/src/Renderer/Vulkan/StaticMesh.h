@@ -28,8 +28,8 @@ namespace Quiet::Renderer::Vulkan
     {
     public:
         StaticMesh(const PhysicalDevice& physicalDevice,
-                     const LogicalDevice& logicalDevice,
-                     const GraphicsCommands& graphicsCommands);
+                   const LogicalDevice& logicalDevice,
+                   const GraphicsCommands& graphicsCommands);
         ~StaticMesh();
 
         StaticMesh(const StaticMesh&) = delete;
@@ -44,6 +44,7 @@ namespace Quiet::Renderer::Vulkan
     private:
         std::unique_ptr<VulkanBuffer> m_VertexBuffer;
         std::unique_ptr<VulkanBuffer> m_IndexBuffer;
+        std::uint32_t m_VertexCount = 0;
         std::uint32_t m_IndexCount = 0;
     };
 }

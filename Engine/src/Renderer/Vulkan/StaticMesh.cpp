@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/VulkanBuffer.h"
@@ -141,6 +142,7 @@ namespace Quiet::Renderer::Vulkan
                 m_VertexBuffer->GetHandle(),
                 vertexBufferSize);
         }
+        m_VertexCount = static_cast<uint32_t>(vertices.size());
 
         {
             VulkanBuffer stagingIndexBuffer(
@@ -169,8 +171,13 @@ namespace Quiet::Renderer::Vulkan
                 m_IndexBuffer->GetHandle(),
                 indexBufferSize);
         }
-
         m_IndexCount = static_cast<uint32_t>(indices.size());
+
+        QUIET_CORE_INFO(
+            "Created static mesh. vertices={} indices={}",
+            m_VertexCount,
+            m_IndexCount
+        );
     }
 
     StaticMesh::~StaticMesh() = default;

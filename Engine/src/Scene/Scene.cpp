@@ -1,5 +1,7 @@
 #include "Scene.h"
 
+#include "Quiet/Core/Log.h"
+
 namespace Quiet::Scene
 {
     Scene::Scene()
@@ -21,6 +23,8 @@ namespace Quiet::Scene
         right.Transform.WorldTransform.Scale = { 0.75f, 0.75f, 0.75f };
         right.Rotator = RotatorComponent{ -60.0f };
         m_Actors.push_back(right);
+
+        QUIET_CORE_INFO("Initialized scene with {} actors.", m_Actors.size());
     }
 
     void Scene::Update(float deltaTime)

@@ -3,6 +3,8 @@
 #include <fstream>
 #include <vector>
 
+#include "Quiet/Core/Log.h"
+
 namespace Quiet::Renderer::Vulkan
 {
     ShaderModule::ShaderModule(VkDevice device, const std::string &path)
@@ -19,6 +21,7 @@ namespace Quiet::Renderer::Vulkan
         {
             throw std::runtime_error("Failed to create shader module from: " + path);
         }
+        QUIET_CORE_INFO("Loaded shader module from '{}'.", path);
     }
 
     ShaderModule::~ShaderModule()

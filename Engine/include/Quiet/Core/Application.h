@@ -61,19 +61,18 @@ namespace Quiet::Core
         bool m_Running = true;
         AppSpec m_Spec;
 
-        void RecordTriangleCommandBuffer(std::uint32_t imageIndex);
+        void RecordFrameCommandBuffer(std::uint32_t imageIndex);
 
+        std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Input::Input> m_Input;
         std::unique_ptr<Quiet::Scene::Scene> m_Scene;
+        std::unique_ptr<Quiet::Scene::FreeCamera> m_FreeCamera;
 
         std::unique_ptr<Quiet::Renderer::Vulkan::MeshLibrary> m_MeshLibrary;
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshRenderSystem> m_StaticMeshRenderSystem;
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
 
-        std::unique_ptr<Quiet::Scene::FreeCamera> m_FreeCamera;
-
-        std::unique_ptr<Quiet::Platform::Window> m_Window;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanInstance> m_VulkanInstance;
         std::unique_ptr<Quiet::Renderer::Vulkan::VulkanSurface> m_VulkanSurface;
         std::unique_ptr<Quiet::Renderer::Vulkan::PhysicalDevice> m_PhysicalDevice;

@@ -1,6 +1,7 @@
 #include "Input.h"
 
 #include "GLFW/glfw3.h"
+#include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 
 namespace Quiet::Input
@@ -57,6 +58,7 @@ namespace Quiet::Input
             GLFW_CURSOR,
             disabled ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
         );
+        QUIET_CORE_INFO("Cursor mode: {}.", disabled ? "disabled" : "normal");
     }
 
     void Input::EnableRawMouseMotionIfSupported(bool enabled)
@@ -69,6 +71,11 @@ namespace Quiet::Input
                 GLFW_RAW_MOUSE_MOTION,
                 enabled ? GLFW_TRUE : GLFW_FALSE
             );
+            QUIET_CORE_INFO("Raw mouse motion: {}.", enabled ? "enabled" : "disabled");
+        }
+        else
+        {
+            QUIET_CORE_WARN("Raw mouse motion is not supported on this platform.");
         }
     }
 

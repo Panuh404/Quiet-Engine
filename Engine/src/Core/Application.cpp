@@ -119,6 +119,7 @@ namespace Quiet::Core
                 true
             };
         }
+        QUIET_CORE_INFO("Assigned mesh resource 'Quad' to {} actors.", m_Scene->GetActors().size());
     }
 
     Application::~Application()
@@ -211,7 +212,7 @@ namespace Quiet::Core
         const auto camera = m_FreeCamera->BuildUniformData(aspect);
         m_CameraResources->Update(imageIndex, camera);
 
-        RecordTriangleCommandBuffer(imageIndex);
+        RecordFrameCommandBuffer(imageIndex);
 
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
@@ -314,7 +315,7 @@ namespace Quiet::Core
         QUIET_CORE_INFO("Recreated swapchain-dependent resources.");
     }
 
-    void Application::RecordTriangleCommandBuffer(std::uint32_t imageIndex)
+    void Application::RecordFrameCommandBuffer(std::uint32_t imageIndex)
     {
         const VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
 
