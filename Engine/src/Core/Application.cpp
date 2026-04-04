@@ -28,8 +28,114 @@
 #include "Renderer/Vulkan/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/RenderTypes.h"
+#include "Renderer/Vulkan/SceneViewportTarget.h"
 #include "Renderer/Vulkan/StaticMeshRenderSystem.h"
 #include "Scene/Scene.h"
+
+
+namespace
+{
+    void TransitionImageLayout(VkCommandBuffer commandBuffer,
+                               VkImage image,
+                               VkImageAspectFlags aspectMask,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout)
+    {
+        if (oldLayout == newLayout) return;
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = oldLayout;
+        barrier.newLayout = newLayout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = aspectMask;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+            newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+                 newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+                 newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+                 newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        {
+            barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+                 newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = 0;
+
+            srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+                 newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+                 newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        {
+            barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            barrier.dstAccessMask = 0;
+
+            srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported image layout transition.");
+        }
+
+        vkCmdPipelineBarrier(
+            commandBuffer, srcStage, dstStage, 0, 0, nullptr,
+            0, nullptr, 1, &barrier
+        );
+    }
+}
 
 namespace Quiet::Core
 {
@@ -51,7 +157,7 @@ namespace Quiet::Core
             );
         }
         m_Input = std::make_unique<Quiet::Input::Input>(*m_Window);
-        SetMouseCaptureEnabled(true);
+        SetMouseCaptureEnabled(false);
 
         m_FreeCamera = std::make_unique<Quiet::Scene::FreeCamera>();
         m_Scene = std::make_unique<Quiet::Scene::Scene>();
@@ -82,6 +188,12 @@ namespace Quiet::Core
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_Swapchain);
+
+        m_SceneViewportTarget = std::make_unique<Quiet::Renderer::Vulkan::SceneViewportTarget>(
+            m_PhysicalDevice->GetHandle(),
+            m_LogicalDevice->GetHandle(),
+            m_Swapchain->GetImageFormat(),
+            m_DepthResources->GetFormat());
 
         m_GraphicsCommands = std::make_unique<Quiet::Renderer::Vulkan::GraphicsCommands>(
             *m_PhysicalDevice,
@@ -134,7 +246,7 @@ namespace Quiet::Core
             actors[1].Transform.WorldTransform.Position = { -2.0f, 0.0f, 0.0f };
             actors[2].Transform.WorldTransform.Position = { 2.0f, 0.0f, -1.0f };
         }
-        QUIET_CORE_INFO("Assigned mesh resource 'Quad' to {} actors.", m_Scene->GetActors().size());
+        QUIET_CORE_INFO("Assigned mesh resources to {} actors.", m_Scene->GetActors().size());
     }
 
     Application::~Application()
@@ -150,6 +262,7 @@ namespace Quiet::Core
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
         m_CameraResources.reset();
+        m_SceneViewportTarget.reset();
         m_ImGuiLayer.reset();
         m_DepthResources.reset();
         m_MeshLibrary.reset();
@@ -188,6 +301,19 @@ namespace Quiet::Core
             const float deltaTime = static_cast<float>(currentTime - previousTime);
             previousTime = currentTime;
 
+            if (m_ViewportResizePending && m_PendingViewportWidth > 0 && m_PendingViewportHeight > 0)
+            {
+                vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+
+                m_SceneViewportTarget->Resize(
+                    m_PendingViewportWidth,
+                    m_PendingViewportHeight
+                );
+
+                m_ViewportResizePending = false;
+                m_SceneViewportReady = false;
+            }
+
             if (m_MouseCaptureEnabled)
             {
                 m_FreeCamera->Update(*m_Input, deltaTime);
@@ -205,13 +331,37 @@ namespace Quiet::Core
                 stats.MouseCaptured = m_MouseCaptureEnabled;
                 stats.CameraPosition = m_FreeCamera->GetPosition();
 
-                m_ImGuiLayer->BuildEditorUI(stats, *m_Scene, m_EditorState.SelectedActorIndex);
+                ImTextureID sceneViewportTexture = 0;
+                if (m_SceneViewportTarget &&
+                    m_SceneViewportTarget->IsValid() &&
+                    m_SceneViewportReady)
+                {
+                    sceneViewportTexture = m_SceneViewportTarget->GetImGuiTextureID();
+                }
+
+                m_ImGuiLayer->BuildEditorUI(stats, *m_Scene, m_EditorState, sceneViewportTexture);
+
+                if (m_EditorState.ViewportWidth > 0 && m_EditorState.ViewportHeight > 0)
+                {
+                    const VkExtent2D currentExtent =
+                        (m_SceneViewportTarget && m_SceneViewportTarget->IsValid())
+                            ? m_SceneViewportTarget->GetExtent()
+                            : VkExtent2D{ 0, 0 };
+
+                    if (!m_SceneViewportTarget->IsValid() ||
+                        currentExtent.width != m_EditorState.ViewportWidth ||
+                        currentExtent.height != m_EditorState.ViewportHeight)
+                    {
+                        m_PendingViewportWidth = m_EditorState.ViewportWidth;
+                        m_PendingViewportHeight = m_EditorState.ViewportHeight;
+                        m_ViewportResizePending = true;
+                    }
+                }
             }
             m_ImGuiLayer->EndFrame();
 
-            DrawFrame();
-
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            const bool frameCompleted = DrawFrame();
+            if (frameCompleted && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
@@ -222,12 +372,12 @@ namespace Quiet::Core
         return 0;
     }
 
-    void Application::DrawFrame()
+    bool Application::DrawFrame()
     {
         if (m_Window->WasFramebufferResized())
         {
             RecreateSwapchain();
-            return;
+            return false;
         }
 
         const VkDevice device = m_LogicalDevice->GetHandle();
@@ -252,14 +402,19 @@ namespace Quiet::Core
         if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
         {
             RecreateSwapchain();
-            return;
+            return false;
         }
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
+        const VkExtent2D sceneExtent =
+            (m_SceneViewportTarget && m_SceneViewportTarget->IsValid())
+                ? m_SceneViewportTarget->GetExtent()
+                : m_Swapchain->GetExtent();
+
         const float aspect =
-           static_cast<float>(m_Swapchain->GetExtent().width) /
-           static_cast<float>(m_Swapchain->GetExtent().height);
+            static_cast<float>(sceneExtent.width) /
+            static_cast<float>(sceneExtent.height);
 
         const auto camera = m_FreeCamera->BuildUniformData(aspect);
         m_CameraResources->Update(imageIndex, camera);
@@ -298,11 +453,13 @@ namespace Quiet::Core
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || m_Window->WasFramebufferResized())
         {
             RecreateSwapchain();
-            return;
+            return false;
         }
 
         if (presentResult != VK_SUCCESS)
             throw std::runtime_error("Failed to present swapchain image.");
+
+        return true;
     }
 
     void Application::RecreateSwapchain()
@@ -317,6 +474,7 @@ namespace Quiet::Core
         if (vkDeviceWaitIdle(m_LogicalDevice->GetHandle()) != VK_SUCCESS)
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
+        m_SceneViewportTarget.reset();
         m_ImGuiLayer.reset();
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
@@ -376,6 +534,17 @@ namespace Quiet::Core
             m_DepthResources->GetFormat()
         );
 
+        m_SceneViewportTarget = std::make_unique<Quiet::Renderer::Vulkan::SceneViewportTarget>(
+            m_PhysicalDevice->GetHandle(),
+            m_LogicalDevice->GetHandle(),
+            m_Swapchain->GetImageFormat(),
+            m_DepthResources->GetFormat());
+
+        m_SceneViewportReady = false;
+        m_ViewportResizePending = false;
+        m_PendingViewportWidth = 0;
+        m_PendingViewportHeight = 0;
+
         oldSwapchain.reset();
         m_Window->ResetFramebufferResizedFlag();
         QUIET_CORE_INFO("Recreated swapchain-dependent resources.");
@@ -411,137 +580,127 @@ namespace Quiet::Core
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
             throw std::runtime_error("Failed to begin graphics command buffer.");
 
-        const VkImage colorImage = m_Swapchain->GetImages().at(imageIndex);
-        const VkImageLayout oldColorLayout = m_Swapchain->GetTrackedLayout(imageIndex);
+        const VkImage swapchainImage = m_Swapchain->GetImages().at(imageIndex);
+        const VkImageView swapchainImageView = m_Swapchain->GetImageViews().at(imageIndex);
 
-        VkImageSubresourceRange colorRange{};
-        colorRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        colorRange.baseMipLevel = 0;
-        colorRange.levelCount = 1;
-        colorRange.baseArrayLayer = 0;
-        colorRange.layerCount = 1;
-
-        VkImageMemoryBarrier colorToAttachment{};
-        colorToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        colorToAttachment.oldLayout = oldColorLayout;
-        colorToAttachment.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        colorToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        colorToAttachment.image = colorImage;
-        colorToAttachment.subresourceRange = colorRange;
-        colorToAttachment.srcAccessMask = 0;
-        colorToAttachment.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        vkCmdPipelineBarrier(
-            commandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &colorToAttachment
-        );
-
-        if (m_DepthResources->GetTrackedLayout() != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        // PASS A: Render scene to offscreen SceneViewportTarget
+        if (m_SceneViewportTarget && m_SceneViewportTarget->IsValid())
         {
-            VkImageSubresourceRange depthRange{};
-            depthRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-            depthRange.baseMipLevel = 0;
-            depthRange.levelCount = 1;
-            depthRange.baseArrayLayer = 0;
-            depthRange.layerCount = 1;
-
-            VkImageMemoryBarrier depthToAttachment{};
-            depthToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            depthToAttachment.oldLayout = m_DepthResources->GetTrackedLayout();
-            depthToAttachment.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            depthToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            depthToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            depthToAttachment.image = m_DepthResources->GetImage();
-            depthToAttachment.subresourceRange = depthRange;
-            depthToAttachment.srcAccessMask = 0;
-            depthToAttachment.dstAccessMask =
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-            vkCmdPipelineBarrier(
+            TransitionImageLayout(
                 commandBuffer,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                0,
-                0, nullptr,
-                0, nullptr,
-                1, &depthToAttachment
+                m_SceneViewportTarget->GetColorImage(),
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                m_SceneViewportTarget->GetColorLayout(),
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
             );
+            m_SceneViewportTarget->SetColorLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-            m_DepthResources->SetTrackedLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+            TransitionImageLayout(
+                commandBuffer,
+                m_SceneViewportTarget->GetDepthImage(),
+                VK_IMAGE_ASPECT_DEPTH_BIT,
+                m_SceneViewportTarget->GetDepthLayout(),
+                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+            );
+            m_SceneViewportTarget->SetDepthLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+            VkClearValue sceneColorClear{};
+            sceneColorClear.color = { { 0.05f, 0.07f, 0.12f, 1.0f } };
+
+            VkClearValue sceneDepthClear{};
+            sceneDepthClear.depthStencil = { 1.0f, 0 };
+
+            VkRenderingAttachmentInfo sceneColorAttachment{};
+            sceneColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            sceneColorAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
+            sceneColorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            sceneColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            sceneColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            sceneColorAttachment.clearValue = sceneColorClear;
+
+            VkRenderingAttachmentInfo sceneDepthAttachment{};
+            sceneDepthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            sceneDepthAttachment.imageView = m_SceneViewportTarget->GetDepthImageView();
+            sceneDepthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            sceneDepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            sceneDepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            sceneDepthAttachment.clearValue = sceneDepthClear;
+
+            VkRenderingInfo sceneRenderingInfo{};
+            sceneRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+            sceneRenderingInfo.renderArea.offset = { 0, 0 };
+            sceneRenderingInfo.renderArea.extent = m_SceneViewportTarget->GetExtent();
+            sceneRenderingInfo.layerCount = 1;
+            sceneRenderingInfo.colorAttachmentCount = 1;
+            sceneRenderingInfo.pColorAttachments = &sceneColorAttachment;
+            sceneRenderingInfo.pDepthAttachment = &sceneDepthAttachment;
+            sceneRenderingInfo.pStencilAttachment = nullptr;
+
+            vkCmdBeginRendering(commandBuffer, &sceneRenderingInfo);
+
+            Quiet::Renderer::Vulkan::StaticMeshRenderContext renderContext{};
+            renderContext.CommandBuffer = commandBuffer;
+            renderContext.ImageIndex = imageIndex;
+            renderContext.Pipeline = m_StaticMeshPipeline.get();
+            renderContext.Camera = m_CameraResources.get();
+            renderContext.SceneData = m_Scene.get();
+            renderContext.Extent = m_SceneViewportTarget->GetExtent();
+
+            m_StaticMeshRenderSystem->Record(renderContext);
+
+            vkCmdEndRendering(commandBuffer);
+
+            TransitionImageLayout(
+                commandBuffer,
+                m_SceneViewportTarget->GetColorImage(),
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                m_SceneViewportTarget->GetColorLayout(),
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            );
+            m_SceneViewportTarget->SetColorLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            m_SceneViewportReady = true;
         }
 
-        VkClearValue colorClear{};
-        colorClear.color = { { 0.05f, 0.07f, 0.12f, 1.0f } };
+        // PASS B: Render ImGui to swapchain
+        TransitionImageLayout(
+            commandBuffer,
+            swapchainImage,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            m_Swapchain->GetTrackedLayout(imageIndex),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        );
 
-        VkClearValue depthClear{};
-        depthClear.depthStencil = { 1.0f, 0 };
+        VkClearValue uiClear{};
+        uiClear.color = { { 0.10f, 0.10f, 0.10f, 1.0f } };
 
-        VkRenderingAttachmentInfo colorAttachment{};
-        colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        colorAttachment.imageView = m_Swapchain->GetImageViews().at(imageIndex);
-        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.clearValue = colorClear;
+        VkRenderingAttachmentInfo uiColorAttachment{};
+        uiColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        uiColorAttachment.imageView = swapchainImageView;
+        uiColorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        uiColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        uiColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        uiColorAttachment.clearValue = uiClear;
 
-        VkRenderingAttachmentInfo depthAttachment{};
-        depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        depthAttachment.imageView = m_DepthResources->GetImageView();
-        depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.clearValue = depthClear;
+        VkRenderingInfo uiRenderingInfo{};
+        uiRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        uiRenderingInfo.renderArea.offset = { 0, 0 };
+        uiRenderingInfo.renderArea.extent = m_Swapchain->GetExtent();
+        uiRenderingInfo.layerCount = 1;
+        uiRenderingInfo.colorAttachmentCount = 1;
+        uiRenderingInfo.pColorAttachments = &uiColorAttachment;
+        uiRenderingInfo.pDepthAttachment = nullptr;
+        uiRenderingInfo.pStencilAttachment = nullptr;
 
-        VkRenderingInfo renderingInfo{};
-        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.renderArea.offset = { 0, 0 };
-        renderingInfo.renderArea.extent = m_Swapchain->GetExtent();
-        renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments = &colorAttachment;
-        renderingInfo.pDepthAttachment = &depthAttachment;
-
-        vkCmdBeginRendering(commandBuffer, &renderingInfo);
-
-        Quiet::Renderer::Vulkan::StaticMeshRenderContext renderContext{};
-        renderContext.CommandBuffer = commandBuffer;
-        renderContext.ImageIndex = imageIndex;
-        renderContext.Pipeline = m_StaticMeshPipeline.get();
-        renderContext.Camera = m_CameraResources.get();
-        renderContext.SceneData = m_Scene.get();
-        renderContext.Extent = m_Swapchain->GetExtent();
-
-        m_StaticMeshRenderSystem->Record(renderContext);
+        vkCmdBeginRendering(commandBuffer, &uiRenderingInfo);
         m_ImGuiLayer->Render(commandBuffer);
-
         vkCmdEndRendering(commandBuffer);
 
-        VkImageMemoryBarrier toPresent{};
-        toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        toPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        toPresent.image = colorImage;
-        toPresent.subresourceRange = colorRange;
-        toPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        toPresent.dstAccessMask = 0;
-
-        vkCmdPipelineBarrier(
+        TransitionImageLayout(
             commandBuffer,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &toPresent
+            swapchainImage,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
         );
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)

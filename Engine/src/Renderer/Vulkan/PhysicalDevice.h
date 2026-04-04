@@ -14,7 +14,7 @@ namespace Quiet::Renderer::Vulkan
         std::optional<std::uint32_t> GraphicsFamily;
         std::optional<std::uint32_t> PresentFamily;
 
-        bool IsComplete() const
+        [[nodiscard]] bool IsComplete() const
         {
             return GraphicsFamily.has_value() && PresentFamily.has_value();
         }

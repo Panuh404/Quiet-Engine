@@ -23,6 +23,7 @@ namespace Quiet::Renderer::Vulkan
     class CameraResources;
     class StaticMesh;
     class MeshLibrary;
+    class SceneViewportTarget;
 
     class ImGuiLayer;
     struct ImGuiStats;
@@ -64,7 +65,7 @@ namespace Quiet::Core
         int Run();
 
     private:
-        void DrawFrame();
+        bool DrawFrame();
         void RecreateSwapchain();
 
         void SetMouseCaptureEnabled(bool enabled);
@@ -75,6 +76,11 @@ namespace Quiet::Core
         bool m_MouseCaptureEnabled = true;
         AppSpec m_Spec;
         EditorState m_EditorState{};
+
+        std::uint32_t m_PendingViewportWidth = 0;
+        std::uint32_t m_PendingViewportHeight = 0;
+        bool m_ViewportResizePending = false;
+        bool m_SceneViewportReady = false;
 
         void RecordFrameCommandBuffer(std::uint32_t imageIndex);
 
@@ -87,6 +93,7 @@ namespace Quiet::Core
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshRenderSystem> m_StaticMeshRenderSystem;
         std::unique_ptr<Quiet::Renderer::Vulkan::StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<Quiet::Renderer::Vulkan::CameraResources> m_CameraResources;
+        std::unique_ptr<Quiet::Renderer::Vulkan::SceneViewportTarget> m_SceneViewportTarget;
 
         std::unique_ptr<Quiet::Renderer::Vulkan::ImGuiLayer> m_ImGuiLayer;
 

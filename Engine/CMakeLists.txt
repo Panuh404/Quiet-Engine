@@ -45,6 +45,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/PhysicalDevice.cpp
         src/Renderer/Vulkan/PhysicalDevice.h
         src/Renderer/Vulkan/RenderTypes.h
+        src/Renderer/Vulkan/SceneViewportTarget.cpp
+        src/Renderer/Vulkan/SceneViewportTarget.h
         src/Renderer/Vulkan/ShaderCompiler.cpp
         src/Renderer/Vulkan/ShaderCompiler.h
         src/Renderer/Vulkan/ShaderModule.cpp

@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 
+#include "Quiet/Core/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Scene/Scene.h"
 
@@ -81,11 +82,39 @@ namespace Quiet::Renderer::Vulkan
         ImGui::NewFrame();
     }
 
-    void ImGuiLayer::BuildEditorUI(const ImGuiStats &stats,
-                                   Scene::Scene &scene,
-                                   std::optional<std::size_t> &selectedActorIndex)
+    void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
+                                   Quiet::Scene::Scene& scene,
+                                   Quiet::Core::EditorState& editorState,
+                                   ImTextureID sceneViewportTexture)
     {
         BuildDockspace();
+
+        ImGui::Begin("Viewport");
+        {
+            editorState.ViewportFocused = ImGui::IsWindowFocused();
+            editorState.ViewportHovered = ImGui::IsWindowHovered();
+
+            const ImVec2 availableSize = ImGui::GetContentRegionAvail();
+
+            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+
+            if (sceneViewportTexture != 0 && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
+            {
+                ImGui::Image(
+                    sceneViewportTexture,
+                    ImVec2(
+                        static_cast<float>(editorState.ViewportWidth),
+                        static_cast<float>(editorState.ViewportHeight)
+                    )
+                );
+            }
+            else
+            {
+                ImGui::Text("Scene viewport unavailable.");
+            }
+        }
+        ImGui::End();
 
         ImGui::Begin("Quiet Debug");
         {
@@ -111,18 +140,18 @@ namespace Quiet::Renderer::Vulkan
 
         ImGui::Begin("Inspector");
         {
-            if (!selectedActorIndex.has_value())
+            if (!editorState.SelectedActorIndex.has_value())
             {
                 ImGui::Text("No actor selected.");
             }
-            else if (selectedActorIndex.value() >= scene.GetActors().size())
+            else if (editorState.SelectedActorIndex.value() >= scene.GetActors().size())
             {
                 ImGui::Text("Selected actor index is invalid.");
-                selectedActorIndex.reset();
+                editorState.SelectedActorIndex.reset();
             }
             else
             {
-                auto& actor = scene.GetActors()[selectedActorIndex.value()];
+                auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
 
                 ImGui::Text("Actor");
                 ImGui::Separator();
@@ -162,14 +191,14 @@ namespace Quiet::Renderer::Vulkan
             for (std::size_t i = 0; i < actors.size(); ++i)
             {
                 const bool isSelected =
-                    selectedActorIndex.has_value() && selectedActorIndex.value() == i;
+                    editorState.SelectedActorIndex.has_value() && editorState.SelectedActorIndex.value() == i;
 
                 const char* actorName =
                     actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name.c_str();
 
                 if (ImGui::Selectable(actorName, isSelected))
                 {
-                    selectedActorIndex = i;
+                    editorState.SelectedActorIndex = i;
                 }
             }
         }

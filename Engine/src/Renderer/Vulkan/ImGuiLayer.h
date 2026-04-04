@@ -3,10 +3,17 @@
 #include <cstdint>
 #include <optional>
 #include <vulkan/vulkan.h>
+
+#include "imgui.h"
 #include "glm/vec3.hpp"
 
 struct GLFWwindow;
 struct ImDrawData;
+
+namespace Quiet::Core
+{
+    struct EditorState;
+}
 
 namespace Quiet::Scene
 {
@@ -48,8 +55,9 @@ namespace Quiet::Renderer::Vulkan
 
         void BeginFrame();
         void BuildEditorUI(const ImGuiStats& stats,
-                           Scene::Scene& scene,
-                           std::optional<std::size_t>& selectedActorIndex);
+                           Quiet::Scene::Scene& scene,
+                           Quiet::Core::EditorState& editorState,
+                           ImTextureID sceneViewportTexture);
         void EndFrame();
         void Render(VkCommandBuffer commandBuffer) const;
 
