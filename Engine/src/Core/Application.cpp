@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "imgui.h"
 #include "GLFW/glfw3.h"
 #include "Input/Input.h"
 #include "Renderer/Vulkan/VulkanInstance.h"
@@ -209,6 +210,12 @@ namespace Quiet::Core
             m_ImGuiLayer->EndFrame();
 
             DrawFrame();
+
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
         }
 
         QUIET_CORE_INFO("Shutting down.");

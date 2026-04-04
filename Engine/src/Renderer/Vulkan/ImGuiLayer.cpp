@@ -28,9 +28,11 @@ namespace Quiet::Renderer::Vulkan
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
         ImGui::StyleColorsDark();
-
-
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -45,7 +47,6 @@ namespace Quiet::Renderer::Vulkan
         initInfo.ImageCount = imageCount;
         initInfo.UseDynamicRendering = true;
         initInfo.CheckVkResultFn = nullptr;
-        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
         VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{};
         pipelineRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
@@ -54,7 +55,8 @@ namespace Quiet::Renderer::Vulkan
         pipelineRenderingInfo.depthAttachmentFormat = depthFormat;
         pipelineRenderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
-        initInfo.PipelineRenderingCreateInfo = pipelineRenderingInfo;
+        initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        initInfo.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineRenderingInfo;
 
         if (!ImGui_ImplVulkan_Init(&initInfo))
         {
@@ -83,6 +85,8 @@ namespace Quiet::Renderer::Vulkan
                                    Scene::Scene &scene,
                                    std::optional<std::size_t> &selectedActorIndex)
     {
+        BuildDockspace();
+
         ImGui::Begin("Quiet Debug");
         {
             ImGui::Text("FPS: %.1f", stats.FPS);
@@ -229,5 +233,11 @@ namespace Quiet::Renderer::Vulkan
             vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
             m_DescriptorPool = VK_NULL_HANDLE;
         }
+    }
+
+    void ImGuiLayer::BuildDockspace()
+    {
+        ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+        ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), dockspaceFlags);
     }
 }

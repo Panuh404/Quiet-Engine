@@ -53,12 +53,13 @@ namespace Quiet::Renderer::Vulkan
         void EndFrame();
         void Render(VkCommandBuffer commandBuffer) const;
 
-        bool WantsMouseCapture() const;
-        bool WantsKeyboardCapture() const;
+        [[nodiscard]] bool WantsMouseCapture() const;
+        [[nodiscard]] bool WantsKeyboardCapture() const;
 
     private:
         void CreateDescriptorPool();
         void DestroyDescriptorPool();
+        void BuildDockspace();
 
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
