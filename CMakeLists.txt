@@ -54,15 +54,22 @@ FetchContent_Declare(
         GIT_SHALLOW    TRUE
 )
 
-# Imgui
+# ImGui
 FetchContent_Declare(
         imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG docking
         GIT_SHALLOW TRUE
 )
+# ImGuizmo
+FetchContent_Declare(
+        imguizmo
+        GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+)
 
-FetchContent_MakeAvailable(glfw spdlog glm imgui)
+FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo)
 
 find_package(Vulkan REQUIRED)
 

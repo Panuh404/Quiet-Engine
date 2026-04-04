@@ -10,10 +10,13 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "imgui.h"
+#include "ImGuizmo.h"
 #include "GLFW/glfw3.h"
 #include "Input/Input.h"
+
 #include "Renderer/Vulkan/VulkanInstance.h"
 #include "Renderer/Vulkan/VulkanSurface.h"
 #include "Renderer/Vulkan/PhysicalDevice.h"
@@ -22,7 +25,6 @@
 #include "Renderer/Vulkan/GraphicsCommands.h"
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
-#include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/ImGuiLayer.h"
@@ -134,6 +136,27 @@ namespace
             commandBuffer, srcStage, dstStage, 0, 0, nullptr,
             0, nullptr, 1, &barrier
         );
+    }
+
+    ImGuizmo::OPERATION ToImGuizmoOperation(Quiet::Core::GizmoOperation operation)
+    {
+        switch (operation)
+        {
+            case Quiet::Core::GizmoOperation::Translate: return ImGuizmo::TRANSLATE;
+            case Quiet::Core::GizmoOperation::Rotate:    return ImGuizmo::ROTATE;
+            case Quiet::Core::GizmoOperation::Scale:     return ImGuizmo::SCALE;
+            default:                                     return ImGuizmo::TRANSLATE;
+        }
+    }
+
+    ImGuizmo::MODE ToImGuizmoMode(Quiet::Core::GizmoMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Core::GizmoMode::Local: return ImGuizmo::LOCAL;
+            case Quiet::Core::GizmoMode::World: return ImGuizmo::WORLD;
+            default:                            return ImGuizmo::WORLD;
+        }
     }
 }
 
@@ -339,7 +362,16 @@ namespace Quiet::Core
                     sceneViewportTexture = m_SceneViewportTarget->GetImGuiTextureID();
                 }
 
-                m_ImGuiLayer->BuildEditorUI(stats, *m_Scene, m_EditorState, sceneViewportTexture);
+                m_ImGuiLayer->BuildEditorUI(
+                    stats,
+                    *m_Scene,
+                    m_EditorState,
+                    sceneViewportTexture,
+                    [this]()
+                    {
+                        BuildSelectedActorGizmo();
+                    }
+                );
 
                 if (m_EditorState.ViewportWidth > 0 && m_EditorState.ViewportHeight > 0)
                 {
@@ -567,6 +599,101 @@ namespace Quiet::Core
     void Application::ToggleMouseCapture()
     {
         SetMouseCaptureEnabled(!m_MouseCaptureEnabled);
+    }
+
+   void Application::BuildSelectedActorGizmo()
+    {
+        if (m_MouseCaptureEnabled) return;
+        if (!m_SceneViewportTarget || !m_SceneViewportTarget->IsValid() || !m_SceneViewportReady) return;
+        if (!m_EditorState.SelectedActorIndex.has_value()) return;
+
+        auto& actors = m_Scene->GetActors();
+        const std::size_t selectedIndex = m_EditorState.SelectedActorIndex.value();
+
+        if (selectedIndex >= actors.size())
+        {
+            m_EditorState.SelectedActorIndex.reset();
+            return;
+        }
+
+        if (m_EditorState.ViewportWidth == 0 || m_EditorState.ViewportHeight == 0) return;
+        if (!m_EditorState.ViewportImageHovered && !ImGuizmo::IsUsing()) return;
+
+        if (ImGui::IsKeyPressed(ImGuiKey_T)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Translate; }
+        if (ImGui::IsKeyPressed(ImGuiKey_R)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Rotate; }
+        if (ImGui::IsKeyPressed(ImGuiKey_S)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Scale; }
+
+        const float aspect =
+            static_cast<float>(m_SceneViewportTarget->GetExtent().width) /
+            static_cast<float>(m_SceneViewportTarget->GetExtent().height);
+
+        const auto cameraData = m_FreeCamera->BuildUniformData(aspect);
+
+        auto& actor = actors[selectedIndex];
+        auto& transform = actor.Transform.WorldTransform;
+
+        glm::mat4 model = transform.ToMatrix();
+
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(
+            m_EditorState.ViewportScreenX,
+            m_EditorState.ViewportScreenY,
+            static_cast<float>(m_EditorState.ViewportWidth),
+            static_cast<float>(m_EditorState.ViewportHeight)
+        );
+
+        const ImGuizmo::OPERATION operation = ToImGuizmoOperation(m_EditorState.CurrentGizmoOperation);
+        const ImGuizmo::MODE mode = ToImGuizmoMode(m_EditorState.CurrentGizmoMode);
+
+        float snapValues[3] = { 0.0f, 0.0f, 0.0f };
+        const float* snapPointer = nullptr;
+
+        if (m_EditorState.GizmoSnapEnabled)
+        {
+            switch (m_EditorState.CurrentGizmoOperation)
+            {
+            case GizmoOperation::Translate:
+                snapValues[0] = m_EditorState.TranslateSnap[0];
+                snapValues[1] = m_EditorState.TranslateSnap[1];
+                snapValues[2] = m_EditorState.TranslateSnap[2];
+                snapPointer = snapValues;
+                break;
+
+            case GizmoOperation::Rotate:
+                snapValues[0] = m_EditorState.RotateSnap;
+                snapPointer = snapValues;
+                break;
+
+            case GizmoOperation::Scale:
+                snapValues[0] = m_EditorState.ScaleSnap;
+                snapPointer = snapValues;
+                break;
+            }
+        }
+
+        const bool changed = ImGuizmo::Manipulate(
+            glm::value_ptr(cameraData.View),
+            glm::value_ptr(cameraData.Projection),
+            operation,
+            mode,
+            glm::value_ptr(model),
+            nullptr,
+            snapPointer
+        );
+
+        if (changed || ImGuizmo::IsUsing())
+        {
+            float translation[3]{};
+            float rotation[3]{};
+            float scale[3]{};
+
+            ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(model), translation, rotation, scale);
+
+            transform.Position = { translation[0], translation[1], translation[2] };
+            transform.RotationDegrees = { rotation[0], rotation[1], rotation[2] };
+            transform.Scale = { scale[0], scale[1], scale[2] };
+        }
     }
 
     void Application::RecordFrameCommandBuffer(std::uint32_t imageIndex)

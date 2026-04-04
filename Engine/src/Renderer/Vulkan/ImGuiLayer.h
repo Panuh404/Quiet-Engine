@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
+#include <functional>
 #include <vulkan/vulkan.h>
 
 #include "imgui.h"
@@ -57,7 +57,8 @@ namespace Quiet::Renderer::Vulkan
         void BuildEditorUI(const ImGuiStats& stats,
                            Quiet::Scene::Scene& scene,
                            Quiet::Core::EditorState& editorState,
-                           ImTextureID sceneViewportTexture);
+                           ImTextureID sceneViewportTexture,
+                           const std::function<void()>& viewportOverlayCallback);
         void EndFrame();
         void Render(VkCommandBuffer commandBuffer) const;
 

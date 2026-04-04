@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <ImGuizmo.h>
 
 #include <GLFW/glfw3.h>
 #include <stdexcept>
@@ -80,12 +81,14 @@ namespace Quiet::Renderer::Vulkan
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
     }
 
     void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
                                    Quiet::Scene::Scene& scene,
                                    Quiet::Core::EditorState& editorState,
-                                   ImTextureID sceneViewportTexture)
+                                   ImTextureID sceneViewportTexture,
+                                   const std::function<void()>& viewportOverlayCallback)
     {
         BuildDockspace();
 
@@ -96,10 +99,17 @@ namespace Quiet::Renderer::Vulkan
 
             const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
-            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+            editorState.ViewportWidth =
+                availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
 
-            if (sceneViewportTexture != 0 && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
+            editorState.ViewportHeight =
+                availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+
+            editorState.ViewportImageHovered = false;
+
+            if (sceneViewportTexture != 0 &&
+                editorState.ViewportWidth > 0 &&
+                editorState.ViewportHeight > 0)
             {
                 ImGui::Image(
                     sceneViewportTexture,
@@ -108,6 +118,22 @@ namespace Quiet::Renderer::Vulkan
                         static_cast<float>(editorState.ViewportHeight)
                     )
                 );
+
+                const ImVec2 imageMin = ImGui::GetItemRectMin();
+                const ImVec2 imageMax = ImGui::GetItemRectMax();
+
+                editorState.ViewportScreenX = imageMin.x;
+                editorState.ViewportScreenY = imageMin.y;
+                editorState.ViewportWidth = static_cast<std::uint32_t>(imageMax.x - imageMin.x);
+                editorState.ViewportHeight = static_cast<std::uint32_t>(imageMax.y - imageMin.y);
+                editorState.ViewportImageHovered = ImGui::IsItemHovered();
+
+                ImGui::SetNextItemAllowOverlap();
+
+                if (viewportOverlayCallback)
+                {
+                    viewportOverlayCallback();
+                }
             }
             else
             {
@@ -180,6 +206,60 @@ namespace Quiet::Renderer::Vulkan
                 if (actor.Rotator.has_value())
                 {
                     ImGui::DragFloat("Rotation Speed", &actor.Rotator->RotationSpeedDegreesPerSecond, 1.0f);
+                }
+
+                ImGui::Separator();
+                ImGui::Text("Gizmo");
+
+                const bool translateSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Translate;
+                const bool rotateSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Rotate;
+                const bool scaleSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale;
+
+                if (ImGui::RadioButton("Translate", translateSelected))
+                {
+                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Translate;
+                }
+                ImGui::SameLine();
+                if (ImGui::RadioButton("Rotate", rotateSelected))
+                {
+                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Rotate;
+                }
+                ImGui::SameLine();
+                if (ImGui::RadioButton("Scale", scaleSelected))
+                {
+                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Scale;
+                }
+
+                if (editorState.CurrentGizmoOperation != Core::GizmoOperation::Scale)
+                {
+                    const bool localSelected = editorState.CurrentGizmoMode == Core::GizmoMode::Local;
+                    const bool worldSelected = editorState.CurrentGizmoMode == Core::GizmoMode::World;
+
+                    if (ImGui::RadioButton("Local", localSelected))
+                    {
+                        editorState.CurrentGizmoMode = Core::GizmoMode::Local;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::RadioButton("World", worldSelected))
+                    {
+                        editorState.CurrentGizmoMode = Core::GizmoMode::World;
+                    }
+                }
+
+                ImGui::Checkbox("Snap", &editorState.GizmoSnapEnabled);
+                switch (editorState.CurrentGizmoOperation)
+                {
+                    case Core::GizmoOperation::Translate:
+                        ImGui::InputFloat3("Translate Snap", editorState.TranslateSnap);
+                        break;
+
+                    case Core::GizmoOperation::Rotate:
+                        ImGui::InputFloat("Rotate Snap", &editorState.RotateSnap);
+                        break;
+
+                    case Core::GizmoOperation::Scale:
+                        ImGui::InputFloat("Scale Snap", &editorState.ScaleSnap);
+                        break;
                 }
             }
         }

@@ -70,6 +70,7 @@ namespace Quiet::Core
 
         void SetMouseCaptureEnabled(bool enabled);
         void ToggleMouseCapture();
+        void BuildSelectedActorGizmo();
 
     private:
         bool m_Running = true;
