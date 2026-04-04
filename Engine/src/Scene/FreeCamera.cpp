@@ -39,14 +39,18 @@ namespace Quiet::Scene
         if (input.IsKeyDown(Input::KeyCode::E)) m_Position += up * move;
     }
 
-    Quiet::Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect) const
+    Quiet::Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect, bool flipY) const
     {
         Quiet::Renderer::Vulkan::CameraUniformData camera{};
         const glm::vec3 forward = GetForward();
 
         camera.View = glm::lookAt(m_Position, m_Position + forward, glm::vec3(0.0f, 1.0f, 0.0f));
         camera.Projection = glm::perspective(glm::radians(60.f), aspect, 0.1f, 100.f);
-        camera.Projection[1][1] *= -1.0f;
+
+        if (flipY)
+        {
+            camera.Projection[1][1] *= -1.0f;
+        }
         return camera;
     }
 

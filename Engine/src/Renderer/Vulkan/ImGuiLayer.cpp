@@ -111,13 +111,17 @@ namespace Quiet::Renderer::Vulkan
                 editorState.ViewportWidth > 0 &&
                 editorState.ViewportHeight > 0)
             {
+                ImGui::SetNextItemAllowOverlap();
+
                 ImGui::Image(
-                    sceneViewportTexture,
-                    ImVec2(
-                        static_cast<float>(editorState.ViewportWidth),
-                        static_cast<float>(editorState.ViewportHeight)
-                    )
-                );
+                sceneViewportTexture,
+                ImVec2(
+                    static_cast<float>(editorState.ViewportWidth),
+                    static_cast<float>(editorState.ViewportHeight)
+                ),
+                ImVec2(0.0f, 1.0f),
+                ImVec2(1.0f, 0.0f)
+            );
 
                 const ImVec2 imageMin = ImGui::GetItemRectMin();
                 const ImVec2 imageMax = ImGui::GetItemRectMax();
@@ -127,8 +131,6 @@ namespace Quiet::Renderer::Vulkan
                 editorState.ViewportWidth = static_cast<std::uint32_t>(imageMax.x - imageMin.x);
                 editorState.ViewportHeight = static_cast<std::uint32_t>(imageMax.y - imageMin.y);
                 editorState.ViewportImageHovered = ImGui::IsItemHovered();
-
-                ImGui::SetNextItemAllowOverlap();
 
                 if (viewportOverlayCallback)
                 {

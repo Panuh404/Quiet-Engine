@@ -448,7 +448,7 @@ namespace Quiet::Core
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        const auto camera = m_FreeCamera->BuildUniformData(aspect);
+        const auto camera = m_FreeCamera->BuildUniformData(aspect, false);
         m_CameraResources->Update(imageIndex, camera);
 
         RecordFrameCommandBuffer(imageIndex);
@@ -627,12 +627,41 @@ namespace Quiet::Core
             static_cast<float>(m_SceneViewportTarget->GetExtent().width) /
             static_cast<float>(m_SceneViewportTarget->GetExtent().height);
 
-        const auto cameraData = m_FreeCamera->BuildUniformData(aspect);
+        const auto cameraData = m_FreeCamera->BuildUniformData(aspect, false);
 
         auto& actor = actors[selectedIndex];
         auto& transform = actor.Transform.WorldTransform;
 
-        glm::mat4 model = transform.ToMatrix();
+        float translation[3] =
+        {
+            transform.Position.x,
+            transform.Position.y,
+            transform.Position.z
+        };
+
+        float rotation[3] =
+        {
+            transform.RotationDegrees.x,
+            transform.RotationDegrees.y,
+            transform.RotationDegrees.z
+        };
+
+        float scale[3] =
+        {
+            transform.Scale.x,
+            transform.Scale.y,
+            transform.Scale.z
+        };
+
+        float modelArray[16]{};
+        ImGuizmo::RecomposeMatrixFromComponents(
+            translation,
+            rotation,
+            scale,
+            modelArray
+        );
+
+        glm::mat4 model = glm::make_mat4(modelArray);
 
         ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist();

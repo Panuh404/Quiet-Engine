@@ -20,7 +20,7 @@ namespace Quiet::Scene
         ~FreeCamera();
 
         void Update(const Quiet::Input::Input& input, float deltaTime);
-        [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect) const;
+        [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect, bool flipY) const;
 
         [[nodiscard]] glm::vec3 GetPosition() const { return m_Position; }
         [[nodiscard]] float GetYaw() const { return m_Yaw; }
