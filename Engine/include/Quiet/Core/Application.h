@@ -45,6 +45,11 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace
+{
+    struct Ray;
+}
+
 #pragma endregion
 
 namespace Quiet::Core
@@ -71,6 +76,9 @@ namespace Quiet::Core
         void SetMouseCaptureEnabled(bool enabled);
         void ToggleMouseCapture();
         void BuildSelectedActorGizmo();
+
+        void TrySelectActorFromViewport();
+        [[nodiscard]] bool BuildViewportPickRay(Ray& outRay) const;
 
     private:
         bool m_Running = true;

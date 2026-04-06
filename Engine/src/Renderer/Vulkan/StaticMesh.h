@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.h>
 
 #include "VulkanBuffer.h"
+#include "glm/vec3.hpp"
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -18,8 +19,8 @@ namespace Quiet::Renderer::Vulkan
 
     struct Vertex
     {
-        float Position[3];
-        float Color[3];
+        glm::vec3 Position;
+        glm::vec3 Color;
 
         static VkVertexInputBindingDescription GetBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
@@ -44,10 +45,15 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkBuffer GetIndexBuffer() const;
         [[nodiscard]] std::uint32_t GetIndexCount() const { return m_IndexCount; }
 
+        [[nodiscard]] const glm::vec3& GetLocalBoundsMin() const { return m_LocalBoundsMin; }
+        [[nodiscard]] const glm::vec3& GetLocalBoundsMax() const { return m_LocalBoundsMax; }
+
     private:
         std::unique_ptr<VulkanBuffer> m_VertexBuffer;
         std::unique_ptr<VulkanBuffer> m_IndexBuffer;
         std::uint32_t m_VertexCount = 0;
         std::uint32_t m_IndexCount = 0;
+        glm::vec3 m_LocalBoundsMin{ 0.0f };
+        glm::vec3 m_LocalBoundsMax{ 0.0f };
     };
 }

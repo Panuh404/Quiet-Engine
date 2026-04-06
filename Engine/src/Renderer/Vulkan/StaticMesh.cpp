@@ -1,6 +1,8 @@
 #include "StaticMesh.h"
 
 #include <cstring>
+#include <glm/glm.hpp>
+#include <glm/common.hpp>
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
@@ -128,6 +130,19 @@ namespace Quiet::Renderer::Vulkan
                 vertexBufferSize);
         }
         m_VertexCount = static_cast<std::uint32_t>(vertices.size());
+        if (vertices.empty())
+        {
+            throw std::runtime_error("StaticMesh cannot be created with no vertices.");
+        }
+
+        m_LocalBoundsMin = vertices[0].Position;
+        m_LocalBoundsMax = vertices[0].Position;
+
+        for (const auto& vertex : vertices)
+        {
+            m_LocalBoundsMin = glm::min(m_LocalBoundsMin, vertex.Position);
+            m_LocalBoundsMax = glm::max(m_LocalBoundsMax, vertex.Position);
+        }
 
         {
             VulkanBuffer stagingIndexBuffer(
