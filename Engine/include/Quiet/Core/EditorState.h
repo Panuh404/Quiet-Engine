@@ -39,5 +39,7 @@ namespace Quiet::Core
         float TranslateSnap[3] = { 0.5f, 0.5f, 0.5f };
         float RotateSnap = 15.0f;
         float ScaleSnap = 0.1f;
+
+        bool RequestFocusSelected = false;
     };
 }

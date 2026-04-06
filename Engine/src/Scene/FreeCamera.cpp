@@ -45,7 +45,7 @@ namespace Quiet::Scene
         const glm::vec3 forward = GetForward();
 
         camera.View = glm::lookAt(m_Position, m_Position + forward, glm::vec3(0.0f, 1.0f, 0.0f));
-        camera.Projection = glm::perspective(glm::radians(60.f), aspect, 0.1f, 100.f);
+        camera.Projection = glm::perspective(glm::radians(m_FovDegrees), aspect, 0.1f, 100.f);
 
         if (flipY)
         {

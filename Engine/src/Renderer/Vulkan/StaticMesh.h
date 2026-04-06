@@ -9,6 +9,7 @@
 
 #include "VulkanBuffer.h"
 #include "glm/vec3.hpp"
+#include "Quiet/Math/Geometry.h"
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -47,6 +48,7 @@ namespace Quiet::Renderer::Vulkan
 
         [[nodiscard]] const glm::vec3& GetLocalBoundsMin() const { return m_LocalBoundsMin; }
         [[nodiscard]] const glm::vec3& GetLocalBoundsMax() const { return m_LocalBoundsMax; }
+        [[nodiscard]] Math::AABB GetLocalBounds() const { return { m_LocalBoundsMin, m_LocalBoundsMax }; }
 
     private:
         std::unique_ptr<VulkanBuffer> m_VertexBuffer;

@@ -144,7 +144,77 @@ namespace Quiet::Renderer::Vulkan
         }
         ImGui::End();
 
-        ImGui::Begin("Quiet Debug");
+        ImGui::Begin("Toolbox", nullptr, ImGuiWindowFlags_NoCollapse);
+        {
+            ImGui::TextUnformatted("Gizmo");
+
+            if (ImGui::RadioButton("Translate", editorState.CurrentGizmoOperation == Core::GizmoOperation::Translate))
+                editorState.CurrentGizmoOperation = Core::GizmoOperation::Translate;
+
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Rotate", editorState.CurrentGizmoOperation == Core::GizmoOperation::Rotate))
+                editorState.CurrentGizmoOperation = Core::GizmoOperation::Rotate;
+
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Scale", editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale))
+                editorState.CurrentGizmoOperation = Core::GizmoOperation::Scale;
+
+            ImGui::Separator();
+
+            ImGui::TextUnformatted("Space");
+
+            const bool modeDisabled = editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale;
+            if (modeDisabled) ImGui::BeginDisabled();
+
+            if (ImGui::RadioButton("Local", editorState.CurrentGizmoMode == Core::GizmoMode::Local))
+                editorState.CurrentGizmoMode = Core::GizmoMode::Local;
+
+            ImGui::SameLine();
+            if (ImGui::RadioButton("World", editorState.CurrentGizmoMode == Core::GizmoMode::World))
+                editorState.CurrentGizmoMode = Core::GizmoMode::World;
+
+            if (modeDisabled) ImGui::EndDisabled();
+
+            ImGui::Separator();
+
+            ImGui::Checkbox("Snap", &editorState.GizmoSnapEnabled);
+
+            switch (editorState.CurrentGizmoOperation)
+            {
+            case Core::GizmoOperation::Translate:
+                ImGui::InputFloat3("Translate Snap", editorState.TranslateSnap);
+                break;
+            case Core::GizmoOperation::Rotate:
+                ImGui::InputFloat("Rotate Snap", &editorState.RotateSnap);
+                break;
+            case Core::GizmoOperation::Scale:
+                ImGui::InputFloat("Scale Snap", &editorState.ScaleSnap);
+                break;
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Focus Selected (F)"))
+            {
+                editorState.RequestFocusSelected = true;
+            }
+
+            if (editorState.SelectedActorIndex.has_value() &&
+                editorState.SelectedActorIndex.value() < scene.GetActors().size())
+            {
+                const auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
+                ImGui::Text("Selected: %s", actor.Name.c_str());
+            }
+            else
+            {
+                ImGui::TextUnformatted("Selected: None");
+            }
+
+            ImGui::Separator();
+        }
+        ImGui::End();
+
+        ImGui::Begin("Debug");
         {
             ImGui::Text("FPS: %.1f", stats.FPS);
             ImGui::Text("Frame Time: %.3f ms", stats.FrameTimeMs);
@@ -163,6 +233,11 @@ namespace Quiet::Renderer::Vulkan
             ImGui::Text("X: %.2f", stats.CameraPosition.x);
             ImGui::Text("Y: %.2f", stats.CameraPosition.y);
             ImGui::Text("Z: %.2f", stats.CameraPosition.z);
+
+            ImGui::Separator();
+            ImGui::Text("Tools:");
+            ImGui::TextUnformatted("Shortcuts: T/R/S = gizmo, L = local/world, G = snap, F = focus");
+
         }
         ImGui::End();
 
@@ -208,60 +283,6 @@ namespace Quiet::Renderer::Vulkan
                 if (actor.Rotator.has_value())
                 {
                     ImGui::DragFloat("Rotation Speed", &actor.Rotator->RotationSpeedDegreesPerSecond, 1.0f);
-                }
-
-                ImGui::Separator();
-                ImGui::Text("Gizmo");
-
-                const bool translateSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Translate;
-                const bool rotateSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Rotate;
-                const bool scaleSelected = editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale;
-
-                if (ImGui::RadioButton("Translate", translateSelected))
-                {
-                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Translate;
-                }
-                ImGui::SameLine();
-                if (ImGui::RadioButton("Rotate", rotateSelected))
-                {
-                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Rotate;
-                }
-                ImGui::SameLine();
-                if (ImGui::RadioButton("Scale", scaleSelected))
-                {
-                    editorState.CurrentGizmoOperation = Core::GizmoOperation::Scale;
-                }
-
-                if (editorState.CurrentGizmoOperation != Core::GizmoOperation::Scale)
-                {
-                    const bool localSelected = editorState.CurrentGizmoMode == Core::GizmoMode::Local;
-                    const bool worldSelected = editorState.CurrentGizmoMode == Core::GizmoMode::World;
-
-                    if (ImGui::RadioButton("Local", localSelected))
-                    {
-                        editorState.CurrentGizmoMode = Core::GizmoMode::Local;
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::RadioButton("World", worldSelected))
-                    {
-                        editorState.CurrentGizmoMode = Core::GizmoMode::World;
-                    }
-                }
-
-                ImGui::Checkbox("Snap", &editorState.GizmoSnapEnabled);
-                switch (editorState.CurrentGizmoOperation)
-                {
-                    case Core::GizmoOperation::Translate:
-                        ImGui::InputFloat3("Translate Snap", editorState.TranslateSnap);
-                        break;
-
-                    case Core::GizmoOperation::Rotate:
-                        ImGui::InputFloat("Rotate Snap", &editorState.RotateSnap);
-                        break;
-
-                    case Core::GizmoOperation::Scale:
-                        ImGui::InputFloat("Scale Snap", &editorState.ScaleSnap);
-                        break;
                 }
             }
         }

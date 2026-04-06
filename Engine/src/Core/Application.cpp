@@ -373,6 +373,12 @@ namespace Quiet::Core
                     [this]()
                     {
                         TrySelectActorFromViewport();
+                        HandleEditorShortcuts();
+                        if (m_EditorState.RequestFocusSelected)
+                        {
+                            FocusSelectedActor();
+                            m_EditorState.RequestFocusSelected = false;
+                        }
                         BuildSelectedActorGizmo();
                     }
                 );
@@ -605,7 +611,89 @@ namespace Quiet::Core
         SetMouseCaptureEnabled(!m_MouseCaptureEnabled);
     }
 
-   void Application::BuildSelectedActorGizmo()
+    void Application::HandleEditorShortcuts()
+    {
+        if (m_MouseCaptureEnabled)
+        {
+            return;
+        }
+
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.WantTextInput)
+        {
+            return;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_T, false)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Translate; }
+        if (ImGui::IsKeyPressed(ImGuiKey_R, false)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Rotate; }
+        if (ImGui::IsKeyPressed(ImGuiKey_S, false)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Scale; }
+        if (ImGui::IsKeyPressed(ImGuiKey_L, false))
+        {
+            if (m_EditorState.CurrentGizmoOperation != GizmoOperation::Scale)
+            {
+                m_EditorState.CurrentGizmoMode =
+                    (m_EditorState.CurrentGizmoMode == GizmoMode::World)
+                        ? GizmoMode::Local
+                        : GizmoMode::World;
+            }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_G, false)) { m_EditorState.GizmoSnapEnabled = !m_EditorState.GizmoSnapEnabled; }
+        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) { m_EditorState.RequestFocusSelected = true; }
+    }
+
+    void Application::FocusSelectedActor()
+    {
+        if (!m_EditorState.SelectedActorIndex.has_value()) return;
+
+        auto& actors = m_Scene->GetActors();
+        const std::size_t selectedIndex = m_EditorState.SelectedActorIndex.value();
+
+        if (selectedIndex >= actors.size())
+        {
+            m_EditorState.SelectedActorIndex.reset();
+            return;
+        }
+
+        auto& actor = actors[selectedIndex];
+
+        glm::vec3 target = actor.Transform.WorldTransform.Position;
+        float radius = 1.0f;
+
+        if (actor.StaticMesh.has_value() &&
+            actor.StaticMesh->IsValid() &&
+            actor.StaticMesh->Visible)
+        {
+            const auto& mesh = actor.StaticMesh->Mesh;
+            const auto localBounds = mesh->GetLocalBounds();
+
+            const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(
+                actor.Transform.WorldTransform.ToMatrix(),
+                localBounds.Min,
+                localBounds.Max
+            );
+
+            target = (worldBounds.Min + worldBounds.Max) * 0.5f;
+            radius = glm::max(0.5f, glm::length(worldBounds.Max - worldBounds.Min) * 0.5f);
+        }
+
+        const float fovRadians = glm::radians(m_FreeCamera->GetFovDegrees());
+        float distance = radius / std::tan(fovRadians * 0.5f);
+        distance = glm::max(distance * 1.5f, 1.5f);
+
+        const glm::vec3 forward = m_FreeCamera->GetForward();
+        const glm::vec3 newPosition = target - forward * distance;
+
+        m_FreeCamera->SetPosition(newPosition);
+
+        QUIET_CORE_TRACE(
+            "Focused selected actor at ({:.2f}, {:.2f}, {:.2f}).",
+            target.x,
+            target.y,
+            target.z
+        );
+    }
+
+    void Application::BuildSelectedActorGizmo()
     {
         if (m_MouseCaptureEnabled) return;
         if (!m_SceneViewportTarget || !m_SceneViewportTarget->IsValid() || !m_SceneViewportReady) return;
@@ -622,10 +710,6 @@ namespace Quiet::Core
 
         if (m_EditorState.ViewportWidth == 0 || m_EditorState.ViewportHeight == 0) return;
         if (!m_EditorState.ViewportImageHovered && !ImGuizmo::IsUsing()) return;
-
-        if (ImGui::IsKeyPressed(ImGuiKey_T)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Translate; }
-        if (ImGui::IsKeyPressed(ImGuiKey_R)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Rotate; }
-        if (ImGui::IsKeyPressed(ImGuiKey_S)) { m_EditorState.CurrentGizmoOperation = GizmoOperation::Scale; }
 
         const float aspect =
             static_cast<float>(m_SceneViewportTarget->GetExtent().width) /

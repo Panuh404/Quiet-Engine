@@ -76,6 +76,8 @@ namespace Quiet::Core
 
         void SetMouseCaptureEnabled(bool enabled);
         void ToggleMouseCapture();
+        void HandleEditorShortcuts();
+        void FocusSelectedActor();
         void BuildSelectedActorGizmo();
 
         void TrySelectActorFromViewport();
