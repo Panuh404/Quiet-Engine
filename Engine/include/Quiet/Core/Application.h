@@ -59,6 +59,7 @@ namespace Quiet::Core
         std::string Name = "Quiet Application";
         std::uint32_t Width = 1280;
         std::uint32_t Height = 720;
+        bool StartMaximized = true;
     };
 
     class Application

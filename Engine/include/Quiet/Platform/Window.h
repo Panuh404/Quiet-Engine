@@ -15,6 +15,7 @@ namespace Quiet::Platform
         std::uint32_t Height = 720;
         std::string Title = "Quiet";
         bool Resizable = true;
+        bool StartMaximized = true;
     };
 
     class Window

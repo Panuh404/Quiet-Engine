@@ -256,6 +256,7 @@ namespace Quiet::Core
         windowDesc.Width = m_Spec.Width;
         windowDesc.Height = m_Spec.Height;
         windowDesc.Title = m_Spec.Name;
+        windowDesc.StartMaximized = m_Spec.StartMaximized;
 
         m_Window = std::make_unique<Quiet::Platform::Window>(windowDesc);
         if (!m_Window->IsVulkanSupported())
@@ -855,7 +856,11 @@ namespace Quiet::Core
             }
         }
 
-        m_EditorState.SelectedActorIndex = bestHit;
+        if (bestHit.has_value())
+        {
+            m_EditorState.SelectedActorIndex = bestHit;
+            QUIET_CORE_TRACE("Viewport pick selected actor index {}.", static_cast<int>(*bestHit));
+        }
     }
 
     bool Application::BuildViewportPickRay(Ray& outRay) const

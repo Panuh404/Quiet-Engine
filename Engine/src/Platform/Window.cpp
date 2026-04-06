@@ -24,6 +24,7 @@ namespace Quiet::Platform
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, m_Desc.Resizable ? GLFW_TRUE : GLFW_FALSE);
+        glfwWindowHint(GLFW_MAXIMIZED, m_Desc.StartMaximized ? GLFW_TRUE : GLFW_FALSE);
 
         m_Handle = glfwCreateWindow(
             static_cast<int>(m_Desc.Width),
