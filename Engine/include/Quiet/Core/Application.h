@@ -45,7 +45,7 @@ namespace Quiet::Scene
     class Scene;
 }
 
-namespace
+namespace Quiet::Math
 {
     struct Ray;
 }
@@ -79,7 +79,7 @@ namespace Quiet::Core
         void BuildSelectedActorGizmo();
 
         void TrySelectActorFromViewport();
-        [[nodiscard]] bool BuildViewportPickRay(Ray& outRay) const;
+        [[nodiscard]] bool BuildViewportPickRay(Math::Ray& outRay) const;
 
     private:
         bool m_Running = true;

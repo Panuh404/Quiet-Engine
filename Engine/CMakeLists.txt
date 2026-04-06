@@ -82,6 +82,7 @@ target_sources(Quiet_Engine
         include/Quiet/Core/EditorState.h
         include/Quiet/Core/Log.h
         include/Quiet/Platform/Window.h
+        include/Quiet/Math/Geometry.h
 )
 
 target_include_directories(Quiet_Engine
