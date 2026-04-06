@@ -55,8 +55,8 @@ namespace Quiet::Renderer::Vulkan
 
         void BeginFrame();
         void BuildEditorUI(const ImGuiStats& stats,
-                           Quiet::Scene::Scene& scene,
-                           Quiet::Core::EditorState& editorState,
+                           Scene::Scene& scene,
+                           Core::EditorState& editorState,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
         void EndFrame();
@@ -66,6 +66,10 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] bool WantsKeyboardCapture() const;
 
     private:
+        float GetToolbarHeight() const;
+        void BuildToolbar(Core::EditorState& editorState,
+                          Scene::Scene& scene);
+
         void CreateDescriptorPool();
         void DestroyDescriptorPool();
         void BuildDockspace();

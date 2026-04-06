@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 
+#include "ImGuiTheme.h"
+#include "../../../../Build/Intermediate/Release/_deps/imgui-src/imgui_internal.h"
 #include "Quiet/Core/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Scene/Scene.h"
@@ -34,7 +36,13 @@ namespace Quiet::Renderer::Vulkan
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        ImGui::StyleColorsDark();
+        SetupEditorFonts(
+            io,
+            "C:/Windows/Fonts/segoeui.ttf",
+            28.0f
+        );
+        ApplyDarkEditorTheme(io);
+
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -90,6 +98,7 @@ namespace Quiet::Renderer::Vulkan
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
+        BuildToolbar(editorState, scene);
         BuildDockspace();
 
         ImGui::Begin("Viewport");
@@ -141,76 +150,6 @@ namespace Quiet::Renderer::Vulkan
             {
                 ImGui::Text("Scene viewport unavailable.");
             }
-        }
-        ImGui::End();
-
-        ImGui::Begin("Toolbox", nullptr, ImGuiWindowFlags_NoCollapse);
-        {
-            ImGui::TextUnformatted("Gizmo");
-
-            if (ImGui::RadioButton("Translate", editorState.CurrentGizmoOperation == Core::GizmoOperation::Translate))
-                editorState.CurrentGizmoOperation = Core::GizmoOperation::Translate;
-
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Rotate", editorState.CurrentGizmoOperation == Core::GizmoOperation::Rotate))
-                editorState.CurrentGizmoOperation = Core::GizmoOperation::Rotate;
-
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Scale", editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale))
-                editorState.CurrentGizmoOperation = Core::GizmoOperation::Scale;
-
-            ImGui::Separator();
-
-            ImGui::TextUnformatted("Space");
-
-            const bool modeDisabled = editorState.CurrentGizmoOperation == Core::GizmoOperation::Scale;
-            if (modeDisabled) ImGui::BeginDisabled();
-
-            if (ImGui::RadioButton("Local", editorState.CurrentGizmoMode == Core::GizmoMode::Local))
-                editorState.CurrentGizmoMode = Core::GizmoMode::Local;
-
-            ImGui::SameLine();
-            if (ImGui::RadioButton("World", editorState.CurrentGizmoMode == Core::GizmoMode::World))
-                editorState.CurrentGizmoMode = Core::GizmoMode::World;
-
-            if (modeDisabled) ImGui::EndDisabled();
-
-            ImGui::Separator();
-
-            ImGui::Checkbox("Snap", &editorState.GizmoSnapEnabled);
-
-            switch (editorState.CurrentGizmoOperation)
-            {
-            case Core::GizmoOperation::Translate:
-                ImGui::InputFloat3("Translate Snap", editorState.TranslateSnap);
-                break;
-            case Core::GizmoOperation::Rotate:
-                ImGui::InputFloat("Rotate Snap", &editorState.RotateSnap);
-                break;
-            case Core::GizmoOperation::Scale:
-                ImGui::InputFloat("Scale Snap", &editorState.ScaleSnap);
-                break;
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::Button("Focus Selected (F)"))
-            {
-                editorState.RequestFocusSelected = true;
-            }
-
-            if (editorState.SelectedActorIndex.has_value() &&
-                editorState.SelectedActorIndex.value() < scene.GetActors().size())
-            {
-                const auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
-                ImGui::Text("Selected: %s", actor.Name.c_str());
-            }
-            else
-            {
-                ImGui::TextUnformatted("Selected: None");
-            }
-
-            ImGui::Separator();
         }
         ImGui::End();
 
@@ -328,6 +267,127 @@ namespace Quiet::Renderer::Vulkan
         return ImGui::GetIO().WantCaptureKeyboard;
     }
 
+    float ImGuiLayer::GetToolbarHeight() const
+    {
+        const ImGuiStyle& style = ImGui::GetStyle();
+
+        const float textHeight = ImGui::GetFontSize();
+        const float frameHeight = textHeight + style.FramePadding.y * 2.0f;
+        const float toolbarHeight = frameHeight + style.WindowPadding.y * 2.0f + 6.0f;
+
+        return toolbarHeight;
+    }
+
+    void ImGuiLayer::BuildToolbar(Quiet::Core::EditorState& editorState,
+                              Quiet::Scene::Scene& scene)
+    {
+        const float toolbarHeight = GetToolbarHeight();
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+        ImGuiWindowFlags windowFlags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNavFocus;
+
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, toolbarHeight));
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+
+        ImGui::Begin("##MainToolbar", nullptr, windowFlags);
+        {
+            ImGui::PopStyleVar(3);
+
+            if (ImGui::Button("Translate"))
+                editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Translate;
+            ImGui::SameLine();
+
+            if (ImGui::Button("Rotate"))
+                editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Rotate;
+            ImGui::SameLine();
+
+            if (ImGui::Button("Scale"))
+                editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Scale;
+            ImGui::SameLine();
+
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            if (editorState.CurrentGizmoOperation != Quiet::Core::GizmoOperation::Scale)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button(
+                        editorState.CurrentGizmoMode == Quiet::Core::GizmoMode::Local
+                            ? "Local"
+                            : "World"))
+                {
+                    editorState.CurrentGizmoMode =
+                        (editorState.CurrentGizmoMode == Quiet::Core::GizmoMode::Local)
+                            ? Quiet::Core::GizmoMode::World
+                            : Quiet::Core::GizmoMode::Local;
+                }
+            }
+
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+            ImGui::SameLine();
+
+            if (ImGui::Button(editorState.GizmoSnapEnabled ? "Snap: On" : "Snap: Off"))
+                editorState.GizmoSnapEnabled = !editorState.GizmoSnapEnabled;
+
+            if (editorState.CurrentGizmoOperation == Quiet::Core::GizmoOperation::Translate)
+            {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(180.0f);
+                ImGui::InputFloat3("##TranslateSnap", editorState.TranslateSnap);
+            }
+            else if (editorState.CurrentGizmoOperation == Quiet::Core::GizmoOperation::Rotate)
+            {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(90.0f);
+                ImGui::InputFloat("##RotateSnap", &editorState.RotateSnap);
+            }
+            else if (editorState.CurrentGizmoOperation == Quiet::Core::GizmoOperation::Scale)
+            {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(90.0f);
+                ImGui::InputFloat("##ScaleSnap", &editorState.ScaleSnap);
+            }
+
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Focus"))
+                editorState.RequestFocusSelected = true;
+
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+            ImGui::SameLine();
+
+            if (editorState.SelectedActorIndex.has_value() &&
+                editorState.SelectedActorIndex.value() < scene.GetActors().size())
+            {
+                const auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
+                ImGui::Text("Selected: %s", actor.Name.c_str());
+            }
+            else
+            {
+                ImGui::TextUnformatted("Selected: None");
+            }
+        }
+        ImGui::End();
+    }
+
     void ImGuiLayer::CreateDescriptorPool()
     {
         VkDescriptorPoolSize poolSizes[] =
@@ -369,7 +429,46 @@ namespace Quiet::Renderer::Vulkan
 
     void ImGuiLayer::BuildDockspace()
     {
+        const float toolbarHeight = GetToolbarHeight();
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+        const ImVec2 dockspacePos = ImVec2(
+            viewport->WorkPos.x,
+            viewport->WorkPos.y + toolbarHeight
+        );
+
+        const ImVec2 dockspaceSize = ImVec2(
+            viewport->WorkSize.x,
+            viewport->WorkSize.y - toolbarHeight
+        );
+
+        ImGuiWindowFlags windowFlags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus |
+            ImGuiWindowFlags_NoBackground;
+
+        ImGui::SetNextWindowPos(dockspacePos);
+        ImGui::SetNextWindowSize(dockspaceSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        ImGui::Begin("##MainDockspaceHost", nullptr, windowFlags);
+
+        ImGui::PopStyleVar(3);
+
+        const ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
         ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
-        ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), dockspaceFlags);
+
+        ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), dockspaceFlags);
+
+        ImGui::End();
     }
 }

@@ -38,6 +38,7 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/GraphicsCommands.h
         src/Renderer/Vulkan/ImGuiLayer.cpp
         src/Renderer/Vulkan/ImGuiLayer.h
+        src/Renderer/Vulkan/ImGuiTheme.h
         src/Renderer/Vulkan/LogicalDevice.cpp
         src/Renderer/Vulkan/LogicalDevice.h
         src/Renderer/Vulkan/MeshLibrary.cpp
