@@ -1,33 +1,11 @@
 #pragma once
 
 #include "imgui.h"
+#include <filesystem>
+
 
 namespace Quiet::Renderer::Vulkan
 {
-    inline void SetupEditorFonts(ImGuiIO& io, const char* fontPath, float fontPixelSize = 28.0f)
-    {
-        io.Fonts->Clear();
-
-        ImFontConfig fontConfig{};
-        fontConfig.OversampleH = 2;
-        fontConfig.OversampleV = 2;
-        fontConfig.PixelSnapH = false;
-        fontConfig.RasterizerMultiply = 1.05f;
-
-        ImFont* font = nullptr;
-        if (fontPath && fontPath[0] != '\0')
-        {
-            font = io.Fonts->AddFontFromFileTTF(fontPath, fontPixelSize, &fontConfig);
-        }
-
-        if (!font)
-        {
-            io.Fonts->AddFontDefault();
-        }
-
-        io.FontGlobalScale = 1.0f;
-    }
-
     inline void ApplyDarkEditorTheme(ImGuiIO& io, float uiScale = 1.15f)
     {
         ImGui::StyleColorsDark();
@@ -35,13 +13,13 @@ namespace Quiet::Renderer::Vulkan
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* C = style.Colors;
 
-        style.WindowRounding = 10.0f;
+        style.WindowRounding = 8.0f;
         style.ChildRounding = 8.0f;
         style.FrameRounding = 7.0f;
         style.PopupRounding = 8.0f;
         style.ScrollbarRounding = 9.0f;
         style.GrabRounding = 7.0f;
-        style.TabRounding = 7.0f;
+        style.TabRounding = 10.0f;
 
         style.WindowBorderSize = 1.0f;
         style.ChildBorderSize = 1.0f;
@@ -66,8 +44,8 @@ namespace Quiet::Renderer::Vulkan
         // Base
         C[ImGuiCol_Text]                 = ImVec4(0.92f, 0.94f, 0.98f, 1.00f);
         C[ImGuiCol_TextDisabled]         = ImVec4(0.52f, 0.56f, 0.62f, 1.00f);
-        C[ImGuiCol_WindowBg]             = ImVec4(0.07f, 0.08f, 0.10f, 1.00f);
-        C[ImGuiCol_ChildBg]              = ImVec4(0.09f, 0.10f, 0.12f, 1.00f);
+        C[ImGuiCol_WindowBg]             = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
+        C[ImGuiCol_ChildBg]              = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
         C[ImGuiCol_PopupBg]              = ImVec4(0.10f, 0.11f, 0.13f, 0.98f);
         C[ImGuiCol_Border]               = ImVec4(0.18f, 0.21f, 0.26f, 1.00f);
         C[ImGuiCol_BorderShadow]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);

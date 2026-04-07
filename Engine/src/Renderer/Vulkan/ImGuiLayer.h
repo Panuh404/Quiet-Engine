@@ -7,6 +7,8 @@
 #include "imgui.h"
 #include "glm/vec3.hpp"
 
+#include "Renderer/Vulkan/ImGuiFonts.h"
+
 struct GLFWwindow;
 struct ImDrawData;
 
@@ -67,14 +69,18 @@ namespace Quiet::Renderer::Vulkan
 
     private:
         float GetToolbarHeight() const;
-        void BuildToolbar(Core::EditorState& editorState,
-                          Scene::Scene& scene);
+        void BuildDockspace();
+        void BuildTopbar();
+        void BuildViewportToolbar(Core::EditorState& editorState,
+                                  Scene::Scene& scene,
+                                  const ImVec2& imageMin,
+                                  const ImVec2& imageMax);
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();
-        void BuildDockspace();
 
     private:
+        EditorFonts m_Fonts{};
         VkDevice m_Device = VK_NULL_HANDLE;
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
     };

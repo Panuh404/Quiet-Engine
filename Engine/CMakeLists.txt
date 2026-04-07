@@ -36,6 +36,7 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/FrameSync.h
         src/Renderer/Vulkan/GraphicsCommands.cpp
         src/Renderer/Vulkan/GraphicsCommands.h
+        src/Renderer/Vulkan/ImGuiFonts.h
         src/Renderer/Vulkan/ImGuiLayer.cpp
         src/Renderer/Vulkan/ImGuiLayer.h
         src/Renderer/Vulkan/ImGuiTheme.h
