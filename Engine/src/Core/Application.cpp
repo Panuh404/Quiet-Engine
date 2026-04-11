@@ -264,9 +264,9 @@ namespace Quiet::Core
         auto& actors = m_Scene->GetActors();
         if (actors.size() >= 3)
         {
-            actors[0].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Cube"), true };
-            actors[1].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Quad"), true };
-            actors[2].StaticMesh = Quiet::Scene::StaticMeshComponent{ m_MeshLibrary->Get("Cube"), true };
+            actors[0].StaticMesh = Scene::StaticMeshComponent{ "Cube", m_MeshLibrary->Get("Cube"), true };
+            actors[1].StaticMesh = Scene::StaticMeshComponent{ "Quad", m_MeshLibrary->Get("Quad"), true };
+            actors[2].StaticMesh = Scene::StaticMeshComponent{ "Cube", m_MeshLibrary->Get("Cube"), true };
 
             actors[0].Transform.WorldTransform.Position = { 0.0f, 0.0f, 0.0f };
             actors[1].Transform.WorldTransform.Position = { -2.0f, 0.0f, 0.0f };
@@ -643,31 +643,27 @@ namespace Quiet::Core
 
     void Application::FocusSelectedActor()
     {
-        if (!m_EditorState.SelectedActorIndex.has_value()) return;
+        if (!m_EditorState.SelectedActorID.has_value()) return;
 
-        auto& actors = m_Scene->GetActors();
-        const std::size_t selectedIndex = m_EditorState.SelectedActorIndex.value();
-
-        if (selectedIndex >= actors.size())
+        Scene::Actor* actor = m_Scene->FindActorByID(m_EditorState.SelectedActorID.value());
+        if (!actor)
         {
-            m_EditorState.SelectedActorIndex.reset();
+            m_EditorState.SelectedActorID.reset();
             return;
         }
 
-        auto& actor = actors[selectedIndex];
-
-        glm::vec3 target = actor.Transform.WorldTransform.Position;
+        glm::vec3 target = actor->Transform.WorldTransform.Position;
         float radius = 1.0f;
 
-        if (actor.StaticMesh.has_value() &&
-            actor.StaticMesh->IsValid() &&
-            actor.StaticMesh->Visible)
+        if (actor->StaticMesh.has_value() &&
+            actor->StaticMesh->IsValid() &&
+            actor->StaticMesh->Visible)
         {
-            const auto& mesh = actor.StaticMesh->Mesh;
+            const auto& mesh = actor->StaticMesh->Mesh;
             const auto localBounds = mesh->GetLocalBounds();
 
             const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(
-                actor.Transform.WorldTransform.ToMatrix(),
+                actor->Transform.WorldTransform.ToMatrix(),
                 localBounds.Min,
                 localBounds.Max
             );
@@ -697,17 +693,7 @@ namespace Quiet::Core
     {
         if (m_MouseCaptureEnabled) return;
         if (!m_SceneViewportTarget || !m_SceneViewportTarget->IsValid() || !m_SceneViewportReady) return;
-        if (!m_EditorState.SelectedActorIndex.has_value()) return;
-
-        auto& actors = m_Scene->GetActors();
-        const std::size_t selectedIndex = m_EditorState.SelectedActorIndex.value();
-
-        if (selectedIndex >= actors.size())
-        {
-            m_EditorState.SelectedActorIndex.reset();
-            return;
-        }
-
+        if (!m_EditorState.SelectedActorID.has_value()) return;
         if (m_EditorState.ViewportWidth == 0 || m_EditorState.ViewportHeight == 0) return;
         if (!m_EditorState.ViewportImageHovered && !ImGuizmo::IsUsing()) return;
 
@@ -717,8 +703,8 @@ namespace Quiet::Core
 
         const auto cameraData = m_FreeCamera->BuildUniformData(aspect, false);
 
-        auto& actor = actors[selectedIndex];
-        auto& transform = actor.Transform.WorldTransform;
+        Scene::Actor* actor = m_Scene->FindActorByID(m_EditorState.SelectedActorID.value());
+        auto& transform = actor->Transform.WorldTransform;
 
         float translation[3] =
         {
@@ -825,7 +811,7 @@ namespace Quiet::Core
 
         auto& actors = m_Scene->GetActors();
         float closestHit = std::numeric_limits<float>::max();
-        std::optional<std::size_t> bestHit;
+        std::optional<UUID> bestHitID;
 
         for (std::size_t i = 0; i < actors.size(); ++i)
         {
@@ -851,15 +837,15 @@ namespace Quiet::Core
                 if (hitDistance < closestHit)
                 {
                     closestHit = hitDistance;
-                    bestHit = i;
+                    bestHitID = actor.ID;
                 }
             }
         }
 
-        if (bestHit.has_value())
+        if (bestHitID.has_value())
         {
-            m_EditorState.SelectedActorIndex = bestHit;
-            QUIET_CORE_TRACE("Viewport pick selected actor index {}.", static_cast<int>(*bestHit));
+            m_EditorState.SelectedActorID = bestHitID;
+            QUIET_CORE_TRACE("Viewport pick selected actor.");
         }
     }
 

@@ -72,9 +72,7 @@ namespace Quiet::Renderer::Vulkan
         void BuildDockspace();
         void BuildTopbar();
         void BuildViewportToolbar(Core::EditorState& editorState,
-                                  Scene::Scene& scene,
-                                  const ImVec2& imageMin,
-                                  const ImVec2& imageMax);
+                                  const ImVec2& imageMin);
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();

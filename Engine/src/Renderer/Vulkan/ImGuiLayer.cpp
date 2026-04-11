@@ -143,7 +143,7 @@ namespace Quiet::Renderer::Vulkan
                 editorState.ViewportHeight = static_cast<std::uint32_t>(imageMax.y - imageMin.y);
                 editorState.ViewportImageHovered = ImGui::IsItemHovered();
 
-                BuildViewportToolbar(editorState, scene, imageMin, imageMax);
+                BuildViewportToolbar(editorState, imageMin);
 
                 if (viewportOverlayCallback)
                 {
@@ -186,18 +186,19 @@ namespace Quiet::Renderer::Vulkan
 
         ImGui::Begin("Inspector");
         {
-            if (!editorState.SelectedActorIndex.has_value())
+            Scene::Actor* selectedActor = nullptr;
+            if (editorState.SelectedActorID.has_value())
+            {
+                selectedActor = scene.FindActorByID(editorState.SelectedActorID.value());
+            }
+
+            if (!selectedActor)
             {
                 ImGui::Text("No actor selected.");
             }
-            else if (editorState.SelectedActorIndex.value() >= scene.GetActors().size())
-            {
-                ImGui::Text("Selected actor index is invalid.");
-                editorState.SelectedActorIndex.reset();
-            }
             else
             {
-                auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
+                auto& actor = *selectedActor;
 
                 ImGui::Text("Actor");
                 ImGui::Separator();
@@ -237,14 +238,14 @@ namespace Quiet::Renderer::Vulkan
             for (std::size_t i = 0; i < actors.size(); ++i)
             {
                 const bool isSelected =
-                    editorState.SelectedActorIndex.has_value() && editorState.SelectedActorIndex.value() == i;
+                    editorState.SelectedActorID.has_value() && editorState.SelectedActorID.value() == actors[i].ID;
 
                 const char* actorName =
                     actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name.c_str();
 
                 if (ImGui::Selectable(actorName, isSelected))
                 {
-                    editorState.SelectedActorIndex = i;
+                    editorState.SelectedActorID = actors[i].ID;
                 }
             }
         }
@@ -328,15 +329,13 @@ namespace Quiet::Renderer::Vulkan
     }
 
     void ImGuiLayer::BuildViewportToolbar(Core::EditorState &editorState,
-                                          Scene::Scene &scene,
-                                          const ImVec2 &imageMin,
-                                          const ImVec2 &imageMax)
+                                          const ImVec2 &imageMin)
     {
         const float padding = 10.0f;
-        const float height = ImGui::GetFrameHeight() + 8.0f;
+        const float height = ImGui::GetFrameHeight() + 16.0f;
 
         const ImVec2 toolbarPos(imageMin.x + padding, imageMin.y + padding);
-        const ImVec2 toolbarSize(520.0f, height);
+        const ImVec2 toolbarSize(415.0f, height);
 
         ImGui::SetCursorScreenPos(toolbarPos);
         ImGui::SetNextWindowBgAlpha(0.88f);
@@ -350,7 +349,7 @@ namespace Quiet::Renderer::Vulkan
             ImGuiWindowFlags_NoScrollbar;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
 
         ImGui::BeginChild("##ViewportToolbar", toolbarSize, ImGuiChildFlags_Borders, flags);
@@ -396,29 +395,12 @@ namespace Quiet::Renderer::Vulkan
         }
 
         ImGui::SameLine();
-
         if (ImGui::Button("Focus"))
         {
             editorState.RequestFocusSelected = true;
         }
 
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::SameLine();
-
-        if (editorState.SelectedActorIndex.has_value() &&
-            editorState.SelectedActorIndex.value() < scene.GetActors().size())
-        {
-            const auto& actor = scene.GetActors()[editorState.SelectedActorIndex.value()];
-            ImGui::Text("Selected: %s", actor.Name.c_str());
-        }
-        else
-        {
-            ImGui::TextUnformatted("Selected: None");
-        }
-
         ImGui::EndChild();
-
         ImGui::PopStyleVar(3);
     }
 

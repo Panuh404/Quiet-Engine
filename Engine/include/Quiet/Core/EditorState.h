@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <optional>
+#include "UUID.h"
 
 namespace Quiet::Core
 {
@@ -20,7 +21,7 @@ namespace Quiet::Core
 
     struct EditorState
     {
-        std::optional<std::size_t> SelectedActorIndex;
+        std::optional<Core::UUID> SelectedActorID;
 
         std::uint32_t ViewportWidth = 0;
         std::uint32_t ViewportHeight = 0;

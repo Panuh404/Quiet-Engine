@@ -6,6 +6,7 @@ target_sources(Quiet_Engine
         # Core
         src/Core/Application.cpp
         src/Core/Log.cpp
+        src/Core/UUID.cpp
 
         # Platform
         src/Platform/Window.cpp
@@ -26,6 +27,8 @@ target_sources(Quiet_Engine
         src/Scene/StaticMeshComponent.h
         src/Scene/Transform.h
         src/Scene/TransformComponent.h
+        src/Scene/SceneSerializer.cpp
+        src/Scene/SceneSerializer.h
 
         # Renderer
         src/Renderer/Vulkan/CameraResources.cpp
@@ -83,6 +86,7 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Application.h
         include/Quiet/Core/EditorState.h
         include/Quiet/Core/Log.h
+        include/Quiet/Core/UUID.h
         include/Quiet/Platform/Window.h
         include/Quiet/Math/Geometry.h
 )
@@ -105,6 +109,7 @@ target_link_libraries(Quiet_Engine
         Vulkan::Vulkan
         spdlog::spdlog
         glm
+        nlohmann_json::nlohmann_json
 )
 
 if (MSVC)

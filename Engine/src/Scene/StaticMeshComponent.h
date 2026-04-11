@@ -1,5 +1,7 @@
 #pragma once
+
 #include <memory>
+#include <string>
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -10,7 +12,8 @@ namespace Quiet::Scene
 {
     struct StaticMeshComponent
     {
-        std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> Mesh;
+        std::string MeshResourceID;
+        std::shared_ptr<Renderer::Vulkan::StaticMesh> Mesh;
         bool Visible = true;
 
         [[nodiscard]] bool IsValid() const { return Mesh != nullptr; }
