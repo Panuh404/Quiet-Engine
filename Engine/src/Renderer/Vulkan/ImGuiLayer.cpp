@@ -13,6 +13,7 @@
 #include "MeshLibrary.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Editor/EditorController.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -97,6 +98,7 @@ namespace Quiet::Renderer::Vulkan
 
     void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
                                    Scene::Scene& scene,
+                                   Editor::EditorController& editorController,
                                    Editor::EditorState& editorState,
                                    const MeshLibrary& meshLibrary,
                                    ImTextureID sceneViewportTexture,
@@ -112,48 +114,30 @@ namespace Quiet::Renderer::Vulkan
 
             const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-            editorState.ViewportWidth =
-                availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
 
-            editorState.ViewportHeight =
-                availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
-
-            editorState.ViewportImageHovered = false;
-
-            if (sceneViewportTexture != 0 &&
-                editorState.ViewportWidth > 0 &&
-                editorState.ViewportHeight > 0)
+            if (sceneViewportTexture && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
             {
-                ImGui::SetNextItemAllowOverlap();
-
-                ImGui::Image(
-                sceneViewportTexture,
-                ImVec2(
+                const ImVec2 imageMin = ImGui::GetCursorScreenPos();
+                const ImVec2 imageSize(
                     static_cast<float>(editorState.ViewportWidth),
                     static_cast<float>(editorState.ViewportHeight)
-                ),
-                ImVec2(0.0f, 1.0f),
-                ImVec2(1.0f, 0.0f)
-            );
+                );
 
-                const ImVec2 imageMin = ImGui::GetItemRectMin();
-                const ImVec2 imageMax = ImGui::GetItemRectMax();
+                ImGui::Image(sceneViewportTexture, imageSize);
 
+                editorState.ViewportImageHovered = ImGui::IsItemHovered();
                 editorState.ViewportScreenX = imageMin.x;
                 editorState.ViewportScreenY = imageMin.y;
-                editorState.ViewportWidth = static_cast<std::uint32_t>(imageMax.x - imageMin.x);
-                editorState.ViewportHeight = static_cast<std::uint32_t>(imageMax.y - imageMin.y);
-                editorState.ViewportImageHovered = ImGui::IsItemHovered();
 
                 BuildViewportToolbar(editorState, imageMin);
 
-                if (viewportOverlayCallback)
-                {
-                    viewportOverlayCallback();
-                }
+                if (viewportOverlayCallback) viewportOverlayCallback();
             }
             else
             {
+                editorState.ViewportImageHovered = false;
                 ImGui::Text("Scene viewport unavailable.");
             }
         }
@@ -178,16 +162,11 @@ namespace Quiet::Renderer::Vulkan
             ImGui::Text("X: %.2f", stats.CameraPosition.x);
             ImGui::Text("Y: %.2f", stats.CameraPosition.y);
             ImGui::Text("Z: %.2f", stats.CameraPosition.z);
-
-            ImGui::Separator();
-            ImGui::Text("Tools:");
-            ImGui::TextUnformatted("Shortcuts: T/R/S = gizmo, L = local/world, G = snap, F = focus");
-
         }
         ImGui::End();
 
-        BuildInspector(scene, editorState, meshLibrary);
-        BuildHierarchy(scene, editorState);
+        BuildInspector(scene, editorController, editorState, meshLibrary);
+        BuildHierarchy(scene, editorController, editorState);
         BuildConsoleWindow();
     }
 
@@ -494,75 +473,88 @@ namespace Quiet::Renderer::Vulkan
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
 
         ImGui::Begin("##MainTopbar", nullptr, windowFlags);
-        ImGui::PopStyleVar(3);
-
-        if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
-        ImGui::TextUnformatted("QUIET");
-        if (m_Fonts.Bold) ImGui::PopFont();
-
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-        const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
-
-        if (!isEditMode) ImGui::BeginDisabled();
-
-        ImGui::SameLine();
-        if (ImGui::Button("New")) editorState.RequestNewScene = true;
-
-        ImGui::SameLine();
-        if (ImGui::Button("Save")) editorState.RequestSaveScene = true;
-
-        ImGui::SameLine();
-        if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
-
-        if (!isEditMode) ImGui::EndDisabled();
-
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-        ImGui::SameLine();
-        if (isEditMode)
         {
-            if (ImGui::Button("Simulate"))
-                editorState.RequestEnterSimulate = true;
-        }
-        else
-        {
-            if (ImGui::Button("Stop"))
-                editorState.RequestStopSimulate = true;
-        }
+            ImGui::PopStyleVar(3);
 
-        std::string statusText = (editorState.CurrentSceneMode == Editor::SceneMode::Edit) ? "[EDIT] " : "[SIMULATE] ";
-        statusText += editorState.SceneDisplayName;
-        if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit) statusText += " *";
+            if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
+            ImGui::TextUnformatted("QUIET");
+            if (m_Fonts.Bold) ImGui::PopFont();
 
-        const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
-        const float availableX = ImGui::GetWindowContentRegionMax().x;
-        const float cursorX = availableX - rightTextWidth;
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-        if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
-        else ImGui::SameLine();
+            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
 
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
-        {
-            ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
+            if (!isEditMode) ImGui::BeginDisabled();
+
+            ImGui::SameLine();
+            if (ImGui::Button("New")) editorState.RequestNewScene = true;
+
+            ImGui::SameLine();
+            if (ImGui::Button("Save")) editorState.RequestSaveScene = true;
+
+            ImGui::SameLine();
+            if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
+
+            ImGui::SameLine();
+            if (!editorState.CanUndo) ImGui::BeginDisabled();
+            if (ImGui::Button("Undo")) editorState.RequestUndo = true;
+            if (!editorState.CanUndo) ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            if (!editorState.CanRedo) ImGui::BeginDisabled();
+            if (ImGui::Button("Redo")) editorState.RequestRedo = true;
+            if (!editorState.CanRedo) ImGui::EndDisabled();
+
+            if (!isEditMode) ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+            ImGui::SameLine();
+            if (isEditMode)
+            {
+                if (ImGui::Button("Simulate"))
+                    editorState.RequestEnterSimulate = true;
+            }
+            else
+            {
+                if (ImGui::Button("Stop"))
+                    editorState.RequestStopSimulate = true;
+            }
+
+            std::string statusText = (editorState.CurrentSceneMode == Editor::SceneMode::Edit) ? "[EDIT] " : "[SIMULATE] ";
+            statusText += editorState.SceneDisplayName;
+            if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+                statusText += " *";
+
+            const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
+            const float availableX = ImGui::GetWindowContentRegionMax().x;
+            const float cursorX = availableX - rightTextWidth;
+
+            if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
+            else ImGui::SameLine();
+
+            if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+            {
+                ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
+            }
+            else if (editorState.SceneDirty)
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
+            }
+            else
+            {
+                ImGui::TextUnformatted(statusText.c_str());
+            }
         }
-        else if (editorState.SceneDirty)
-        {
-            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
-        }
-        else
-        {
-            ImGui::TextUnformatted(statusText.c_str());
-        }
-
         ImGui::End();
     }
 
     void ImGuiLayer::BuildInspector(Scene::Scene& scene,
-                                Editor::EditorState& editorState,
-                                const MeshLibrary& meshLibrary)
+                                    Editor::EditorController& editorController,
+                                    Editor::EditorState& editorState,
+                                    const MeshLibrary& meshLibrary)
     {
         ImGui::Begin("Inspector");
         {
@@ -570,6 +562,7 @@ namespace Quiet::Renderer::Vulkan
             if (editorState.SelectedActorID.has_value())
             {
                 selectedActor = scene.FindActorByID(editorState.SelectedActorID.value());
+                if (!selectedActor) editorState.SelectedActorID.reset();
             }
 
             if (!selectedActor)
@@ -581,6 +574,28 @@ namespace Quiet::Renderer::Vulkan
 
             const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
             auto& actor = *selectedActor;
+            auto& transform = actor.Transform.WorldTransform;
+
+            auto beginTrackedItem = [&]()
+            {
+                if (isEditMode && ImGui::IsItemActivated())
+                    editorController.BeginSceneMutation(scene);
+            };
+
+            auto endTrackedItem = [&]()
+            {
+                if (isEditMode && ImGui::IsItemDeactivated())
+                    editorController.EndSceneMutation(scene);
+            };
+
+            auto applyImmediateChange = [&](auto&& change)
+            {
+                if (!isEditMode) return;
+
+                editorController.BeginSceneMutation(scene);
+                change();
+                editorController.EndSceneMutation(scene);
+            };
 
             char nameBuffer[256]{};
             std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
@@ -598,22 +613,25 @@ namespace Quiet::Renderer::Vulkan
             }
 
             if (!isEditMode) ImGui::BeginDisabled();
+
             if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
             {
                 actor.Name = nameBuffer;
-                editorState.SceneDirty = true;
             }
+            beginTrackedItem();
+            endTrackedItem();
 
-            auto& transform = actor.Transform.WorldTransform;
+            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f)) {}
+            beginTrackedItem();
+            endTrackedItem();
 
-            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f))
-                editorState.SceneDirty = true;
+            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f)) {}
+            beginTrackedItem();
+            endTrackedItem();
 
-            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f))
-                editorState.SceneDirty = true;
-
-            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f))
-                editorState.SceneDirty = true;
+            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f)) {}
+            beginTrackedItem();
+            endTrackedItem();
 
             ImGui::Separator();
             ImGui::Text("Components");
@@ -625,12 +643,14 @@ namespace Quiet::Renderer::Vulkan
                     const auto names = meshLibrary.GetNames();
                     if (!names.empty())
                     {
-                        actor.StaticMesh = Scene::StaticMeshComponent{
-                            names.front(),
-                            meshLibrary.Get(names.front()),
-                            true
-                        };
-                        editorState.SceneDirty = true;
+                        applyImmediateChange([&]()
+                        {
+                            actor.StaticMesh = Scene::StaticMeshComponent{
+                                names.front(),
+                                meshLibrary.Get(names.front()),
+                                true
+                            };
+                        });
                     }
                 }
             }
@@ -650,8 +670,7 @@ namespace Quiet::Renderer::Vulkan
                         }
                     }
 
-                    const char* currentPreview =
-                        names.empty() ? "<none>" : names[currentIndex].c_str();
+                    const char* currentPreview = names.empty() ? "<none>" : names[currentIndex].c_str();
 
                     if (ImGui::BeginCombo("Mesh Resource", currentPreview))
                     {
@@ -660,29 +679,32 @@ namespace Quiet::Renderer::Vulkan
                             const bool isSelected = (i == currentIndex);
                             if (ImGui::Selectable(names[i].c_str(), isSelected))
                             {
-                                actor.StaticMesh->MeshResourceID = names[i];
-                                actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
-                                editorState.SceneDirty = true;
+                                applyImmediateChange([&]()
+                                {
+                                    actor.StaticMesh->MeshResourceID = names[i];
+                                    actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
+                                });
                             }
-
-                            if (isSelected)
-                            {
-                                ImGui::SetItemDefaultFocus();
-                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
                         }
-
                         ImGui::EndCombo();
                     }
 
-                    if (ImGui::Checkbox("Visible", &actor.StaticMesh->Visible))
+                    bool visible = actor.StaticMesh->Visible;
+                    if (ImGui::Checkbox("Visible", &visible))
                     {
-                        editorState.SceneDirty = true;
+                        applyImmediateChange([&]()
+                        {
+                            actor.StaticMesh->Visible = visible;
+                        });
                     }
 
                     if (ImGui::Button("Remove Static Mesh"))
                     {
-                        actor.StaticMesh.reset();
-                        editorState.SceneDirty = true;
+                        applyImmediateChange([&]()
+                        {
+                            actor.StaticMesh.reset();
+                        });
                     }
                 }
             }
@@ -691,8 +713,10 @@ namespace Quiet::Renderer::Vulkan
             {
                 if (ImGui::Button("Add Rotator"))
                 {
-                    actor.Rotator = Scene::RotatorComponent{ 45.0f };
-                    editorState.SceneDirty = true;
+                    applyImmediateChange([&]()
+                    {
+                        actor.Rotator = Scene::RotatorComponent{ 45.0f };
+                    });
                 }
             }
             else
@@ -701,37 +725,48 @@ namespace Quiet::Renderer::Vulkan
                 {
                     if (ImGui::DragFloat("Rotation Speed",
                                          &actor.Rotator->RotationSpeedDegreesPerSecond,
-                                         1.0f))
-                    {
-                        editorState.SceneDirty = true;
-                    }
+                                         1.0f)) {}
+                    beginTrackedItem();
+                    endTrackedItem();
 
                     if (ImGui::Button("Remove Rotator"))
                     {
-                        actor.Rotator.reset();
-                        editorState.SceneDirty = true;
+                        applyImmediateChange([&]()
+                        {
+                            actor.Rotator.reset();
+                        });
                     }
                 }
             }
-
             if (!isEditMode) ImGui::EndDisabled();
         }
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildHierarchy(Scene::Scene& scene, Editor::EditorState& editorState)
+    void ImGuiLayer::BuildHierarchy(Scene::Scene& scene,
+                                    Editor::EditorController& editorController,
+                                    Editor::EditorState& editorState)
     {
-        ImGui::Begin("Scene Hierarchy");
+        ImGui::Begin("Hierarchy");
         {
             const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+            auto applyImmediateChange = [&](auto&& change)
+            {
+                if (!isEditMode) return;
+
+                editorController.BeginSceneMutation(scene);
+                change();
+                editorController.EndSceneMutation(scene);
+            };
 
             if (!isEditMode) ImGui::BeginDisabled();
-
             if (ImGui::Button("Create Empty"))
             {
-                auto& actor = scene.CreateActor("Actor");
-                editorState.SelectedActorID = actor.ID;
-                editorState.SceneDirty = true;
+                applyImmediateChange([&]()
+                {
+                    auto& actor = scene.CreateActor("Actor");
+                    editorState.SelectedActorID = actor.ID;
+                });
             }
 
             ImGui::SameLine();
@@ -740,9 +775,14 @@ namespace Quiet::Renderer::Vulkan
             if (!hasSelection) ImGui::BeginDisabled();
             if (ImGui::Button("Duplicate") && hasSelection)
             {
-                auto& duplicate = scene.DuplicateActor(editorState.SelectedActorID.value());
-                editorState.SelectedActorID = duplicate.ID;
-                editorState.SceneDirty = true;
+                applyImmediateChange([&]()
+                {
+                    Scene::Actor* source = scene.FindActorByID(editorState.SelectedActorID.value());
+                    if (!source) return;
+
+                    Scene::Actor *duplicate = scene.TryDuplicateActor(source->ID);
+                    editorState.SelectedActorID = duplicate->ID;
+                });
             }
             if (!hasSelection) ImGui::EndDisabled();
 
@@ -751,12 +791,13 @@ namespace Quiet::Renderer::Vulkan
             if (!hasSelection) ImGui::BeginDisabled();
             if (ImGui::Button("Delete") && hasSelection)
             {
-                scene.DestroyActorByID(editorState.SelectedActorID.value());
-                editorState.SelectedActorID.reset();
-                editorState.SceneDirty = true;
+                applyImmediateChange([&]()
+                {
+                    scene.DestroyActorByID(editorState.SelectedActorID.value());
+                    editorState.SelectedActorID.reset();
+                });
             }
             if (!hasSelection) ImGui::EndDisabled();
-
             if (!isEditMode) ImGui::EndDisabled();
 
             ImGui::Separator();
@@ -804,22 +845,31 @@ namespace Quiet::Renderer::Vulkan
 
             if (pendingDuplicate.has_value())
             {
-                auto& duplicate = scene.DuplicateActor(pendingDuplicate.value());
-                editorState.SelectedActorID = duplicate.ID;
-                editorState.SceneDirty = true;
+                applyImmediateChange([&]()
+                {
+                    Scene::Actor* source = scene.FindActorByID(pendingDuplicate.value());
+                    if (!source)
+                    {
+                        return;
+                    }
+
+                    Scene::Actor *duplicate = scene.TryDuplicateActor(source->ID);
+                    editorState.SelectedActorID = duplicate->ID;
+                });
             }
 
             if (pendingDelete.has_value())
             {
-                scene.DestroyActorByID(pendingDelete.value());
-
-                if (editorState.SelectedActorID.has_value() &&
-                    editorState.SelectedActorID.value() == pendingDelete.value())
+                applyImmediateChange([&]()
                 {
-                    editorState.SelectedActorID.reset();
-                }
+                    scene.DestroyActorByID(pendingDelete.value());
 
-                editorState.SceneDirty = true;
+                    if (editorState.SelectedActorID.has_value() &&
+                        editorState.SelectedActorID.value() == pendingDelete.value())
+                    {
+                        editorState.SelectedActorID.reset();
+                    }
+                });
             }
         }
         ImGui::End();

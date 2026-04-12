@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-
 #include <spdlog/logger.h>
 #include <spdlog/common.h>
 #include <spdlog/sinks/base_sink.h>

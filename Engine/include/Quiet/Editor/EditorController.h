@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "EditorState.h"
 
 namespace Quiet::Input
@@ -9,6 +10,7 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
+    class Actor;
     class Scene;
     class FreeCamera;
 }
@@ -36,6 +38,13 @@ namespace Quiet::Editor
 
         void ResetSelection();
 
+        void ResetSceneHistory(const Scene::Scene& scene);
+        void MarkSceneSaved(const Scene::Scene& scene);
+        void BeginSceneMutation(const Scene::Scene& scene);
+        bool EndSceneMutation(const Scene::Scene& scene);
+        bool Undo(Scene::Scene& scene);
+        bool Redo(Scene::Scene& scene);
+
         void HandleShortcuts(bool mouseCaptureEnabled);
         void FocusSelectedActor(Scene::Scene& scene,
                                 Scene::FreeCamera& camera);
@@ -52,12 +61,33 @@ namespace Quiet::Editor
                                      bool mouseCaptureEnabled);
 
     private:
+        struct SceneSnapshot
+        {
+            std::vector<Scene::Actor> Actors;
+            std::optional<Core::UUID> SelectedActorID;
+        };
+
         [[nodiscard]] bool BuildViewportPickRay(const Input::Input& input,
                                                 const Scene::FreeCamera& camera,
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
                                                 Quiet::Math::Ray& outRay) const;
 
+        [[nodiscard]] std::unique_ptr<SceneSnapshot> CaptureSnapshot(const Scene::Scene& scene) const;
+        void RestoreSnapshot(Scene::Scene& scene, const SceneSnapshot& snapshot);
+        static bool AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs);
+        void PushUndoSnapshot(std::unique_ptr<SceneSnapshot> snapshot);
+        void PushRedoSnapshot(std::unique_ptr<SceneSnapshot> snapshot);
+        void RefreshHistoryFlags();
+        void RefreshDirtyState(const Scene::Scene& scene);
+
     private:
+        static constexpr std::size_t MaxHistoryEntries = 128;
+
         EditorState m_State{};
+        std::vector<std::unique_ptr<SceneSnapshot>> m_UndoStack;
+        std::vector<std::unique_ptr<SceneSnapshot>> m_RedoStack;
+        std::unique_ptr<SceneSnapshot> m_PendingSnapshot;
+        std::unique_ptr<SceneSnapshot> m_CleanSnapshot;
+        bool m_WasUsingGizmo = false;
     };
 }

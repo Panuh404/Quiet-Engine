@@ -14,6 +14,7 @@ struct ImDrawData;
 
 namespace Quiet::Editor
 {
+    class EditorController;
     struct EditorState;
 }
 
@@ -59,6 +60,7 @@ namespace Quiet::Renderer::Vulkan
         void BeginFrame();
         void BuildEditorUI(const ImGuiStats& stats,
                            Scene::Scene& scene,
+                           Editor::EditorController& editorController,
                            Editor::EditorState& editorState,
                            const MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
@@ -70,14 +72,20 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] bool WantsKeyboardCapture() const;
 
     private:
-        float GetToolbarHeight() const;
+        [[nodiscard]] float GetToolbarHeight() const;
 
         void BuildDockspace();
         void BuildTopbar(Editor::EditorState& editorState);
-        void BuildViewportToolbar(Editor::EditorState& editorState, const ImVec2& imageMin);
+        void BuildViewportToolbar(Editor::EditorState& editorState,
+            const ImVec2& imageMin);
         void BuildConsoleWindow();
-        void BuildInspector(Scene::Scene& scene, Editor::EditorState& editorState, const MeshLibrary& meshLibrary);
-        void BuildHierarchy(Scene::Scene& scene, Editor::EditorState& editorState);
+        void BuildInspector(Scene::Scene& scene,
+            Editor::EditorController& editorController,
+            Editor::EditorState& editorState,
+            const MeshLibrary& meshLibrary);
+        void BuildHierarchy(Scene::Scene& scene,
+            Editor::EditorController& editorController,
+            Editor::EditorState& editorState);
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();

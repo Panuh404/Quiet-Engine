@@ -1,7 +1,9 @@
 #include "Quiet/Editor/EditorController.h"
 
+#include <memory>
+#include <cmath>
 #include <limits>
-#include <stdexcept>
+#include <utility>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -17,11 +19,14 @@
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
+#include "Scene/Actor.h"
 #include "Scene/FreeCamera.h"
 #include "Scene/Scene.h"
 
 namespace
 {
+    constexpr float TransformEpsilon = 0.0001f;
+
     ImGuizmo::OPERATION ToImGuizmoOperation(Quiet::Editor::GizmoOperation operation)
     {
         switch (operation)
@@ -42,6 +47,67 @@ namespace
             default:                                return ImGuizmo::WORLD;
         }
     }
+
+    bool AreFloatsEqual(float lhs, float rhs)
+    {
+        return std::fabs(lhs - rhs) <= TransformEpsilon;
+    }
+
+    bool AreVec3Equal(const glm::vec3& lhs, const glm::vec3& rhs)
+    {
+        return AreFloatsEqual(lhs.x, rhs.x) &&
+               AreFloatsEqual(lhs.y, rhs.y) &&
+               AreFloatsEqual(lhs.z, rhs.z);
+    }
+
+    bool AreTransformsEqual(const Quiet::Scene::Transform& lhs,
+                            const Quiet::Scene::Transform& rhs)
+    {
+        return AreVec3Equal(lhs.Position, rhs.Position) &&
+               AreVec3Equal(lhs.RotationDegrees, rhs.RotationDegrees) &&
+               AreVec3Equal(lhs.Scale, rhs.Scale);
+    }
+
+    bool AreStaticMeshesEqual(const std::optional<Quiet::Scene::StaticMeshComponent>& lhs,
+                              const std::optional<Quiet::Scene::StaticMeshComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->MeshResourceID == rhs->MeshResourceID &&
+               lhs->Visible == rhs->Visible;
+    }
+
+    bool AreRotatorsEqual(const std::optional<Quiet::Scene::RotatorComponent>& lhs,
+                          const std::optional<Quiet::Scene::RotatorComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return AreFloatsEqual(lhs->RotationSpeedDegreesPerSecond, rhs->RotationSpeedDegreesPerSecond);
+    }
+
+    bool AreActorsEqual(const Quiet::Scene::Actor& lhs,
+                        const Quiet::Scene::Actor& rhs)
+    {
+        return lhs.ID == rhs.ID &&
+               lhs.Name == rhs.Name &&
+               AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
+               AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
+               AreRotatorsEqual(lhs.Rotator, rhs.Rotator);
+    }
+
+    bool AreActorListsEqual(const std::vector<Quiet::Scene::Actor>& lhs,
+                            const std::vector<Quiet::Scene::Actor>& rhs)
+    {
+        if (lhs.size() != rhs.size()) return false;
+        for (std::size_t i = 0; i < lhs.size(); ++i)
+        {
+            if (!AreActorsEqual(lhs[i], rhs[i]))
+                return false;
+        }
+        return true;
+    }
 }
 
 namespace Quiet::Editor
@@ -51,13 +117,94 @@ namespace Quiet::Editor
         m_State.SelectedActorID.reset();
     }
 
+    void EditorController::ResetSceneHistory(const Scene::Scene& scene)
+    {
+        m_UndoStack.clear();
+        m_RedoStack.clear();
+        m_PendingSnapshot.reset();
+        m_CleanSnapshot = CaptureSnapshot(scene);
+        RefreshHistoryFlags();
+        RefreshDirtyState(scene);
+    }
+
+    void EditorController::MarkSceneSaved(const Scene::Scene& scene)
+    {
+        m_CleanSnapshot = CaptureSnapshot(scene);
+        RefreshDirtyState(scene);
+    }
+
+    void EditorController::BeginSceneMutation(const Scene::Scene& scene)
+    {
+        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
+        if (!m_PendingSnapshot) m_PendingSnapshot = CaptureSnapshot(scene);
+    }
+
+    bool EditorController::EndSceneMutation(const Scene::Scene& scene)
+    {
+        if (!m_PendingSnapshot) return false;
+
+        auto currentSnapshot = CaptureSnapshot(scene);
+        if (AreSnapshotsEqual(*m_PendingSnapshot, *currentSnapshot))
+        {
+            m_PendingSnapshot.reset();
+            RefreshDirtyState(scene);
+            return false;
+        }
+
+        PushUndoSnapshot(std::move(m_PendingSnapshot));
+        m_RedoStack.clear();
+        RefreshHistoryFlags();
+        RefreshDirtyState(scene);
+        return true;
+    }
+
+    bool EditorController::Undo(Scene::Scene& scene)
+    {
+        if (m_State.CurrentSceneMode != SceneMode::Edit || m_UndoStack.empty())
+        {
+            RefreshHistoryFlags();
+            return false;
+        }
+        PushRedoSnapshot(CaptureSnapshot(scene));
+
+        auto snapshot = std::move(m_UndoStack.back());
+        m_UndoStack.pop_back();
+        RestoreSnapshot(scene, *snapshot);
+
+        m_PendingSnapshot.reset();
+        RefreshHistoryFlags();
+        RefreshDirtyState(scene);
+        return true;
+    }
+
+    bool EditorController::Redo(Scene::Scene& scene)
+    {
+        if (m_State.CurrentSceneMode != SceneMode::Edit || m_RedoStack.empty())
+        {
+            RefreshHistoryFlags();
+            return false;
+        }
+        PushUndoSnapshot(CaptureSnapshot(scene));
+
+        auto snapshot = std::move(m_RedoStack.back());
+        m_RedoStack.pop_back();
+        RestoreSnapshot(scene, *snapshot);
+
+        m_PendingSnapshot.reset();
+        RefreshHistoryFlags();
+        RefreshDirtyState(scene);
+        return true;
+    }
+
     void EditorController::HandleShortcuts(bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
+
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
         const bool ctrlDown = io.KeyCtrl;
+        const bool shiftDown = io.KeyShift;
         const bool isEditMode = m_State.CurrentSceneMode == SceneMode::Edit;
 
         if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_S, false))
@@ -65,8 +212,26 @@ namespace Quiet::Editor
             if (isEditMode) m_State.RequestSaveScene = true;
             return;
         }
+
+        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_Z, false))
+        {
+            if (isEditMode)
+            {
+                if (shiftDown) m_State.RequestRedo = true;
+                else m_State.RequestUndo = true;
+            }
+            return;
+        }
+
+        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_Y, false))
+        {
+            if (isEditMode) m_State.RequestRedo = true;
+            return;
+        }
+
         if (ImGui::IsKeyPressed(ImGuiKey_F, false)) m_State.RequestFocusSelected = true;
         if (!isEditMode) return;
+
         if (ImGui::IsKeyPressed(ImGuiKey_T, false)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
         if (ImGui::IsKeyPressed(ImGuiKey_S, false)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
@@ -82,16 +247,16 @@ namespace Quiet::Editor
             }
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_G, false)) m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
+        if (ImGui::IsKeyPressed(ImGuiKey_G, false))
+        {
+            m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
+        }
     }
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene,
                                               Scene::FreeCamera& camera)
     {
-        if (!m_State.SelectedActorID.has_value())
-        {
-            return;
-        }
+        if (!m_State.SelectedActorID.has_value()) return;
 
         Scene::Actor* actor = scene.FindActorByID(m_State.SelectedActorID.value());
         if (!actor)
@@ -137,10 +302,10 @@ namespace Quiet::Editor
         );
     }
 
-    void EditorController::TrySelectActorFromViewport(const Input::Input &input,
-                                                      Scene::Scene &scene,
-                                                      const Scene::FreeCamera &camera,
-                                                      const Renderer::Vulkan::VulkanRenderer &renderer,
+    void EditorController::TrySelectActorFromViewport(const Input::Input& input,
+                                                      Scene::Scene& scene,
+                                                      const Scene::FreeCamera& camera,
+                                                      const Renderer::Vulkan::VulkanRenderer& renderer,
                                                       bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
@@ -161,7 +326,9 @@ namespace Quiet::Editor
             if (!actor.StaticMesh.has_value() ||
                 !actor.StaticMesh->IsValid() ||
                 !actor.StaticMesh->Visible)
+            {
                 continue;
+            }
 
             const auto& mesh = actor.StaticMesh->Mesh;
             const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
@@ -194,9 +361,9 @@ namespace Quiet::Editor
         }
     }
 
-    void EditorController::BuildSelectedActorGizmo(Scene::Scene &scene,
-                                                   Scene::FreeCamera &camera,
-                                                   const Renderer::Vulkan::VulkanRenderer &renderer,
+    void EditorController::BuildSelectedActorGizmo(Scene::Scene& scene,
+                                                   Scene::FreeCamera& camera,
+                                                   const Renderer::Vulkan::VulkanRenderer& renderer,
                                                    bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
@@ -267,22 +434,22 @@ namespace Quiet::Editor
         {
             switch (m_State.CurrentGizmoOperation)
             {
-            case GizmoOperation::Translate:
-                snapValues[0] = m_State.TranslateSnap[0];
-                snapValues[1] = m_State.TranslateSnap[1];
-                snapValues[2] = m_State.TranslateSnap[2];
-                snapPointer = snapValues;
-                break;
+                case GizmoOperation::Translate:
+                    snapValues[0] = m_State.TranslateSnap[0];
+                    snapValues[1] = m_State.TranslateSnap[1];
+                    snapValues[2] = m_State.TranslateSnap[2];
+                    snapPointer = snapValues;
+                    break;
 
-            case GizmoOperation::Rotate:
-                snapValues[0] = m_State.RotateSnap;
-                snapPointer = snapValues;
-                break;
+                case GizmoOperation::Rotate:
+                    snapValues[0] = m_State.RotateSnap;
+                    snapPointer = snapValues;
+                    break;
 
-            case GizmoOperation::Scale:
-                snapValues[0] = m_State.ScaleSnap;
-                snapPointer = snapValues;
-                break;
+                case GizmoOperation::Scale:
+                    snapValues[0] = m_State.ScaleSnap;
+                    snapPointer = snapValues;
+                    break;
             }
         }
 
@@ -296,7 +463,13 @@ namespace Quiet::Editor
             snapPointer
         );
 
-        if (changed || ImGuizmo::IsUsing())
+        const bool isUsingGizmo = ImGuizmo::IsUsing();
+        if ((changed || isUsingGizmo) && !m_WasUsingGizmo)
+        {
+            BeginSceneMutation(scene);
+        }
+
+        if (changed || isUsingGizmo)
         {
             float outTranslation[3]{};
             float outRotation[3]{};
@@ -312,15 +485,20 @@ namespace Quiet::Editor
             transform.Position = { outTranslation[0], outTranslation[1], outTranslation[2] };
             transform.RotationDegrees = { outRotation[0], outRotation[1], outRotation[2] };
             transform.Scale = { outScale[0], outScale[1], outScale[2] };
-
-            if (changed) m_State.SceneDirty = true;
         }
+
+        if (!isUsingGizmo && m_WasUsingGizmo)
+        {
+            EndSceneMutation(scene);
+        }
+
+        m_WasUsingGizmo = isUsingGizmo;
     }
 
-    bool EditorController::BuildViewportPickRay(const Input::Input &input,
-                                                const Scene::FreeCamera &camera,
-                                                const Renderer::Vulkan::VulkanRenderer &renderer,
-                                                Math::Ray &outRay) const
+    bool EditorController::BuildViewportPickRay(const Input::Input& input,
+                                                const Scene::FreeCamera& camera,
+                                                const Renderer::Vulkan::VulkanRenderer& renderer,
+                                                Math::Ray& outRay) const
     {
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
         if (sceneExtent.width == 0 || sceneExtent.height == 0) return false;
@@ -333,7 +511,9 @@ namespace Quiet::Editor
         if (localX < 0.0f || localY < 0.0f ||
             localX > static_cast<float>(m_State.ViewportWidth) ||
             localY > static_cast<float>(m_State.ViewportHeight))
+        {
             return false;
+        }
 
         const auto viewportHeight = static_cast<float>(m_State.ViewportHeight);
         const float flippedY = viewportHeight - localY;
@@ -367,5 +547,63 @@ namespace Quiet::Editor
         outRay.Origin = nearPoint;
         outRay.Direction = glm::normalize(farPoint - nearPoint);
         return true;
+    }
+
+    std::unique_ptr<EditorController::SceneSnapshot> EditorController::CaptureSnapshot(const Scene::Scene& scene) const
+    {
+        auto snapshot = std::make_unique<SceneSnapshot>();
+        snapshot->Actors = scene.GetActors();
+        snapshot->SelectedActorID = m_State.SelectedActorID;
+        return snapshot;
+    }
+
+    void EditorController::RestoreSnapshot(Scene::Scene& scene, const SceneSnapshot& snapshot)
+    {
+        scene.GetActors() = snapshot.Actors;
+        m_State.SelectedActorID = snapshot.SelectedActorID;
+    }
+
+    bool EditorController::AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs)
+    {
+        return lhs.SelectedActorID == rhs.SelectedActorID &&
+               AreActorListsEqual(lhs.Actors, rhs.Actors);
+    }
+
+    void EditorController::PushUndoSnapshot(std::unique_ptr<SceneSnapshot> snapshot)
+    {
+        if (!snapshot) return;
+        if (m_UndoStack.size() >= MaxHistoryEntries)
+        {
+            m_UndoStack.erase(m_UndoStack.begin());
+        }
+        m_UndoStack.push_back(std::move(snapshot));
+    }
+
+    void EditorController::PushRedoSnapshot(std::unique_ptr<SceneSnapshot> snapshot)
+    {
+        if (!snapshot) return;
+        if (m_RedoStack.size() >= MaxHistoryEntries)
+        {
+            m_RedoStack.erase(m_RedoStack.begin());
+        }
+        m_RedoStack.push_back(std::move(snapshot));
+    }
+
+    void EditorController::RefreshHistoryFlags()
+    {
+        m_State.CanUndo = !m_UndoStack.empty();
+        m_State.CanRedo = !m_RedoStack.empty();
+    }
+
+    void EditorController::RefreshDirtyState(const Scene::Scene& scene)
+    {
+        if (!m_CleanSnapshot)
+        {
+            m_State.SceneDirty = false;
+            return;
+        }
+
+        auto currentSnapshot = CaptureSnapshot(scene);
+        m_State.SceneDirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot->Actors);
     }
 }

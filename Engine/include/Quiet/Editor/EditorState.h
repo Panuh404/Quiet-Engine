@@ -54,7 +54,11 @@ namespace Quiet::Editor
         bool RequestLoadScene = false;
         bool RequestEnterSimulate = false;
         bool RequestStopSimulate = false;
+        bool RequestUndo = false;
+        bool RequestRedo = false;
 
+        bool CanUndo = false;
+        bool CanRedo = false;
         bool SceneDirty = false;
         std::string SceneDisplayName = "DefaultScene.json";
     };
