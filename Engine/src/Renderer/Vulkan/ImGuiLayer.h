@@ -25,6 +25,7 @@ namespace Quiet::Scene
 namespace Quiet::Renderer::Vulkan
 {
     class LogicalDevice;
+    class MeshLibrary;
 
     struct ImGuiStats
     {
@@ -59,6 +60,7 @@ namespace Quiet::Renderer::Vulkan
         void BuildEditorUI(const ImGuiStats& stats,
                            Scene::Scene& scene,
                            Editor::EditorState& editorState,
+                           const MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
         void EndFrame();
@@ -72,9 +74,10 @@ namespace Quiet::Renderer::Vulkan
 
         void BuildDockspace();
         void BuildTopbar(Editor::EditorState& editorState);
-        void BuildViewportToolbar(Editor::EditorState& editorState,
-                                  const ImVec2& imageMin);
+        void BuildViewportToolbar(Editor::EditorState& editorState, const ImVec2& imageMin);
         void BuildConsoleWindow();
+        void BuildInspector(Scene::Scene& scene, Editor::EditorState& editorState, const MeshLibrary& meshLibrary);
+        void BuildHierarchy(Scene::Scene& scene, Editor::EditorState& editorState);
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();

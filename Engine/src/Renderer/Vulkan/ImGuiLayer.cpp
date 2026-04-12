@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "ImGuiTheme.h"
+#include "MeshLibrary.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Scene/Scene.h"
@@ -97,6 +98,7 @@ namespace Quiet::Renderer::Vulkan
     void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
                                    Scene::Scene& scene,
                                    Editor::EditorState& editorState,
+                                   const MeshLibrary& meshLibrary,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
@@ -184,73 +186,8 @@ namespace Quiet::Renderer::Vulkan
         }
         ImGui::End();
 
-        ImGui::Begin("Inspector");
-        {
-            Scene::Actor* selectedActor = nullptr;
-            if (editorState.SelectedActorID.has_value())
-            {
-                selectedActor = scene.FindActorByID(editorState.SelectedActorID.value());
-            }
-
-            if (!selectedActor)
-            {
-                ImGui::Text("No actor selected.");
-            }
-            else
-            {
-                auto& actor = *selectedActor;
-
-                ImGui::Text("Actor");
-                ImGui::Separator();
-
-                char nameBuffer[256]{};
-                std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
-
-                if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
-                {
-                    actor.Name = nameBuffer;
-                }
-
-                ImGui::Separator();
-                ImGui::Text("Transform");
-
-                auto& transform = actor.Transform.WorldTransform;
-                ImGui::DragFloat3("Position", &transform.Position.x, 0.1f);
-                ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f);
-                ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f);
-
-                ImGui::Separator();
-                ImGui::Text("Components");
-                ImGui::Text("StaticMesh: %s", (actor.StaticMesh.has_value() && actor.StaticMesh->IsValid()) ? "Yes" : "No");
-                ImGui::Text("Rotator: %s", actor.Rotator.has_value() ? "Yes" : "No");
-
-                if (actor.Rotator.has_value())
-                {
-                    ImGui::DragFloat("Rotation Speed", &actor.Rotator->RotationSpeedDegreesPerSecond, 1.0f);
-                }
-            }
-        }
-        ImGui::End();
-
-        ImGui::Begin("Scene Hierarchy");
-        {
-            auto& actors = scene.GetActors();
-            for (std::size_t i = 0; i < actors.size(); ++i)
-            {
-                const bool isSelected =
-                    editorState.SelectedActorID.has_value() && editorState.SelectedActorID.value() == actors[i].ID;
-
-                const char* actorName =
-                    actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name.c_str();
-
-                if (ImGui::Selectable(actorName, isSelected))
-                {
-                    editorState.SelectedActorID = actors[i].ID;
-                }
-            }
-        }
-        ImGui::End();
-
+        BuildInspector(scene, editorState, meshLibrary);
+        BuildHierarchy(scene, editorState);
         BuildConsoleWindow();
     }
 
@@ -595,6 +532,212 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
+    void ImGuiLayer::BuildInspector(Scene::Scene& scene,
+                                Editor::EditorState& editorState,
+                                const MeshLibrary& meshLibrary)
+    {
+        ImGui::Begin("Inspector");
+        {
+            Scene::Actor* selectedActor = nullptr;
+            if (editorState.SelectedActorID.has_value())
+            {
+                selectedActor = scene.FindActorByID(editorState.SelectedActorID.value());
+            }
+
+            if (!selectedActor)
+            {
+                ImGui::Text("No actor selected.");
+                ImGui::End();
+                return;
+            }
+
+            auto& actor = *selectedActor;
+            char nameBuffer[256]{};
+            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
+
+            ImGui::Text("Actor");
+            ImGui::Separator();
+
+            if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
+            {
+                actor.Name = nameBuffer;
+            }
+
+            auto& transform = actor.Transform.WorldTransform;
+            ImGui::DragFloat3("Position", &transform.Position.x, 0.1f);
+            ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f);
+            ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f);
+
+            ImGui::Separator();
+            ImGui::Text("Components");
+
+            if (!actor.StaticMesh.has_value())
+            {
+                if (ImGui::Button("Add Static Mesh"))
+                {
+                    const auto names = meshLibrary.GetNames();
+                    if (!names.empty())
+                    {
+                        actor.StaticMesh = Scene::StaticMeshComponent{
+                            names.front(),
+                            meshLibrary.Get(names.front()),
+                            true
+                        };
+                    }
+                }
+            }
+            else
+            {
+                if (ImGui::CollapsingHeader("Static Mesh", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    auto names = meshLibrary.GetNames();
+                    int currentIndex = 0;
+                    for (int i = 0; i < static_cast<int>(names.size()); ++i)
+                    {
+                        if (names[i] == actor.StaticMesh->MeshResourceID)
+                        {
+                            currentIndex = i;
+                            break;
+                        }
+                    }
+
+                    const char* currentPreview = names.empty() ? "<none>" : names[currentIndex].c_str();
+
+                    if (ImGui::BeginCombo("Mesh Resource", currentPreview))
+                    {
+                        for (int i = 0; i < static_cast<int>(names.size()); ++i)
+                        {
+                            const bool isSelected = (i == currentIndex);
+                            if (ImGui::Selectable(names[i].c_str(), isSelected))
+                            {
+                                actor.StaticMesh->MeshResourceID = names[i];
+                                actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
+                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    ImGui::Checkbox("Visible", &actor.StaticMesh->Visible);
+                    if (ImGui::Button("Remove Static Mesh"))
+                    {
+                        actor.StaticMesh.reset();
+                    }
+                }
+            }
+
+            if (!actor.Rotator.has_value())
+            {
+                if (ImGui::Button("Add Rotator"))
+                {
+                    actor.Rotator = Scene::RotatorComponent{ 45.0f };
+                }
+            }
+            else
+            {
+                if (ImGui::CollapsingHeader("Rotator", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::DragFloat("Rotation Speed",
+                                     &actor.Rotator->RotationSpeedDegreesPerSecond,
+                                     1.0f);
+
+                    if (ImGui::Button("Remove Rotator"))
+                        actor.Rotator.reset();
+                }
+            }
+        }
+        ImGui::End();
+    }
+
+    void ImGuiLayer::BuildHierarchy(Scene::Scene &scene, Editor::EditorState &editorState)
+    {
+        ImGui::Begin("Hierarchy");
+        {
+            if (ImGui::Button("Create Empty"))
+            {
+                auto& actor = scene.CreateActor("Actor");
+                editorState.SelectedActorID = actor.ID;
+            }
+            ImGui::SameLine();
+
+            const bool hasSelection = editorState.SelectedActorID.has_value();
+            if (!hasSelection) ImGui::BeginDisabled();
+            if (ImGui::Button("Duplicate") && hasSelection)
+            {
+                auto& duplicate = scene.DuplicateActor(editorState.SelectedActorID.value());
+                editorState.SelectedActorID = duplicate.ID;
+            }
+            if (!hasSelection) ImGui::EndDisabled();
+
+            ImGui::SameLine();
+
+            if (!hasSelection) ImGui::BeginDisabled();
+            if (ImGui::Button("Delete") && hasSelection)
+            {
+                scene.DestroyActorByID(editorState.SelectedActorID.value());
+                editorState.SelectedActorID.reset();
+            }
+            if (!hasSelection) ImGui::EndDisabled();
+
+            ImGui::Separator();
+
+            std::optional<Core::UUID> pendingDuplicate;
+            std::optional<Core::UUID> pendingDelete;
+
+            auto& actors = scene.GetActors();
+            for (std::size_t i = 0; i < actors.size(); ++i)
+            {
+                const bool isSelected =
+                    editorState.SelectedActorID.has_value() &&
+                    editorState.SelectedActorID.value() == actors[i].ID;
+
+                const std::string displayName =
+                    actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name;
+
+                const std::string label =
+                    displayName + "##" + Core::UUIDToString(actors[i].ID);
+
+                if (ImGui::Selectable(label.c_str(), isSelected))
+                {
+                    editorState.SelectedActorID = actors[i].ID;
+                }
+
+                if (ImGui::BeginPopupContextItem(label.c_str()))
+                {
+                    if (ImGui::MenuItem("Duplicate"))
+                    {
+                        pendingDuplicate = actors[i].ID;
+                    }
+
+                    if (ImGui::MenuItem("Delete"))
+                    {
+                        pendingDelete = actors[i].ID;
+                    }
+
+                    ImGui::EndPopup();
+                }
+            }
+
+            if (pendingDuplicate.has_value())
+            {
+                auto& duplicate = scene.DuplicateActor(pendingDuplicate.value());
+                editorState.SelectedActorID = duplicate.ID;
+            }
+
+            if (pendingDelete.has_value())
+            {
+                scene.DestroyActorByID(pendingDelete.value());
+
+                if (editorState.SelectedActorID.has_value() &&
+                    editorState.SelectedActorID.value() == pendingDelete.value())
+                {
+                    editorState.SelectedActorID.reset();
+                }
+            }
+        }
+        ImGui::End();
+    }
+
     void ImGuiLayer::CreateDescriptorPool()
     {
         VkDescriptorPoolSize poolSizes[] =
@@ -633,6 +776,4 @@ namespace Quiet::Renderer::Vulkan
             m_DescriptorPool = VK_NULL_HANDLE;
         }
     }
-
-
 }

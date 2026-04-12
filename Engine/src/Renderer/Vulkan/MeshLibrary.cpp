@@ -15,8 +15,13 @@ namespace Quiet::Renderer::Vulkan
             QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
             throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
         }
-
-        m_Meshes[name] = std::make_shared<StaticMesh>(physicalDevice, logicalDevice, graphicsCommands, BuildQuadVertices(), BuildQuadIndices());
+        m_Meshes[name] = std::make_shared<StaticMesh>(
+           physicalDevice,
+           logicalDevice,
+           graphicsCommands,
+           BuildQuadVertices(),
+           BuildQuadIndices()
+       );
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
 
@@ -30,8 +35,13 @@ namespace Quiet::Renderer::Vulkan
             QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
             throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
         }
-
-        m_Meshes[name] = std::make_shared<StaticMesh>(physicalDevice, logicalDevice, graphicsCommands, BuildCubeVertices(), BuildCubeIndices());
+        m_Meshes[name] = std::make_shared<StaticMesh>(
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            BuildCubeVertices(),
+            BuildCubeIndices()
+        );
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
 
@@ -46,6 +56,21 @@ namespace Quiet::Renderer::Vulkan
     bool MeshLibrary::Has(const std::string& name) const
     {
         return m_Meshes.find(name) != m_Meshes.end();
+    }
+
+    std::vector<std::string> MeshLibrary::GetNames() const
+    {
+        std::vector<std::string> names;
+        names.reserve(m_Meshes.size());
+
+        for (const auto& [name, mesh] : m_Meshes)
+        {
+            (void)mesh;
+            names.push_back(name);
+        }
+
+        std::sort(names.begin(), names.end());
+        return names;
     }
 
     std::vector<Vertex> MeshLibrary::BuildQuadVertices()

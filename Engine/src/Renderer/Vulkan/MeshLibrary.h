@@ -31,6 +31,8 @@ namespace Quiet::Renderer::Vulkan
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
         bool Has(const std::string& name) const;
 
+        [[nodiscard]] std::vector<std::string> GetNames() const;
+
         static std::vector<Vertex> BuildQuadVertices();
         static std::vector<std::uint16_t> BuildQuadIndices();
 

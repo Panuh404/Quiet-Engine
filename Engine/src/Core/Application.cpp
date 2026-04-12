@@ -117,6 +117,7 @@ namespace Quiet::Core
                     stats,
                     *m_Scene,
                     editorState,
+                    m_Renderer->GetMeshLibrary(),
                     m_Renderer->GetSceneViewportTextureID(),
                     [this]()
                     {

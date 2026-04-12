@@ -29,6 +29,41 @@ namespace Quiet::Scene
         return m_Actors.back();
     }
 
+    Actor & Scene::DuplicateActor(Core::UUID sourceID)
+    {
+        const Actor* source = FindActorByID(sourceID);
+        if (!source)
+        {
+            QUIET_CORE_ERROR("Failed to duplicate actor. Actor not found.");
+            throw std::runtime_error("Scene::DuplicateActor failed. Source actor not found.");
+        }
+
+        Actor duplicate = *source;
+        duplicate.ID = Quiet::Core::UUIDGenerator::New();
+        duplicate.Name = source->Name.empty() ? "Actor Copy" : source->Name + " Copy";
+
+        m_Actors.push_back(std::move(duplicate));
+        return m_Actors.back();
+    }
+
+    bool Scene::DestroyActorByID(Core::UUID id)
+    {
+        const auto it = std::find_if(
+            m_Actors.begin(),
+            m_Actors.end(),
+            [id](const Actor& actor)
+            {
+                return actor.ID == id;
+            }
+        );
+
+        if (it == m_Actors.end())
+            return false;
+
+        m_Actors.erase(it);
+        return true;
+    }
+
     void Scene::Clear()
     {
         m_Actors.clear();
