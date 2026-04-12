@@ -46,6 +46,9 @@ namespace Quiet::Core
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
         m_EditorController = std::make_unique<Editor::EditorController>();
 
+        auto& editorState = m_EditorController->GetState();
+        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+
         if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), m_ProjectContext.GetDefaultScenePath()))
         {
             NewScene();
@@ -95,15 +98,17 @@ namespace Quiet::Core
             const float deltaTime = static_cast<float>(currentTime - previousTime);
             previousTime = currentTime;
 
+            auto& editorState = m_EditorController->GetState();
+            const bool isSimulating = editorState.CurrentSceneMode == Editor::SceneMode::Simulate;
+
             if (m_MouseCaptureEnabled)
             {
                 m_FreeCamera->Update(*m_Input, deltaTime);
             }
 
-            m_Scene->Update(deltaTime, true);
+            m_Scene->Update(deltaTime, isSimulating);
             m_Renderer->ApplyPendingViewportResize();
 
-            auto& editorState = m_EditorController->GetState();
             auto& uiLayer = m_Renderer->GetImGuiLayer();
 
             uiLayer.BeginFrame();
@@ -111,7 +116,7 @@ namespace Quiet::Core
                 Renderer::Vulkan::ImGuiStats stats{};
                 stats.FrameTimeMs = deltaTime * 1000.0f;
                 stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
-                stats.ActorCount = static_cast<std::uint32_t>(m_Scene->GetActors().size());
+                stats.ActorCount = static_cast<std::uint32_t>(GetActiveScene().GetActors().size());
                 stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
                 stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
                 stats.MouseCaptured = m_MouseCaptureEnabled;
@@ -168,6 +173,18 @@ namespace Quiet::Core
                     editorState.RequestLoadScene = false;
                 }
 
+                if (editorState.RequestEnterSimulate)
+                {
+                    EnterSimulateMode();
+                    editorState.RequestEnterSimulate = false;
+                }
+
+                if (editorState.RequestStopSimulate)
+                {
+                    StopSimulateMode();
+                    editorState.RequestStopSimulate = false;
+                }
+
                 if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
                 {
                     const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
@@ -185,7 +202,7 @@ namespace Quiet::Core
             uiLayer.EndFrame();
 
             const bool frameCompleted = m_Renderer->DrawFrame(
-                *m_Scene,
+                GetActiveScene(),
                 *m_FreeCamera,
                 uiLayer,
                 editorState
@@ -224,20 +241,32 @@ namespace Quiet::Core
 
     void Application::NewScene()
     {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            QUIET_CORE_WARN("Cannot create a new scene while simulating.");
+            return;
+        }
+
         Scene::SceneDocument::CreateDefault(
             *m_Scene,
             m_Renderer->GetMeshLibrary()
         );
-        auto& editorState = m_EditorController->GetState();
+
         editorState.SceneDirty = false;
         editorState.SceneDisplayName = "DefaultScene.json";
-
         m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Created new scene.");
     }
 
     void Application::SaveScene()
     {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            QUIET_CORE_WARN("Cannot save scene while simulating.");
+            return;
+        }
         if (!m_ProjectContext.EnsureDirectoriesExist())
         {
             QUIET_CORE_ERROR("Failed to create project scene directories.");
@@ -251,28 +280,76 @@ namespace Quiet::Core
             return;
         }
 
-        auto& editorState = m_EditorController->GetState();
         editorState.SceneDirty = false;
         editorState.SceneDisplayName = scenePath.filename().string();
-
         QUIET_CORE_INFO("Saved scene to '{}'.", scenePath.string());
     }
 
     void Application::LoadScene()
     {
-        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            QUIET_CORE_WARN("Cannot load scene while simulating.");
+            return;
+        }
 
+        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
         if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), scenePath))
         {
             QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());
             return;
         }
 
-        auto& editorState = m_EditorController->GetState();
         editorState.SceneDirty = false;
         editorState.SceneDisplayName = scenePath.filename().string();
-
         m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
+    }
+
+    Scene::Scene& Application::GetActiveScene()
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate && m_RuntimeScene)
+        {
+            return *m_RuntimeScene;
+        }
+        return *m_Scene;
+    }
+
+    const Scene::Scene& Application::GetActiveScene() const
+    {
+        const auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate && m_RuntimeScene)
+        {
+            return *m_RuntimeScene;
+        }
+        return *m_Scene;
+    }
+
+    void Application::EnterSimulateMode()
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        {
+            return;
+        }
+
+        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
+        editorState.CurrentSceneMode = Editor::SceneMode::Simulate;
+        QUIET_CORE_INFO("Entered simulate mode.");
+    }
+
+    void Application::StopSimulateMode()
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        {
+            return;
+        }
+
+        m_RuntimeScene.reset();
+        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+        QUIET_CORE_INFO("Stopped simulate mode.");
     }
 }

@@ -58,6 +58,12 @@ namespace Quiet::Core
         void SaveScene();
         void LoadScene();
 
+        void EnterSimulateMode();
+        void StopSimulateMode();
+
+        [[nodiscard]] Scene::Scene& GetActiveScene();
+        [[nodiscard]] const Scene::Scene& GetActiveScene() const;
+
     private:
         AppSpec m_Spec;
         bool m_Running = true;
@@ -69,6 +75,7 @@ namespace Quiet::Core
         std::unique_ptr<Input::Input> m_Input;
         std::unique_ptr<Scene::FreeCamera> m_FreeCamera;
         std::unique_ptr<Scene::Scene> m_Scene;
+        std::unique_ptr<Scene::Scene> m_RuntimeScene;
         std::unique_ptr<Renderer::Vulkan::VulkanRenderer> m_Renderer;
         std::unique_ptr<Editor::EditorController> m_EditorController;
     };

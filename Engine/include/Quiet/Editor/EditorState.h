@@ -19,6 +19,12 @@ namespace Quiet::Editor
         World
     };
 
+    enum class SceneMode
+    {
+        Edit,
+        Simulate
+    };
+
     struct EditorState
     {
         std::optional<Core::UUID> SelectedActorID;
@@ -35,6 +41,7 @@ namespace Quiet::Editor
 
         GizmoOperation CurrentGizmoOperation = GizmoOperation::Translate;
         GizmoMode CurrentGizmoMode = GizmoMode::World;
+        SceneMode CurrentSceneMode = SceneMode::Edit;
 
         bool GizmoSnapEnabled = false;
         float TranslateSnap[3] = { 0.5f, 0.5f, 0.5f };
@@ -45,6 +52,8 @@ namespace Quiet::Editor
         bool RequestNewScene = false;
         bool RequestSaveScene = false;
         bool RequestLoadScene = false;
+        bool RequestEnterSimulate = false;
+        bool RequestStopSimulate = false;
 
         bool SceneDirty = false;
         std::string SceneDisplayName = "DefaultScene.json";

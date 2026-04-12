@@ -58,12 +58,15 @@ namespace Quiet::Editor
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
         const bool ctrlDown = io.KeyCtrl;
+        const bool isEditMode = m_State.CurrentSceneMode == SceneMode::Edit;
+
         if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_S, false))
         {
-            m_State.RequestSaveScene = true;
+            if (isEditMode) m_State.RequestSaveScene = true;
             return;
         }
-
+        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) m_State.RequestFocusSelected = true;
+        if (!isEditMode) return;
         if (ImGui::IsKeyPressed(ImGuiKey_T, false)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
         if (ImGui::IsKeyPressed(ImGuiKey_S, false)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
@@ -80,7 +83,6 @@ namespace Quiet::Editor
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_G, false)) m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
-        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) m_State.RequestFocusSelected = true;
     }
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene,
@@ -198,6 +200,7 @@ namespace Quiet::Editor
                                                    bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
+        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
         if (!renderer.IsSceneViewportReady()) return;
         if (!m_State.SelectedActorID.has_value()) return;
         if (m_State.ViewportWidth == 0 || m_State.ViewportHeight == 0) return;

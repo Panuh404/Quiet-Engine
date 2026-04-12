@@ -503,6 +503,10 @@ namespace Quiet::Renderer::Vulkan
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
+        const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+
+        if (!isEditMode) ImGui::BeginDisabled();
+
         ImGui::SameLine();
         if (ImGui::Button("New")) editorState.RequestNewScene = true;
 
@@ -512,11 +516,26 @@ namespace Quiet::Renderer::Vulkan
         ImGui::SameLine();
         if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
 
-        std::string statusText = editorState.SceneDisplayName;
-        if (editorState.SceneDirty)
+        if (!isEditMode) ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+        ImGui::SameLine();
+        if (isEditMode)
         {
-            statusText += " *";
+            if (ImGui::Button("Simulate"))
+                editorState.RequestEnterSimulate = true;
         }
+        else
+        {
+            if (ImGui::Button("Stop"))
+                editorState.RequestStopSimulate = true;
+        }
+
+        std::string statusText = (editorState.CurrentSceneMode == Editor::SceneMode::Edit) ? "[EDIT] " : "[SIMULATE] ";
+        statusText += editorState.SceneDisplayName;
+        if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit) statusText += " *";
 
         const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
         const float availableX = ImGui::GetWindowContentRegionMax().x;
@@ -525,10 +544,18 @@ namespace Quiet::Renderer::Vulkan
         if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
         else ImGui::SameLine();
 
-        if (editorState.SceneDirty)
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        {
+            ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
+        }
+        else if (editorState.SceneDirty)
+        {
             ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
+        }
         else
+        {
             ImGui::TextUnformatted(statusText.c_str());
+        }
 
         ImGui::End();
     }
@@ -552,13 +579,25 @@ namespace Quiet::Renderer::Vulkan
                 return;
             }
 
+            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
             auto& actor = *selectedActor;
+
             char nameBuffer[256]{};
             std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
 
             ImGui::Text("Actor");
             ImGui::Separator();
 
+            if (!isEditMode)
+            {
+                ImGui::TextColored(
+                    ImVec4(0.30f, 0.85f, 0.35f, 1.0f),
+                    "Simulating runtime copy. Editing is disabled."
+                );
+                ImGui::Separator();
+            }
+
+            if (!isEditMode) ImGui::BeginDisabled();
             if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
             {
                 actor.Name = nameBuffer;
@@ -566,6 +605,7 @@ namespace Quiet::Renderer::Vulkan
             }
 
             auto& transform = actor.Transform.WorldTransform;
+
             if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f))
                 editorState.SceneDirty = true;
 
@@ -599,6 +639,7 @@ namespace Quiet::Renderer::Vulkan
                 if (ImGui::CollapsingHeader("Static Mesh", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                     auto names = meshLibrary.GetNames();
+
                     int currentIndex = 0;
                     for (int i = 0; i < static_cast<int>(names.size()); ++i)
                     {
@@ -609,7 +650,8 @@ namespace Quiet::Renderer::Vulkan
                         }
                     }
 
-                    const char* currentPreview = names.empty() ? "<none>" : names[currentIndex].c_str();
+                    const char* currentPreview =
+                        names.empty() ? "<none>" : names[currentIndex].c_str();
 
                     if (ImGui::BeginCombo("Mesh Resource", currentPreview))
                     {
@@ -622,8 +664,13 @@ namespace Quiet::Renderer::Vulkan
                                 actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
                                 editorState.SceneDirty = true;
                             }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+
+                            if (isSelected)
+                            {
+                                ImGui::SetItemDefaultFocus();
+                            }
                         }
+
                         ImGui::EndCombo();
                     }
 
@@ -631,6 +678,7 @@ namespace Quiet::Renderer::Vulkan
                     {
                         editorState.SceneDirty = true;
                     }
+
                     if (ImGui::Button("Remove Static Mesh"))
                     {
                         actor.StaticMesh.reset();
@@ -652,8 +700,8 @@ namespace Quiet::Renderer::Vulkan
                 if (ImGui::CollapsingHeader("Rotator", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                     if (ImGui::DragFloat("Rotation Speed",
-                                        &actor.Rotator->RotationSpeedDegreesPerSecond,
-                                        1.0f))
+                                         &actor.Rotator->RotationSpeedDegreesPerSecond,
+                                         1.0f))
                     {
                         editorState.SceneDirty = true;
                     }
@@ -665,20 +713,27 @@ namespace Quiet::Renderer::Vulkan
                     }
                 }
             }
+
+            if (!isEditMode) ImGui::EndDisabled();
         }
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildHierarchy(Scene::Scene &scene, Editor::EditorState &editorState)
+    void ImGuiLayer::BuildHierarchy(Scene::Scene& scene, Editor::EditorState& editorState)
     {
-        ImGui::Begin("Hierarchy");
+        ImGui::Begin("Scene Hierarchy");
         {
+            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+
+            if (!isEditMode) ImGui::BeginDisabled();
+
             if (ImGui::Button("Create Empty"))
             {
                 auto& actor = scene.CreateActor("Actor");
                 editorState.SelectedActorID = actor.ID;
                 editorState.SceneDirty = true;
             }
+
             ImGui::SameLine();
 
             const bool hasSelection = editorState.SelectedActorID.has_value();
@@ -701,6 +756,8 @@ namespace Quiet::Renderer::Vulkan
                 editorState.SceneDirty = true;
             }
             if (!hasSelection) ImGui::EndDisabled();
+
+            if (!isEditMode) ImGui::EndDisabled();
 
             ImGui::Separator();
 
@@ -727,6 +784,8 @@ namespace Quiet::Renderer::Vulkan
 
                 if (ImGui::BeginPopupContextItem(label.c_str()))
                 {
+                    if (!isEditMode) ImGui::BeginDisabled();
+
                     if (ImGui::MenuItem("Duplicate"))
                     {
                         pendingDuplicate = actors[i].ID;
@@ -736,6 +795,8 @@ namespace Quiet::Renderer::Vulkan
                     {
                         pendingDelete = actors[i].ID;
                     }
+
+                    if (!isEditMode) ImGui::EndDisabled();
 
                     ImGui::EndPopup();
                 }
@@ -757,6 +818,7 @@ namespace Quiet::Renderer::Vulkan
                 {
                     editorState.SelectedActorID.reset();
                 }
+
                 editorState.SceneDirty = true;
             }
         }
