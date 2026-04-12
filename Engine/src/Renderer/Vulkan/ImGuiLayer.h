@@ -12,7 +12,7 @@
 struct GLFWwindow;
 struct ImDrawData;
 
-namespace Quiet::Core
+namespace Quiet::Editor
 {
     struct EditorState;
 }
@@ -58,7 +58,7 @@ namespace Quiet::Renderer::Vulkan
         void BeginFrame();
         void BuildEditorUI(const ImGuiStats& stats,
                            Scene::Scene& scene,
-                           Core::EditorState& editorState,
+                           Editor::EditorState& editorState,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
         void EndFrame();
@@ -71,7 +71,7 @@ namespace Quiet::Renderer::Vulkan
         float GetToolbarHeight() const;
         void BuildDockspace();
         void BuildTopbar();
-        void BuildViewportToolbar(Core::EditorState& editorState,
+        void BuildViewportToolbar(Editor::EditorState& editorState,
                                   const ImVec2& imageMin);
 
         void CreateDescriptorPool();

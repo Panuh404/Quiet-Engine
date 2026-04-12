@@ -2,9 +2,9 @@
 
 #include <cstddef>
 #include <optional>
-#include "UUID.h"
+#include "../Core/UUID.h"
 
-namespace Quiet::Core
+namespace Quiet::Editor
 {
     enum class GizmoOperation
     {

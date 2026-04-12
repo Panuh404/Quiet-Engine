@@ -1,7 +1,7 @@
 #include "VulkanRenderer.h"
 
 #include "Quiet/Core/AppSpec.h"
-#include "Quiet/Core/EditorState.h"
+#include "../../../include/Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 #include "Scene/FreeCamera.h"
@@ -241,7 +241,7 @@ namespace Quiet::Renderer::Vulkan
     bool VulkanRenderer::DrawFrame(Scene::Scene &scene,
                                    Scene::FreeCamera &camera,
                                    ImGuiLayer &imguiLayer,
-                                   Core::EditorState &editorState)
+                                   Editor::EditorState &editorState)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -470,7 +470,7 @@ namespace Quiet::Renderer::Vulkan
     void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                                   Scene::Scene &scene,
                                                   Scene::FreeCamera &camera,
-                                                  Core::EditorState &editorState,
+                                                  Editor::EditorState &editorState,
                                                   ImGuiLayer& imguiLayer)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);

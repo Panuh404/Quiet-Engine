@@ -10,7 +10,7 @@
 #include <stdexcept>
 
 #include "ImGuiTheme.h"
-#include "Quiet/Core/EditorState.h"
+#include "../../../include/Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Scene/Scene.h"
 
@@ -96,7 +96,7 @@ namespace Quiet::Renderer::Vulkan
 
     void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
                                    Scene::Scene& scene,
-                                   Core::EditorState& editorState,
+                                   Editor::EditorState& editorState,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
@@ -328,7 +328,7 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildViewportToolbar(Core::EditorState &editorState,
+    void ImGuiLayer::BuildViewportToolbar(Editor::EditorState &editorState,
                                           const ImVec2 &imageMin)
     {
         const float padding = 10.0f;
@@ -356,34 +356,34 @@ namespace Quiet::Renderer::Vulkan
 
         if (ImGui::Button("T"))
         {
-            editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Translate;
+            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Translate;
         }
         ImGui::SameLine();
 
         if (ImGui::Button("R"))
         {
-            editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Rotate;
+            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Rotate;
         }
         ImGui::SameLine();
 
         if (ImGui::Button("S"))
         {
-            editorState.CurrentGizmoOperation = Quiet::Core::GizmoOperation::Scale;
+            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Scale;
         }
 
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        if (editorState.CurrentGizmoOperation != Quiet::Core::GizmoOperation::Scale)
+        if (editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale)
         {
             if (ImGui::Button(
-                    editorState.CurrentGizmoMode == Quiet::Core::GizmoMode::Local ? "Local" : "World"))
+                    editorState.CurrentGizmoMode == Editor::GizmoMode::Local ? "Local" : "World"))
             {
                 editorState.CurrentGizmoMode =
-                    (editorState.CurrentGizmoMode == Quiet::Core::GizmoMode::Local)
-                        ? Quiet::Core::GizmoMode::World
-                        : Quiet::Core::GizmoMode::Local;
+                    (editorState.CurrentGizmoMode == Editor::GizmoMode::Local)
+                        ? Editor::GizmoMode::World
+                        : Editor::GizmoMode::Local;
             }
 
             ImGui::SameLine();

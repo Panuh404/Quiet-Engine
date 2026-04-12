@@ -31,6 +31,8 @@ target_sources(Quiet_Engine
         src/Scene/Components/StaticMeshComponent.h
         src/Scene/Components/TransformComponent.h
 
+        src/Editor/EditorController.cpp
+
         # Renderer
         src/Renderer/Vulkan/CameraResources.cpp
         src/Renderer/Vulkan/CameraResources.h
@@ -88,7 +90,8 @@ target_sources(Quiet_Engine
     PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/AppSpec.h
-        include/Quiet/Core/EditorState.h
+        include/Quiet/Editor/EditorState.h
+        include/Quiet/Editor/EditorController.h
         include/Quiet/Core/Log.h
         include/Quiet/Core/UUID.h
 

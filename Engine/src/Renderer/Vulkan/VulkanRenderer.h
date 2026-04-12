@@ -20,6 +20,10 @@ namespace Quiet::Scene
 namespace Quiet::Core
 {
     struct AppSpec;
+}
+
+namespace Quiet::Editor
+{
     struct EditorState;
 }
 
@@ -51,7 +55,7 @@ namespace Quiet::Renderer::Vulkan
         bool DrawFrame(Scene::Scene& scene,
                        Scene::FreeCamera& camera,
                        ImGuiLayer& imguiLayer,
-                       Core::EditorState& editorState);
+                       Editor::EditorState& editorState);
 
         void RecreateSwapchain();
         void ApplyPendingViewportResize();
@@ -78,7 +82,7 @@ namespace Quiet::Renderer::Vulkan
         void RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                       Scene::Scene& scene,
                                       Scene::FreeCamera& camera,
-                                      Core::EditorState& editorState,
+                                      Editor::EditorState& editorState,
                                       ImGuiLayer& imguiLayer);
 
     private:
