@@ -90,10 +90,11 @@ target_sources(Quiet_Engine
     PUBLIC
         include/Quiet/Core/Application.h
         include/Quiet/Core/AppSpec.h
+        include/Quiet/Core/Log.h
+        include/Quiet/Core/ProjectContext.h
+        include/Quiet/Core/UUID.h
         include/Quiet/Editor/EditorState.h
         include/Quiet/Editor/EditorController.h
-        include/Quiet/Core/Log.h
-        include/Quiet/Core/UUID.h
 
         include/Quiet/Platform/Window.h
         include/Quiet/Math/Geometry.h

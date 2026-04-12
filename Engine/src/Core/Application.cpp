@@ -22,6 +22,7 @@ namespace Quiet::Core
     Application::Application(AppSpec spec) : m_Spec(std::move(spec))
     {
         Log::Init();
+        m_ProjectContext.SetRootPath(std::filesystem::current_path());
 
         Platform::WindowDesc windowDesc{};
         windowDesc.Width = m_Spec.Width;
@@ -42,14 +43,18 @@ namespace Quiet::Core
 
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
-
-        m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(
-            m_Spec,
-            *m_Window);
-
+        m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
         m_EditorController = std::make_unique<Editor::EditorController>();
 
-        NewScene();
+        if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), m_ProjectContext.GetDefaultScenePath()))
+        {
+            NewScene();
+        }
+        else
+        {
+            m_EditorController->ResetSelection();
+            QUIET_CORE_INFO("Loaded startup scene.");
+        }
     }
 
     Application::~Application()
@@ -225,16 +230,25 @@ namespace Quiet::Core
 
     void Application::SaveScene()
     {
-        const std::filesystem::path scenePath = "Scenes/DefaultScene.json";
+        if (!m_ProjectContext.EnsureDirectoriesExist())
+        {
+            QUIET_CORE_ERROR("Failed to create project scene directories.");
+            return;
+        }
+
+        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
         if (!Scene::SceneDocument::Save(*m_Scene, scenePath))
         {
             QUIET_CORE_ERROR("Failed to save scene to '{}'.", scenePath.string());
+            return;
         }
+        QUIET_CORE_INFO("Saved scene to '{}'.", scenePath.string());
     }
 
     void Application::LoadScene()
     {
-        const std::filesystem::path scenePath = "Scenes/DefaultScene.json";
+        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
+
         if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), scenePath))
         {
             QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());

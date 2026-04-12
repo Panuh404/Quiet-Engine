@@ -5,6 +5,7 @@
 #include <string>
 
 #include "AppSpec.h"
+#include "ProjectContext.h"
 #include "../Editor/EditorState.h"
 
 #pragma region Forward declarations
@@ -64,6 +65,8 @@ namespace Quiet::Core
         AppSpec m_Spec;
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
+
+        ProjectContext m_ProjectContext;
 
         std::unique_ptr<Platform::Window> m_Window;
         std::unique_ptr<Input::Input> m_Input;
