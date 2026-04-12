@@ -853,8 +853,11 @@ namespace Quiet::Renderer::Vulkan
                         return;
                     }
 
-                    Scene::Actor *duplicate = scene.TryDuplicateActor(source->ID);
-                    editorState.SelectedActorID = duplicate->ID;
+                    Scene::Actor* duplicate = scene.TryDuplicateActor(source->ID);
+                    if (duplicate)
+                    {
+                        editorState.SelectedActorID = duplicate->ID;
+                    }
                 });
             }
 

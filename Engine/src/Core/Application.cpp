@@ -130,29 +130,44 @@ namespace Quiet::Core
                     [this]()
                     {
                         auto& editorStateInner = m_EditorController->GetState();
+                        auto& overlayScene = GetActiveScene();
+
                         m_EditorController->TrySelectActorFromViewport(
                             *m_Input,
-                            *m_Scene,
+                            overlayScene,
                             *m_FreeCamera,
                             *m_Renderer,
                             m_MouseCaptureEnabled
                         );
 
                         m_EditorController->HandleShortcuts(m_MouseCaptureEnabled);
+
                         if (editorStateInner.RequestFocusSelected)
                         {
-                            m_EditorController->FocusSelectedActor(*m_Scene, *m_FreeCamera);
+                            m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
                             editorStateInner.RequestFocusSelected = false;
                         }
 
                         m_EditorController->BuildSelectedActorGizmo(
-                            *m_Scene,
+                            overlayScene,
                             *m_FreeCamera,
                             *m_Renderer,
                             m_MouseCaptureEnabled
                         );
                     }
                 );
+
+                if (editorState.RequestUndo)
+                {
+                    m_EditorController->Undo(*m_Scene);
+                    editorState.RequestUndo = false;
+                }
+
+                if (editorState.RequestRedo)
+                {
+                    m_EditorController->Redo(*m_Scene);
+                    editorState.RequestRedo = false;
+                }
 
                 if (editorState.RequestNewScene)
                 {
