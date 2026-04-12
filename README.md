@@ -27,6 +27,12 @@ Quiet currently includes:
 - actor selection from hierarchy and viewport
 - ImGuizmo transform editing
 - runtime mesh library with built-in primitive meshes
+- scene save/load through project scene paths
+- UUID-based actor identity
+- actor creation, duplication, deletion
+- inspector-based component authoring
+- dirty scene tracking with save indicator
+- in-editor console backed by spdlog
 
 ## Project Structure
 
