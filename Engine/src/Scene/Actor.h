@@ -4,9 +4,9 @@
 #include <string>
 
 #include "Quiet/Core/UUID.h"
-#include "Scene/RotatorComponent.h"
-#include "Scene/StaticMeshComponent.h"
-#include "Scene/TransformComponent.h"
+#include "Scene/Components/RotatorComponent.h"
+#include "Scene/Components/StaticMeshComponent.h"
+#include "Scene/Components/TransformComponent.h"
 
 namespace Quiet::Scene
 {

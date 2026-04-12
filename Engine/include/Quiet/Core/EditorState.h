@@ -42,5 +42,8 @@ namespace Quiet::Core
         float ScaleSnap = 0.1f;
 
         bool RequestFocusSelected = false;
+        bool RequestNewScene = false;
+        bool RequestSaveScene = false;
+        bool RequestLoadScene = false;
     };
 }

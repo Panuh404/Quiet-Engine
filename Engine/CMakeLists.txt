@@ -21,14 +21,15 @@ target_sources(Quiet_Engine
         src/Scene/Actor.h
         src/Scene/FreeCamera.cpp
         src/Scene/FreeCamera.h
-        src/Scene/RotatorComponent.h
         src/Scene/Scene.cpp
         src/Scene/Scene.h
-        src/Scene/StaticMeshComponent.h
-        src/Scene/Transform.h
-        src/Scene/TransformComponent.h
+        src/Scene/SceneDocument.cpp
         src/Scene/SceneSerializer.cpp
         src/Scene/SceneSerializer.h
+        src/Scene/Transform.h
+        src/Scene/Components/RotatorComponent.h
+        src/Scene/Components/StaticMeshComponent.h
+        src/Scene/Components/TransformComponent.h
 
         # Renderer
         src/Renderer/Vulkan/CameraResources.cpp
@@ -68,6 +69,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanBuffer.h
         src/Renderer/Vulkan/VulkanInstance.cpp
         src/Renderer/Vulkan/VulkanInstance.h
+        src/Renderer/Vulkan/VulkanRenderer.cpp
+        src/Renderer/Vulkan/VulkanRenderer.h
         src/Renderer/Vulkan/VulkanSurface.cpp
         src/Renderer/Vulkan/VulkanSurface.h
 
@@ -84,11 +87,14 @@ target_sources(Quiet_Engine
 
     PUBLIC
         include/Quiet/Core/Application.h
+        include/Quiet/Core/AppSpec.h
         include/Quiet/Core/EditorState.h
         include/Quiet/Core/Log.h
         include/Quiet/Core/UUID.h
+
         include/Quiet/Platform/Window.h
         include/Quiet/Math/Geometry.h
+        include/Quiet/Scene/SceneDocument.h
 )
 
 target_include_directories(Quiet_Engine

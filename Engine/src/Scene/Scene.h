@@ -9,12 +9,13 @@ namespace Quiet::Scene
     {
     public:
         Scene();
+        ~Scene() = default;
 
         Actor& CreateActor(const std::string& name);
         Actor& CreateActorWithID(Core::UUID id, const std::string& name);
 
-        void Update(float deltaTime);
         void Clear();
+        void Update(float deltaTime);
 
         [[nodiscard]] std::vector<Actor>& GetActors() { return m_Actors; }
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }

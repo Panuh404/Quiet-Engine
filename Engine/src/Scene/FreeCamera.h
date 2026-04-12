@@ -26,8 +26,8 @@ namespace Quiet::Scene
         [[nodiscard]] float GetYaw() const { return m_Yaw; }
         [[nodiscard]] float GetPitch() const { return m_Pitch; }
 
-        [[nodiscard]] glm::vec3 GetForward() const;
-        [[nodiscard]] glm::vec3 GetRight() const;
+        [[nodiscard]] glm::vec3 GetForwardVector() const;
+        [[nodiscard]] glm::vec3 GetRightVector() const;
         [[nodiscard]] float GetFovDegrees() const { return m_FovDegrees; }
 
         void SetPosition(const glm::vec3& position) { m_Position = position; }

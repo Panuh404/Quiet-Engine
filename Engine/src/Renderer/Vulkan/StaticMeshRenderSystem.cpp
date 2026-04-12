@@ -29,7 +29,7 @@ namespace Quiet::Renderer::Vulkan
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             context.Pipeline->GetHandle());
 
-        const VkDescriptorSet descriptorSet = context.Camera->GetDescriptorSet(context.ImageIndex);
+        VkDescriptorSet descriptorSet = context.Camera->GetDescriptorSet(context.ImageIndex);
         vkCmdBindDescriptorSets(
            context.CommandBuffer,
            VK_PIPELINE_BIND_POINT_GRAPHICS,

@@ -6,22 +6,7 @@ namespace Quiet::Scene
 {
     Scene::Scene()
     {
-        auto& center = CreateActor("Center");
-        center.Transform.WorldTransform.Position = { 0.0f, 0.0f, 0.0f };
-        center.Transform.WorldTransform.Scale = { 1.0f, 1.0f, 1.0f };
-        center.Rotator = RotatorComponent{ 0.0f };
-
-        auto& left = CreateActor("Left");
-        left.Transform.WorldTransform.Position = { -1.5f, 0.0f, 0.0f };
-        left.Transform.WorldTransform.Scale = { 0.75f, 0.75f, 0.75f };
-        left.Rotator = RotatorComponent{ 45.0f };
-
-        auto& right = CreateActor("Right");
-        right.Transform.WorldTransform.Position = { 1.5f, 0.0f, 0.0f };
-        right.Transform.WorldTransform.Scale = { 0.75f, 0.75f, 0.75f };
-        right.Rotator = RotatorComponent{ -60.0f };
-
-        QUIET_CORE_INFO("Initialized scene with {} actors.", m_Actors.size());
+        QUIET_CORE_INFO("Initialized scene");
     }
 
     Actor& Scene::CreateActor(const std::string &name)
@@ -29,6 +14,7 @@ namespace Quiet::Scene
         Actor actor{};
         actor.ID = Quiet::Core::UUIDGenerator::New();
         actor.Name = name;
+
         m_Actors.push_back(std::move(actor));
         return m_Actors.back();
     }
@@ -38,8 +24,14 @@ namespace Quiet::Scene
         Actor actor{};
         actor.ID = id;
         actor.Name = name;
+        
         m_Actors.push_back(std::move(actor));
         return m_Actors.back();
+    }
+
+    void Scene::Clear()
+    {
+        m_Actors.clear();
     }
 
     void Scene::Update(float deltaTime)
@@ -52,11 +44,6 @@ namespace Quiet::Scene
                     actor.Rotator->RotationSpeedDegreesPerSecond * deltaTime;
             }
         }
-    }
-
-    void Scene::Clear()
-    {
-        m_Actors.clear();
     }
 
     Actor* Scene::FindActorByID(Core::UUID id)

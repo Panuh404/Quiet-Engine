@@ -22,8 +22,8 @@ namespace Quiet::Scene
         m_Pitch -= static_cast<float>(deltaY) * m_LookSensitivity;
         m_Pitch = std::clamp(m_Pitch, -89.0f, 89.0f);
 
-        const glm::vec3 forward = GetForward();
-        const glm::vec3 right = GetRight();
+        const glm::vec3 forward = GetForwardVector();
+        const glm::vec3 right = GetRightVector();
         const glm::vec3 up (0.0f,1.0f,0.0f);
 
         float speed = m_MoveSpeed;
@@ -42,7 +42,7 @@ namespace Quiet::Scene
     Quiet::Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect, bool flipY) const
     {
         Quiet::Renderer::Vulkan::CameraUniformData camera{};
-        const glm::vec3 forward = GetForward();
+        const glm::vec3 forward = GetForwardVector();
 
         camera.View = glm::lookAt(m_Position, m_Position + forward, glm::vec3(0.0f, 1.0f, 0.0f));
         camera.Projection = glm::perspective(glm::radians(m_FovDegrees), aspect, 0.1f, 100.f);
@@ -54,7 +54,7 @@ namespace Quiet::Scene
         return camera;
     }
 
-    glm::vec3 FreeCamera::GetForward() const
+    glm::vec3 FreeCamera::GetForwardVector() const
     {
         const float yawRad = glm::radians(m_Yaw);
         const float pitchRad = glm::radians(m_Pitch);
@@ -67,8 +67,8 @@ namespace Quiet::Scene
         return glm::normalize(forward);
     }
 
-    glm::vec3 FreeCamera::GetRight() const
+    glm::vec3 FreeCamera::GetRightVector() const
     {
-        return glm::normalize(glm::cross(GetForward(), glm::vec3(0.0f, 1.0f, 0.0f)));
+        return glm::normalize(glm::cross(GetForwardVector(), glm::vec3(0.0f, 1.0f, 0.0f)));
     }
 }

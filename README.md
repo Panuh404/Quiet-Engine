@@ -1,43 +1,67 @@
 # Quiet
 
-Quiet is a modern **C++20** game engine project built with **CMake**, designed as a clean multi-target workspace for engine development.
+Quiet is a C++20 Vulkan engine project focused on building a clean real-time runtime and an in-engine editor workflow.
 
-The long-term goal of the project is to build a **Vulkan-based 3D game engine**
+The project is organized as a multi-target CMake workspace and currently includes:
+- a core engine library,
+- a sandbox runtime target,
+- an editor-oriented UI layer built with Dear ImGui.
+
+## Current Features
+
+Quiet currently includes:
+
+- GLFW windowing and input
+- Vulkan instance / surface / device / swapchain setup
+- dynamic rendering pipeline
+- static mesh rendering
+- free camera controls
+- scene representation with actors and components
+- ImGui-based editor shell with:
+    - dockspace
+    - topbar placeholder
+    - scene viewport
+    - hierarchy
+    - inspector
+    - viewport overlay toolbar
+- actor selection from hierarchy and viewport
+- ImGuizmo transform editing
+- runtime mesh library with built-in primitive meshes
+
 ## Project Structure
 
-- **Engine** — core engine library where runtime systems, platform code, rendering, and shared engine functionality live.
-- **Sandbox** — lightweight test application used to validate engine features during development.
-- **Editor** — early editor target reserved for future tooling and content workflows.
+- `Engine/` — core engine code, renderer, platform, scene, editor UI support
+- `Sandbox/` — runtime test application used to validate engine features
+- `Editor/` — reserved for future dedicated editor target / startup path
 
-## Current Status
+## Build Requirements
 
-The project is currently in its **foundation stage**:
+- C++20 compiler
+- CMake
+- Vulkan SDK
+- GLFW
+- Dear ImGui
+- GLM
+- spdlog
 
-- CMake workspace and presets are configured
-- Engine, Sandbox, and Editor targets are separated
-- Public engine headers are isolated from private implementation
-- Final build artifacts are written to `Build/Binaries`
-- Intermediate/generated files are written to `Build/Intermediate`
+## Current Focus
 
-At this stage, the codebase is focused on establishing a clean architecture and reliable build pipeline before introducing platform and rendering systems.
+The current development focus is shifting from raw rendering bring-up into editor and scene workflow features.
 
-## Development Direction
+Immediate priorities are:
 
-Planned next milestones include:
+- refactoring `Application` into cleaner renderer/editor orchestration
+- scene serialization
+- UUID-based actor identity
+- topbar actions for save/load/new scene
+- continued editor workflow polish
 
-- desktop window creation
-- Vulkan SDK integration
-- renderer initialization and frame loop
-- resource management
-- scene rendering
-- gameplay support for a tiny 3D shooter
+## Long-Term Direction
 
-# Notes
+Quiet is being developed as a Vulkan-based engine with an integrated tooling workflow, with an emphasis on:
 
-This repository is being developed with an emphasis on:
-
-- clean engine/game separation
-- maintainable architecture
-- debuggable systems
-- incremental, testable milestones
+- clean architecture
+- explicit engine/editor separation
+- maintainable rendering code
+- practical editor features built incrementally
 - modern C++ and graphics programming practices
