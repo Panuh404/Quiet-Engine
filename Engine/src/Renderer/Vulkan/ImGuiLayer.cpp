@@ -13,6 +13,7 @@
 #include "MeshLibrary.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Scene/Scene.h"
 
@@ -165,8 +166,9 @@ namespace Quiet::Renderer::Vulkan
         }
         ImGui::End();
 
-        BuildInspector(scene, editorController, editorState, meshLibrary);
-        BuildHierarchy(scene, editorController, editorState);
+        Editor::EditorCommands commands(editorController);
+        BuildInspector(scene, commands, editorState, meshLibrary);
+        BuildHierarchy(scene, commands, editorState);
         BuildConsoleWindow();
     }
 
@@ -552,7 +554,7 @@ namespace Quiet::Renderer::Vulkan
     }
 
     void ImGuiLayer::BuildInspector(Scene::Scene& scene,
-                                    Editor::EditorController& editorController,
+                                    Editor::EditorCommands& commands,
                                     Editor::EditorState& editorState,
                                     const MeshLibrary& meshLibrary)
     {
@@ -579,22 +581,17 @@ namespace Quiet::Renderer::Vulkan
             auto beginTrackedItem = [&]()
             {
                 if (isEditMode && ImGui::IsItemActivated())
-                    editorController.BeginSceneMutation(scene);
+                {
+                    commands.BeginInteraction(scene);
+                }
             };
 
             auto endTrackedItem = [&]()
             {
                 if (isEditMode && ImGui::IsItemDeactivated())
-                    editorController.EndSceneMutation(scene);
-            };
-
-            auto applyImmediateChange = [&](auto&& change)
-            {
-                if (!isEditMode) return;
-
-                editorController.BeginSceneMutation(scene);
-                change();
-                editorController.EndSceneMutation(scene);
+                {
+                    commands.EndInteraction(scene);
+                }
             };
 
             char nameBuffer[256]{};
@@ -612,24 +609,36 @@ namespace Quiet::Renderer::Vulkan
                 ImGui::Separator();
             }
 
-            if (!isEditMode) ImGui::BeginDisabled();
+            if (!isEditMode)
+            {
+                ImGui::BeginDisabled();
+            }
 
             if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
             {
-                actor.Name = nameBuffer;
+                commands.RenameActor(scene, actor.ID, nameBuffer);
             }
             beginTrackedItem();
             endTrackedItem();
 
-            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f)) {}
+            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f))
+            {
+                commands.SetActorPosition(scene, actor.ID, transform.Position);
+            }
             beginTrackedItem();
             endTrackedItem();
 
-            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f)) {}
+            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f))
+            {
+                commands.SetActorRotation(scene, actor.ID, transform.RotationDegrees);
+            }
             beginTrackedItem();
             endTrackedItem();
 
-            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f)) {}
+            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f))
+            {
+                commands.SetActorScale(scene, actor.ID, transform.Scale);
+            }
             beginTrackedItem();
             endTrackedItem();
 
@@ -640,25 +649,14 @@ namespace Quiet::Renderer::Vulkan
             {
                 if (ImGui::Button("Add Static Mesh"))
                 {
-                    const auto names = meshLibrary.GetNames();
-                    if (!names.empty())
-                    {
-                        applyImmediateChange([&]()
-                        {
-                            actor.StaticMesh = Scene::StaticMeshComponent{
-                                names.front(),
-                                meshLibrary.Get(names.front()),
-                                true
-                            };
-                        });
-                    }
+                    commands.AddStaticMesh(scene, actor.ID, meshLibrary);
                 }
             }
             else
             {
                 if (ImGui::CollapsingHeader("Static Mesh", ImGuiTreeNodeFlags_DefaultOpen))
                 {
-                    auto names = meshLibrary.GetNames();
+                    const auto names = meshLibrary.GetNames();
 
                     int currentIndex = 0;
                     for (int i = 0; i < static_cast<int>(names.size()); ++i)
@@ -670,7 +668,8 @@ namespace Quiet::Renderer::Vulkan
                         }
                     }
 
-                    const char* currentPreview = names.empty() ? "<none>" : names[currentIndex].c_str();
+                    const char* currentPreview =
+                        names.empty() ? "<none>" : names[currentIndex].c_str();
 
                     if (ImGui::BeginCombo("Mesh Resource", currentPreview))
                     {
@@ -679,11 +678,7 @@ namespace Quiet::Renderer::Vulkan
                             const bool isSelected = (i == currentIndex);
                             if (ImGui::Selectable(names[i].c_str(), isSelected))
                             {
-                                applyImmediateChange([&]()
-                                {
-                                    actor.StaticMesh->MeshResourceID = names[i];
-                                    actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
-                                });
+                                commands.SetStaticMeshResource(scene, actor.ID, names[i], meshLibrary);
                             }
                             if (isSelected) ImGui::SetItemDefaultFocus();
                         }
@@ -693,18 +688,12 @@ namespace Quiet::Renderer::Vulkan
                     bool visible = actor.StaticMesh->Visible;
                     if (ImGui::Checkbox("Visible", &visible))
                     {
-                        applyImmediateChange([&]()
-                        {
-                            actor.StaticMesh->Visible = visible;
-                        });
+                        commands.SetStaticMeshVisible(scene, actor.ID, visible);
                     }
 
                     if (ImGui::Button("Remove Static Mesh"))
                     {
-                        applyImmediateChange([&]()
-                        {
-                            actor.StaticMesh.reset();
-                        });
+                        commands.RemoveStaticMesh(scene, actor.ID);
                     }
                 }
             }
@@ -713,10 +702,7 @@ namespace Quiet::Renderer::Vulkan
             {
                 if (ImGui::Button("Add Rotator"))
                 {
-                    applyImmediateChange([&]()
-                    {
-                        actor.Rotator = Scene::RotatorComponent{ 45.0f };
-                    });
+                    commands.AddRotator(scene, actor.ID);
                 }
             }
             else
@@ -725,83 +711,66 @@ namespace Quiet::Renderer::Vulkan
                 {
                     if (ImGui::DragFloat("Rotation Speed",
                                          &actor.Rotator->RotationSpeedDegreesPerSecond,
-                                         1.0f)) {}
+                                         1.0f))
+                    {
+                        commands.SetRotatorSpeed(
+                            scene,
+                            actor.ID,
+                            actor.Rotator->RotationSpeedDegreesPerSecond
+                        );
+                    }
                     beginTrackedItem();
                     endTrackedItem();
 
                     if (ImGui::Button("Remove Rotator"))
                     {
-                        applyImmediateChange([&]()
-                        {
-                            actor.Rotator.reset();
-                        });
+                        commands.RemoveRotator(scene, actor.ID);
                     }
                 }
             }
+
             if (!isEditMode) ImGui::EndDisabled();
         }
         ImGui::End();
     }
 
     void ImGuiLayer::BuildHierarchy(Scene::Scene& scene,
-                                    Editor::EditorController& editorController,
+                                    Editor::EditorCommands& commands,
                                     Editor::EditorState& editorState)
     {
-        ImGui::Begin("Hierarchy");
+        ImGui::Begin("Scene Hierarchy");
         {
             const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
-            auto applyImmediateChange = [&](auto&& change)
-            {
-                if (!isEditMode) return;
-
-                editorController.BeginSceneMutation(scene);
-                change();
-                editorController.EndSceneMutation(scene);
-            };
-
             if (!isEditMode) ImGui::BeginDisabled();
+
             if (ImGui::Button("Create Empty"))
             {
-                applyImmediateChange([&]()
-                {
-                    auto& actor = scene.CreateActor("Actor");
-                    editorState.SelectedActorID = actor.ID;
-                });
+                commands.CreateEmptyActor(scene, "Actor");
             }
 
             ImGui::SameLine();
 
             const bool hasSelection = editorState.SelectedActorID.has_value();
             if (!hasSelection) ImGui::BeginDisabled();
+
             if (ImGui::Button("Duplicate") && hasSelection)
             {
-                applyImmediateChange([&]()
-                {
-                    Scene::Actor* source = scene.FindActorByID(editorState.SelectedActorID.value());
-                    if (!source) return;
-
-                    Scene::Actor *duplicate = scene.TryDuplicateActor(source->ID);
-                    editorState.SelectedActorID = duplicate->ID;
-                });
+                commands.DuplicateSelectedActor(scene);
             }
+
             if (!hasSelection) ImGui::EndDisabled();
-
             ImGui::SameLine();
-
             if (!hasSelection) ImGui::BeginDisabled();
+
             if (ImGui::Button("Delete") && hasSelection)
             {
-                applyImmediateChange([&]()
-                {
-                    scene.DestroyActorByID(editorState.SelectedActorID.value());
-                    editorState.SelectedActorID.reset();
-                });
+                commands.DeleteSelectedActor(scene);
             }
+
             if (!hasSelection) ImGui::EndDisabled();
             if (!isEditMode) ImGui::EndDisabled();
 
             ImGui::Separator();
-
             std::optional<Core::UUID> pendingDuplicate;
             std::optional<Core::UUID> pendingDelete;
 
@@ -831,48 +800,24 @@ namespace Quiet::Renderer::Vulkan
                     {
                         pendingDuplicate = actors[i].ID;
                     }
-
                     if (ImGui::MenuItem("Delete"))
                     {
                         pendingDelete = actors[i].ID;
                     }
 
                     if (!isEditMode) ImGui::EndDisabled();
-
                     ImGui::EndPopup();
                 }
             }
 
             if (pendingDuplicate.has_value())
             {
-                applyImmediateChange([&]()
-                {
-                    Scene::Actor* source = scene.FindActorByID(pendingDuplicate.value());
-                    if (!source)
-                    {
-                        return;
-                    }
-
-                    Scene::Actor* duplicate = scene.TryDuplicateActor(source->ID);
-                    if (duplicate)
-                    {
-                        editorState.SelectedActorID = duplicate->ID;
-                    }
-                });
+                commands.DuplicateActor(scene, pendingDuplicate.value());
             }
 
             if (pendingDelete.has_value())
             {
-                applyImmediateChange([&]()
-                {
-                    scene.DestroyActorByID(pendingDelete.value());
-
-                    if (editorState.SelectedActorID.has_value() &&
-                        editorState.SelectedActorID.value() == pendingDelete.value())
-                    {
-                        editorState.SelectedActorID.reset();
-                    }
-                });
+                commands.DeleteActor(scene, pendingDelete.value());
             }
         }
         ImGui::End();

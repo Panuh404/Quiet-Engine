@@ -12,7 +12,7 @@ namespace Quiet::Scene
     Actor& Scene::CreateActor(const std::string &name)
     {
         Actor actor{};
-        actor.ID = Quiet::Core::UUIDGenerator::New();
+        actor.ID = Core::UUIDGenerator::New();
         actor.Name = name;
 
         m_Actors.push_back(std::move(actor));
@@ -29,17 +29,30 @@ namespace Quiet::Scene
         return m_Actors.back();
     }
 
+    Actor & Scene::DuplicateActor(Core::UUID sourceID)
+    {
+        Actor* duplicate = TryDuplicateActor(sourceID);
+        if (!duplicate)
+        {
+            QUIET_CORE_ERROR("Failed to duplicate actor. Actor not found.");
+            throw std::runtime_error("Scene::DuplicateActor failed. Source actor not found.");
+        }
+
+        return *duplicate;
+    }
+
     Actor* Scene::TryDuplicateActor(Core::UUID actorID)
     {
         Actor* source = FindActorByID(actorID);
         if (!source)
         {
+            QUIET_CORE_WARN("TryDuplicateActor failed. Source actor not found.");
             return nullptr;
         }
 
         Actor duplicate = *source;
-        duplicate.ID = Core::UUID();
-        duplicate.Name += " Copy";
+        duplicate.ID = Core::UUIDGenerator::New();
+        duplicate.Name = source->Name.empty() ? "Actor Copy" : source->Name + " Copy";
 
         m_Actors.push_back(std::move(duplicate));
         return &m_Actors.back();
@@ -71,7 +84,6 @@ namespace Quiet::Scene
     void Scene::Update(float deltaTime, bool runRuntimeSystems)
     {
         if (!runRuntimeSystems) return;
-        
         for (auto& actor : m_Actors)
         {
             if (actor.Rotator.has_value())

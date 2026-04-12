@@ -14,6 +14,7 @@ struct ImDrawData;
 
 namespace Quiet::Editor
 {
+    class EditorCommands;
     class EditorController;
     struct EditorState;
 }
@@ -80,12 +81,12 @@ namespace Quiet::Renderer::Vulkan
             const ImVec2& imageMin);
         void BuildConsoleWindow();
         void BuildInspector(Scene::Scene& scene,
-            Editor::EditorController& editorController,
-            Editor::EditorState& editorState,
-            const MeshLibrary& meshLibrary);
+                            Editor::EditorCommands& editorCommands,
+                            Editor::EditorState& editorState,
+                            const MeshLibrary& meshLibrary);
         void BuildHierarchy(Scene::Scene& scene,
-            Editor::EditorController& editorController,
-            Editor::EditorState& editorState);
+                            Editor::EditorCommands& editorCommands,
+                            Editor::EditorState& editorState);
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();

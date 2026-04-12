@@ -218,8 +218,7 @@ namespace Quiet::Core
             const bool frameCompleted = m_Renderer->DrawFrame(
                 GetActiveScene(),
                 *m_FreeCamera,
-                uiLayer,
-                editorState
+                uiLayer
             );
 
             if (frameCompleted && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

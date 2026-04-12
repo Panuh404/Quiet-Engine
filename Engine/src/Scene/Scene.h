@@ -13,6 +13,8 @@ namespace Quiet::Scene
 
         Actor& CreateActor(const std::string& name);
         Actor& CreateActorWithID(Core::UUID id, const std::string& name);
+
+        Actor& DuplicateActor(Core::UUID sourceID);
         Actor* TryDuplicateActor(Core::UUID sourceID);
 
         bool DestroyActorByID(Core::UUID id);

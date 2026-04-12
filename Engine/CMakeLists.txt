@@ -31,6 +31,7 @@ target_sources(Quiet_Engine
         src/Scene/Components/StaticMeshComponent.h
         src/Scene/Components/TransformComponent.h
 
+        src/Editor/EditorCommands.cpp
         src/Editor/EditorController.cpp
 
         # Renderer
@@ -93,8 +94,9 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Log.h
         include/Quiet/Core/ProjectContext.h
         include/Quiet/Core/UUID.h
-        include/Quiet/Editor/EditorState.h
+        include/Quiet/Editor/EditorCommands.h
         include/Quiet/Editor/EditorController.h
+        include/Quiet/Editor/EditorState.h
 
         include/Quiet/Platform/Window.h
         include/Quiet/Math/Geometry.h

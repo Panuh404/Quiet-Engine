@@ -54,8 +54,7 @@ namespace Quiet::Renderer::Vulkan
 
         bool DrawFrame(Scene::Scene& scene,
                        Scene::FreeCamera& camera,
-                       ImGuiLayer& imguiLayer,
-                       Editor::EditorState& editorState);
+                       ImGuiLayer& imguiLayer);
 
         void RecreateSwapchain();
         void ApplyPendingViewportResize();
@@ -81,8 +80,6 @@ namespace Quiet::Renderer::Vulkan
         void EnsureSceneViewportSize();
         void RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                       Scene::Scene& scene,
-                                      Scene::FreeCamera& camera,
-                                      Editor::EditorState& editorState,
                                       ImGuiLayer& imguiLayer);
 
     private:

@@ -240,8 +240,7 @@ namespace Quiet::Renderer::Vulkan
 
     bool VulkanRenderer::DrawFrame(Scene::Scene &scene,
                                    Scene::FreeCamera &camera,
-                                   ImGuiLayer &imguiLayer,
-                                   Editor::EditorState &editorState)
+                                   ImGuiLayer &imguiLayer)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -288,7 +287,7 @@ namespace Quiet::Renderer::Vulkan
         auto cameraData = camera.BuildUniformData(aspect, true);
         m_CameraResources->Update(imageIndex, cameraData);
 
-        RecordFrameCommandBuffer(imageIndex, scene, camera, editorState, imguiLayer);
+        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer);
 
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
@@ -469,8 +468,6 @@ namespace Quiet::Renderer::Vulkan
 
     void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                                   Scene::Scene &scene,
-                                                  Scene::FreeCamera &camera,
-                                                  Editor::EditorState &editorState,
                                                   ImGuiLayer& imguiLayer)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
