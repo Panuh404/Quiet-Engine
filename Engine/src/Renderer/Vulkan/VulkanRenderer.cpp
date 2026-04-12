@@ -285,7 +285,7 @@ namespace Quiet::Renderer::Vulkan
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        auto cameraData = camera.BuildUniformData(aspect, false);
+        auto cameraData = camera.BuildUniformData(aspect, true);
         m_CameraResources->Update(imageIndex, cameraData);
 
         RecordFrameCommandBuffer(imageIndex, scene, camera, editorState, imguiLayer);
