@@ -1,7 +1,7 @@
 #include "VulkanRenderer.h"
 
 #include "Quiet/Core/AppSpec.h"
-#include "../../../include/Quiet/Editor/EditorState.h"
+#include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 #include "Scene/FreeCamera.h"

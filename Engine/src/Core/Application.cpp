@@ -5,19 +5,14 @@
 
 #include <stdexcept>
 #include <utility>
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/ext/matrix_projection.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <filesystem>
 
 #include "imgui.h"
 #include "GLFW/glfw3.h"
 #include "Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Scene/SceneDocument.h"
+#include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
 
@@ -108,7 +103,7 @@ namespace Quiet::Core
                 stats.FrameTimeMs = deltaTime * 1000.0f;
                 stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
                 stats.ActorCount = static_cast<std::uint32_t>(m_Scene->GetActors().size());
-                stats.MeshCount = 2;
+                stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
                 stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
                 stats.MouseCaptured = m_MouseCaptureEnabled;
                 stats.CameraPosition = m_FreeCamera->GetPosition();
@@ -219,21 +214,18 @@ namespace Quiet::Core
 
     void Application::NewScene()
     {
-        m_EditorController->ResetSelection();
-        if (m_Scene) m_Scene->Clear();
-
         Scene::SceneDocument::CreateDefault(
             *m_Scene,
             m_Renderer->GetMeshLibrary()
         );
 
+        m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Created new scene.");
     }
 
     void Application::SaveScene()
     {
-        const std::filesystem::path scenePath = "Assets/Scenes/DefaultScene.json";
-
+        const std::filesystem::path scenePath = "Scenes/DefaultScene.json";
         if (!Scene::SceneDocument::Save(*m_Scene, scenePath))
         {
             QUIET_CORE_ERROR("Failed to save scene to '{}'.", scenePath.string());
@@ -242,15 +234,14 @@ namespace Quiet::Core
 
     void Application::LoadScene()
     {
-        const std::filesystem::path scenePath = "Assets/Scenes/DefaultScene.json";
-        m_EditorController->ResetSelection();
-        if (m_Scene) m_Scene->Clear();
-
+        const std::filesystem::path scenePath = "Scenes/DefaultScene.json";
         if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), scenePath))
         {
             QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());
             return;
         }
+
+        m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 }

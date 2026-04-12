@@ -44,7 +44,7 @@ namespace Quiet::Scene
         };
     }
 
-    bool SceneDocument::Save(Scene& scene, const std::filesystem::path& path)
+    bool SceneDocument::Save(const Scene& scene, const std::filesystem::path& path)
     {
         return SceneSerializer::SaveToFile(scene, path);
     }

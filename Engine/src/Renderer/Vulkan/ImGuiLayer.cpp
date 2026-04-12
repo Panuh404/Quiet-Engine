@@ -10,7 +10,7 @@
 #include <stdexcept>
 
 #include "ImGuiTheme.h"
-#include "../../../include/Quiet/Editor/EditorState.h"
+#include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
 #include "Scene/Scene.h"
 
@@ -100,7 +100,7 @@ namespace Quiet::Renderer::Vulkan
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
-        BuildTopbar();
+        BuildTopbar(editorState);
         BuildDockspace();
 
         ImGui::Begin("Viewport");
@@ -404,7 +404,7 @@ namespace Quiet::Renderer::Vulkan
         ImGui::PopStyleVar(3);
     }
 
-    void ImGuiLayer::BuildTopbar()
+    void ImGuiLayer::BuildTopbar(Editor::EditorState& editorState)
     {
         const float topbarHeight = GetToolbarHeight();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -428,32 +428,25 @@ namespace Quiet::Renderer::Vulkan
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
 
         ImGui::Begin("##MainTopbar", nullptr, windowFlags);
-
         ImGui::PopStyleVar(3);
 
-        if (m_Fonts.Bold)
-            ImGui::PushFont(m_Fonts.Bold);
-
-        ImGui::TextUnformatted("Quiet Editor");
-
-        if (m_Fonts.Bold)
-            ImGui::PopFont();
+        if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
+        ImGui::TextUnformatted("QUIET");
+        if (m_Fonts.Bold) ImGui::PopFont();
 
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::SameLine();
 
-        ImGui::BeginDisabled();
-        ImGui::Button("File");
         ImGui::SameLine();
-        ImGui::Button("Edit");
-        ImGui::SameLine();
-        ImGui::Button("View");
-        ImGui::SameLine();
-        ImGui::Button("Tools");
-        ImGui::EndDisabled();
+        if (ImGui::Button("New")) editorState.RequestNewScene = true;
 
-        const char* statusText = "Placeholder Topbar";
+        ImGui::SameLine();
+        if (ImGui::Button("Save")) editorState.RequestSaveScene = true;
+
+        ImGui::SameLine();
+        if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
+
+        const char* statusText = "Scene Actions";
 
         const float rightTextWidth = ImGui::CalcTextSize(statusText).x;
         const float availableX = ImGui::GetWindowContentRegionMax().x;

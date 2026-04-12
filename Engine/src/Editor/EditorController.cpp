@@ -55,7 +55,7 @@ namespace Quiet::Editor
     {
         if (mouseCaptureEnabled) return;
         const ImGuiIO& io = ImGui::GetIO();
-        if (io.WantTextInput) return;
+        if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
         if (ImGui::IsKeyPressed(ImGuiKey_T, false)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;

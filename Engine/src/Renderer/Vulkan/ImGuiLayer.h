@@ -70,7 +70,7 @@ namespace Quiet::Renderer::Vulkan
     private:
         float GetToolbarHeight() const;
         void BuildDockspace();
-        void BuildTopbar();
+        void BuildTopbar(Editor::EditorState& editorState);
         void BuildViewportToolbar(Editor::EditorState& editorState,
                                   const ImVec2& imageMin);
 

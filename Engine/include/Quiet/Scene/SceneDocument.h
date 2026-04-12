@@ -20,7 +20,7 @@ namespace Quiet::Scene
         static void CreateDefault(Scene& scene,
                                   const Renderer::Vulkan::MeshLibrary& meshLibrary);
 
-        static bool Save(Scene& scene,
+        static bool Save(const Scene& scene,
                          const std::filesystem::path& path);
 
         static bool Load(Scene& scene,
