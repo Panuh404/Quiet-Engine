@@ -2,7 +2,7 @@
 
 #include <cstddef>
 #include <optional>
-#include "../Core/UUID.h"
+#include "Quiet/Core/UUID.h"
 
 namespace Quiet::Editor
 {
@@ -45,5 +45,8 @@ namespace Quiet::Editor
         bool RequestNewScene = false;
         bool RequestSaveScene = false;
         bool RequestLoadScene = false;
+
+        bool SceneDirty = false;
+        std::string SceneDisplayName = "DefaultScene.json";
     };
 }

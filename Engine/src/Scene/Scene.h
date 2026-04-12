@@ -18,7 +18,7 @@ namespace Quiet::Scene
         bool DestroyActorByID(Core::UUID id);
 
         void Clear();
-        void Update(float deltaTime);
+        void Update(float deltaTime, bool runRuntimeSystems);
 
         [[nodiscard]] std::vector<Actor>& GetActors() { return m_Actors; }
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }

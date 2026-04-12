@@ -52,6 +52,10 @@ namespace Quiet::Core
         }
         else
         {
+            auto& editorState = m_EditorController->GetState();
+            editorState.SceneDirty = false;
+            editorState.SceneDisplayName = m_ProjectContext.GetDefaultScenePath().filename().string();
+
             m_EditorController->ResetSelection();
             QUIET_CORE_INFO("Loaded startup scene.");
         }
@@ -96,7 +100,7 @@ namespace Quiet::Core
                 m_FreeCamera->Update(*m_Input, deltaTime);
             }
 
-            m_Scene->Update(deltaTime);
+            m_Scene->Update(deltaTime, true);
             m_Renderer->ApplyPendingViewportResize();
 
             auto& editorState = m_EditorController->GetState();
@@ -224,6 +228,9 @@ namespace Quiet::Core
             *m_Scene,
             m_Renderer->GetMeshLibrary()
         );
+        auto& editorState = m_EditorController->GetState();
+        editorState.SceneDirty = false;
+        editorState.SceneDisplayName = "DefaultScene.json";
 
         m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Created new scene.");
@@ -243,6 +250,11 @@ namespace Quiet::Core
             QUIET_CORE_ERROR("Failed to save scene to '{}'.", scenePath.string());
             return;
         }
+
+        auto& editorState = m_EditorController->GetState();
+        editorState.SceneDirty = false;
+        editorState.SceneDisplayName = scenePath.filename().string();
+
         QUIET_CORE_INFO("Saved scene to '{}'.", scenePath.string());
     }
 
@@ -255,6 +267,10 @@ namespace Quiet::Core
             QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());
             return;
         }
+
+        auto& editorState = m_EditorController->GetState();
+        editorState.SceneDirty = false;
+        editorState.SceneDisplayName = scenePath.filename().string();
 
         m_EditorController->ResetSelection();
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());

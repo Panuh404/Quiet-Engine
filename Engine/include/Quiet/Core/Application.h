@@ -1,12 +1,9 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <string>
 
 #include "AppSpec.h"
 #include "ProjectContext.h"
-#include "../Editor/EditorState.h"
 
 #pragma region Forward declarations
 

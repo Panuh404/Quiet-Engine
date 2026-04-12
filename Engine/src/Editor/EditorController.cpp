@@ -57,6 +57,13 @@ namespace Quiet::Editor
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
+        const bool ctrlDown = io.KeyCtrl;
+        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_S, false))
+        {
+            m_State.RequestSaveScene = true;
+            return;
+        }
+
         if (ImGui::IsKeyPressed(ImGuiKey_T, false)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
         if (ImGui::IsKeyPressed(ImGuiKey_S, false)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
@@ -302,6 +309,8 @@ namespace Quiet::Editor
             transform.Position = { outTranslation[0], outTranslation[1], outTranslation[2] };
             transform.RotationDegrees = { outRotation[0], outRotation[1], outRotation[2] };
             transform.Scale = { outScale[0], outScale[1], outScale[2] };
+
+            if (changed) m_State.SceneDirty = true;
         }
     }
 

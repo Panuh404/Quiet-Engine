@@ -69,8 +69,10 @@ namespace Quiet::Scene
         m_Actors.clear();
     }
 
-    void Scene::Update(float deltaTime)
+    void Scene::Update(float deltaTime, bool runRuntimeSystems)
     {
+        if (!runRuntimeSystems) return;
+        
         for (auto& actor : m_Actors)
         {
             if (actor.Rotator.has_value())

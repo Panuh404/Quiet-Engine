@@ -512,22 +512,23 @@ namespace Quiet::Renderer::Vulkan
         ImGui::SameLine();
         if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
 
-        const char* statusText = "Scene Actions";
+        std::string statusText = editorState.SceneDisplayName;
+        if (editorState.SceneDirty)
+        {
+            statusText += " *";
+        }
 
-        const float rightTextWidth = ImGui::CalcTextSize(statusText).x;
+        const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
         const float availableX = ImGui::GetWindowContentRegionMax().x;
         const float cursorX = availableX - rightTextWidth;
 
-        if (cursorX > ImGui::GetCursorPosX())
-        {
-            ImGui::SameLine(cursorX);
-        }
-        else
-        {
-            ImGui::SameLine();
-        }
+        if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
+        else ImGui::SameLine();
 
-        ImGui::TextUnformatted(statusText);
+        if (editorState.SceneDirty)
+            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
+        else
+            ImGui::TextUnformatted(statusText.c_str());
 
         ImGui::End();
     }
@@ -561,12 +562,18 @@ namespace Quiet::Renderer::Vulkan
             if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
             {
                 actor.Name = nameBuffer;
+                editorState.SceneDirty = true;
             }
 
             auto& transform = actor.Transform.WorldTransform;
-            ImGui::DragFloat3("Position", &transform.Position.x, 0.1f);
-            ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f);
-            ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f);
+            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f))
+                editorState.SceneDirty = true;
+
+            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f))
+                editorState.SceneDirty = true;
+
+            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f))
+                editorState.SceneDirty = true;
 
             ImGui::Separator();
             ImGui::Text("Components");
@@ -583,6 +590,7 @@ namespace Quiet::Renderer::Vulkan
                             meshLibrary.Get(names.front()),
                             true
                         };
+                        editorState.SceneDirty = true;
                     }
                 }
             }
@@ -612,16 +620,21 @@ namespace Quiet::Renderer::Vulkan
                             {
                                 actor.StaticMesh->MeshResourceID = names[i];
                                 actor.StaticMesh->Mesh = meshLibrary.Get(names[i]);
+                                editorState.SceneDirty = true;
                             }
                             if (isSelected) ImGui::SetItemDefaultFocus();
                         }
                         ImGui::EndCombo();
                     }
 
-                    ImGui::Checkbox("Visible", &actor.StaticMesh->Visible);
+                    if (ImGui::Checkbox("Visible", &actor.StaticMesh->Visible))
+                    {
+                        editorState.SceneDirty = true;
+                    }
                     if (ImGui::Button("Remove Static Mesh"))
                     {
                         actor.StaticMesh.reset();
+                        editorState.SceneDirty = true;
                     }
                 }
             }
@@ -631,18 +644,25 @@ namespace Quiet::Renderer::Vulkan
                 if (ImGui::Button("Add Rotator"))
                 {
                     actor.Rotator = Scene::RotatorComponent{ 45.0f };
+                    editorState.SceneDirty = true;
                 }
             }
             else
             {
                 if (ImGui::CollapsingHeader("Rotator", ImGuiTreeNodeFlags_DefaultOpen))
                 {
-                    ImGui::DragFloat("Rotation Speed",
-                                     &actor.Rotator->RotationSpeedDegreesPerSecond,
-                                     1.0f);
+                    if (ImGui::DragFloat("Rotation Speed",
+                                        &actor.Rotator->RotationSpeedDegreesPerSecond,
+                                        1.0f))
+                    {
+                        editorState.SceneDirty = true;
+                    }
 
                     if (ImGui::Button("Remove Rotator"))
+                    {
                         actor.Rotator.reset();
+                        editorState.SceneDirty = true;
+                    }
                 }
             }
         }
@@ -657,6 +677,7 @@ namespace Quiet::Renderer::Vulkan
             {
                 auto& actor = scene.CreateActor("Actor");
                 editorState.SelectedActorID = actor.ID;
+                editorState.SceneDirty = true;
             }
             ImGui::SameLine();
 
@@ -666,6 +687,7 @@ namespace Quiet::Renderer::Vulkan
             {
                 auto& duplicate = scene.DuplicateActor(editorState.SelectedActorID.value());
                 editorState.SelectedActorID = duplicate.ID;
+                editorState.SceneDirty = true;
             }
             if (!hasSelection) ImGui::EndDisabled();
 
@@ -676,6 +698,7 @@ namespace Quiet::Renderer::Vulkan
             {
                 scene.DestroyActorByID(editorState.SelectedActorID.value());
                 editorState.SelectedActorID.reset();
+                editorState.SceneDirty = true;
             }
             if (!hasSelection) ImGui::EndDisabled();
 
@@ -722,6 +745,7 @@ namespace Quiet::Renderer::Vulkan
             {
                 auto& duplicate = scene.DuplicateActor(pendingDuplicate.value());
                 editorState.SelectedActorID = duplicate.ID;
+                editorState.SceneDirty = true;
             }
 
             if (pendingDelete.has_value())
@@ -733,6 +757,7 @@ namespace Quiet::Renderer::Vulkan
                 {
                     editorState.SelectedActorID.reset();
                 }
+                editorState.SceneDirty = true;
             }
         }
         ImGui::End();
