@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+
 #include "EditorState.h"
 
 namespace Quiet::Input
@@ -72,11 +74,12 @@ namespace Quiet::Editor
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
                                                 Quiet::Math::Ray& outRay) const;
 
-        [[nodiscard]] std::unique_ptr<SceneSnapshot> CaptureSnapshot(const Scene::Scene& scene) const;
+        [[nodiscard]] SceneSnapshot CaptureSnapshot(const Scene::Scene& scene) const;
         void RestoreSnapshot(Scene::Scene& scene, const SceneSnapshot& snapshot);
         static bool AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs);
-        void PushUndoSnapshot(std::unique_ptr<SceneSnapshot> snapshot);
-        void PushRedoSnapshot(std::unique_ptr<SceneSnapshot> snapshot);
+        void PushUndoSnapshot(SceneSnapshot snapshot);
+        void PushRedoSnapshot(SceneSnapshot snapshot);
+
         void RefreshHistoryFlags();
         void RefreshDirtyState(const Scene::Scene& scene);
 
@@ -84,10 +87,10 @@ namespace Quiet::Editor
         static constexpr std::size_t MaxHistoryEntries = 128;
 
         EditorState m_State{};
-        std::vector<std::unique_ptr<SceneSnapshot>> m_UndoStack;
-        std::vector<std::unique_ptr<SceneSnapshot>> m_RedoStack;
-        std::unique_ptr<SceneSnapshot> m_PendingSnapshot;
-        std::unique_ptr<SceneSnapshot> m_CleanSnapshot;
+        std::vector<SceneSnapshot> m_UndoStack;
+        std::vector<SceneSnapshot> m_RedoStack;
+        std::optional<SceneSnapshot> m_PendingSnapshot;
+        std::optional<SceneSnapshot> m_CleanSnapshot;
         bool m_WasUsingGizmo = false;
     };
 }

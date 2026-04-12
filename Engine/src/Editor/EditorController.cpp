@@ -144,14 +144,16 @@ namespace Quiet::Editor
         if (!m_PendingSnapshot) return false;
 
         auto currentSnapshot = CaptureSnapshot(scene);
-        if (AreSnapshotsEqual(*m_PendingSnapshot, *currentSnapshot))
+        if (AreSnapshotsEqual(*m_PendingSnapshot, currentSnapshot))
         {
             m_PendingSnapshot.reset();
             RefreshDirtyState(scene);
             return false;
         }
 
-        PushUndoSnapshot(std::move(m_PendingSnapshot));
+        PushUndoSnapshot(std::move(m_PendingSnapshot.value()));
+        m_PendingSnapshot.reset();
+
         m_RedoStack.clear();
         RefreshHistoryFlags();
         RefreshDirtyState(scene);
@@ -169,7 +171,7 @@ namespace Quiet::Editor
 
         auto snapshot = std::move(m_UndoStack.back());
         m_UndoStack.pop_back();
-        RestoreSnapshot(scene, *snapshot);
+        RestoreSnapshot(scene, snapshot);
 
         m_PendingSnapshot.reset();
         RefreshHistoryFlags();
@@ -186,9 +188,9 @@ namespace Quiet::Editor
         }
         PushUndoSnapshot(CaptureSnapshot(scene));
 
-        auto snapshot = std::move(m_RedoStack.back());
+        SceneSnapshot snapshot = std::move(m_RedoStack.back());
         m_RedoStack.pop_back();
-        RestoreSnapshot(scene, *snapshot);
+        RestoreSnapshot(scene, snapshot);
 
         m_PendingSnapshot.reset();
         RefreshHistoryFlags();
@@ -549,11 +551,11 @@ namespace Quiet::Editor
         return true;
     }
 
-    std::unique_ptr<EditorController::SceneSnapshot> EditorController::CaptureSnapshot(const Scene::Scene& scene) const
+    EditorController::SceneSnapshot EditorController::CaptureSnapshot(const Scene::Scene& scene) const
     {
-        auto snapshot = std::make_unique<SceneSnapshot>();
-        snapshot->Actors = scene.GetActors();
-        snapshot->SelectedActorID = m_State.SelectedActorID;
+        SceneSnapshot snapshot{};
+        snapshot.Actors = scene.GetActors();
+        snapshot.SelectedActorID = m_State.SelectedActorID;
         return snapshot;
     }
 
@@ -569,23 +571,19 @@ namespace Quiet::Editor
                AreActorListsEqual(lhs.Actors, rhs.Actors);
     }
 
-    void EditorController::PushUndoSnapshot(std::unique_ptr<SceneSnapshot> snapshot)
+    void EditorController::PushUndoSnapshot(SceneSnapshot snapshot)
     {
-        if (!snapshot) return;
         if (m_UndoStack.size() >= MaxHistoryEntries)
-        {
             m_UndoStack.erase(m_UndoStack.begin());
-        }
+
         m_UndoStack.push_back(std::move(snapshot));
     }
 
-    void EditorController::PushRedoSnapshot(std::unique_ptr<SceneSnapshot> snapshot)
+    void EditorController::PushRedoSnapshot(SceneSnapshot snapshot)
     {
-        if (!snapshot) return;
         if (m_RedoStack.size() >= MaxHistoryEntries)
-        {
             m_RedoStack.erase(m_RedoStack.begin());
-        }
+
         m_RedoStack.push_back(std::move(snapshot));
     }
 
@@ -597,13 +595,13 @@ namespace Quiet::Editor
 
     void EditorController::RefreshDirtyState(const Scene::Scene& scene)
     {
-        if (!m_CleanSnapshot)
+        if (!m_CleanSnapshot.has_value())
         {
             m_State.SceneDirty = false;
             return;
         }
 
-        auto currentSnapshot = CaptureSnapshot(scene);
-        m_State.SceneDirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot->Actors);
+        const SceneSnapshot currentSnapshot = CaptureSnapshot(scene);
+        m_State.SceneDirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors);
     }
 }
