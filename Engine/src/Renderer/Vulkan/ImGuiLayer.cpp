@@ -250,6 +250,8 @@ namespace Quiet::Renderer::Vulkan
             }
         }
         ImGui::End();
+
+        BuildConsoleWindow();
     }
 
     void ImGuiLayer::EndFrame()
@@ -402,6 +404,133 @@ namespace Quiet::Renderer::Vulkan
 
         ImGui::EndChild();
         ImGui::PopStyleVar(3);
+    }
+
+    void ImGuiLayer::BuildConsoleWindow()
+    {
+        ImGui::Begin("Console");
+        {
+            auto consoleSink = Quiet::Core::Log::GetConsoleSink();
+            if (!consoleSink)
+            {
+                ImGui::TextUnformatted("Console sink unavailable.");
+                ImGui::End();
+                return;
+            }
+
+            static ImGuiTextFilter filter;
+            static bool autoScroll = true;
+
+            const auto entries = consoleSink->GetSnapshot();
+
+            auto BuildClipboardText = [&](bool onlyVisible) -> std::string
+            {
+                std::string result;
+                result.reserve(entries.size() * 96);
+
+                for (const auto& entry : entries)
+                {
+                    if (onlyVisible && !filter.PassFilter(entry.Text.c_str())) continue;
+                    result += entry.Text;
+                    if (result.empty() || result.back() != '\n')
+                    {
+                        result += '\n';
+                    }
+                }
+                return result;
+            };
+
+            if (ImGui::Button("Clear")) consoleSink->Clear();
+
+            ImGui::SameLine();
+            if (ImGui::Button("Copy All"))
+            {
+                const std::string clipboardText = BuildClipboardText(false);
+                ImGui::SetClipboardText(clipboardText.c_str());
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("Copy Visible"))
+            {
+                const std::string clipboardText = BuildClipboardText(true);
+                ImGui::SetClipboardText(clipboardText.c_str());
+            }
+
+            ImGui::SameLine();
+            ImGui::Checkbox("Auto-scroll", &autoScroll);
+
+            ImGui::SameLine();
+            filter.Draw("Filter", 260.0f);
+
+            ImGui::Separator();
+
+            ImGuiWindowFlags childFlags = ImGuiWindowFlags_HorizontalScrollbar;
+            ImGui::BeginChild("##ConsoleRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders, childFlags);
+            {
+                const bool wasAtBottom =
+                    ImGui::GetScrollY() >= (ImGui::GetScrollMaxY() - 8.0f);
+
+                if (ImGui::BeginPopupContextWindow())
+                {
+                    if (ImGui::Selectable("Clear")) consoleSink->Clear();
+                    if (ImGui::Selectable("Copy All"))
+                    {
+                        const std::string clipboardText = BuildClipboardText(false);
+                        ImGui::SetClipboardText(clipboardText.c_str());
+                    }
+                    if (ImGui::Selectable("Copy Visible"))
+                    {
+                        const std::string clipboardText = BuildClipboardText(true);
+                        ImGui::SetClipboardText(clipboardText.c_str());
+                    }
+                    ImGui::EndPopup();
+                }
+
+                for (const auto& entry : entries)
+                {
+                    if (!filter.PassFilter(entry.Text.c_str()))
+                    {
+                        continue;
+                    }
+
+                    ImVec4 color{};
+                    switch (entry.Level)
+                    {
+                        case spdlog::level::trace:
+                            color = ImVec4(0.60f, 0.60f, 0.60f, 1.0f);
+                            break;
+
+                        case spdlog::level::info:
+                            color = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+                            break;
+
+                        case spdlog::level::warn:
+                            color = ImVec4(1.00f, 0.78f, 0.20f, 1.0f);
+                            break;
+
+                        case spdlog::level::err:
+                            color = ImVec4(1.00f, 0.35f, 0.35f, 1.0f);
+                            break;
+
+                        case spdlog::level::critical:
+                            color = ImVec4(1.00f, 0.25f, 0.85f, 1.0f);
+                            break;
+
+                        default:
+                            color = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+                            break;
+                    }
+                    ImGui::PushStyleColor(ImGuiCol_Text, color);
+                    if (m_Fonts.Mono) ImGui::PushFont(m_Fonts.Mono);
+                    ImGui::TextUnformatted(entry.Text.c_str());
+                    if (m_Fonts.Mono) ImGui::PopFont();
+                    ImGui::PopStyleColor();
+                }
+                if (autoScroll && wasAtBottom) ImGui::SetScrollHereY(1.0f);
+            }
+            ImGui::EndChild();
+        }
+        ImGui::End();
     }
 
     void ImGuiLayer::BuildTopbar(Editor::EditorState& editorState)
