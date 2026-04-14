@@ -47,7 +47,7 @@ namespace Quiet::Editor
         bool Undo(Scene::Scene& scene);
         bool Redo(Scene::Scene& scene);
 
-        void HandleShortcuts(bool mouseCaptureEnabled);
+        void HandleShortcuts(const Input::Input& input, bool mouseCaptureEnabled);
         void FocusSelectedActor(Scene::Scene& scene,
                                 Scene::FreeCamera& camera);
 

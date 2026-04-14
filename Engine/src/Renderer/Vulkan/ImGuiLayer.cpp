@@ -13,9 +13,54 @@
 #include "MeshLibrary.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Editor/EditorActionID.h"
+#include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Scene/Scene.h"
+
+namespace
+{
+    bool DrawMenuAction(Quiet::Editor::EditorActions& actions,
+                        Quiet::Editor::EditorActionID actionID)
+    {
+        const char* shortcut = actions.GetShortcut(actionID);
+        if (shortcut[0] == '\0') shortcut = nullptr;
+
+        const bool enabled = actions.CanExecute(actionID);
+        const bool pressed = ImGui::MenuItem(
+            actions.GetLabel(actionID),
+            shortcut,
+            false,
+            enabled
+        );
+
+        if (pressed) actions.Execute(actionID);
+        return pressed;
+    }
+
+    bool DrawToolbarAction(Quiet::Editor::EditorActions& actions,
+                           Quiet::Editor::EditorActionID actionID,
+                           const char* buttonLabel = nullptr)
+    {
+        const bool enabled = actions.CanExecute(actionID);
+        if (!enabled) ImGui::BeginDisabled();
+
+        const bool pressed = ImGui::Button(
+            buttonLabel ? buttonLabel : actions.GetLabel(actionID)
+        );
+
+        if (!enabled) ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            const char* shortcut = actions.GetShortcut(actionID);
+            if (shortcut[0] != '\0') ImGui::SetTooltip("%s", shortcut);
+        }
+
+        if (pressed) actions.Execute(actionID);
+        return pressed;
+    }
+}
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -98,6 +143,7 @@ namespace Quiet::Renderer::Vulkan
     }
 
     void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
+                                   Input::Input& input,
                                    Scene::Scene& scene,
                                    Editor::EditorController& editorController,
                                    Editor::EditorState& editorState,
@@ -105,7 +151,11 @@ namespace Quiet::Renderer::Vulkan
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
-        BuildTopbar(editorState);
+        Editor::EditorCommands commands(editorController);
+        Editor::EditorActions actions(input, scene, commands, editorState);
+
+        BuildMainMenuBar(actions);
+        BuildTopbar(actions, editorState);
         BuildDockspace();
 
         ImGui::Begin("Viewport");
@@ -166,10 +216,11 @@ namespace Quiet::Renderer::Vulkan
         }
         ImGui::End();
 
-        Editor::EditorCommands commands(editorController);
         BuildInspector(scene, commands, editorState, meshLibrary);
-        BuildHierarchy(scene, commands, editorState);
+        BuildHierarchy(scene, actions, editorState);
         BuildConsoleWindow();
+
+        actions.HandleShortcuts(stats.MouseCaptured);
     }
 
     void ImGuiLayer::EndFrame()
@@ -201,6 +252,38 @@ namespace Quiet::Renderer::Vulkan
         const float toolbarHeight = frameHeight + style.WindowPadding.y * 2.0f + 6.0f;
 
         return toolbarHeight;
+    }
+
+    void ImGuiLayer::BuildMainMenuBar(Editor::EditorActions& editorActions)
+    {
+        if (!ImGui::BeginMainMenuBar()) return;
+        if (ImGui::BeginMenu("File"))
+        {
+            DrawMenuAction(editorActions, Editor::EditorActionID::NewScene);
+            DrawMenuAction(editorActions, Editor::EditorActionID::SaveScene);
+            DrawMenuAction(editorActions, Editor::EditorActionID::LoadScene);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit"))
+        {
+            DrawMenuAction(editorActions, Editor::EditorActionID::Undo);
+            DrawMenuAction(editorActions, Editor::EditorActionID::Redo);
+            ImGui::Separator();
+            DrawMenuAction(editorActions, Editor::EditorActionID::DuplicateSelected);
+            DrawMenuAction(editorActions, Editor::EditorActionID::DeleteSelected);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Scene"))
+        {
+            DrawMenuAction(editorActions, Editor::EditorActionID::CreateEmptyActor);
+            DrawMenuAction(editorActions, Editor::EditorActionID::FocusSelected);
+            ImGui::Separator();
+            DrawMenuAction(editorActions, Editor::EditorActionID::ToggleSimulate);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
     }
 
     void ImGuiLayer::BuildDockspace()
@@ -451,107 +534,116 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildTopbar(Editor::EditorState& editorState)
+    void ImGuiLayer::BuildTopbar(Editor::EditorActions& editorActions,
+                                 Editor::EditorState& editorState)
+{
+    const float topbarHeight = GetToolbarHeight();
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+    ImGuiWindowFlags windowFlags =
+        ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, topbarHeight));
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+
+    ImGui::Begin("##MainTopbar", nullptr, windowFlags);
     {
-        const float topbarHeight = GetToolbarHeight();
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::PopStyleVar(3);
 
-        ImGuiWindowFlags windowFlags =
-            ImGuiWindowFlags_NoDocking |
-            ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoNavFocus;
-
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, topbarHeight));
-        ImGui::SetNextWindowViewport(viewport->ID);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
-
-        ImGui::Begin("##MainTopbar", nullptr, windowFlags);
+        if (m_Fonts.Bold)
         {
-            ImGui::PopStyleVar(3);
-
-            if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
-            ImGui::TextUnformatted("QUIET");
-            if (m_Fonts.Bold) ImGui::PopFont();
-
-            ImGui::SameLine();
-            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
-
-            if (!isEditMode) ImGui::BeginDisabled();
-
-            ImGui::SameLine();
-            if (ImGui::Button("New")) editorState.RequestNewScene = true;
-
-            ImGui::SameLine();
-            if (ImGui::Button("Save")) editorState.RequestSaveScene = true;
-
-            ImGui::SameLine();
-            if (ImGui::Button("Load")) editorState.RequestLoadScene = true;
-
-            ImGui::SameLine();
-            if (!editorState.CanUndo) ImGui::BeginDisabled();
-            if (ImGui::Button("Undo")) editorState.RequestUndo = true;
-            if (!editorState.CanUndo) ImGui::EndDisabled();
-
-            ImGui::SameLine();
-            if (!editorState.CanRedo) ImGui::BeginDisabled();
-            if (ImGui::Button("Redo")) editorState.RequestRedo = true;
-            if (!editorState.CanRedo) ImGui::EndDisabled();
-
-            if (!isEditMode) ImGui::EndDisabled();
-
-            ImGui::SameLine();
-            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-            ImGui::SameLine();
-            if (isEditMode)
-            {
-                if (ImGui::Button("Simulate"))
-                    editorState.RequestEnterSimulate = true;
-            }
-            else
-            {
-                if (ImGui::Button("Stop"))
-                    editorState.RequestStopSimulate = true;
-            }
-
-            std::string statusText = (editorState.CurrentSceneMode == Editor::SceneMode::Edit) ? "[EDIT] " : "[SIMULATE] ";
-            statusText += editorState.SceneDisplayName;
-            if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit)
-                statusText += " *";
-
-            const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
-            const float availableX = ImGui::GetWindowContentRegionMax().x;
-            const float cursorX = availableX - rightTextWidth;
-
-            if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
-            else ImGui::SameLine();
-
-            if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
-            {
-                ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
-            }
-            else if (editorState.SceneDirty)
-            {
-                ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
-            }
-            else
-            {
-                ImGui::TextUnformatted(statusText.c_str());
-            }
+            ImGui::PushFont(m_Fonts.Bold);
         }
-        ImGui::End();
+        ImGui::TextUnformatted("QUIET");
+        if (m_Fonts.Bold)
+        {
+            ImGui::PopFont();
+        }
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+        ImGui::SameLine();
+        DrawToolbarAction(editorActions, Editor::EditorActionID::NewScene, "New");
+
+        ImGui::SameLine();
+        DrawToolbarAction(editorActions, Editor::EditorActionID::SaveScene, "Save");
+
+        ImGui::SameLine();
+        DrawToolbarAction(editorActions, Editor::EditorActionID::LoadScene, "Load");
+
+        ImGui::SameLine();
+        DrawToolbarAction(editorActions, Editor::EditorActionID::Undo, "Undo");
+
+        ImGui::SameLine();
+        DrawToolbarAction(editorActions, Editor::EditorActionID::Redo, "Redo");
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+        ImGui::SameLine();
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        {
+            DrawToolbarAction(editorActions, Editor::EditorActionID::ToggleSimulate, "Simulate");
+        }
+        else
+        {
+            DrawToolbarAction(editorActions, Editor::EditorActionID::ToggleSimulate, "Stop");
+        }
+
+        std::string statusText =
+            (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+                ? "[EDIT] "
+                : "[SIMULATE] ";
+
+        statusText += editorState.SceneDisplayName;
+
+        if (editorState.SceneDirty &&
+            editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        {
+            statusText += " *";
+        }
+
+        const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
+        const float availableX = ImGui::GetWindowContentRegionMax().x;
+        const float cursorX = availableX - rightTextWidth;
+
+        if (cursorX > ImGui::GetCursorPosX())
+        {
+            ImGui::SameLine(cursorX);
+        }
+        else
+        {
+            ImGui::SameLine();
+        }
+
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        {
+            ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
+        }
+        else if (editorState.SceneDirty)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
+        }
+        else
+        {
+            ImGui::TextUnformatted(statusText.c_str());
+        }
     }
+    ImGui::End();
+}
 
     void ImGuiLayer::BuildInspector(Scene::Scene& scene,
                                     Editor::EditorCommands& commands,
@@ -735,44 +827,23 @@ namespace Quiet::Renderer::Vulkan
     }
 
     void ImGuiLayer::BuildHierarchy(Scene::Scene& scene,
-                                    Editor::EditorCommands& commands,
+                                    Editor::EditorActions& editorActions,
                                     Editor::EditorState& editorState)
     {
         ImGui::Begin("Scene Hierarchy");
         {
-            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
-            if (!isEditMode) ImGui::BeginDisabled();
-
-            if (ImGui::Button("Create Empty"))
-            {
-                commands.CreateEmptyActor(scene, "Actor");
-            }
+            DrawToolbarAction(editorActions, Editor::EditorActionID::CreateEmptyActor, "Create Empty");
 
             ImGui::SameLine();
+            DrawToolbarAction(editorActions, Editor::EditorActionID::DuplicateSelected, "Duplicate");
 
-            const bool hasSelection = editorState.SelectedActorID.has_value();
-            if (!hasSelection) ImGui::BeginDisabled();
-
-            if (ImGui::Button("Duplicate") && hasSelection)
-            {
-                commands.DuplicateSelectedActor(scene);
-            }
-
-            if (!hasSelection) ImGui::EndDisabled();
             ImGui::SameLine();
-            if (!hasSelection) ImGui::BeginDisabled();
-
-            if (ImGui::Button("Delete") && hasSelection)
-            {
-                commands.DeleteSelectedActor(scene);
-            }
-
-            if (!hasSelection) ImGui::EndDisabled();
-            if (!isEditMode) ImGui::EndDisabled();
+            DrawToolbarAction(editorActions, Editor::EditorActionID::DeleteSelected, "Delete");
 
             ImGui::Separator();
-            std::optional<Core::UUID> pendingDuplicate;
-            std::optional<Core::UUID> pendingDelete;
+
+            std::optional<Editor::EditorActionID> pendingAction;
+            std::optional<Core::UUID> pendingActorSelection;
 
             auto& actors = scene.GetActors();
             for (std::size_t i = 0; i < actors.size(); ++i)
@@ -794,30 +865,35 @@ namespace Quiet::Renderer::Vulkan
 
                 if (ImGui::BeginPopupContextItem(label.c_str()))
                 {
-                    if (!isEditMode) ImGui::BeginDisabled();
+                    const bool canEdit =
+                        editorState.CurrentSceneMode == Editor::SceneMode::Edit;
 
-                    if (ImGui::MenuItem("Duplicate"))
+                    if (ImGui::MenuItem("Duplicate",
+                                        editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
+                                        false,
+                                        canEdit))
                     {
-                        pendingDuplicate = actors[i].ID;
-                    }
-                    if (ImGui::MenuItem("Delete"))
-                    {
-                        pendingDelete = actors[i].ID;
+                        pendingActorSelection = actors[i].ID;
+                        pendingAction = Editor::EditorActionID::DuplicateSelected;
                     }
 
-                    if (!isEditMode) ImGui::EndDisabled();
+                    if (ImGui::MenuItem("Delete",
+                                        editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
+                                        false,
+                                        canEdit))
+                    {
+                        pendingActorSelection = actors[i].ID;
+                        pendingAction = Editor::EditorActionID::DeleteSelected;
+                    }
+
                     ImGui::EndPopup();
                 }
             }
 
-            if (pendingDuplicate.has_value())
+            if (pendingAction.has_value() && pendingActorSelection.has_value())
             {
-                commands.DuplicateActor(scene, pendingDuplicate.value());
-            }
-
-            if (pendingDelete.has_value())
-            {
-                commands.DeleteActor(scene, pendingDelete.value());
+                editorState.SelectedActorID = pendingActorSelection.value();
+                editorActions.Execute(pendingAction.value());
             }
         }
         ImGui::End();

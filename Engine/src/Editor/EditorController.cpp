@@ -14,7 +14,7 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 
-#include "Input/Input.h"
+#include "../../include/Quiet/Input/Input.h"
 #include "Quiet/Math/Geometry.h"
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/StaticMesh.h"
@@ -198,47 +198,26 @@ namespace Quiet::Editor
         return true;
     }
 
-    void EditorController::HandleShortcuts(bool mouseCaptureEnabled)
+    void EditorController::HandleShortcuts(const Input::Input& input, bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
 
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
+        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
 
-        const bool ctrlDown = io.KeyCtrl;
-        const bool shiftDown = io.KeyShift;
-        const bool isEditMode = m_State.CurrentSceneMode == SceneMode::Edit;
+        using Input::KeyCode;
+        const bool ctrlDown =
+            input.IsKeyDown(KeyCode::LeftControl) ||
+            input.IsKeyDown(KeyCode::RightControl);
 
-        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_S, false))
-        {
-            if (isEditMode) m_State.RequestSaveScene = true;
-            return;
-        }
+        if (ctrlDown) return;
 
-        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_Z, false))
-        {
-            if (isEditMode)
-            {
-                if (shiftDown) m_State.RequestRedo = true;
-                else m_State.RequestUndo = true;
-            }
-            return;
-        }
+        if (input.IsKeyPressed(KeyCode::T)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
+        if (input.IsKeyPressed(KeyCode::R)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
+        if (input.IsKeyPressed(KeyCode::S)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
 
-        if (ctrlDown && ImGui::IsKeyPressed(ImGuiKey_Y, false))
-        {
-            if (isEditMode) m_State.RequestRedo = true;
-            return;
-        }
-
-        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) m_State.RequestFocusSelected = true;
-        if (!isEditMode) return;
-
-        if (ImGui::IsKeyPressed(ImGuiKey_T, false)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
-        if (ImGui::IsKeyPressed(ImGuiKey_R, false)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
-        if (ImGui::IsKeyPressed(ImGuiKey_S, false)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
-
-        if (ImGui::IsKeyPressed(ImGuiKey_L, false))
+        if (input.IsKeyPressed(KeyCode::L))
         {
             if (m_State.CurrentGizmoOperation != GizmoOperation::Scale)
             {
@@ -249,10 +228,7 @@ namespace Quiet::Editor
             }
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_G, false))
-        {
-            m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
-        }
+        if (input.IsKeyPressed(KeyCode::G)) m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
     }
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene,

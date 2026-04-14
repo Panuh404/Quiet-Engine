@@ -14,9 +14,15 @@ struct ImDrawData;
 
 namespace Quiet::Editor
 {
+    class EditorActions;
     class EditorCommands;
     class EditorController;
     struct EditorState;
+}
+
+namespace Quiet::Input
+{
+    class Input;
 }
 
 namespace Quiet::Scene
@@ -60,6 +66,7 @@ namespace Quiet::Renderer::Vulkan
 
         void BeginFrame();
         void BuildEditorUI(const ImGuiStats& stats,
+                           Input::Input& input,
                            Scene::Scene& scene,
                            Editor::EditorController& editorController,
                            Editor::EditorState& editorState,
@@ -75,17 +82,19 @@ namespace Quiet::Renderer::Vulkan
     private:
         [[nodiscard]] float GetToolbarHeight() const;
 
+        void BuildMainMenuBar(Editor::EditorActions& editorActions);
         void BuildDockspace();
-        void BuildTopbar(Editor::EditorState& editorState);
+        void BuildTopbar(Editor::EditorActions& editorActions,
+                         Editor::EditorState& editorState);
         void BuildViewportToolbar(Editor::EditorState& editorState,
-            const ImVec2& imageMin);
+                                  const ImVec2& imageMin);
         void BuildConsoleWindow();
         void BuildInspector(Scene::Scene& scene,
                             Editor::EditorCommands& editorCommands,
                             Editor::EditorState& editorState,
                             const MeshLibrary& meshLibrary);
         void BuildHierarchy(Scene::Scene& scene,
-                            Editor::EditorCommands& editorCommands,
+                            Editor::EditorActions& editorActions,
                             Editor::EditorState& editorState);
 
         void CreateDescriptorPool();

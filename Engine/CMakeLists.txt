@@ -13,9 +13,6 @@ target_sources(Quiet_Engine
 
         # Input
         src/Input/Input.cpp
-        src/Input/Input.h
-        src/Input/KeyCodes.h
-        src/Input/MouseCodes.h
 
         # Scene
         src/Scene/Actor.h
@@ -31,6 +28,7 @@ target_sources(Quiet_Engine
         src/Scene/Components/StaticMeshComponent.h
         src/Scene/Components/TransformComponent.h
 
+        src/Editor/EditorActions.cpp
         src/Editor/EditorCommands.cpp
         src/Editor/EditorController.cpp
 
@@ -94,6 +92,13 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Log.h
         include/Quiet/Core/ProjectContext.h
         include/Quiet/Core/UUID.h
+
+        include/Quiet/Input/Input.h
+        include/Quiet/Input/KeyCodes.h
+        include/Quiet/Input/MouseCodes.h
+
+        include/Quiet/Editor/EditorActionID.h
+        include/Quiet/Editor/EditorActions.h
         include/Quiet/Editor/EditorCommands.h
         include/Quiet/Editor/EditorController.h
         include/Quiet/Editor/EditorState.h

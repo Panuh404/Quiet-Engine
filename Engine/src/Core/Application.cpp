@@ -9,7 +9,7 @@
 
 #include "imgui.h"
 #include "GLFW/glfw3.h"
-#include "Input/Input.h"
+#include "../../include/Quiet/Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Scene/SceneDocument.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
@@ -122,6 +122,7 @@ namespace Quiet::Core
                 auto& activeScene = GetActiveScene();
                 uiLayer.BuildEditorUI(
                     stats,
+                    *m_Input,
                     activeScene,
                     *m_EditorController,
                     editorState,
@@ -140,7 +141,7 @@ namespace Quiet::Core
                             m_MouseCaptureEnabled
                         );
 
-                        m_EditorController->HandleShortcuts(m_MouseCaptureEnabled);
+                        m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
 
                         if (editorStateInner.RequestFocusSelected)
                         {

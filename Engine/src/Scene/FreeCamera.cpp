@@ -6,8 +6,8 @@
 
 #include <algorithm>
 
-#include "Input/Input.h"
-#include "Input/KeyCodes.h"
+#include "../../include/Quiet/Input/Input.h"
+#include "../../include/Quiet/Input/KeyCodes.h"
 
 namespace Quiet::Scene
 {

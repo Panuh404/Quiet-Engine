@@ -16,7 +16,7 @@ namespace Quiet::Input
     class Input
     {
     public:
-        explicit Input(const Quiet::Platform::Window& window);
+        explicit Input(const Platform::Window& window);
 
         void Update();
 
@@ -39,7 +39,7 @@ namespace Quiet::Input
         static constexpr std::size_t MouseButtonCount = 8;
 
     private:
-        const Quiet::Platform::Window* m_Window = nullptr;
+        const Platform::Window* m_Window = nullptr;
 
         std::array<bool, KeyCount> m_CurrentKeys{};
         std::array<bool, KeyCount> m_PreviousKeys{};
