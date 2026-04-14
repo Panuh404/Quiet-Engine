@@ -96,14 +96,17 @@ namespace Quiet::Core
             previousTime = currentTime;
 
             auto& editorState = m_EditorController->GetState();
-            const bool isSimulating = editorState.CurrentSceneMode == Editor::SceneMode::Simulate;
+            Scene::Scene& activeScene = GetActiveScene();
+            const bool runRuntimeSystems =
+                editorState.CurrentSceneMode == Editor::SceneMode::Simulate ||
+                editorState.CurrentSceneMode == Editor::SceneMode::Play;
 
             if (m_MouseCaptureEnabled)
             {
                 m_FreeCamera->Update(*m_Input, deltaTime);
             }
 
-            GetActiveScene().Update(deltaTime, isSimulating);
+            activeScene.Update(deltaTime, runRuntimeSystems);
             m_Renderer->ApplyPendingViewportResize();
 
             auto& uiLayer = m_Renderer->GetImGuiLayer();
@@ -119,7 +122,6 @@ namespace Quiet::Core
                 stats.MouseCaptured = m_MouseCaptureEnabled;
                 stats.CameraPosition = m_FreeCamera->GetPosition();
 
-                auto& activeScene = GetActiveScene();
                 uiLayer.BuildEditorUI(
                     stats,
                     *m_Input,
@@ -199,6 +201,19 @@ namespace Quiet::Core
                     StopSimulateMode();
                     editorState.RequestStopSimulate = false;
                 }
+
+                if (editorState.RequestEnterPlay)
+                {
+                    EnterPlayMode();
+                    editorState.RequestEnterPlay = false;
+                }
+
+                if (editorState.RequestStopPlay)
+                {
+                    StopPlayMode();
+                    editorState.RequestStopPlay = false;
+                }
+
 
                 if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
                 {
@@ -324,7 +339,7 @@ namespace Quiet::Core
     void Application::EnterSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
         editorState.CurrentSceneMode = Editor::SceneMode::Simulate;
@@ -334,30 +349,61 @@ namespace Quiet::Core
     void Application::StopSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Edit) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Simulate) return;
 
         m_RuntimeScene.reset();
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
         QUIET_CORE_INFO("Stopped simulate mode.");
     }
 
-    Scene::Scene& Application::GetActiveScene()
+    void Application::EnterPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate && m_RuntimeScene)
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
         {
-            return *m_RuntimeScene;
+            return;
         }
+
+        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
+        editorState.CurrentSceneMode = Editor::SceneMode::Play;
+
+        m_MouseCaptureBeforePlay = m_MouseCaptureEnabled;
+        SetMouseCaptureEnabled(true);
+
+        QUIET_CORE_INFO("Entered play mode.");
+    }
+
+    void Application::StopPlayMode()
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Play)
+        {
+            return;
+        }
+
+        m_RuntimeScene.reset();
+        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+
+        SetMouseCaptureEnabled(m_MouseCaptureBeforePlay);
+
+        QUIET_CORE_INFO("Stopped play mode.");
+    }
+
+    Scene::Scene& Application::GetActiveScene()
+    {
+        const auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit && m_RuntimeScene)
+            return *m_RuntimeScene;
+
         return *m_Scene;
     }
 
     const Scene::Scene& Application::GetActiveScene() const
     {
         const auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate && m_RuntimeScene)
-        {
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit && m_RuntimeScene)
             return *m_RuntimeScene;
-        }
+
         return *m_Scene;
     }
 }

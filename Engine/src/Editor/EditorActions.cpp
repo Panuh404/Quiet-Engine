@@ -37,6 +37,10 @@ namespace Quiet::Editor
                 return m_State.CurrentSceneMode == SceneMode::Edit
                     ? "Simulate"
                     : "Stop Simulate";
+            case EditorActionID::TogglePlay:
+                return m_State.CurrentSceneMode == SceneMode::Play
+                    ? "Stop Play"
+                    : "Play";
             default:
                 return "Action";
         }
@@ -55,7 +59,8 @@ namespace Quiet::Editor
             case EditorActionID::DuplicateSelected: return "Ctrl+D";
             case EditorActionID::DeleteSelected:    return "Delete";
             case EditorActionID::FocusSelected:     return "F";
-            case EditorActionID::ToggleSimulate:    return "F5";
+            case EditorActionID::ToggleSimulate:    return "F6";
+            case EditorActionID::TogglePlay:        return "F5";
             default:
                 return "";
         }
@@ -88,6 +93,9 @@ namespace Quiet::Editor
                 return hasSelection;
 
             case EditorActionID::ToggleSimulate:
+                return true;
+
+            case EditorActionID::TogglePlay:
                 return true;
 
             default:
@@ -148,6 +156,17 @@ namespace Quiet::Editor
                 else
                 {
                     m_State.RequestStopSimulate = true;
+                }
+                break;
+
+            case EditorActionID::TogglePlay:
+                if (m_State.CurrentSceneMode == SceneMode::Edit)
+                {
+                    m_State.RequestEnterPlay = true;
+                }
+                else if (m_State.CurrentSceneMode == SceneMode::Play)
+                {
+                    m_State.RequestStopPlay = true;
                 }
                 break;
         }
@@ -223,8 +242,15 @@ namespace Quiet::Editor
 
         if (m_Input.IsKeyPressed(Input::KeyCode::F5))
         {
+            Execute(EditorActionID::TogglePlay);
+            return;
+        }
+
+        if (m_Input.IsKeyPressed(Input::KeyCode::F6))
+        {
             Execute(EditorActionID::ToggleSimulate);
             return;
         }
+
     }
 }

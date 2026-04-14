@@ -22,7 +22,8 @@ namespace Quiet::Editor
     enum class SceneMode
     {
         Edit,
-        Simulate
+        Simulate,
+        Play
     };
 
     struct EditorState
@@ -54,6 +55,8 @@ namespace Quiet::Editor
         bool RequestLoadScene = false;
         bool RequestEnterSimulate = false;
         bool RequestStopSimulate = false;
+        bool RequestEnterPlay = false;
+        bool RequestStopPlay = false;
         bool RequestUndo = false;
         bool RequestRedo = false;
 

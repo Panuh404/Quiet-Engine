@@ -13,6 +13,7 @@ namespace Quiet::Editor
         DuplicateSelected,
         DeleteSelected,
         FocusSelected,
-        ToggleSimulate
+        ToggleSimulate,
+        TogglePlay,
     };
 }

@@ -61,6 +61,9 @@ namespace Quiet::Core
         void EnterSimulateMode();
         void StopSimulateMode();
 
+        void EnterPlayMode();
+        void StopPlayMode();
+
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;
 
@@ -68,6 +71,7 @@ namespace Quiet::Core
         AppSpec m_Spec;
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
+        bool m_MouseCaptureBeforePlay = false;
 
         ProjectContext m_ProjectContext;
 

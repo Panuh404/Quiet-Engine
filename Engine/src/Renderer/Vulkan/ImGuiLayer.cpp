@@ -21,6 +21,99 @@
 
 namespace
 {
+    constexpr const char* kIconNew       = "\xef\x85\x9b"; // U+F15B file
+    constexpr const char* kIconSave      = "\xef\x83\x87"; // U+F0C7 floppy-disk
+    constexpr const char* kIconLoad      = "\xef\x81\xbc"; // U+F07C folder-open
+    constexpr const char* kIconPlay      = "\xef\x81\x8b"; // U+F04B play
+    constexpr const char* kIconStop      = "\xef\x81\x8d"; // U+F04D stop
+    constexpr const char* kIconSimulate  = "\xef\x80\xa1"; // U+F021 rotate/sync
+    constexpr const char* kIconTranslate = "\xef\x81\x87"; // U+F047 arrows
+    constexpr const char* kIconRotate    = "\xef\x80\xa1"; // U+F021 rotate/sync
+    constexpr const char* kIconScale     = "\xef\x81\xa5"; // U+F065 expand
+    constexpr const char* kIconFocus     = "\xef\x81\x9b"; // U+F05B crosshairs
+    constexpr const char* kIconSnap      = "\xef\x81\xb6"; // U+F076 magnet
+
+    constexpr float kToolbarButtonSize = 46.0f;
+    constexpr float kToolbarWideButtonWidth = 78.0f;
+    constexpr float kToolbarModeButtonWidth = 82.0f;
+    constexpr float kToolbarButtonHeight = 46.0f;
+
+    std::string MakeToolbarLabel(const Quiet::Renderer::Vulkan::EditorFonts& fonts,
+                             const char* id,
+                             const char* iconUtf8,
+                             const char* fallbackText)
+    {
+        std::string label = fonts.HasIcons ? iconUtf8 : fallbackText;
+        label += "##";
+        label += id;
+        return label;
+    }
+
+    bool DrawToolbarButton(const Quiet::Renderer::Vulkan::EditorFonts& fonts,
+                       const char* id,
+                       const char* iconUtf8,
+                       const char* fallbackText,
+                       const char* tooltip,
+                       bool active = false,
+                       bool enabled = true,
+                       const ImVec2& size = ImVec2(kToolbarButtonSize, kToolbarButtonHeight))
+    {
+        if (!enabled)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        ImFont* buttonFont = fonts.HasIcons ? fonts.Icons : fonts.UI;
+        const bool pushFont = (buttonFont != nullptr);
+        if (pushFont)
+        {
+            ImGui::PushFont(buttonFont);
+        }
+
+        if (active)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.34f, 0.56f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.40f, 0.64f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.29f, 0.50f, 1.0f));
+        }
+
+        const std::string label = MakeToolbarLabel(fonts, id, iconUtf8, fallbackText);
+        const bool pressed = ImGui::Button(label.c_str(), size);
+
+        if (active)
+        {
+            ImGui::PopStyleColor(3);
+        }
+
+        if (pushFont)
+        {
+            ImGui::PopFont();
+        }
+
+        if (!enabled)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("%s", tooltip);
+        }
+
+        return pressed && enabled;
+    }
+
+    const char* GetSceneModeLabel(Quiet::Editor::SceneMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Editor::SceneMode::Edit:     return "[EDIT]";
+            case Quiet::Editor::SceneMode::Simulate: return "[SIMULATE]";
+            case Quiet::Editor::SceneMode::Play:     return "[PLAY]";
+            default:                                 return "[UNKNOWN]";
+        }
+    }
+
     bool DrawMenuAction(Quiet::Editor::EditorActions& actions,
                         Quiet::Editor::EditorActionID actionID)
     {
@@ -92,7 +185,6 @@ namespace Quiet::Renderer::Vulkan
         );
 
         ApplyDarkEditorTheme(io);
-
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -155,44 +247,10 @@ namespace Quiet::Renderer::Vulkan
         Editor::EditorActions actions(input, scene, commands, editorState);
 
         BuildMainMenuBar(actions);
-        BuildTopbar(actions, editorState);
+        BuildTopbar(editorState);
         BuildDockspace();
 
-        ImGui::Begin("Viewport");
-        {
-            editorState.ViewportFocused = ImGui::IsWindowFocused();
-            editorState.ViewportHovered = ImGui::IsWindowHovered();
-
-            const ImVec2 availableSize = ImGui::GetContentRegionAvail();
-
-            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
-            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
-
-            if (sceneViewportTexture && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
-            {
-                const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-                const ImVec2 imageSize(
-                    static_cast<float>(editorState.ViewportWidth),
-                    static_cast<float>(editorState.ViewportHeight)
-                );
-
-                ImGui::Image(sceneViewportTexture, imageSize);
-
-                editorState.ViewportImageHovered = ImGui::IsItemHovered();
-                editorState.ViewportScreenX = imageMin.x;
-                editorState.ViewportScreenY = imageMin.y;
-
-                BuildViewportToolbar(editorState, imageMin);
-
-                if (viewportOverlayCallback) viewportOverlayCallback();
-            }
-            else
-            {
-                editorState.ViewportImageHovered = false;
-                ImGui::Text("Scene viewport unavailable.");
-            }
-        }
-        ImGui::End();
+        BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
 
         ImGui::Begin("Debug");
         {
@@ -249,9 +307,10 @@ namespace Quiet::Renderer::Vulkan
 
         const float textHeight = ImGui::GetFontSize();
         const float frameHeight = textHeight + style.FramePadding.y * 2.0f;
-        const float toolbarHeight = frameHeight + style.WindowPadding.y * 2.0f + 6.0f;
+        const float contentHeight =
+            (frameHeight > kToolbarButtonHeight) ? frameHeight : kToolbarButtonHeight;
 
-        return toolbarHeight;
+        return contentHeight + style.WindowPadding.y * 2.0f + 6.0f;
     }
 
     void ImGuiLayer::BuildMainMenuBar(Editor::EditorActions& editorActions)
@@ -331,17 +390,15 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildViewportToolbar(Editor::EditorState &editorState,
-                                          const ImVec2 &imageMin)
+    void ImGuiLayer::BuildViewportToolbar(Editor::EditorState& editorState,
+                                          const ImVec2& imageMin)
     {
-        const float padding = 10.0f;
-        const float height = ImGui::GetFrameHeight() + 16.0f;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            return;
+        }
 
-        const ImVec2 toolbarPos(imageMin.x + padding, imageMin.y + padding);
-        const ImVec2 toolbarSize(415.0f, height);
-
-        ImGui::SetCursorScreenPos(toolbarPos);
-        ImGui::SetNextWindowBgAlpha(0.88f);
+        const ImVec2 toolbarPos(imageMin.x + 10.0f, imageMin.y + 10.0f);
 
         ImGuiWindowFlags flags =
             ImGuiWindowFlags_NoDecoration |
@@ -349,61 +406,112 @@ namespace Quiet::Renderer::Vulkan
             ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoSavedSettings |
             ImGuiWindowFlags_NoNav |
-            ImGuiWindowFlags_NoScrollbar;
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_AlwaysAutoResize;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
+        ImGui::SetNextWindowPos(toolbarPos);
+        ImGui::SetNextWindowBgAlpha(0.90f);
 
-        ImGui::BeginChild("##ViewportToolbar", toolbarSize, ImGuiChildFlags_Borders, flags);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
 
-        if (ImGui::Button("T"))
+        ImGui::Begin("##ViewportToolbar", nullptr, flags);
         {
-            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Translate;
-        }
-        ImGui::SameLine();
-
-        if (ImGui::Button("R"))
-        {
-            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Rotate;
-        }
-        ImGui::SameLine();
-
-        if (ImGui::Button("S"))
-        {
-            editorState.CurrentGizmoOperation = Editor::GizmoOperation::Scale;
-        }
-
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::SameLine();
-
-        if (editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale)
-        {
-            if (ImGui::Button(
-                    editorState.CurrentGizmoMode == Editor::GizmoMode::Local ? "Local" : "World"))
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportTranslate",
+                    kIconTranslate,
+                    "T",
+                    "Translate (T)",
+                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Translate))
             {
-                editorState.CurrentGizmoMode =
-                    (editorState.CurrentGizmoMode == Editor::GizmoMode::Local)
-                        ? Editor::GizmoMode::World
-                        : Editor::GizmoMode::Local;
+                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Translate;
             }
 
             ImGui::SameLine();
-        }
 
-        if (ImGui::Button(editorState.GizmoSnapEnabled ? "Snap On" : "Snap Off"))
-        {
-            editorState.GizmoSnapEnabled = !editorState.GizmoSnapEnabled;
-        }
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportRotate",
+                    kIconRotate,
+                    "R",
+                    "Rotate (R)",
+                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Rotate))
+            {
+                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Rotate;
+            }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Focus"))
-        {
-            editorState.RequestFocusSelected = true;
-        }
+            ImGui::SameLine();
 
-        ImGui::EndChild();
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportScale",
+                    kIconScale,
+                    "S",
+                    "Scale (S)",
+                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Scale))
+            {
+                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Scale;
+            }
+
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+
+            if (editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale)
+            {
+                const char* spaceLabel =
+                    editorState.CurrentGizmoMode == Editor::GizmoMode::Local
+                        ? "Local##ViewportSpace"
+                        : "World##ViewportSpace";
+
+                if (ImGui::Button(spaceLabel, ImVec2(kToolbarModeButtonWidth, kToolbarButtonHeight)))
+                {
+                    editorState.CurrentGizmoMode =
+                        (editorState.CurrentGizmoMode == Editor::GizmoMode::Local)
+                            ? Editor::GizmoMode::World
+                            : Editor::GizmoMode::Local;
+                }
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                {
+                    ImGui::SetTooltip("Toggle Local / World (L)");
+                }
+
+                ImGui::SameLine();
+            }
+
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportSnap",
+                    kIconSnap,
+                    "Snap",
+                    "Toggle Snap (G)",
+                    editorState.GizmoSnapEnabled,
+                    true,
+                    ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
+            {
+                editorState.GizmoSnapEnabled = !editorState.GizmoSnapEnabled;
+            }
+
+            ImGui::SameLine();
+
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportFocus",
+                    kIconFocus,
+                    "Focus",
+                    "Focus Selected (F)",
+                    false,
+                    true,
+                    ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
+            {
+                editorState.RequestFocusSelected = true;
+            }
+        }
+        ImGui::End();
+
         ImGui::PopStyleVar(3);
     }
 
@@ -534,84 +642,145 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildTopbar(Editor::EditorActions& editorActions,
-                                 Editor::EditorState& editorState)
-{
-    const float topbarHeight = GetToolbarHeight();
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-    ImGuiWindowFlags windowFlags =
-        ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoNavFocus;
-
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, topbarHeight));
-    ImGui::SetNextWindowViewport(viewport->ID);
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
-
-    ImGui::Begin("##MainTopbar", nullptr, windowFlags);
+    void ImGuiLayer::BuildTopbar(Editor::EditorState& editorState)
     {
+        const float topbarHeight = GetToolbarHeight();
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+        ImGuiWindowFlags windowFlags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNavFocus;
+
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, topbarHeight));
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+
+        ImGui::Begin("##MainTopbar", nullptr, windowFlags);
         ImGui::PopStyleVar(3);
 
-        if (m_Fonts.Bold)
-        {
-            ImGui::PushFont(m_Fonts.Bold);
-        }
+        if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
         ImGui::TextUnformatted("QUIET");
-        if (m_Fonts.Bold)
+        if (m_Fonts.Bold) ImGui::PopFont();
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+        const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+
+        ImGui::SameLine();
+        if (DrawToolbarButton(
+                m_Fonts,
+                "TopbarNew",
+                kIconNew,
+                "New",
+                "New Scene",
+                false,
+                isEditMode))
         {
-            ImGui::PopFont();
+            editorState.RequestNewScene = true;
+        }
+
+        ImGui::SameLine();
+        if (DrawToolbarButton(
+                m_Fonts,
+                "TopbarSave",
+                kIconSave,
+                "Save",
+                "Save Scene (Ctrl+S)",
+                false,
+                isEditMode))
+        {
+            editorState.RequestSaveScene = true;
+        }
+
+        ImGui::SameLine();
+        if (DrawToolbarButton(
+                m_Fonts,
+                "TopbarLoad",
+                kIconLoad,
+                "Load",
+                "Load Scene",
+                false,
+                isEditMode))
+        {
+            editorState.RequestLoadScene = true;
         }
 
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
         ImGui::SameLine();
-        DrawToolbarAction(editorActions, Editor::EditorActionID::NewScene, "New");
 
-        ImGui::SameLine();
-        DrawToolbarAction(editorActions, Editor::EditorActionID::SaveScene, "Save");
-
-        ImGui::SameLine();
-        DrawToolbarAction(editorActions, Editor::EditorActionID::LoadScene, "Load");
-
-        ImGui::SameLine();
-        DrawToolbarAction(editorActions, Editor::EditorActionID::Undo, "Undo");
-
-        ImGui::SameLine();
-        DrawToolbarAction(editorActions, Editor::EditorActionID::Redo, "Redo");
-
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-        ImGui::SameLine();
         if (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
         {
-            DrawToolbarAction(editorActions, Editor::EditorActionID::ToggleSimulate, "Simulate");
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "TopbarSimulate",
+                    kIconSimulate,
+                    "Sim",
+                    "Simulate Runtime (F6)"))
+            {
+                editorState.RequestEnterSimulate = true;
+            }
+
+            ImGui::SameLine();
+
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "TopbarPlay",
+                    kIconPlay,
+                    "Play",
+                    "Play Game (F5)"))
+            {
+                editorState.RequestEnterPlay = true;
+            }
         }
-        else
+        else if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
         {
-            DrawToolbarAction(editorActions, Editor::EditorActionID::ToggleSimulate, "Stop");
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "TopbarStopSimulate",
+                    kIconStop,
+                    "Stop",
+                    "Stop Simulate (F6)",
+                    false,
+                    true,
+                    ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
+            {
+                editorState.RequestStopSimulate = true;
+            }
+        }
+        else if (editorState.CurrentSceneMode == Editor::SceneMode::Play)
+        {
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "TopbarStopPlay",
+                    kIconStop,
+                    "Stop",
+                    "Stop Play (F5)",
+                    false,
+                    true,
+                    ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
+            {
+                editorState.RequestStopPlay = true;
+            }
         }
 
-        std::string statusText =
-            (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
-                ? "[EDIT] "
-                : "[SIMULATE] ";
-
+        std::string statusText = GetSceneModeLabel(editorState.CurrentSceneMode);
+        statusText += " ";
         statusText += editorState.SceneDisplayName;
 
-        if (editorState.SceneDirty &&
-            editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit)
         {
             statusText += " *";
         }
@@ -629,7 +798,11 @@ namespace Quiet::Renderer::Vulkan
             ImGui::SameLine();
         }
 
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        if (editorState.CurrentSceneMode == Editor::SceneMode::Play)
+        {
+            ImGui::TextColored(ImVec4(0.25f, 0.80f, 1.0f, 1.0f), "%s", statusText.c_str());
+        }
+        else if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
         {
             ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
         }
@@ -641,9 +814,50 @@ namespace Quiet::Renderer::Vulkan
         {
             ImGui::TextUnformatted(statusText.c_str());
         }
+
+        ImGui::End();
     }
-    ImGui::End();
-}
+
+    void ImGuiLayer::BuildViewport(Editor::EditorState &editorState,
+                                   ImTextureID sceneViewportTexture,
+                                   const std::function<void()> &viewportOverlayCallback)
+    {
+        ImGui::Begin("Viewport");
+        {
+            editorState.ViewportFocused = ImGui::IsWindowFocused();
+            editorState.ViewportHovered = ImGui::IsWindowHovered();
+
+            const ImVec2 availableSize = ImGui::GetContentRegionAvail();
+
+            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+
+            if (sceneViewportTexture && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
+            {
+                const ImVec2 imageMin = ImGui::GetCursorScreenPos();
+                const ImVec2 imageSize(
+                    static_cast<float>(editorState.ViewportWidth),
+                    static_cast<float>(editorState.ViewportHeight)
+                );
+
+                ImGui::Image(sceneViewportTexture, imageSize);
+
+                editorState.ViewportImageHovered = ImGui::IsItemHovered();
+                editorState.ViewportScreenX = imageMin.x;
+                editorState.ViewportScreenY = imageMin.y;
+
+                BuildViewportToolbar(editorState, imageMin);
+
+                if (viewportOverlayCallback) viewportOverlayCallback();
+            }
+            else
+            {
+                editorState.ViewportImageHovered = false;
+                ImGui::Text("Scene viewport unavailable.");
+            }
+        }
+        ImGui::End();
+    }
 
     void ImGuiLayer::BuildInspector(Scene::Scene& scene,
                                     Editor::EditorCommands& commands,

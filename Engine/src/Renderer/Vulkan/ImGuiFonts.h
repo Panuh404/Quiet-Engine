@@ -13,6 +13,8 @@ namespace Quiet::Renderer::Vulkan
         ImFont* UI = nullptr;
         ImFont* Bold = nullptr;
         ImFont* Mono = nullptr;
+        ImFont* Icons = nullptr;
+        bool HasIcons = false;
     };
 
     inline std::filesystem::path FindFirstExistingFontPath(
@@ -46,8 +48,31 @@ namespace Quiet::Renderer::Vulkan
                 return font;
             }
         }
-
         return nullptr;
+    }
+
+    inline ImFont* AddIconFontSafe(ImGuiIO& io,
+                                   const std::filesystem::path& path,
+                                   float sizePixels)
+    {
+        if (path.empty() || !std::filesystem::exists(path))
+        {
+            return nullptr;
+        }
+
+        static const ImWchar iconRanges[] = { 0xf000, 0xf8ff, 0 };
+
+        ImFontConfig iconConfig{};
+        iconConfig.PixelSnapH = true;
+        iconConfig.GlyphMinAdvanceX = sizePixels * 0.90f;
+        iconConfig.GlyphOffset = ImVec2(0.0f, 1.0f);
+
+        return io.Fonts->AddFontFromFileTTF(
+            path.string().c_str(),
+            sizePixels,
+            &iconConfig,
+            iconRanges
+        );
     }
 
     inline EditorFonts SetupEditorFonts(ImGuiIO& io,
@@ -67,44 +92,48 @@ namespace Quiet::Renderer::Vulkan
         ImFontConfig monoConfig = uiConfig;
 
         const std::filesystem::path uiFontPath = FindFirstExistingFontPath({
-            "Assets/Fonts/Inter-Regular.ttf",
-            "Assets/Fonts/Inter-Medium.ttf",
-            "Assets/Fonts/SegoeUI.ttf",
+            "Resources/Fonts/Inter-Regular.ttf",
+            "Resources/Fonts/Inter-Medium.ttf",
             "C:/Windows/Fonts/segoeui.ttf"
         });
 
         const std::filesystem::path boldFontPath = FindFirstExistingFontPath({
-            "Assets/Fonts/Inter-SemiBold.ttf",
-            "Assets/Fonts/Inter-Bold.ttf",
-            "Assets/Fonts/SegoeUI-Bold.ttf",
+            "Resources/Fonts/Inter-SemiBold.ttf",
+            "Resources/Fonts/Inter-Bold.ttf",
             "C:/Windows/Fonts/segoeuib.ttf"
         });
 
         const std::filesystem::path monoFontPath = FindFirstExistingFontPath({
-            "Assets/Fonts/JetBrainsMono-Regular.ttf",
-            "Assets/Fonts/CascadiaMono.ttf",
+            "Resources/Fonts/JetBrainsMono-Regular.ttf",
             "C:/Windows/Fonts/consola.ttf"
         });
 
-        EditorFonts fonts{};
-        fonts.UI = AddFontSafe(io, uiFontPath, uiSize, uiConfig);
-        fonts.Bold = AddFontSafe(io, boldFontPath, boldSize, boldConfig);
-        fonts.Mono = AddFontSafe(io, monoFontPath, monoSize, monoConfig);
+        const std::filesystem::path iconFontPath = FindFirstExistingFontPath({
+            "resources/Fonts/fa-solid-900.ttf"
+        });
 
+        EditorFonts fonts{};
+
+        fonts.UI = AddFontSafe(io, uiFontPath, uiSize, uiConfig);
         if (!fonts.UI)
         {
             fonts.UI = io.Fonts->AddFontDefault();
         }
 
+        fonts.Bold = AddFontSafe(io, boldFontPath, boldSize, boldConfig);
         if (!fonts.Bold)
         {
             fonts.Bold = fonts.UI;
         }
 
+        fonts.Mono = AddFontSafe(io, monoFontPath, monoSize, monoConfig);
         if (!fonts.Mono)
         {
             fonts.Mono = fonts.UI;
         }
+
+        fonts.Icons = AddIconFontSafe(io, iconFontPath, uiSize);
+        fonts.HasIcons = (fonts.Icons != nullptr);
 
         io.FontDefault = fonts.UI;
         io.FontGlobalScale = 1.0f;
