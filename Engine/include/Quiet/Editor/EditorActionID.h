@@ -7,13 +7,16 @@ namespace Quiet::Editor
         NewScene,
         SaveScene,
         LoadScene,
+
         Undo,
         Redo,
+
         CreateEmptyActor,
         DuplicateSelected,
         DeleteSelected,
         FocusSelected,
+
         ToggleSimulate,
-        TogglePlay,
+        TogglePlay
     };
 }

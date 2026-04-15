@@ -207,12 +207,12 @@ namespace Quiet::Editor
         if (m_State.CurrentSceneMode != SceneMode::Edit) return;
 
         using Input::KeyCode;
+
         const bool ctrlDown =
             input.IsKeyDown(KeyCode::LeftControl) ||
             input.IsKeyDown(KeyCode::RightControl);
 
         if (ctrlDown) return;
-
         if (input.IsKeyPressed(KeyCode::T)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (input.IsKeyPressed(KeyCode::R)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
         if (input.IsKeyPressed(KeyCode::S)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;

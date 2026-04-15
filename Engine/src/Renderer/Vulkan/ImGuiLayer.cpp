@@ -247,7 +247,7 @@ namespace Quiet::Renderer::Vulkan
         Editor::EditorActions actions(input, scene, commands, editorState);
 
         BuildMainMenuBar(actions);
-        BuildTopbar(editorState);
+        BuildTopbar(actions, editorState);
         BuildDockspace();
 
         BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
@@ -340,6 +340,7 @@ namespace Quiet::Renderer::Vulkan
             DrawMenuAction(editorActions, Editor::EditorActionID::FocusSelected);
             ImGui::Separator();
             DrawMenuAction(editorActions, Editor::EditorActionID::ToggleSimulate);
+            DrawMenuAction(editorActions, Editor::EditorActionID::TogglePlay);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -642,7 +643,8 @@ namespace Quiet::Renderer::Vulkan
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildTopbar(Editor::EditorState& editorState)
+    void ImGuiLayer::BuildTopbar(Editor::EditorActions& editorActions,
+                                 Editor::EditorState& editorState)
     {
         const float topbarHeight = GetToolbarHeight();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -675,19 +677,15 @@ namespace Quiet::Renderer::Vulkan
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-        const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
-
         ImGui::SameLine();
         if (DrawToolbarButton(
                 m_Fonts,
                 "TopbarNew",
                 kIconNew,
                 "New",
-                "New Scene",
-                false,
-                isEditMode))
+                "New Scene"))
         {
-            editorState.RequestNewScene = true;
+            editorActions.Execute(Editor::EditorActionID::NewScene);
         }
 
         ImGui::SameLine();
@@ -698,9 +696,9 @@ namespace Quiet::Renderer::Vulkan
                 "Save",
                 "Save Scene (Ctrl+S)",
                 false,
-                isEditMode))
+                editorActions.CanExecute(Editor::EditorActionID::SaveScene)))
         {
-            editorState.RequestSaveScene = true;
+            editorActions.Execute(Editor::EditorActionID::SaveScene);
         }
 
         ImGui::SameLine();
@@ -711,9 +709,9 @@ namespace Quiet::Renderer::Vulkan
                 "Load",
                 "Load Scene",
                 false,
-                isEditMode))
+                editorActions.CanExecute(Editor::EditorActionID::LoadScene)))
         {
-            editorState.RequestLoadScene = true;
+            editorActions.Execute(Editor::EditorActionID::LoadScene);
         }
 
         ImGui::SameLine();
@@ -728,9 +726,11 @@ namespace Quiet::Renderer::Vulkan
                     "TopbarSimulate",
                     kIconSimulate,
                     "Sim",
-                    "Simulate Runtime (F6)"))
+                    "Simulate Runtime (F6)",
+                    false,
+                    editorActions.CanExecute(Editor::EditorActionID::ToggleSimulate)))
             {
-                editorState.RequestEnterSimulate = true;
+                editorActions.Execute(Editor::EditorActionID::ToggleSimulate);
             }
 
             ImGui::SameLine();
@@ -740,9 +740,11 @@ namespace Quiet::Renderer::Vulkan
                     "TopbarPlay",
                     kIconPlay,
                     "Play",
-                    "Play Game (F5)"))
+                    "Play Game (F5)",
+                    false,
+                    editorActions.CanExecute(Editor::EditorActionID::TogglePlay)))
             {
-                editorState.RequestEnterPlay = true;
+                editorActions.Execute(Editor::EditorActionID::TogglePlay);
             }
         }
         else if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
@@ -754,10 +756,10 @@ namespace Quiet::Renderer::Vulkan
                     "Stop",
                     "Stop Simulate (F6)",
                     false,
-                    true,
+                    editorActions.CanExecute(Editor::EditorActionID::ToggleSimulate),
                     ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
             {
-                editorState.RequestStopSimulate = true;
+                editorActions.Execute(Editor::EditorActionID::ToggleSimulate);
             }
         }
         else if (editorState.CurrentSceneMode == Editor::SceneMode::Play)
@@ -769,10 +771,10 @@ namespace Quiet::Renderer::Vulkan
                     "Stop",
                     "Stop Play (F5)",
                     false,
-                    true,
+                    editorActions.CanExecute(Editor::EditorActionID::TogglePlay),
                     ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
             {
-                editorState.RequestStopPlay = true;
+                editorActions.Execute(Editor::EditorActionID::TogglePlay);
             }
         }
 

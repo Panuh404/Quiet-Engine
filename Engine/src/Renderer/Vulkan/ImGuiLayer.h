@@ -84,7 +84,8 @@ namespace Quiet::Renderer::Vulkan
 
         void BuildMainMenuBar(Editor::EditorActions& editorActions);
         void BuildDockspace();
-        void BuildTopbar(Editor::EditorState& editorState);
+        void BuildTopbar(Editor::EditorActions& editorActions,
+                         Editor::EditorState& editorState);
         void BuildViewport(Editor::EditorState& editorState,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);

@@ -5,7 +5,6 @@
 namespace Quiet::Editor
 {
     class EditorCommands;
-    class EditorController;
     struct EditorState;
 }
 

@@ -33,14 +33,17 @@ namespace Quiet::Editor
             case EditorActionID::DuplicateSelected: return "Duplicate Selected";
             case EditorActionID::DeleteSelected:    return "Delete Selected";
             case EditorActionID::FocusSelected:     return "Focus Selected";
+
             case EditorActionID::ToggleSimulate:
-                return m_State.CurrentSceneMode == SceneMode::Edit
-                    ? "Simulate"
-                    : "Stop Simulate";
+                return (m_State.CurrentSceneMode == SceneMode::Simulate)
+                    ? "Stop Simulate"
+                    : "Simulate";
+
             case EditorActionID::TogglePlay:
-                return m_State.CurrentSceneMode == SceneMode::Play
+                return (m_State.CurrentSceneMode == SceneMode::Play)
                     ? "Stop Play"
                     : "Play";
+
             default:
                 return "Action";
         }
@@ -61,14 +64,15 @@ namespace Quiet::Editor
             case EditorActionID::FocusSelected:     return "F";
             case EditorActionID::ToggleSimulate:    return "F6";
             case EditorActionID::TogglePlay:        return "F5";
-            default:
-                return "";
+            default:                                return "";
         }
     }
 
     bool EditorActions::CanExecute(EditorActionID actionID) const
     {
-        const bool isEditMode = m_State.CurrentSceneMode == SceneMode::Edit;
+        const bool isEditMode = (m_State.CurrentSceneMode == SceneMode::Edit);
+        const bool isSimulating = (m_State.CurrentSceneMode == SceneMode::Simulate);
+        const bool isPlaying = (m_State.CurrentSceneMode == SceneMode::Play);
         const bool hasSelection = m_State.SelectedActorID.has_value();
 
         switch (actionID)
@@ -93,10 +97,10 @@ namespace Quiet::Editor
                 return hasSelection;
 
             case EditorActionID::ToggleSimulate:
-                return true;
+                return isEditMode || isSimulating;
 
             case EditorActionID::TogglePlay:
-                return true;
+                return isEditMode || isPlaying;
 
             default:
                 return false;
@@ -105,10 +109,7 @@ namespace Quiet::Editor
 
     void EditorActions::Execute(EditorActionID actionID)
     {
-        if (!CanExecute(actionID) && actionID != EditorActionID::ToggleSimulate)
-        {
-            return;
-        }
+        if (!CanExecute(actionID)) return;
 
         switch (actionID)
         {
@@ -153,7 +154,7 @@ namespace Quiet::Editor
                 {
                     m_State.RequestEnterSimulate = true;
                 }
-                else
+                else if (m_State.CurrentSceneMode == SceneMode::Simulate)
                 {
                     m_State.RequestStopSimulate = true;
                 }
@@ -175,35 +176,48 @@ namespace Quiet::Editor
     void EditorActions::HandleShortcuts(bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
+
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
-        const bool ctrlDown =
-            m_Input.IsKeyDown(Input::KeyCode::LeftControl) ||
-            m_Input.IsKeyDown(Input::KeyCode::RightControl);
-        const bool shiftDown =
-            m_Input.IsKeyDown(Input::KeyCode::LeftShift) ||
-            m_Input.IsKeyDown(Input::KeyCode::RightShift);
+        using Input::KeyCode;
 
-        if (ctrlDown && m_Input.IsKeyPressed(Input::KeyCode::N))
+        const bool ctrlDown =
+            m_Input.IsKeyDown(KeyCode::LeftControl) ||
+            m_Input.IsKeyDown(KeyCode::RightControl);
+
+        const bool shiftDown =
+            m_Input.IsKeyDown(KeyCode::LeftShift) ||
+            m_Input.IsKeyDown(KeyCode::RightShift);
+
+        if (m_Input.IsKeyPressed(KeyCode::F5))
+        {
+            Execute(EditorActionID::TogglePlay);
+            return;
+        }
+        if (m_Input.IsKeyPressed(KeyCode::F6))
+        {
+            Execute(EditorActionID::ToggleSimulate);
+            return;
+        }
+
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::N))
         {
             Execute(EditorActionID::NewScene);
             return;
         }
-
-        if (ctrlDown &&  m_Input.IsKeyPressed(Input::KeyCode::S))
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::S))
         {
             Execute(EditorActionID::SaveScene);
             return;
         }
-
-        if (ctrlDown && m_Input.IsKeyPressed(Input::KeyCode::O))
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::O))
         {
             Execute(EditorActionID::LoadScene);
             return;
         }
 
-        if (ctrlDown && m_Input.IsKeyPressed(Input::KeyCode::Z))
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::Z))
         {
             if (shiftDown)
             {
@@ -216,41 +230,26 @@ namespace Quiet::Editor
             return;
         }
 
-        if (ctrlDown && m_Input.IsKeyPressed(Input::KeyCode::Y))
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::Y))
         {
             Execute(EditorActionID::Redo);
             return;
         }
 
-        if (ctrlDown && m_Input.IsKeyPressed(Input::KeyCode::D))
+        if (ctrlDown && m_Input.IsKeyPressed(KeyCode::D))
         {
             Execute(EditorActionID::DuplicateSelected);
             return;
         }
-
-        if (m_Input.IsKeyPressed(Input::KeyCode::Delete))
+        if (m_Input.IsKeyPressed(KeyCode::Delete))
         {
             Execute(EditorActionID::DeleteSelected);
             return;
         }
-
-        if (m_Input.IsKeyPressed(Input::KeyCode::F))
+        if (m_Input.IsKeyPressed(KeyCode::F))
         {
             Execute(EditorActionID::FocusSelected);
             return;
         }
-
-        if (m_Input.IsKeyPressed(Input::KeyCode::F5))
-        {
-            Execute(EditorActionID::TogglePlay);
-            return;
-        }
-
-        if (m_Input.IsKeyPressed(Input::KeyCode::F6))
-        {
-            Execute(EditorActionID::ToggleSimulate);
-            return;
-        }
-
     }
 }
