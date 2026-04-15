@@ -36,7 +36,7 @@ namespace
     constexpr float kToolbarButtonSize = 46.0f;
     constexpr float kToolbarWideButtonWidth = 78.0f;
     constexpr float kToolbarModeButtonWidth = 82.0f;
-    constexpr float kToolbarButtonHeight = 46.0f;
+    constexpr float kToolbarButtonHeight = 48.0f;
 
     std::string MakeToolbarLabel(const Quiet::Renderer::Vulkan::EditorFonts& fonts,
                              const char* id,
@@ -170,7 +170,7 @@ namespace Quiet::Renderer::Vulkan
         : m_Device(device)
     {
         CreateDescriptorPool();
-
+        // TODO: Set default layout
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();

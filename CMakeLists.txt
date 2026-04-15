@@ -85,35 +85,41 @@ FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json)
 
 find_package(Vulkan REQUIRED)
 
-
-
 # ------------------------------------------------------------------------------
 # Shared paths / helpers
 # ------------------------------------------------------------------------------
-
-set(QUIET_ENGINE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/Engine/resources")
-set(QUIET_ENGINE_SHADER_SOURCE_DIR "${QUIET_ENGINE_RESOURCES_DIR}/shaders")
-if(NOT EXISTS "${QUIET_ENGINE_SHADER_SOURCE_DIR}")
-    set(QUIET_ENGINE_SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Engine/Shaders")
-endif()
+set(QUIET_ENGINE_RESOURCES_DIR      "${CMAKE_SOURCE_DIR}/Engine/Resources")
+set(QUIET_ENGINE_FONTS_DIR          "${QUIET_ENGINE_RESOURCES_DIR}/Fonts")
+set(QUIET_ENGINE_TEXTURES_DIR       "${QUIET_ENGINE_RESOURCES_DIR}/Textures")
+set(QUIET_ENGINE_SHADER_SOURCE_DIR  "${QUIET_ENGINE_RESOURCES_DIR}/Shaders")
 
 function(quiet_copy_engine_resources target_name)
     if(NOT TARGET ${target_name})
         return()
     endif()
 
-    if(EXISTS "${QUIET_ENGINE_RESOURCES_DIR}")
+    if(EXISTS "${QUIET_ENGINE_FONTS_DIR}")
         add_custom_command(TARGET ${target_name} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory
-                "$<TARGET_FILE_DIR:${target_name}>/resources"
+                "$<TARGET_FILE_DIR:${target_name}>/Resources/Fonts"
                 COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${QUIET_ENGINE_RESOURCES_DIR}"
-                "$<TARGET_FILE_DIR:${target_name}>/resources"
-                COMMENT "Copying engine resources for ${target_name}"
+                "${QUIET_ENGINE_FONTS_DIR}"
+                "$<TARGET_FILE_DIR:${target_name}>/Resources/Fonts"
+                COMMENT "Copying engine fonts for ${target_name}"
+        )
+    endif()
+
+    if(EXISTS "${QUIET_ENGINE_TEXTURES_DIR}")
+        add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:${target_name}>/Resources/Textures"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${QUIET_ENGINE_TEXTURES_DIR}"
+                "$<TARGET_FILE_DIR:${target_name}>/Resources/Textures"
+                COMMENT "Copying engine textures for ${target_name}"
         )
     endif()
 endfunction()
-
 
 # ------------------------------------------------------------------------------
 # Subdirectories
@@ -129,11 +135,11 @@ if(QUIET_BUILD_EDITOR)
     add_subdirectory(Editor)
 endif()
 
+
 # ------------------------------------------------------------------------------
 # Shader compilation
 # ------------------------------------------------------------------------------
-
-set(QUIET_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/Build/Binaries/$<CONFIG>/Shaders")
+set(QUIET_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/Build/Binaries/$<CONFIG>/Resources/Shaders")
 
 file(GLOB QUIET_SHADER_SOURCES CONFIGURE_DEPENDS
         "${QUIET_ENGINE_SHADER_SOURCE_DIR}/*.vert"
@@ -162,27 +168,6 @@ foreach(SHADER ${QUIET_SHADER_SOURCES})
 endforeach()
 
 add_custom_target(Quiet_Shaders ALL DEPENDS ${QUIET_SHADER_OUTPUTS})
-
-set(QUIET_FONT_SOURCE_DIR "${QUIET_ENGINE_RESOURCES_DIR}/Fonts")
-set(QUIET_FONT_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/Build/Binaries/$<CONFIG>/Resources/Fonts")
-
-if(EXISTS "${QUIET_FONT_SOURCE_DIR}")
-    add_custom_target(Quiet_Font
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${QUIET_FONT_OUTPUT_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${QUIET_FONT_SOURCE_DIR}"
-            "${QUIET_FONT_OUTPUT_DIR}"
-            COMMENT "Copying engine fonts"
-    )
-
-    if(TARGET Quiet_Sandbox)
-        add_dependencies(Quiet_Sandbox Quiet_Font)
-    endif()
-
-    if(TARGET Quiet_Editor)
-        add_dependencies(Quiet_Editor Quiet_Font)
-    endif()
-endif()
 
 if(TARGET Quiet_Sandbox)
     add_dependencies(Quiet_Sandbox Quiet_Shaders)

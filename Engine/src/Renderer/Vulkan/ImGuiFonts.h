@@ -6,6 +6,10 @@
 #include <initializer_list>
 #include <string>
 
+#ifndef QUIET_ENGINE_RESOURCES_PATH
+#define QUIET_ENGINE_RESOURCES_PATH "Resources"
+#endif
+
 namespace Quiet::Renderer::Vulkan
 {
     struct EditorFonts
@@ -91,25 +95,24 @@ namespace Quiet::Renderer::Vulkan
         ImFontConfig boldConfig = uiConfig;
         ImFontConfig monoConfig = uiConfig;
 
+        const std::filesystem::path resourceRoot = QUIET_ENGINE_RESOURCES_PATH;
         const std::filesystem::path uiFontPath = FindFirstExistingFontPath({
-            "Resources/Fonts/Inter-Regular.ttf",
-            "Resources/Fonts/Inter-Medium.ttf",
+            resourceRoot / "Fonts/Inter-Regular.ttf",
+            resourceRoot / "Fonts/Inter-Medium.ttf",
             "C:/Windows/Fonts/segoeui.ttf"
         });
-
         const std::filesystem::path boldFontPath = FindFirstExistingFontPath({
-            "Resources/Fonts/Inter-SemiBold.ttf",
-            "Resources/Fonts/Inter-Bold.ttf",
+            resourceRoot / "Fonts/Inter-SemiBold.ttf",
+            resourceRoot / "Fonts/Inter-Bold.ttf",
             "C:/Windows/Fonts/segoeuib.ttf"
         });
-
         const std::filesystem::path monoFontPath = FindFirstExistingFontPath({
-            "Resources/Fonts/JetBrainsMono-Regular.ttf",
+            resourceRoot / "Fonts/JetBrainsMono-Regular.ttf",
             "C:/Windows/Fonts/consola.ttf"
         });
 
         const std::filesystem::path iconFontPath = FindFirstExistingFontPath({
-            "resources/Fonts/fa-solid-900.ttf"
+            resourceRoot / "Fonts/fa-solid-900.ttf"
         });
 
         EditorFonts fonts{};

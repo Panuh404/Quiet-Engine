@@ -108,25 +108,6 @@ target_sources(Quiet_Engine
         include/Quiet/Scene/SceneDocument.h
 )
 
-# Engine resources for IDE visibility only
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
-    file(GLOB_RECURSE QUIET_ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/resources/*"
-    )
-
-    if(QUIET_ENGINE_RESOURCE_FILES)
-        target_sources(Quiet_Engine PRIVATE ${QUIET_ENGINE_RESOURCE_FILES})
-        source_group(
-                TREE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
-                PREFIX "resources"
-                FILES ${QUIET_ENGINE_RESOURCE_FILES}
-        )
-        set_source_files_properties(${QUIET_ENGINE_RESOURCE_FILES}
-                PROPERTIES HEADER_FILE_ONLY ON
-        )
-    endif()
-endif()
-
 target_include_directories(Quiet_Engine
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -137,11 +118,14 @@ target_include_directories(Quiet_Engine
         ${imguizmo_SOURCE_DIR}
 )
 
-target_compile_features(Quiet_Engine PUBLIC cxx_std_20)
+target_compile_features(Quiet_Engine
+        PUBLIC
+        cxx_std_20
+)
 
 target_compile_definitions(Quiet_Engine
         PUBLIC
-        QUIET_ENGINE_RESOURCES_PATH="resources"
+        QUIET_ENGINE_RESOURCES_PATH="Resources"
 )
 
 target_link_libraries(Quiet_Engine
@@ -162,18 +146,22 @@ endif()
 add_library(Quiet::Engine ALIAS Quiet_Engine)
 
 # Engine resource files for IDE visibility
-file(GLOB_RECURSE QUIET_ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/resources/*"
-)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Resources")
+    file(GLOB_RECURSE QUIET_ENGINE_RESOURCE_FILES CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/Resources/*"
+    )
 
-if(QUIET_ENGINE_RESOURCE_FILES)
-    target_sources(Quiet_Engine PRIVATE ${QUIET_ENGINE_RESOURCE_FILES})
-    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
-            PREFIX "resources"
-            FILES ${QUIET_ENGINE_RESOURCE_FILES})
-
-    set_source_files_properties(${QUIET_ENGINE_RESOURCE_FILES}
-            PROPERTIES HEADER_FILE_ONLY ON)
+    if(QUIET_ENGINE_RESOURCE_FILES)
+        target_sources(Quiet_Engine PRIVATE ${QUIET_ENGINE_RESOURCE_FILES})
+        source_group(
+                TREE "${CMAKE_CURRENT_SOURCE_DIR}/Resources"
+                PREFIX "Resources"
+                FILES ${QUIET_ENGINE_RESOURCE_FILES}
+        )
+        set_source_files_properties(${QUIET_ENGINE_RESOURCE_FILES}
+                PROPERTIES HEADER_FILE_ONLY ON
+        )
+    endif()
 endif()
 
 if (WIN32 AND MINGW)

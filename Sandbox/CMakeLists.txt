@@ -10,3 +10,5 @@ target_link_libraries(Quiet_Sandbox
     PRIVATE
         Quiet::Engine
 )
+
+quiet_copy_engine_resources(Quiet_Sandbox)

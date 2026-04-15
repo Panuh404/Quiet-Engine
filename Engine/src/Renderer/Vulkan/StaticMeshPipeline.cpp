@@ -21,8 +21,8 @@ namespace Quiet::Renderer::Vulkan
                                        VkDescriptorSetLayout cameraSetLayout)
         : m_Device(logicalDevice.GetHandle())
     {
-        ShaderModule vertShader(m_Device, "Shaders/Triangle.vert.spv");
-        ShaderModule fragShader(m_Device, "Shaders/Triangle.frag.spv");
+        ShaderModule vertShader(m_Device, "Resources/Shaders/Triangle.vert.spv");
+        ShaderModule fragShader(m_Device, "Resources/Shaders/Triangle.frag.spv");
 
         VkPipelineShaderStageCreateInfo stages[] = {
             vertShader.MakeStageInfo(VK_SHADER_STAGE_VERTEX_BIT),
