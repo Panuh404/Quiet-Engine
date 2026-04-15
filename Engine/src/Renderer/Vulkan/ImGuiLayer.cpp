@@ -266,7 +266,6 @@ namespace Quiet::Renderer::Vulkan
             ImGui::Separator();
 
             ImGui::Text("Camera:");
-            ImGui::Text("Press Shift + F1 to toggle Cursor Capture");
             ImGui::Text("Mouse Capture: %s", stats.MouseCaptured ? "True" : "False");
             ImGui::Text("X: %.2f", stats.CameraPosition.x);
             ImGui::Text("Y: %.2f", stats.CameraPosition.y);

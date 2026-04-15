@@ -107,6 +107,26 @@ namespace Quiet::Scene
         m_RuntimeMode = RuntimeMode::None;
     }
 
+    void Scene::HandleRuntimeInput(const Input::Input& input, float deltaTime)
+    {
+        if (!IsRuntimeActive()) return;
+
+        switch (m_RuntimeMode)
+        {
+            case RuntimeMode::Simulate:
+                HandleSimulateInput(input, deltaTime);
+                break;
+
+            case RuntimeMode::Play:
+                HandlePlayInput(input, deltaTime);
+                break;
+
+            case RuntimeMode::None:
+            default:
+                break;
+        }
+    }
+
     void Scene::Update(float deltaTime)
     {
         if (!IsRuntimeActive()) return;
@@ -188,6 +208,18 @@ namespace Quiet::Scene
     void Scene::OnPlayEnd()
     {
 
+    }
+
+    void Scene::HandleSimulateInput(const Input::Input &input, float deltaTime)
+    {
+        (void)input;
+        (void)deltaTime;
+    }
+
+    void Scene::HandlePlayInput(const Input::Input &input, float deltaTime)
+    {
+        (void)input;
+        (void)deltaTime;
     }
 
     void Scene::UpdateRuntime(float deltaTime)

@@ -96,10 +96,26 @@ namespace Quiet::Core
             previousTime = currentTime;
 
             auto& editorState = m_EditorController->GetState();
+
             Scene::Scene& activeScene = GetActiveScene();
-            if (m_MouseCaptureEnabled) m_FreeCamera->Update(*m_Input, deltaTime);
+            const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
+            const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
+            const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
+
+            // Editor free camera is only owned by Edit / Simulate.
+            if ((isEditMode || isSimulateMode) && m_MouseCaptureEnabled)
+            {
+                m_FreeCamera->Update(*m_Input, deltaTime);
+            }
+
+            // Runtime input ownership belongs to the runtime scene.
+            if (isPlayMode || isSimulateMode)
+            {
+                activeScene.HandleRuntimeInput(*m_Input, deltaTime);
+            }
 
             activeScene.Update(deltaTime);
+
             m_Renderer->ApplyPendingViewportResize();
             auto& uiLayer = m_Renderer->GetImGuiLayer();
 

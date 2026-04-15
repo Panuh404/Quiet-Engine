@@ -3,6 +3,11 @@
 #include <vector>
 #include "Scene/Actor.h"
 
+namespace Quiet::Input
+{
+    class Input;
+}
+
 namespace Quiet::Scene
 {
     enum class RuntimeMode
@@ -30,6 +35,7 @@ namespace Quiet::Scene
 
         void BeginRuntime(RuntimeMode mode);
         void EndRuntime();
+        void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
 
         [[nodiscard]] bool IsRuntimeActive() const { return m_RuntimeMode != RuntimeMode::None; }
@@ -48,6 +54,9 @@ namespace Quiet::Scene
         void OnSimulateEnd();
         void OnPlayBegin();
         void OnPlayEnd();
+
+        void HandleSimulateInput(const Input::Input& input, float deltaTime);
+        void HandlePlayInput(const Input::Input& input, float deltaTime);
         void UpdateRuntime(float deltaTime);
 
     private:

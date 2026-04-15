@@ -175,8 +175,6 @@ namespace Quiet::Editor
 
     void EditorActions::HandleShortcuts(bool mouseCaptureEnabled)
     {
-        if (mouseCaptureEnabled) return;
-
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
 
@@ -200,6 +198,8 @@ namespace Quiet::Editor
             Execute(EditorActionID::ToggleSimulate);
             return;
         }
+
+        if (mouseCaptureEnabled) return;
 
         if (ctrlDown && m_Input.IsKeyPressed(KeyCode::N))
         {
