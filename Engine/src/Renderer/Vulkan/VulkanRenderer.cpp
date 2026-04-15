@@ -1,11 +1,10 @@
 #include "VulkanRenderer.h"
 
 #include "Quiet/Core/AppSpec.h"
-#include "Quiet/Editor/EditorState.h"
+#include "Quiet/Renderer/RenderConventions.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 #include "Scene/FreeCamera.h"
-#include "Scene/Scene.h"
 
 #include <stdexcept>
 
@@ -284,7 +283,7 @@ namespace Quiet::Renderer::Vulkan
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        auto cameraData = camera.BuildUniformData(aspect, true);
+        auto cameraData = camera.BuildUniformData(aspect, UseRenderProjectionYFlip);
         m_CameraResources->Update(imageIndex, cameraData);
 
         RecordFrameCommandBuffer(imageIndex, scene, imguiLayer);

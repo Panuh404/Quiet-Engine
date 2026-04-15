@@ -5,6 +5,7 @@
 #include <limits>
 #include <utility>
 
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -14,9 +15,10 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 
-#include "../../include/Quiet/Input/Input.h"
+#include "Quiet/Input/Input.h"
 #include "Quiet/Math/Geometry.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Renderer/RenderConventions.h"
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Actor.h"
@@ -253,7 +255,7 @@ namespace Quiet::Editor
             const auto& mesh = actor->StaticMesh->Mesh;
             const auto localBounds = mesh->GetLocalBounds();
 
-            const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(
+            const Math::AABB worldBounds = Math::TransformAABB(
                 actor->Transform.WorldTransform.ToMatrix(),
                 localBounds.Min,
                 localBounds.Max
@@ -356,7 +358,7 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        const auto cameraData = camera.BuildUniformData(aspect, false);
+        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
         Scene::Actor* actor = scene.FindActorByID(m_State.SelectedActorID.value());
         if (!actor)
         {
@@ -500,7 +502,7 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        const auto cameraData = camera.BuildUniformData(aspect, false);
+        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
         const glm::vec4 viewport(
             0.0f,
             0.0f,

@@ -103,6 +103,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorController.h
         include/Quiet/Editor/EditorState.h
 
+        include/Quiet/Renderer/RenderConventions.h
         include/Quiet/Platform/Window.h
         include/Quiet/Math/Geometry.h
         include/Quiet/Scene/SceneDocument.h
