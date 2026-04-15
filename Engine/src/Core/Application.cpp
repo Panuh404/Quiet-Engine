@@ -97,18 +97,10 @@ namespace Quiet::Core
 
             auto& editorState = m_EditorController->GetState();
             Scene::Scene& activeScene = GetActiveScene();
-            const bool runRuntimeSystems =
-                editorState.CurrentSceneMode == Editor::SceneMode::Simulate ||
-                editorState.CurrentSceneMode == Editor::SceneMode::Play;
+            if (m_MouseCaptureEnabled) m_FreeCamera->Update(*m_Input, deltaTime);
 
-            if (m_MouseCaptureEnabled)
-            {
-                m_FreeCamera->Update(*m_Input, deltaTime);
-            }
-
-            activeScene.Update(deltaTime, runRuntimeSystems);
+            activeScene.Update(deltaTime);
             m_Renderer->ApplyPendingViewportResize();
-
             auto& uiLayer = m_Renderer->GetImGuiLayer();
 
             uiLayer.BeginFrame();
@@ -341,7 +333,11 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
 
+        editorState.RequestFocusSelected = false;
+
         m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
+        m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Simulate);
+
         editorState.CurrentSceneMode = Editor::SceneMode::Simulate;
         QUIET_CORE_INFO("Entered simulate mode.");
     }
@@ -351,7 +347,12 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
         if (editorState.CurrentSceneMode != Editor::SceneMode::Simulate) return;
 
-        m_RuntimeScene.reset();
+        if (m_RuntimeScene)
+        {
+            m_RuntimeScene->EndRuntime();
+            m_RuntimeScene.reset();
+        }
+
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
         QUIET_CORE_INFO("Stopped simulate mode.");
     }
@@ -359,33 +360,33 @@ namespace Quiet::Core
     void Application::EnterPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
-        {
-            return;
-        }
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
+
+        editorState.RequestFocusSelected = false;
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
+        m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Play);
+
         editorState.CurrentSceneMode = Editor::SceneMode::Play;
 
         m_MouseCaptureBeforePlay = m_MouseCaptureEnabled;
         SetMouseCaptureEnabled(true);
-
         QUIET_CORE_INFO("Entered play mode.");
     }
 
     void Application::StopPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Play)
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Play) return;
+
+        if (m_RuntimeScene)
         {
-            return;
+            m_RuntimeScene->EndRuntime();
+            m_RuntimeScene.reset();
         }
 
-        m_RuntimeScene.reset();
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
-
         SetMouseCaptureEnabled(m_MouseCaptureBeforePlay);
-
         QUIET_CORE_INFO("Stopped play mode.");
     }
 

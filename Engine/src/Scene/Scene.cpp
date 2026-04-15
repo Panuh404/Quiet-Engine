@@ -29,7 +29,7 @@ namespace Quiet::Scene
         return m_Actors.back();
     }
 
-    Actor & Scene::DuplicateActor(Core::UUID sourceID)
+    Actor& Scene::DuplicateActor(Core::UUID sourceID)
     {
         Actor* duplicate = TryDuplicateActor(sourceID);
         if (!duplicate)
@@ -41,9 +41,9 @@ namespace Quiet::Scene
         return *duplicate;
     }
 
-    Actor* Scene::TryDuplicateActor(Core::UUID actorID)
+    Actor* Scene::TryDuplicateActor(Core::UUID sourceID)
     {
-        Actor* source = FindActorByID(actorID);
+        const Actor* source = FindActorByID(sourceID);
         if (!source)
         {
             QUIET_CORE_WARN("TryDuplicateActor failed. Source actor not found.");
@@ -51,7 +51,7 @@ namespace Quiet::Scene
         }
 
         Actor duplicate = *source;
-        duplicate.ID = Core::UUIDGenerator::New();
+        duplicate.ID = Quiet::Core::UUIDGenerator::New();
         duplicate.Name = source->Name.empty() ? "Actor Copy" : source->Name + " Copy";
 
         m_Actors.push_back(std::move(duplicate));
@@ -79,19 +79,38 @@ namespace Quiet::Scene
     void Scene::Clear()
     {
         m_Actors.clear();
+        m_RuntimeMode = RuntimeMode::None;
     }
 
-    void Scene::Update(float deltaTime, bool runRuntimeSystems)
+    void Scene::BeginRuntime(RuntimeMode mode)
     {
-        if (!runRuntimeSystems) return;
-        for (auto& actor : m_Actors)
+        if (mode == RuntimeMode::None)
         {
-            if (actor.Rotator.has_value())
-            {
-                actor.Transform.WorldTransform.RotationDegrees.z +=
-                    actor.Rotator->RotationSpeedDegreesPerSecond * deltaTime;
-            }
+            QUIET_CORE_WARN("Scene::BeginRuntime called with RuntimeMode::None.");
+            return;
         }
+
+        if (m_RuntimeMode != RuntimeMode::None)
+        {
+            QUIET_CORE_WARN("Scene runtime already active. Restarting runtime mode.");
+            EndRuntime();
+        }
+        m_RuntimeMode = mode;
+        OnRuntimeBegin(mode);
+    }
+
+    void Scene::EndRuntime()
+    {
+        if (m_RuntimeMode == RuntimeMode::None) return;
+        const RuntimeMode previousMode = m_RuntimeMode;
+        OnRuntimeEnd(previousMode);
+        m_RuntimeMode = RuntimeMode::None;
+    }
+
+    void Scene::Update(float deltaTime)
+    {
+        if (!IsRuntimeActive()) return;
+        UpdateRuntime(deltaTime);
     }
 
     Actor* Scene::FindActorByID(Core::UUID id)
@@ -111,4 +130,76 @@ namespace Quiet::Scene
         }
         return nullptr;
     }
+
+    void Scene::OnRuntimeBegin(RuntimeMode mode)
+    {
+        switch (mode)
+        {
+            case RuntimeMode::Simulate:
+                QUIET_CORE_INFO("Scene runtime begin: Simulate");
+                OnSimulateBegin();
+                break;
+
+            case RuntimeMode::Play:
+                QUIET_CORE_INFO("Scene runtime begin: Play");
+                OnPlayBegin();
+
+            case RuntimeMode::None:
+            default:
+                break;
+        }
+    }
+
+    void Scene::OnRuntimeEnd(RuntimeMode mode)
+    {
+        switch (mode)
+        {
+            case RuntimeMode::Simulate:
+                QUIET_CORE_INFO("Scene runtime end: Simulate");
+                OnSimulateEnd();
+                break;
+
+            case RuntimeMode::Play:
+                QUIET_CORE_INFO("Scene runtime end: Play");
+                OnPlayEnd();
+                break;
+
+            case RuntimeMode::None:
+            default:
+                break;
+        }
+    }
+
+    void Scene::OnSimulateBegin()
+    {
+
+    }
+
+    void Scene::OnSimulateEnd()
+    {
+
+    }
+
+    void Scene::OnPlayBegin()
+    {
+
+    }
+
+    void Scene::OnPlayEnd()
+    {
+
+    }
+
+    void Scene::UpdateRuntime(float deltaTime)
+    {
+        for (auto& actor : m_Actors)
+        {
+            if (actor.Rotator.has_value())
+            {
+                actor.Transform.WorldTransform.RotationDegrees.z +=
+                    actor.Rotator->RotationSpeedDegreesPerSecond * deltaTime;
+            }
+        }
+    }
+
 }

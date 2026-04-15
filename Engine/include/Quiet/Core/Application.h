@@ -60,7 +60,6 @@ namespace Quiet::Core
 
         void EnterSimulateMode();
         void StopSimulateMode();
-
         void EnterPlayMode();
         void StopPlayMode();
 
