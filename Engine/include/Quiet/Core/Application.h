@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "AppSpec.h"
+#include "glm/vec3.hpp"
 #include "ProjectContext.h"
 
 #pragma region Forward declarations
@@ -30,6 +31,7 @@ namespace Quiet::Scene
 
 namespace Quiet::Renderer::Vulkan
 {
+    struct CameraUniformData;
     class VulkanRenderer;
 }
 
@@ -65,6 +67,9 @@ namespace Quiet::Core
 
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;
+
+        [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
+        [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
 
     private:
         AppSpec m_Spec;

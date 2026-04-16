@@ -6,15 +6,59 @@
 #include <stdexcept>
 #include <utility>
 #include <filesystem>
+#include <algorithm>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "imgui.h"
 #include "GLFW/glfw3.h"
-#include "../../include/Quiet/Input/Input.h"
+#include "Quiet/Renderer/RenderConventions.h"
+#include "Quiet/Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Scene/SceneDocument.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
+
+namespace
+{
+    Quiet::Renderer::Vulkan::CameraUniformData BuildSceneCameraUniformData(const Quiet::Scene::Actor& cameraActor,
+                                                                           float aspect)
+    {
+        using namespace Quiet;
+
+        const auto& transform = cameraActor.Transform.WorldTransform;
+        const auto& camera = cameraActor.Camera.value();
+
+        const float safeAspect = (aspect > 0.0f) ? aspect : 1.0f;
+        const float safeFov = std::clamp(camera.FieldOfViewDegrees, 1.0f, 179.0f);
+        const float safeNear = std::max(camera.NearClip, 0.001f);
+        const float safeFar = std::max(camera.FarClip, safeNear + 0.001f);
+
+        glm::mat4 rotation(1.0f);
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        const glm::vec3 position = transform.Position;
+        const glm::vec3 forward = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        const glm::vec3 up = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+
+        Renderer::Vulkan::CameraUniformData data{};
+        data.View = glm::lookAt(position, position + forward, up);
+        data.Projection = glm::perspective(glm::radians(safeFov), safeAspect, safeNear, safeFar);
+
+        if (Renderer::UseRenderProjectionYFlip)
+        {
+            data.Projection[1][1] *= -1.0f;
+        }
+
+        return data;
+    }
+}
 
 namespace Quiet::Core
 {
@@ -128,7 +172,7 @@ namespace Quiet::Core
                 stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
                 stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
                 stats.MouseCaptured = m_MouseCaptureEnabled;
-                stats.CameraPosition = m_FreeCamera->GetPosition();
+                stats.CameraPosition = GetActiveRenderCameraPosition(activeScene);
 
                 uiLayer.BuildEditorUI(
                     stats,
@@ -173,55 +217,46 @@ namespace Quiet::Core
                     m_EditorController->Undo(*m_Scene);
                     editorState.RequestUndo = false;
                 }
-
                 if (editorState.RequestRedo)
                 {
                     m_EditorController->Redo(*m_Scene);
                     editorState.RequestRedo = false;
                 }
-
                 if (editorState.RequestNewScene)
                 {
                     NewScene();
                     editorState.RequestNewScene = false;
                 }
-
                 if (editorState.RequestSaveScene)
                 {
                     SaveScene();
                     editorState.RequestSaveScene = false;
                 }
-
                 if (editorState.RequestLoadScene)
                 {
                     LoadScene();
                     editorState.RequestLoadScene = false;
                 }
-
                 if (editorState.RequestEnterSimulate)
                 {
                     EnterSimulateMode();
                     editorState.RequestEnterSimulate = false;
                 }
-
                 if (editorState.RequestStopSimulate)
                 {
                     StopSimulateMode();
                     editorState.RequestStopSimulate = false;
                 }
-
                 if (editorState.RequestEnterPlay)
                 {
                     EnterPlayMode();
                     editorState.RequestEnterPlay = false;
                 }
-
                 if (editorState.RequestStopPlay)
                 {
                     StopPlayMode();
                     editorState.RequestStopPlay = false;
                 }
-
 
                 if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
                 {
@@ -239,9 +274,10 @@ namespace Quiet::Core
             }
             uiLayer.EndFrame();
 
+            const auto activeCameraData = BuildActiveRenderCameraData(GetActiveScene());
             const bool frameCompleted = m_Renderer->DrawFrame(
                 GetActiveScene(),
-                *m_FreeCamera,
+                activeCameraData,
                 uiLayer
             );
 
@@ -422,5 +458,41 @@ namespace Quiet::Core
             return *m_RuntimeScene;
 
         return *m_Scene;
+    }
+
+    Renderer::Vulkan::CameraUniformData Application::BuildActiveRenderCameraData(const Scene::Scene &scene) const
+    {
+        const VkExtent2D sceneExtent = m_Renderer->GetSceneViewportExtent();
+        const float aspect =
+            static_cast<float>(sceneExtent.width) /
+            static_cast<float>(sceneExtent.height);
+
+        const auto& editorState = m_EditorController->GetState();
+        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
+
+        if (isPlayMode)
+        {
+            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
+            {
+                if (cameraActor->Camera.has_value())
+                    return BuildSceneCameraUniformData(*cameraActor, aspect);
+            }
+        }
+
+        return m_FreeCamera->BuildUniformData(aspect, Renderer::UseRenderProjectionYFlip);
+    }
+
+    glm::vec3 Application::GetActiveRenderCameraPosition(const Scene::Scene &scene) const
+    {
+        const auto& editorState = m_EditorController->GetState();
+        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
+
+        if (isPlayMode)
+        {
+            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
+                return cameraActor->Transform.WorldTransform.Position;
+        }
+
+        return m_FreeCamera->GetPosition();
     }
 }

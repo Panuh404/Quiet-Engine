@@ -1,10 +1,8 @@
 #include "VulkanRenderer.h"
 
 #include "Quiet/Core/AppSpec.h"
-#include "Quiet/Renderer/RenderConventions.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
-#include "Scene/FreeCamera.h"
 
 #include <stdexcept>
 
@@ -238,7 +236,7 @@ namespace Quiet::Renderer::Vulkan
     }
 
     bool VulkanRenderer::DrawFrame(Scene::Scene &scene,
-                                   Scene::FreeCamera &camera,
+                                   const CameraUniformData &cameraData,
                                    ImGuiLayer &imguiLayer)
     {
         if (m_Window->WasFramebufferResized())
@@ -274,16 +272,6 @@ namespace Quiet::Renderer::Vulkan
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Failed to acquire swapchain image.");
 
-        const VkExtent2D sceneExtent =
-            (m_SceneViewportTarget && m_SceneViewportTarget->IsValid())
-                ? m_SceneViewportTarget->GetExtent()
-                : m_Swapchain->GetExtent();
-
-        const float aspect =
-            static_cast<float>(sceneExtent.width) /
-            static_cast<float>(sceneExtent.height);
-
-        auto cameraData = camera.BuildUniformData(aspect, UseRenderProjectionYFlip);
         m_CameraResources->Update(imageIndex, cameraData);
 
         RecordFrameCommandBuffer(imageIndex, scene, imguiLayer);

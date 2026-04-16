@@ -29,6 +29,7 @@ namespace Quiet::Editor
 
 namespace Quiet::Renderer::Vulkan
 {
+    struct CameraUniformData;
     class VulkanInstance;
     class VulkanSurface;
     class PhysicalDevice;
@@ -53,7 +54,7 @@ namespace Quiet::Renderer::Vulkan
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
         bool DrawFrame(Scene::Scene& scene,
-                       Scene::FreeCamera& camera,
+                       const CameraUniformData& cameraData,
                        ImGuiLayer& imguiLayer);
 
         void RecreateSwapchain();
