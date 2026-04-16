@@ -140,9 +140,9 @@ namespace Quiet::Scene
                 };
             }
 
-            if (actorJson.contains("Camera"))
+            if (actorJson.contains("camera"))
             {
-                DeserializeCamera(actorJson["Camera"], actor);
+                DeserializeCamera(actorJson["camera"], actor);
             }
         }
 

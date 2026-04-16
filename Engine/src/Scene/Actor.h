@@ -3,8 +3,8 @@
 #include <optional>
 #include <string>
 
-#include "CameraComponent.h"
 #include "Quiet/Core/UUID.h"
+#include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/RotatorComponent.h"
 #include "Scene/Components/StaticMeshComponent.h"
 #include "Scene/Components/TransformComponent.h"
