@@ -59,6 +59,15 @@ namespace Quiet::Editor
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);
         bool SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed);
 
+    #pragma region Camera
+        bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);
+        bool SetCameraPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary);
+        bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
+        bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);
+        bool SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip);
+    #pragma endregion
+
     private:
         EditorController& m_EditorController;
     };

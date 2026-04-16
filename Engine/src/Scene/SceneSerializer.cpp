@@ -58,6 +58,11 @@ namespace Quiet::Scene
                 };
             }
 
+            if (actor.Camera.has_value())
+            {
+                actorJson["camera"] = SerializeCamera(actor.Camera.value());
+            }
+
             root["actors"].push_back(std::move(actorJson));
         }
 
@@ -95,7 +100,7 @@ namespace Quiet::Scene
         scene.Clear();
         for (const auto& actorJson : root["actors"])
         {
-            Quiet::Core::UUID id{};
+            Core::UUID id{};
             if (!Quiet::Core::UUIDFromString(actorJson.at("id").get<std::string>(), id))
             {
                 QUIET_CORE_ERROR("Invalid actor UUID in scene file.");
@@ -134,9 +139,43 @@ namespace Quiet::Scene
                     rotatorJson.value("speed_degrees_per_second", 0.0f)
                 };
             }
+
+            if (actorJson.contains("Camera"))
+            {
+                DeserializeCamera(actorJson["Camera"], actor);
+            }
         }
 
         QUIET_CORE_INFO("Loaded scene from '{}'.", path.string());
         return true;
+    }
+
+    nlohmann::json SceneSerializer::SerializeCamera(const CameraComponent& camera)
+    {
+        return {
+            { "Primary", camera.Primary },
+            { "FieldOfViewDegrees", camera.FieldOfViewDegrees },
+            { "NearClip", camera.NearClip },
+            { "FarClip", camera.FarClip }
+        };
+    }
+
+    void SceneSerializer::DeserializeCamera(const nlohmann::json& json, Actor& actor)
+    {
+        CameraComponent camera{};
+
+        if (json.contains("Primary"))
+            camera.Primary = json["Primary"].get<bool>();
+
+        if (json.contains("FieldOfViewDegrees"))
+            camera.FieldOfViewDegrees = json["FieldOfViewDegrees"].get<float>();
+
+        if (json.contains("NearClip"))
+            camera.NearClip = json["NearClip"].get<float>();
+
+        if (json.contains("FarClip"))
+            camera.FarClip = json["FarClip"].get<float>();
+
+        actor.Camera = camera;
     }
 }

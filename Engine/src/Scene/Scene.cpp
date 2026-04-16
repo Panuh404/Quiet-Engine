@@ -154,6 +154,26 @@ namespace Quiet::Scene
         return nullptr;
     }
 
+    Actor* Scene::FindPrimaryCameraActor()
+    {
+        for (auto& actor : m_Actors)
+        {
+            if (actor.Camera.has_value() && actor.Camera->Primary)
+                return &actor;
+        }
+        return nullptr;
+    }
+
+    const Actor* Scene::FindPrimaryCameraActor() const
+    {
+        for (const auto& actor : m_Actors)
+        {
+            if (actor.Camera.has_value() && actor.Camera->Primary)
+                return &actor;
+        }
+        return nullptr;
+    }
+
     void Scene::OnRuntimeBegin(RuntimeMode mode)
     {
         switch (mode)

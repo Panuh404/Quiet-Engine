@@ -16,6 +16,7 @@ target_sources(Quiet_Engine
 
         # Scene
         src/Scene/Actor.h
+        src/Scene/CameraComponent.h
         src/Scene/FreeCamera.cpp
         src/Scene/FreeCamera.h
         src/Scene/Scene.cpp

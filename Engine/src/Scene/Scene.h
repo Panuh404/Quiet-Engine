@@ -44,8 +44,11 @@ namespace Quiet::Scene
         [[nodiscard]] std::vector<Actor>& GetActors() { return m_Actors; }
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }
 
-        [[nodiscard]] Actor* FindActorByID(Quiet::Core::UUID id);
-        [[nodiscard]] const Actor* FindActorByID(Quiet::Core::UUID id) const;
+        [[nodiscard]] Actor* FindActorByID(Core::UUID id);
+        [[nodiscard]] const Actor* FindActorByID(Core::UUID id) const;
+
+        [[nodiscard]] Actor* FindPrimaryCameraActor();
+        [[nodiscard]] const Actor* FindPrimaryCameraActor() const;
 
     private:
         void OnRuntimeBegin(RuntimeMode mode);

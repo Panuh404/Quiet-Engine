@@ -1036,6 +1036,54 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
+            if (!actor.Camera.has_value())
+            {
+                if (ImGui::Button("Add Camera"))
+                {
+                    commands.AddCamera(scene, actor.ID);
+                }
+            }
+            else
+            {
+                if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    bool primary = actor.Camera->Primary;
+                    if (ImGui::Checkbox("Primary", &primary))
+                    {
+                        commands.SetCameraPrimary(scene, actor.ID, primary);
+                    }
+
+                    float fov = actor.Camera->FieldOfViewDegrees;
+                    if (ImGui::DragFloat("Field Of View", &fov, 0.25f, 1.0f, 179.0f))
+                    {
+                        commands.SetCameraFieldOfView(scene, actor.ID, fov);
+                    }
+                    beginTrackedItem();
+                    endTrackedItem();
+
+                    float nearClip = actor.Camera->NearClip;
+                    if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 100.0f))
+                    {
+                        commands.SetCameraNearClip(scene, actor.ID, nearClip);
+                    }
+                    beginTrackedItem();
+                    endTrackedItem();
+
+                    float farClip = actor.Camera->FarClip;
+                    if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 1.0f, 100000.0f))
+                    {
+                        commands.SetCameraFarClip(scene, actor.ID, farClip);
+                    }
+                    beginTrackedItem();
+                    endTrackedItem();
+
+                    if (ImGui::Button("Remove Camera"))
+                    {
+                        commands.RemoveCamera(scene, actor.ID);
+                    }
+                }
+            }
+
             if (!isEditMode) ImGui::EndDisabled();
         }
         ImGui::End();

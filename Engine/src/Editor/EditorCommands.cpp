@@ -258,4 +258,77 @@ namespace Quiet::Editor
         actor->Rotator->RotationSpeedDegreesPerSecond = speed;
         return true;
     }
+
+    bool EditorCommands::AddCamera(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+           {
+               Scene::Actor* actor = scene.FindActorByID(actorID);
+               if (!actor || actor->Camera.has_value()) return false;
+
+               actor->Camera = Scene::CameraComponent{};
+               return true;
+           });
+    }
+
+    bool EditorCommands::RemoveCamera(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+       {
+           Scene::Actor* actor = scene.FindActorByID(actorID);
+           if (!actor || !actor->Camera.has_value()) return false;
+
+           actor->Camera.reset();
+           return true;
+       });
+    }
+
+    bool EditorCommands::SetCameraPrimary(Scene::Scene &scene, Core::UUID actorID, bool primary)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+           {
+               Scene::Actor* actor = scene.FindActorByID(actorID);
+               if (!actor || !actor->Camera.has_value()) return false;
+
+               if (primary)
+               {
+                   for (auto& other : scene.GetActors())
+                   {
+                       if (other.Camera.has_value())
+                           other.Camera->Primary = false;
+                   }
+               }
+
+               actor->Camera->Primary = primary;
+               return true;
+           });
+    }
+
+    bool EditorCommands::SetCameraFieldOfView(Scene::Scene &scene, Core::UUID actorID, float fovDegrees)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value()) return false;
+
+        actor->Camera->FieldOfViewDegrees = fovDegrees;
+        return true;
+    }
+
+    bool EditorCommands::SetCameraNearClip(Scene::Scene &scene, Core::UUID actorID, float nearClip)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value()) return false;
+
+        actor->Camera->NearClip = nearClip;
+        return true;
+
+    }
+
+    bool EditorCommands::SetCameraFarClip(Scene::Scene &scene, Core::UUID actorID, float farClip)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value()) return false;
+
+        actor->Camera->FarClip = farClip;
+        return true;
+    }
 }

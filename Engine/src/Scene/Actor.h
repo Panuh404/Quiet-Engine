@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
+#include "CameraComponent.h"
 #include "Quiet/Core/UUID.h"
 #include "Scene/Components/RotatorComponent.h"
 #include "Scene/Components/StaticMeshComponent.h"
@@ -17,5 +18,6 @@ namespace Quiet::Scene
         TransformComponent Transform {};
         std::optional<StaticMeshComponent> StaticMesh;
         std::optional<RotatorComponent> Rotator;
+        std::optional<CameraComponent> Camera;
     };
 }
