@@ -277,14 +277,28 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::RemoveCamera(Scene::Scene &scene, Core::UUID actorID)
+    bool EditorCommands::RemoveCamera(Scene::Scene& scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor || !actor->Camera.has_value()) return false;
 
+            const bool wasPrimary = actor->Camera->Primary;
             actor->Camera.reset();
+
+            if (wasPrimary)
+            {
+                for (auto& other : scene.GetActors())
+                {
+                    if (other.Camera.has_value())
+                    {
+                        other.Camera->Primary = true;
+                        break;
+                    }
+                }
+            }
+
             return true;
         });
     }
