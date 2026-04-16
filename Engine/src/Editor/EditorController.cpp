@@ -89,6 +89,18 @@ namespace
         return AreFloatsEqual(lhs->RotationSpeedDegreesPerSecond, rhs->RotationSpeedDegreesPerSecond);
     }
 
+    bool AreCamerasEqual(const std::optional<Quiet::Scene::CameraComponent>& lhs,
+                     const std::optional<Quiet::Scene::CameraComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->Primary == rhs->Primary &&
+               AreFloatsEqual(lhs->FieldOfViewDegrees, rhs->FieldOfViewDegrees) &&
+               AreFloatsEqual(lhs->NearClip, rhs->NearClip) &&
+               AreFloatsEqual(lhs->FarClip, rhs->FarClip);
+    }
+
     bool AreActorsEqual(const Quiet::Scene::Actor& lhs,
                         const Quiet::Scene::Actor& rhs)
     {
@@ -96,7 +108,8 @@ namespace
                lhs.Name == rhs.Name &&
                AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
                AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
-               AreRotatorsEqual(lhs.Rotator, rhs.Rotator);
+               AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
+               AreCamerasEqual(lhs.Camera, rhs.Camera);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Scene::Actor>& lhs,
