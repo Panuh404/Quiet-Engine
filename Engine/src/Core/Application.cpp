@@ -327,7 +327,7 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
         {
-            QUIET_CORE_WARN("Cannot load scene while simulating.");
+            QUIET_CORE_WARN("Cannot load scene while runtime mode is active.");
             return;
         }
 

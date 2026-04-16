@@ -1,5 +1,8 @@
 #include "Scene.h"
 
+#include <algorithm>
+#include <stdexcept>
+
 #include "Quiet/Core/Log.h"
 
 namespace Quiet::Scene
@@ -163,6 +166,7 @@ namespace Quiet::Scene
             case RuntimeMode::Play:
                 QUIET_CORE_INFO("Scene runtime begin: Play");
                 OnPlayBegin();
+                break;
 
             case RuntimeMode::None:
             default:

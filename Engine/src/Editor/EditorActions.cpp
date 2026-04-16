@@ -91,10 +91,8 @@ namespace Quiet::Editor
 
             case EditorActionID::DuplicateSelected:
             case EditorActionID::DeleteSelected:
-                return isEditMode && hasSelection;
-
             case EditorActionID::FocusSelected:
-                return hasSelection;
+                return isEditMode && hasSelection;
 
             case EditorActionID::ToggleSimulate:
                 return isEditMode || isSimulating;

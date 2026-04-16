@@ -1045,15 +1045,10 @@ namespace Quiet::Renderer::Vulkan
                                     Editor::EditorActions& editorActions,
                                     Editor::EditorState& editorState)
     {
-        ImGui::Begin("Scene Hierarchy");
+        ImGui::Begin("Scene");
         {
+            const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
             DrawToolbarAction(editorActions, Editor::EditorActionID::CreateEmptyActor, "Create Empty");
-
-            ImGui::SameLine();
-            DrawToolbarAction(editorActions, Editor::EditorActionID::DuplicateSelected, "Duplicate");
-
-            ImGui::SameLine();
-            DrawToolbarAction(editorActions, Editor::EditorActionID::DeleteSelected, "Delete");
 
             ImGui::Separator();
 
@@ -1067,16 +1062,17 @@ namespace Quiet::Renderer::Vulkan
                     editorState.SelectedActorID.has_value() &&
                     editorState.SelectedActorID.value() == actors[i].ID;
 
-                const std::string displayName =
-                    actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name;
+                const std::string displayName = actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name;
+                const std::string label = displayName + "##" + Core::UUIDToString(actors[i].ID);
 
-                const std::string label =
-                    displayName + "##" + Core::UUIDToString(actors[i].ID);
+                if (!isEditMode) ImGui::BeginDisabled();
 
-                if (ImGui::Selectable(label.c_str(), isSelected))
+                if (ImGui::Selectable(label.c_str(), isSelected) && isEditMode)
                 {
                     editorState.SelectedActorID = actors[i].ID;
                 }
+
+                if (!isEditMode) ImGui::EndDisabled();
 
                 if (ImGui::BeginPopupContextItem(label.c_str()))
                 {
