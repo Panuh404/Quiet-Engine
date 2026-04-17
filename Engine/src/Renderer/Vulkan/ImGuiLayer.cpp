@@ -1047,6 +1047,28 @@ namespace Quiet::Renderer::Vulkan
             {
                 if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
                 {
+                    const bool isPilotingThisCamera =
+                        editorState.PilotedCameraActorID.has_value() &&
+                        editorState.PilotedCameraActorID.value() == actor.ID;
+
+                    if (isEditMode)
+                    {
+                        if (!isPilotingThisCamera)
+                        {
+                            if (ImGui::Button("Pilot Camera"))
+                            {
+                                editorState.PilotedCameraActorID = actor.ID;
+                            }
+                        }
+                        else
+                        {
+                            if (ImGui::Button("Stop Piloting"))
+                            {
+                                editorState.PilotedCameraActorID.reset();
+                            }
+                        }
+                    }
+
                     bool primary = actor.Camera->Primary;
                     if (ImGui::Checkbox("Primary", &primary))
                     {

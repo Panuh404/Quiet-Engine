@@ -62,14 +62,17 @@ namespace Quiet::Core
 
         void EnterSimulateMode();
         void StopSimulateMode();
+
         void EnterPlayMode();
         void StopPlayMode();
 
-        [[nodiscard]] Scene::Scene& GetActiveScene();
-        [[nodiscard]] const Scene::Scene& GetActiveScene() const;
-
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
+
+        bool UpdatePilotedEditorCamera(float deltaTime);
+
+        [[nodiscard]] Scene::Scene& GetActiveScene();
+        [[nodiscard]] const Scene::Scene& GetActiveScene() const;
 
     private:
         AppSpec m_Spec;

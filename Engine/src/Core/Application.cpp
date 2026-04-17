@@ -22,6 +22,8 @@
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
+#include "Scene/Camera/CameraController.h"
+#include "Scene/Camera/CameraPilotUtils.h"
 
 namespace
 {
@@ -146,14 +148,17 @@ namespace Quiet::Core
             const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
             const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
 
-            // Editor free camera is only owned by Edit / Simulate.
-            if ((isEditMode || isSimulateMode) && m_MouseCaptureEnabled)
+            const bool isPilotingEditCamera =
+                isEditMode && UpdatePilotedEditorCamera(deltaTime);
+
+            // Edit / Simulate only owns Editor free camera when not piloting a scene camera.
+            if (!isPilotingEditCamera && (isEditMode || isSimulateMode) && m_MouseCaptureEnabled)
             {
                 m_FreeCamera->Update(*m_Input, deltaTime);
             }
 
             // Runtime input ownership belongs to the runtime scene.
-            if (isPlayMode || isSimulateMode)
+            if (isSimulateMode || isPlayMode)
             {
                 activeScene.HandleRuntimeInput(*m_Input, deltaTime);
             }
@@ -328,6 +333,7 @@ namespace Quiet::Core
         editorState.SceneDisplayName = "DefaultScene.json";
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
+        m_EditorController->GetState().PilotedCameraActorID.reset();
         QUIET_CORE_INFO("Created new scene.");
     }
 
@@ -377,6 +383,7 @@ namespace Quiet::Core
         editorState.SceneDisplayName = scenePath.filename().string();
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
+        m_EditorController->GetState().PilotedCameraActorID.reset();
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 
@@ -386,6 +393,7 @@ namespace Quiet::Core
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
 
         editorState.RequestFocusSelected = false;
+        editorState.PilotedCameraActorID.reset();
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
         m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Simulate);
@@ -415,6 +423,7 @@ namespace Quiet::Core
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
 
         editorState.RequestFocusSelected = false;
+        editorState.PilotedCameraActorID.reset();
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
         m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Play);
@@ -423,6 +432,7 @@ namespace Quiet::Core
 
         m_MouseCaptureBeforePlay = m_MouseCaptureEnabled;
         SetMouseCaptureEnabled(true);
+
         QUIET_CORE_INFO("Entered play mode.");
     }
 
@@ -495,5 +505,38 @@ namespace Quiet::Core
         }
 
         return m_FreeCamera->GetPosition();
+    }
+
+    bool Application::UpdatePilotedEditorCamera(float deltaTime)
+    {
+        auto& editorState = m_EditorController->GetState();
+
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit ||
+            !editorState.PilotedCameraActorID.has_value())
+        {
+            return false;
+        }
+
+        Scene::Actor* actor = m_Scene->FindActorByID(editorState.PilotedCameraActorID.value());
+        if (!actor || !actor->Camera.has_value())
+        {
+            editorState.PilotedCameraActorID.reset();
+            return false;
+        }
+
+        Scene::CameraPilotState state =
+            Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
+
+        state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
+        state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
+
+        if (m_MouseCaptureEnabled)
+        {
+            Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
+            Scene::ApplyPilotStateToCameraTransform(state, actor->Transform.WorldTransform);
+        }
+
+        m_FreeCamera->SetPose(state.Position, state.YawDegrees, state.PitchDegrees);
+        return true;
     }
 }

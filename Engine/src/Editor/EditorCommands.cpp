@@ -97,6 +97,12 @@ namespace Quiet::Editor
                 editorState.SelectedActorID.reset();
             }
 
+            if (editorState.PilotedCameraActorID.has_value() &&
+                editorState.PilotedCameraActorID.value() == actorID)
+            {
+                editorState.PilotedCameraActorID.reset();
+            }
+
             return true;
         });
     }
@@ -282,10 +288,20 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Camera.has_value()) return false;
+            if (!actor || !actor->Camera.has_value())
+            {
+                return false;
+            }
 
             const bool wasPrimary = actor->Camera->Primary;
             actor->Camera.reset();
+
+            auto& editorState = m_EditorController.GetState();
+            if (editorState.PilotedCameraActorID.has_value() &&
+                editorState.PilotedCameraActorID.value() == actorID)
+            {
+                editorState.PilotedCameraActorID.reset();
+            }
 
             if (wasPrimary)
             {
@@ -298,7 +314,6 @@ namespace Quiet::Editor
                     }
                 }
             }
-
             return true;
         });
     }

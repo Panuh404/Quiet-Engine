@@ -3,29 +3,10 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
 #include "Quiet/Core/Log.h"
 
-namespace
-{
-    Quiet::Scene::CameraPilotState BuildPilotStateFromCameraActor(const Quiet::Scene::Actor& actor)
-    {
-        Quiet::Scene::CameraPilotState state{};
-        state.Position = actor.Transform.WorldTransform.Position;
-        state.YawDegrees = -actor.Transform.WorldTransform.RotationDegrees.y - 90.0f;
-        state.PitchDegrees = actor.Transform.WorldTransform.RotationDegrees.x;
-        return state;
-    }
-
-    void ApplyPilotStateToCameraActor(const Quiet::Scene::CameraPilotState& state,
-                                      Quiet::Scene::Actor& actor)
-    {
-        auto& transform = actor.Transform.WorldTransform;
-        transform.Position = state.Position;
-        transform.RotationDegrees.x = state.PitchDegrees;
-        transform.RotationDegrees.y = -(state.YawDegrees + 90.0f);
-    }
-}
 
 namespace Quiet::Scene
 {
@@ -262,14 +243,14 @@ namespace Quiet::Scene
         (void)deltaTime;
     }
 
-    void Scene::HandlePlayInput(const Input::Input &input, float deltaTime)
+    void Scene::HandlePlayInput(const Input::Input& input, float deltaTime)
     {
         Actor* cameraActor = FindPrimaryCameraActor();
         if (!cameraActor || !cameraActor->Camera.has_value()) return;
 
-        CameraPilotState state = BuildPilotStateFromCameraActor(*cameraActor);
+        CameraPilotState state = BuildPilotStateFromCameraTransform(cameraActor->Transform.WorldTransform);
         CameraController::UpdateFromInput(state, input, deltaTime);
-        ApplyPilotStateToCameraActor(state, *cameraActor);
+        ApplyPilotStateToCameraTransform(state, cameraActor->Transform.WorldTransform);
     }
 
     void Scene::UpdateRuntime(float deltaTime)

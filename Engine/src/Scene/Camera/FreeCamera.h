@@ -16,21 +16,24 @@ namespace Quiet::Scene
     class FreeCamera
     {
     public:
-        FreeCamera();
-        ~FreeCamera();
+        FreeCamera() = default;
+        ~FreeCamera() = default;
 
         void Update(const Input::Input& input, float deltaTime);
+
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect, bool flipY) const;
 
-        [[nodiscard]] glm::vec3 GetPosition() const { return m_Position; }
-        [[nodiscard]] float GetYaw() const { return m_Yaw; }
-        [[nodiscard]] float GetPitch() const { return m_Pitch; }
+        [[nodiscard]] const glm::vec3& GetPosition() const { return m_Position; }
+        [[nodiscard]] float GetMoveSpeed() const { return m_MoveSpeed; }
+        [[nodiscard]] float GetLookSensitivity() const { return m_LookSensitivity; }
+        [[nodiscard]] float GetFovDegrees() const { return m_FovDegrees; }
 
         [[nodiscard]] glm::vec3 GetForwardVector() const;
         [[nodiscard]] glm::vec3 GetRightVector() const;
-        [[nodiscard]] float GetFovDegrees() const { return m_FovDegrees; }
 
         void SetPosition(const glm::vec3& position) { m_Position = position; }
+        void SetPose(const glm::vec3& position, float yawDegrees, float pitchDegrees);
+        void FocusOnTarget(const glm::vec3& target, float distance);
 
     private:
         glm::vec3 m_Position{ 0.0f, 0.0f, 2.5f };
