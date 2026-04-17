@@ -19,8 +19,8 @@ namespace Quiet::Scene
         FreeCamera();
         ~FreeCamera();
 
-        void Update(const Quiet::Input::Input& input, float deltaTime);
-        [[nodiscard]] Quiet::Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect, bool flipY) const;
+        void Update(const Input::Input& input, float deltaTime);
+        [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildUniformData(float aspect, bool flipY) const;
 
         [[nodiscard]] glm::vec3 GetPosition() const { return m_Position; }
         [[nodiscard]] float GetYaw() const { return m_Yaw; }
@@ -37,11 +37,7 @@ namespace Quiet::Scene
         float m_Yaw = -90.0f;
         float m_Pitch = 0.0f;
         float m_MoveSpeed = 2.5f;
-        float m_LookSensitivity = 0.08;
+        float m_LookSensitivity = 0.08f;
         float m_FovDegrees = 60.0f;
-
-        bool m_FirstMouseSample = true;
-        double m_LastMouseX = 0.0;
-        double m_LastMouseY = 0.0;
     };
 }

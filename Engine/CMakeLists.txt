@@ -16,14 +16,17 @@ target_sources(Quiet_Engine
 
         # Scene
         src/Scene/Actor.h
-        src/Scene/FreeCamera.cpp
-        src/Scene/FreeCamera.h
         src/Scene/Scene.cpp
         src/Scene/Scene.h
         src/Scene/SceneDocument.cpp
         src/Scene/SceneSerializer.cpp
         src/Scene/SceneSerializer.h
         src/Scene/Transform.h
+        src/Scene/Camera/CameraController.cpp
+        src/Scene/Camera/CameraController.h
+        src/Scene/Camera/CameraPilotState.h
+        src/Scene/Camera/FreeCamera.cpp
+        src/Scene/Camera/FreeCamera.h
         src/Scene/Components/CameraComponent.h
         src/Scene/Components/RotatorComponent.h
         src/Scene/Components/StaticMeshComponent.h

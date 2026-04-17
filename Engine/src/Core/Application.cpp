@@ -1,7 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
-#include "Scene/FreeCamera.h"
+#include "../Scene/Camera/FreeCamera.h"
 
 #include <stdexcept>
 #include <utility>
@@ -316,7 +316,7 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
         {
-            QUIET_CORE_WARN("Cannot create a new scene while simulating.");
+            QUIET_CORE_WARN("Cannot create a new scene while runtime mode is active.");
             return;
         }
 
@@ -463,9 +463,10 @@ namespace Quiet::Core
     Renderer::Vulkan::CameraUniformData Application::BuildActiveRenderCameraData(const Scene::Scene &scene) const
     {
         const VkExtent2D sceneExtent = m_Renderer->GetSceneViewportExtent();
-        const float aspect =
-            static_cast<float>(sceneExtent.width) /
-            static_cast<float>(sceneExtent.height);
+
+        const float safeWidth = (sceneExtent.width > 0) ? static_cast<float>(sceneExtent.width) : 1.0f;
+        const float safeHeight = (sceneExtent.height > 0) ? static_cast<float>(sceneExtent.height) : 1.0f;
+        const float aspect = safeWidth / safeHeight;
 
         const auto& editorState = m_EditorController->GetState();
         const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);

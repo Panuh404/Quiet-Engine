@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 #include <optional>
 #include "Quiet/Core/UUID.h"
 
@@ -29,6 +30,7 @@ namespace Quiet::Editor
     struct EditorState
     {
         std::optional<Core::UUID> SelectedActorID;
+        std::optional<Core::UUID> PilotedCameraActorID;
 
         std::uint32_t ViewportWidth = 0;
         std::uint32_t ViewportHeight = 0;

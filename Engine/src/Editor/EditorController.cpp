@@ -22,7 +22,7 @@
 #include "Renderer/Vulkan/StaticMesh.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Actor.h"
-#include "Scene/FreeCamera.h"
+#include "../Scene/Camera/FreeCamera.h"
 #include "Scene/Scene.h"
 
 namespace
