@@ -29,6 +29,30 @@
         "QUIET_BUILD_SANDBOX": "ON",
         "QUIET_BUILD_EDITOR": "OFF"
       }
+    },
+    {
+      "name": "debug-editor",
+      "displayName": "Debug Editor",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Debug-Editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "release-editor",
+      "displayName": "Release Editor",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Release-Editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -39,6 +63,20 @@
     {
       "name": "build-release",
       "configurePreset": "release"
+    },
+    {
+      "name": "build-debug-editor",
+      "configurePreset": "debug-editor",
+      "targets": [
+        "Quiet_Editor"
+      ]
+    },
+    {
+      "name": "build-release-editor",
+      "configurePreset": "release-editor",
+      "targets": [
+        "Quiet_Editor"
+      ]
     }
   ]
 }

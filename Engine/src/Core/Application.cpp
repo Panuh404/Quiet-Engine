@@ -27,6 +27,16 @@
 
 namespace
 {
+    const char* ToString(const Quiet::Core::AppMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Core::AppMode::Sandbox: return "Sandbox";
+            case Quiet::Core::AppMode::Editor:  return "Editor";
+            default:                            return "Unknown";
+        }
+    }
+
     Quiet::Renderer::Vulkan::CameraUniformData BuildSceneCameraUniformData(const Quiet::Scene::Actor& cameraActor,
                                                                            float aspect)
     {
@@ -67,6 +77,7 @@ namespace Quiet::Core
     Application::Application(AppSpec spec) : m_Spec(std::move(spec))
     {
         Log::Init();
+        QUIET_CORE_INFO("Configured application mode: {}", ToString(m_Spec.Mode));
         m_ProjectContext.SetRootPath(std::filesystem::current_path());
 
         Platform::WindowDesc windowDesc{};
@@ -120,7 +131,7 @@ namespace Quiet::Core
 
     int Application::Run()
     {
-        QUIET_CORE_INFO("Starting application: {}", m_Spec.Name);
+        QUIET_CORE_INFO("Starting application: {} [{}]", m_Spec.Name, ToString(m_Spec.Mode));
         double previousTime = glfwGetTime();
 
         while (m_Running && !m_Window->ShouldClose())

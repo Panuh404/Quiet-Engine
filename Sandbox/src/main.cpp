@@ -6,6 +6,7 @@ int main()
     spec.Name = "Quiet Sandbox";
     spec.Width = 1200;
     spec.Height = 800;
+    spec.Mode = Quiet::Core::AppMode::Sandbox;
 
     Quiet::Core::Application app(spec);
     return app.Run();
