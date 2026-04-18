@@ -111,5 +111,6 @@ namespace Quiet::Renderer::Vulkan
         VkDevice m_Device = VK_NULL_HANDLE;
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
         bool m_DefaultLayoutApplied = false;
+        bool m_RequestResetLayout = false;
     };
 }

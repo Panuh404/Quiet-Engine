@@ -344,6 +344,16 @@ namespace Quiet::Renderer::Vulkan
             DrawMenuAction(editorActions, Editor::EditorActionID::TogglePlay);
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            if (ImGui::MenuItem("Reset Layout"))
+            {
+                m_RequestResetLayout = true;
+            }
+
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
 
@@ -391,6 +401,13 @@ namespace Quiet::Renderer::Vulkan
         {
             ApplyDefaultDockLayout(dockspaceID, dockspaceSize);
             m_DefaultLayoutApplied = true;
+        }
+
+        if (m_RequestResetLayout)
+        {
+            ApplyDefaultDockLayout(dockspaceID, dockspaceSize);
+            m_DefaultLayoutApplied = true;
+            m_RequestResetLayout = false;
         }
 
         ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), dockspaceFlags);
