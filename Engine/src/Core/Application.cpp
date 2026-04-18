@@ -184,8 +184,8 @@ namespace Quiet::Core
             m_Input->Update();
 
             const bool shiftDown =
-                m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
-                m_Input->IsKeyDown(Input::KeyCode::RightShift);
+               m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
+               m_Input->IsKeyDown(Input::KeyCode::RightShift);
 
             if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
             {
@@ -199,198 +199,11 @@ namespace Quiet::Core
             m_Renderer->ApplyPendingViewportResize();
             auto& uiLayer = m_Renderer->GetImGuiLayer();
 
-            if (m_Spec.IsEditor())
-            {
-                auto& editorState = m_EditorController->GetState();
+            const bool frameCompleted = m_Spec.IsEditor()
+                ? RunEditorFrame(deltaTime, uiLayer)
+                : RunSandboxFrame(deltaTime, uiLayer);
 
-                Scene::Scene& activeScene = GetActiveScene();
-                const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
-                const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
-                const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
-
-                const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-
-                const bool isUsingEditorFlyControls =
-                    (isEditMode || isSimulateMode) &&
-                    m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
-
-                if (!isPilotingEditCamera && isUsingEditorFlyControls)
-                {
-                    m_FreeCamera->Update(*m_Input, deltaTime);
-                }
-
-                if (isSimulateMode || isPlayMode)
-                {
-                    activeScene.HandleRuntimeInput(*m_Input, deltaTime);
-                }
-
-                activeScene.Update(deltaTime);
-
-                uiLayer.BeginFrame();
-                {
-                    Renderer::Vulkan::ImGuiStats stats{};
-                    stats.FrameTimeMs = deltaTime * 1000.0f;
-                    stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
-                    stats.ActorCount = static_cast<std::uint32_t>(activeScene.GetActors().size());
-                    stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
-                    stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
-                    stats.MouseCaptured = m_MouseCaptureEnabled;
-                    stats.CameraPosition = GetActiveRenderCameraPosition(activeScene);
-
-                    uiLayer.BuildEditorUI(
-                        stats,
-                        *m_Input,
-                        activeScene,
-                        *m_EditorController,
-                        editorState,
-                        m_Renderer->GetMeshLibrary(),
-                        m_Renderer->GetSceneViewportTextureID(),
-                        [this]()
-                        {
-                            auto& editorStateInner = m_EditorController->GetState();
-                            auto& overlayScene = GetActiveScene();
-
-                            m_EditorController->TrySelectActorFromViewport(
-                                *m_Input,
-                                overlayScene,
-                                *m_FreeCamera,
-                                *m_Renderer,
-                                m_MouseCaptureEnabled
-                            );
-
-                            m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
-
-                            if (editorStateInner.RequestFocusSelected)
-                            {
-                                m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
-                                editorStateInner.RequestFocusSelected = false;
-                            }
-
-                            m_EditorController->BuildSelectedActorGizmo(
-                                overlayScene,
-                                *m_FreeCamera,
-                                *m_Renderer,
-                                m_MouseCaptureEnabled
-                            );
-                        }
-                    );
-
-                    if (editorState.RequestUndo)
-                    {
-                        m_EditorController->Undo(*m_Scene);
-                        editorState.RequestUndo = false;
-                    }
-                    if (editorState.RequestRedo)
-                    {
-                        m_EditorController->Redo(*m_Scene);
-                        editorState.RequestRedo = false;
-                    }
-                    if (editorState.RequestNewScene)
-                    {
-                        NewScene();
-                        editorState.RequestNewScene = false;
-                    }
-                    if (editorState.RequestSaveScene)
-                    {
-                        SaveScene();
-                        editorState.RequestSaveScene = false;
-                    }
-                    if (editorState.RequestLoadScene)
-                    {
-                        LoadScene();
-                        editorState.RequestLoadScene = false;
-                    }
-                    if (editorState.RequestEnterSimulate)
-                    {
-                        EnterSimulateMode();
-                        editorState.RequestEnterSimulate = false;
-                    }
-                    if (editorState.RequestStopSimulate)
-                    {
-                        StopSimulateMode();
-                        editorState.RequestStopSimulate = false;
-                    }
-                    if (editorState.RequestEnterPlay)
-                    {
-                        EnterPlayMode();
-                        editorState.RequestEnterPlay = false;
-                    }
-                    if (editorState.RequestStopPlay)
-                    {
-                        StopPlayMode();
-                        editorState.RequestStopPlay = false;
-                    }
-
-                    if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
-                    {
-                        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
-
-                        if (currentViewportExtent.width != editorState.ViewportWidth ||
-                            currentViewportExtent.height != editorState.ViewportHeight)
-                        {
-                            m_Renderer->RequestViewportResize(
-                                editorState.ViewportWidth,
-                                editorState.ViewportHeight
-                            );
-                        }
-                    }
-                }
-                uiLayer.EndFrame();
-
-                const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
-                const bool frameCompleted = m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer);
-
-                if (frameCompleted && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
-                {
-                    ImGui::UpdatePlatformWindows();
-                    ImGui::RenderPlatformWindowsDefault();
-                }
-            }
-            else
-            {
-                Scene::Scene& activeScene = *m_Scene;
-                if (activeScene.IsRuntimeActive())
-                {
-                    activeScene.HandleRuntimeInput(*m_Input, deltaTime);
-                }
-
-                activeScene.Update(deltaTime);
-                std::uint32_t runtimeViewportWidth = 0;
-                std::uint32_t runtimeViewportHeight = 0;
-
-                uiLayer.BeginFrame();
-                {
-                    uiLayer.BuildRuntimeUI(
-                        runtimeViewportWidth,
-                        runtimeViewportHeight,
-                        m_Renderer->GetSceneViewportTextureID()
-                    );
-
-                    if (runtimeViewportWidth > 0 && runtimeViewportHeight > 0)
-                    {
-                        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
-
-                        if (currentViewportExtent.width != runtimeViewportWidth ||
-                            currentViewportExtent.height != runtimeViewportHeight)
-                        {
-                            m_Renderer->RequestViewportResize(
-                                runtimeViewportWidth,
-                                runtimeViewportHeight
-                            );
-                        }
-                    }
-                }
-                uiLayer.EndFrame();
-
-                const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
-                const bool frameCompleted = m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer);
-
-                if (frameCompleted && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
-                {
-                    ImGui::UpdatePlatformWindows();
-                    ImGui::RenderPlatformWindowsDefault();
-                }
-            }
+            FinalizePlatformWindows(frameCompleted);
         }
 
         QUIET_CORE_INFO("Shutting down.");
@@ -576,6 +389,206 @@ namespace Quiet::Core
         }
 
         return *m_Scene;
+    }
+
+        bool Application::RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
+    {
+        if (!m_EditorController)
+        {
+            QUIET_CORE_ERROR("Editor frame requested without an editor controller.");
+            return false;
+        }
+
+        auto& editorState = m_EditorController->GetState();
+
+        Scene::Scene& activeScene = GetActiveScene();
+        const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
+        const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
+        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
+
+        const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
+
+        const bool isUsingEditorFlyControls =
+            (isEditMode || isSimulateMode) &&
+            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+
+        if (!isPilotingEditCamera && isUsingEditorFlyControls)
+        {
+            m_FreeCamera->Update(*m_Input, deltaTime);
+        }
+
+        if (isSimulateMode || isPlayMode)
+        {
+            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
+        }
+
+        activeScene.Update(deltaTime);
+
+        uiLayer.BeginFrame();
+        {
+            Renderer::Vulkan::ImGuiStats stats{};
+            stats.FrameTimeMs = deltaTime * 1000.0f;
+            stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
+            stats.ActorCount = static_cast<std::uint32_t>(activeScene.GetActors().size());
+            stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
+            stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
+            stats.MouseCaptured = m_MouseCaptureEnabled;
+            stats.CameraPosition = GetActiveRenderCameraPosition(activeScene);
+
+            uiLayer.BuildEditorUI(
+                stats,
+                *m_Input,
+                activeScene,
+                *m_EditorController,
+                editorState,
+                m_Renderer->GetMeshLibrary(),
+                m_Renderer->GetSceneViewportTextureID(),
+                [this]()
+                {
+                    auto& editorStateInner = m_EditorController->GetState();
+                    auto& overlayScene = GetActiveScene();
+
+                    m_EditorController->TrySelectActorFromViewport(
+                        *m_Input,
+                        overlayScene,
+                        *m_FreeCamera,
+                        *m_Renderer,
+                        m_MouseCaptureEnabled
+                    );
+
+                    m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
+
+                    if (editorStateInner.RequestFocusSelected)
+                    {
+                        m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
+                        editorStateInner.RequestFocusSelected = false;
+                    }
+
+                    m_EditorController->BuildSelectedActorGizmo(
+                        overlayScene,
+                        *m_FreeCamera,
+                        *m_Renderer,
+                        m_MouseCaptureEnabled
+                    );
+                }
+            );
+
+            if (editorState.RequestUndo)
+            {
+                m_EditorController->Undo(*m_Scene);
+                editorState.RequestUndo = false;
+            }
+            if (editorState.RequestRedo)
+            {
+                m_EditorController->Redo(*m_Scene);
+                editorState.RequestRedo = false;
+            }
+            if (editorState.RequestNewScene)
+            {
+                NewScene();
+                editorState.RequestNewScene = false;
+            }
+            if (editorState.RequestSaveScene)
+            {
+                SaveScene();
+                editorState.RequestSaveScene = false;
+            }
+            if (editorState.RequestLoadScene)
+            {
+                LoadScene();
+                editorState.RequestLoadScene = false;
+            }
+            if (editorState.RequestEnterSimulate)
+            {
+                EnterSimulateMode();
+                editorState.RequestEnterSimulate = false;
+            }
+            if (editorState.RequestStopSimulate)
+            {
+                StopSimulateMode();
+                editorState.RequestStopSimulate = false;
+            }
+            if (editorState.RequestEnterPlay)
+            {
+                EnterPlayMode();
+                editorState.RequestEnterPlay = false;
+            }
+            if (editorState.RequestStopPlay)
+            {
+                StopPlayMode();
+                editorState.RequestStopPlay = false;
+            }
+
+            if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
+            {
+                const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
+
+                if (currentViewportExtent.width != editorState.ViewportWidth ||
+                    currentViewportExtent.height != editorState.ViewportHeight)
+                {
+                    m_Renderer->RequestViewportResize(
+                        editorState.ViewportWidth,
+                        editorState.ViewportHeight
+                    );
+                }
+            }
+        }
+        uiLayer.EndFrame();
+
+        Scene::Scene& renderScene = GetActiveScene();
+        const auto activeCameraData = BuildActiveRenderCameraData(renderScene);
+        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer);
+    }
+
+    bool Application::RunSandboxFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
+    {
+        Scene::Scene& activeScene = *m_Scene;
+
+        if (activeScene.IsRuntimeActive())
+        {
+            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
+        }
+
+        activeScene.Update(deltaTime);
+
+        const VkExtent2D swapchainExtent = m_Renderer->GetSwapchainExtent();
+        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
+
+        if (swapchainExtent.width > 0 && swapchainExtent.height > 0 &&
+            (currentViewportExtent.width != swapchainExtent.width ||
+             currentViewportExtent.height != swapchainExtent.height))
+        {
+            m_Renderer->RequestViewportResize(
+                swapchainExtent.width,
+                swapchainExtent.height
+            );
+            m_Renderer->ApplyPendingViewportResize();
+        }
+
+        std::uint32_t runtimeViewportWidth = 0;
+        std::uint32_t runtimeViewportHeight = 0;
+
+        uiLayer.BeginFrame();
+        {
+            uiLayer.BuildRuntimeUI(
+                runtimeViewportWidth,
+                runtimeViewportHeight,
+                m_Renderer->GetSceneViewportTextureID()
+            );
+        }
+        uiLayer.EndFrame();
+
+        const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
+        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer);
+    }
+
+    void Application::FinalizePlatformWindows(const bool frameCompleted) const
+    {
+        if (frameCompleted && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
     }
 
     Renderer::Vulkan::CameraUniformData Application::BuildActiveRenderCameraData(const Scene::Scene &scene) const

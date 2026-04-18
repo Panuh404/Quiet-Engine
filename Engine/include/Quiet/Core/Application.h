@@ -32,6 +32,7 @@ namespace Quiet::Scene
 namespace Quiet::Renderer::Vulkan
 {
     struct CameraUniformData;
+    class ImGuiLayer;
     class VulkanRenderer;
 }
 
@@ -73,6 +74,10 @@ namespace Quiet::Core
 
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;
+
+        bool RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
+        bool RunSandboxFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
+        void FinalizePlatformWindows(bool frameCompleted) const;
 
     private:
         AppSpec m_Spec;
