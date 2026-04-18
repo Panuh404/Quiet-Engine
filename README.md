@@ -1,171 +1,153 @@
 # Quiet
 
-Quiet is a C++20 Vulkan engine project focused on building a clean real-time runtime with an integrated in-engine editor workflow.
+Quiet is a C++20 Vulkan engine project focused on building a clean real-time runtime with an integrated editor workflow.
 
-The project is organized as a multi-target CMake workspace and currently includes:
+The workspace currently contains:
 
-* a core engine library,
-* a sandbox runtime target,
-* an editor UI layer built with Dear ImGui.
+- `Quiet_Engine` — core static engine library
+- `Quiet_Sandbox` — runtime executable
+- `Quiet_Editor` — optional editor executable
+
+Quiet is currently in an editor-first prototype stage: the renderer foundation, scene editing workflow, serialization, viewport tooling, and runtime mode switching are already in place.
 
 ---
 
-## Current Features
-
-### Core Engine
-
-* GLFW windowing and input system
-* Vulkan instance / surface / device / swapchain setup
-* dynamic rendering pipeline
-* static mesh rendering
-* runtime mesh library (built-in primitives)
-* free camera controls
-
-### Scene System
-
-* actor/component-based scene representation
-* UUID-based actor identity
-* scene serialization (save/load)
-* actor creation, duplication, deletion
-* dirty scene tracking with save indicator
-
 ### Editor
 
-* ImGui-based editor shell:
-
-  * dockspace layout
-  * top toolbar (icon-based)
-  * scene viewport
-  * hierarchy
-  * inspector
-  * viewport overlay toolbar
-  * console (spdlog-backed)
-* actor selection (hierarchy + viewport picking)
-* ImGuizmo transform editing (translate / rotate / scale)
-* gizmo modes (local/world)
-* snapping system
-* editor input routed through engine input system
+- Dear ImGui dockspace-based editor shell
+- top toolbar
+- scene viewport
+- hierarchy panel
+- inspector panel
+- console panel
+- viewport overlay toolbar
+- viewport picking
+- ImGuizmo transform editing
+- translate / rotate / scale tools
+- local/world gizmo mode
+- snapping support
+- editor command/action layer
 
 ### Runtime Modes
 
-* **Edit Mode**
+- **Edit Mode**
+  - full scene editing
+  - actor selection and gizmos enabled
 
-  * full scene editing
-  * gizmos and selection enabled
+- **Simulate Mode**
+  - runtime scene clone
+  - simulation isolated from the editor scene
 
-* **Simulate Mode**
-
-  * runtime scene clone
-  * simulation without affecting editor scene
-
-* **Play Mode**
-
-  * runtime scene clone
-  * editor interactions disabled
-  * mouse capture enforced
-  * intended for gameplay testing
+- **Play Mode**
+  - runtime scene clone
+  - editor interaction disabled
+  - mouse capture enforced for runtime testing
 
 ### Resources
 
-* engine resources system:
+- engine resources live under:
+  - `Engine/Resources/Fonts`
+  - `Engine/Resources/Shaders`
+  - `Engine/Resources/Textures`
+- fonts and textures are copied per target after build
+- shaders are compiled with `glslc` into the target output resources directory
 
-  * `resources/fonts`
-  * `resources/shaders`
-* runtime deployment to:
+### Fonts and Icons
 
-  * `Build/Binaries/<Config>/resources`
-* shader compilation pipeline using `glslc`
+Included UI assets:
 
-### Fonts & Icons
+- [Inter](https://rsms.me/inter/)
+- [JetBrains Mono](https://www.jetbrains.com/lp/mono/)
+- [Font Awesome Free Solid](https://fontawesome.com/)
 
-* UI fonts: Inter (Regular / Medium / Bold)
-* Mono font: JetBrains Mono
-* Icon font: Font Awesome (Free Solid)
-
-Icons are used for:
-
-* top toolbar actions (new, save, load, play, simulate)
-* viewport toolbar (gizmo tools, snapping, focus)
+These are used by the editor for text styling, mono text, and toolbar/viewport icons.
 
 ---
 
 ## Project Structure
 
 ```text
-Engine/
-    include/
-    src/
-    resources/
-        fonts/
-        shaders/
-
-Sandbox/
-    src/
-
-Editor/
-    src/ (future dedicated editor entry point)
-
-Build/
-    Binaries/
-    Intermediate/
+.
+├── CMakeLists.txt
+├── CMakePresets.json
+├── README.md
+├── LICENSE
+│
+├── Engine/
+│   ├── CMakeLists.txt
+│   ├── include/Quiet/
+│   │   ├── Core/
+│   │   ├── Editor/
+│   │   ├── Input/
+│   │   ├── Math/
+│   │   ├── Platform/
+│   │   ├── Renderer/
+│   │   └── Scene/
+│   ├── src/
+│   │   ├── Core/
+│   │   ├── Editor/
+│   │   ├── Input/
+│   │   ├── Platform/
+│   │   ├── Renderer/Vulkan/
+│   │   └── Scene/
+│   └── Resources/
+│       ├── Fonts/
+│       ├── Shaders/
+│       └── Textures/
+│
+├── Sandbox/
+│   ├── CMakeLists.txt
+│   └── src/
+│
+├── Editor/
+│   ├── CMakeLists.txt
+│   └── src/
+│
+└── Build/
+    ├── Binaries/
+    └── Intermediate/
 ```
-
 ---
 
 ## Build Requirements
-
+### Required locally
 * C++20 compiler
 * CMake (3.28+ recommended)
 * Vulkan SDK
-* GLFW
-* Dear ImGui (docking branch)
-* GLM
-* spdlog
-* nlohmann/json
+### Fetched automatically
+* [GLFW](https://github.com/glfw/glfw)
+* [spdlog](https://github.com/gabime/spdlog)
+* [GLM](https://github.com/g-truc/glm)
+* [Dear ImGui](https://github.com/ocornut/imgui/tree/docking)
+* [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo)
+* [nlohmann/json](https://github.com/nlohmann/json)
 
 ---
 
 ## Build
-
+Debug:
 ```bash
-cmake -S . -B Build
-cmake --build Build
+cmake --preset debug
+cmake --build --preset build-debug
 ```
 
-Outputs:
+Release:
+cmake --preset release
+cmake --build --preset build-release
 
+### Output Layout
+Executable are written to: `Build/Binaries/<Config>/`
+
+Typical outputs include:
 ```text
-Build/Binaries/<Config>/
-    Quiet_Sandbox.exe
-    resources/
-    Shaders/
+Build/Binaries/Debug/
+├── Quiet_Sandbox           # when QUIET_BUILD_SANDBOX=ON
+├── Quiet_Editor            # when QUIET_BUILD_EDITOR=ON
+└── Resources/
+    ├── Fonts/
+    ├── Shaders/
+    └── Textures/
 ```
-
----
-
-## Controls
-
-### General
-
-* `Shift + F1` → toggle mouse capture
-
-### Editor
-
-* `Ctrl + S` → save scene
-* `F` → focus selected actor
-
-### Gizmos
-
-* `T` → translate
-* `R` → rotate
-* `S` → scale
-* `L` → toggle local/world
-* `G` → toggle snapping
-
-### Runtime
-
-* `F5` → Play / Stop Play
-* `F6` → Simulate / Stop Simulate
 
 ---
 
@@ -190,18 +172,3 @@ Quiet is being developed as a Vulkan-based engine with an integrated editor, wit
 * scalable rendering systems
 * practical tooling
 * modern C++ practices
-
----
-
-## Font & Icon Sources
-
-* **Inter Font**
-  https://rsms.me/inter/
-
-* **JetBrains Mono**
-  https://www.jetbrains.com/lp/mono/
-
-* **Font Awesome Free (Solid)**
-  https://fontawesome.com/
-
-All fonts are used for development purposes and are included in `Engine/resources/fonts`.
