@@ -385,7 +385,13 @@ namespace Quiet::Renderer::Vulkan
         ImGui::PopStyleVar(3);
 
         const ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-        ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+        const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+
+        if (!m_DefaultLayoutApplied && ShouldApplyDefaultDockLayout())
+        {
+            ApplyDefaultDockLayout(dockspaceID, dockspaceSize);
+            m_DefaultLayoutApplied = true;
+        }
 
         ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), dockspaceFlags);
 
@@ -1174,6 +1180,39 @@ namespace Quiet::Renderer::Vulkan
             }
         }
         ImGui::End();
+    }
+
+    void ImGuiLayer::ApplyDefaultDockLayout(ImGuiID dockspaceID, const ImVec2 &dockspaceSize)
+    {
+        ImGui::DockBuilderRemoveNode(dockspaceID);
+        ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspaceID, dockspaceSize);
+
+        ImGuiID dockMain = dockspaceID;
+        ImGuiID dockLeft = 0;
+        ImGuiID dockRight = 0;
+        ImGuiID dockBottom = 0;
+        ImGuiID dockBottomRight = 0;
+
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, 0.12f, &dockLeft, &dockMain);
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.20f, &dockRight, &dockMain);
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Down, 0.25f, &dockBottom, &dockMain);
+        ImGui::DockBuilderSplitNode(dockBottom, ImGuiDir_Right, 0.35f, &dockBottomRight, &dockBottom);
+
+        ImGui::DockBuilderDockWindow("Viewport", dockMain);
+        ImGui::DockBuilderDockWindow("Scene", dockLeft);
+        ImGui::DockBuilderDockWindow("Inspector", dockRight);
+        ImGui::DockBuilderDockWindow("Console", dockBottom);
+        ImGui::DockBuilderDockWindow("Debug", dockBottomRight);
+
+        ImGui::DockBuilderFinish(dockspaceID);
+    }
+
+    bool ImGuiLayer::ShouldApplyDefaultDockLayout() const
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.IniFilename == nullptr) return true;
+        return !std::filesystem::exists(io.IniFilename);
     }
 
     void ImGuiLayer::CreateDescriptorPool()

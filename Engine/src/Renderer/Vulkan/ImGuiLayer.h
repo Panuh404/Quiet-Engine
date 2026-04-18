@@ -100,6 +100,9 @@ namespace Quiet::Renderer::Vulkan
                             Editor::EditorActions& editorActions,
                             Editor::EditorState& editorState);
 
+        void ApplyDefaultDockLayout(ImGuiID dockspaceID, const ImVec2& dockspaceSize);
+        [[nodiscard]] bool ShouldApplyDefaultDockLayout() const;
+
         void CreateDescriptorPool();
         void DestroyDescriptorPool();
 
@@ -107,5 +110,6 @@ namespace Quiet::Renderer::Vulkan
         EditorFonts m_Fonts{};
         VkDevice m_Device = VK_NULL_HANDLE;
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+        bool m_DefaultLayoutApplied = false;
     };
 }
