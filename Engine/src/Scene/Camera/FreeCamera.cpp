@@ -4,28 +4,8 @@
 
 #include "CameraController.h"
 #include "CameraPilotState.h"
-#include "Quiet/Input/Input.h"
+#include "Quiet/Math/Direction.h"
 
-namespace
-{
-    glm::vec3 GetForward(float yawDegrees, float pitchDegrees)
-    {
-        const float yaw = glm::radians(yawDegrees);
-        const float pitch = glm::radians(pitchDegrees);
-
-        glm::vec3 forward{};
-        forward.x = std::cos(yaw) * std::cos(pitch);
-        forward.y = std::sin(pitch);
-        forward.z = std::sin(yaw) * std::cos(pitch);
-
-        return glm::normalize(forward);
-    }
-
-    glm::vec3 GetRight(const glm::vec3& forward)
-    {
-        return glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-    }
-}
 
 namespace Quiet::Scene
 {
@@ -49,7 +29,7 @@ namespace Quiet::Scene
     {
         Renderer::Vulkan::CameraUniformData data{};
 
-        const glm::vec3 forward = GetForward(m_Yaw, m_Pitch);
+        const glm::vec3 forward = Math::GetForwardVector(m_Yaw, m_Pitch);
         data.View = glm::lookAt(m_Position, m_Position + forward, glm::vec3(0.0f, 1.0f, 0.0f));
         data.Projection = glm::perspective(
             glm::radians(m_FovDegrees),
@@ -64,12 +44,12 @@ namespace Quiet::Scene
 
     glm::vec3 FreeCamera::GetForwardVector() const
     {
-        return GetForward(m_Yaw, m_Pitch);
+        return Math::GetForwardVector(m_Yaw, m_Pitch);
     }
 
     glm::vec3 FreeCamera::GetRightVector() const
     {
-        return GetRight(GetForwardVector());
+        return Math::GetRightVector(GetForwardVector());
     }
 
     void FreeCamera::SetPose(const glm::vec3 &position, float yawDegrees, float pitchDegrees)
@@ -81,7 +61,7 @@ namespace Quiet::Scene
 
     void FreeCamera::FocusOnTarget(const glm::vec3 &target, float distance)
     {
-        const glm::vec3 forward = GetForward(m_Yaw, m_Pitch);
+        const glm::vec3 forward = Math::GetForwardVector(m_Yaw, m_Pitch);
         m_Position = target - forward * distance;
     }
 }

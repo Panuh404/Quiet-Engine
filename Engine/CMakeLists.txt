@@ -115,6 +115,7 @@ target_sources(Quiet_Engine
 
         include/Quiet/Renderer/RenderConventions.h
         include/Quiet/Platform/Window.h
+        include/Quiet/Math/Direction.h
         include/Quiet/Math/Geometry.h
         include/Quiet/Scene/SceneDocument.h
 )

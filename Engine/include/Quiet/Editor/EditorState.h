@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
 #include <optional>
+#include <string>
+
 #include "Quiet/Core/UUID.h"
 
 namespace Quiet::Editor

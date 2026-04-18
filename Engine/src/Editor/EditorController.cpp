@@ -228,10 +228,19 @@ namespace Quiet::Editor
             input.IsKeyDown(KeyCode::RightControl);
 
         if (ctrlDown) return;
+
+        const bool isUsingViewportFlyControls =
+            m_State.ViewportImageHovered &&
+            input.IsMouseButtonDown(Input::MouseCode::ButtonRight);
+
+        if (isUsingViewportFlyControls)
+        {
+            return;
+        }
+
         if (input.IsKeyPressed(KeyCode::T)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
         if (input.IsKeyPressed(KeyCode::R)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
         if (input.IsKeyPressed(KeyCode::S)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
-
         if (input.IsKeyPressed(KeyCode::L))
         {
             if (m_State.CurrentGizmoOperation != GizmoOperation::Scale)
@@ -242,7 +251,6 @@ namespace Quiet::Editor
                         : GizmoMode::World;
             }
         }
-
         if (input.IsKeyPressed(KeyCode::G)) m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
     }
 
@@ -364,7 +372,6 @@ namespace Quiet::Editor
         if (!renderer.IsSceneViewportReady()) return;
         if (!m_State.SelectedActorID.has_value()) return;
         if (m_State.ViewportWidth == 0 || m_State.ViewportHeight == 0) return;
-        if (!m_State.ViewportImageHovered && !ImGuizmo::IsUsing()) return;
 
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
         const float aspect =

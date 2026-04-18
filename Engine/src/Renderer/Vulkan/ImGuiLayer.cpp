@@ -32,6 +32,8 @@ namespace
     constexpr const char* kIconScale     = "\xef\x81\xa5"; // U+F065 expand
     constexpr const char* kIconFocus     = "\xef\x81\x9b"; // U+F05B crosshairs
     constexpr const char* kIconSnap      = "\xef\x81\xb6"; // U+F076 magnet
+    constexpr const char* kIconWorld     = "\xef\x82\xac"; // globe
+    constexpr const char* kIconLocal     = "\xef\x86\xb2"; // cube
 
     constexpr float kToolbarButtonSize = 46.0f;
     constexpr float kToolbarWideButtonWidth = 78.0f;
@@ -393,11 +395,7 @@ namespace Quiet::Renderer::Vulkan
     void ImGuiLayer::BuildViewportToolbar(Editor::EditorState& editorState,
                                           const ImVec2& imageMin)
     {
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
-        {
-            return;
-        }
-
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
         const ImVec2 toolbarPos(imageMin.x + 10.0f, imageMin.y + 10.0f);
 
         ImGuiWindowFlags flags =
@@ -459,28 +457,26 @@ namespace Quiet::Renderer::Vulkan
             ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
             ImGui::SameLine();
 
-            if (editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale)
+            const bool canToggleGizmoMode = editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale;
+            const bool isLocalMode = editorState.CurrentGizmoMode == Editor::GizmoMode::Local;
+
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportGizmoMode",
+                    isLocalMode ? kIconLocal : kIconWorld,
+                    isLocalMode ? "Local" : "World",
+                    canToggleGizmoMode
+                        ? (isLocalMode ? "Local Space (L)" : "World Space (L)")
+                        : "World/Local mode is not used for Scale",
+                    isLocalMode,
+                    canToggleGizmoMode,
+                    ImVec2(m_Fonts.HasIcons ? kToolbarButtonSize : kToolbarWideButtonWidth, kToolbarButtonHeight)))
             {
-                const char* spaceLabel =
-                    editorState.CurrentGizmoMode == Editor::GizmoMode::Local
-                        ? "Local##ViewportSpace"
-                        : "World##ViewportSpace";
-
-                if (ImGui::Button(spaceLabel, ImVec2(kToolbarModeButtonWidth, kToolbarButtonHeight)))
-                {
-                    editorState.CurrentGizmoMode =
-                        (editorState.CurrentGizmoMode == Editor::GizmoMode::Local)
-                            ? Editor::GizmoMode::World
-                            : Editor::GizmoMode::Local;
-                }
-
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                {
-                    ImGui::SetTooltip("Toggle Local / World (L)");
-                }
-
-                ImGui::SameLine();
+                editorState.CurrentGizmoMode =
+                    isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
             }
+
+            ImGui::SameLine();
 
             if (DrawToolbarButton(
                     m_Fonts,

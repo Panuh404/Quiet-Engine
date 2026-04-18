@@ -5,28 +5,8 @@
 
 #include "Quiet/Input/Input.h"
 #include "glm/glm.hpp"
+#include "Quiet/Math/Direction.h"
 
-
-namespace
-{
-    glm::vec3 GetForward(float yawDegrees, float pitchDegrees)
-    {
-        const float yaw = glm::radians(yawDegrees);
-        const float pitch = glm::radians(pitchDegrees);
-
-        glm::vec3 forward{};
-        forward.x = std::cos(yaw) * std::cos(pitch);
-        forward.y = std::sin(pitch);
-        forward.z = std::sin(yaw) * std::cos(pitch);
-
-        return glm::normalize(forward);
-    }
-
-    glm::vec3 GetRight(const glm::vec3& forward)
-    {
-        return glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-    }
-}
 
 namespace Quiet::Scene
 {
@@ -38,8 +18,8 @@ namespace Quiet::Scene
         state.PitchDegrees -= static_cast<float>(deltaY) * state.LookSensitivity;
         state.PitchDegrees = std::clamp(state.PitchDegrees, -89.0f, 89.0f);
 
-        const glm::vec3 forward = GetForward(state.YawDegrees, state.PitchDegrees);
-        const glm::vec3 right = GetRight(forward);
+        const glm::vec3 forward = Math::GetForwardVector(state.YawDegrees, state.PitchDegrees);
+        const glm::vec3 right = Math::GetRightVector(forward);
         const glm::vec3 up(0.0f, 1.0f, 0.0f);
 
         float speed = state.MoveSpeed;
@@ -54,6 +34,7 @@ namespace Quiet::Scene
         if (input.IsKeyDown(Input::KeyCode::S)) state.Position -= forward * move;
         if (input.IsKeyDown(Input::KeyCode::A)) state.Position -= right * move;
         if (input.IsKeyDown(Input::KeyCode::D)) state.Position += right * move;
+        if (input.IsKeyDown(Input::KeyCode::Space)) state.Position += up * move;
         if (input.IsKeyDown(Input::KeyCode::Q)) state.Position -= up * move;
         if (input.IsKeyDown(Input::KeyCode::E)) state.Position += up * move;
     }
