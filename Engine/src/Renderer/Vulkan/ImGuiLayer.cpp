@@ -172,7 +172,6 @@ namespace Quiet::Renderer::Vulkan
         : m_Device(device)
     {
         CreateDescriptorPool();
-        // TODO: Set default layout
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -280,6 +279,57 @@ namespace Quiet::Renderer::Vulkan
         BuildConsoleWindow();
 
         actions.HandleShortcuts(stats.MouseCaptured);
+    }
+
+    void ImGuiLayer::BuildRuntimeUI(std::uint32_t &outViewportWidth,
+                                    std::uint32_t &outViewportHeight,
+                                    ImTextureID sceneViewportTexture)
+    {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+        ImGuiWindowFlags windowFlags =
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse;
+
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        ImGui::Begin("##RuntimeViewportHost", nullptr, windowFlags);
+        ImGui::PopStyleVar(3);
+
+        const ImVec2 availableSize = ImGui::GetContentRegionAvail();
+
+        outViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+        outViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+
+        if (sceneViewportTexture && outViewportWidth > 0 && outViewportHeight > 0)
+        {
+            ImGui::Image(
+                sceneViewportTexture,
+                ImVec2(
+                    static_cast<float>(outViewportWidth),
+                    static_cast<float>(outViewportHeight)
+                )
+            );
+        }
+        else
+        {
+            ImGui::SetCursorPos(ImVec2(24.0f, 24.0f));
+            ImGui::TextUnformatted("Runtime viewport unavailable.");
+        }
+
+        ImGui::End();
     }
 
     void ImGuiLayer::EndFrame()

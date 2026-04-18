@@ -42,6 +42,15 @@ namespace Quiet::Scene
             meshLibrary.Get("Cube"),
             true
         };
+
+        auto& camera = scene.CreateActor("Camera");
+        camera.Transform.WorldTransform.Position = { 0.0f, 0.0f, 6.0f };
+        camera.Transform.WorldTransform.RotationDegrees = { 0.0f, 0.0f, 0.0f };
+        camera.Camera = CameraComponent{};
+        camera.Camera->Primary = true;
+        camera.Camera->FieldOfViewDegrees = 60.0f;
+        camera.Camera->NearClip = 0.1f;
+        camera.Camera->FarClip = 1000.0f;
     }
 
     bool SceneDocument::Save(const Scene& scene, const std::filesystem::path& path)

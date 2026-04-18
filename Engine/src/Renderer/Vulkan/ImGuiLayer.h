@@ -73,6 +73,9 @@ namespace Quiet::Renderer::Vulkan
                            const MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
+        void BuildRuntimeUI(std::uint32_t& outViewportWidth,
+                            std::uint32_t& outViewportHeight,
+                            ImTextureID sceneViewportTexture);
         void EndFrame();
         void Render(VkCommandBuffer commandBuffer) const;
 
