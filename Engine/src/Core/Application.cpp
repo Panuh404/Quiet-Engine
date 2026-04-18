@@ -148,15 +148,16 @@ namespace Quiet::Core
             const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
             const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
 
-            const bool isPilotingEditCamera =
-                isEditMode && UpdatePilotedEditorCamera(deltaTime);
+            const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
 
-            // Edit / Simulate only owns Editor free camera when not piloting a scene camera.
-            if (!isPilotingEditCamera && (isEditMode || isSimulateMode) && m_MouseCaptureEnabled)
+            const bool isUsingEditorFlyControls = (isEditMode || isSimulateMode) &&
+                m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+
+            // Edit / Simulate owns Editor free camera when not piloting a scene camera.
+            if (!isPilotingEditCamera && isUsingEditorFlyControls)
             {
                 m_FreeCamera->Update(*m_Input, deltaTime);
             }
-
             // Runtime input ownership belongs to the runtime scene.
             if (isSimulateMode || isPlayMode)
             {
@@ -513,9 +514,7 @@ namespace Quiet::Core
 
         if (editorState.CurrentSceneMode != Editor::SceneMode::Edit ||
             !editorState.PilotedCameraActorID.has_value())
-        {
             return false;
-        }
 
         Scene::Actor* actor = m_Scene->FindActorByID(editorState.PilotedCameraActorID.value());
         if (!actor || !actor->Camera.has_value())
@@ -524,13 +523,13 @@ namespace Quiet::Core
             return false;
         }
 
-        Scene::CameraPilotState state =
-            Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
+        Scene::CameraPilotState state = Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
 
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
 
-        if (m_MouseCaptureEnabled)
+        const bool isUsingEditorFlyControls = m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        if (isUsingEditorFlyControls)
         {
             Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
             Scene::ApplyPilotStateToCameraTransform(state, actor->Transform.WorldTransform);
