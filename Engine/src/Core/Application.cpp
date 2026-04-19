@@ -300,16 +300,38 @@ namespace Quiet::Core
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 
+    void Application::ResetEditorRuntimeState(Editor::EditorState &editorState)
+    {
+        editorState.RequestFocusSelected = false;
+        editorState.PilotedCameraActorID.reset();
+    }
+
+    void Application::CreateRuntimeScene(Scene::RuntimeMode runtimeMode)
+    {
+        DestroyRuntimeScene();
+
+        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
+        m_RuntimeScene->BeginRuntime(runtimeMode);
+    }
+
+    void Application::DestroyRuntimeScene()
+    {
+        if (!m_RuntimeScene) return;
+        if (m_RuntimeScene->IsRuntimeActive())
+        {
+            m_RuntimeScene->EndRuntime();
+        }
+        m_RuntimeScene.reset();
+    }
+
     void Application::EnterSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+            return;
 
-        editorState.RequestFocusSelected = false;
-        editorState.PilotedCameraActorID.reset();
-
-        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
-        m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Simulate);
+        ResetEditorRuntimeState(editorState);
+        CreateRuntimeScene(Scene::RuntimeMode::Simulate);
 
         editorState.CurrentSceneMode = Editor::SceneMode::Simulate;
         QUIET_CORE_INFO("Entered simulate mode.");
@@ -318,13 +340,10 @@ namespace Quiet::Core
     void Application::StopSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Simulate) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Simulate)
+            return;
 
-        if (m_RuntimeScene)
-        {
-            m_RuntimeScene->EndRuntime();
-            m_RuntimeScene.reset();
-        }
+        DestroyRuntimeScene();
 
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
         QUIET_CORE_INFO("Stopped simulate mode.");
@@ -333,13 +352,11 @@ namespace Quiet::Core
     void Application::EnterPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+            return;
 
-        editorState.RequestFocusSelected = false;
-        editorState.PilotedCameraActorID.reset();
-
-        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
-        m_RuntimeScene->BeginRuntime(Scene::RuntimeMode::Play);
+        ResetEditorRuntimeState(editorState);
+        CreateRuntimeScene(Scene::RuntimeMode::Play);
 
         editorState.CurrentSceneMode = Editor::SceneMode::Play;
 
@@ -352,16 +369,14 @@ namespace Quiet::Core
     void Application::StopPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Play) return;
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Play)
+            return;
 
-        if (m_RuntimeScene)
-        {
-            m_RuntimeScene->EndRuntime();
-            m_RuntimeScene.reset();
-        }
+        DestroyRuntimeScene();
 
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
         SetMouseCaptureEnabled(m_MouseCaptureBeforePlay);
+
         QUIET_CORE_INFO("Stopped play mode.");
     }
 

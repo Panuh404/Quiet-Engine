@@ -16,6 +16,7 @@ namespace Quiet::Platform
 namespace Quiet::Editor
 {
     class EditorController;
+    struct EditorState;
 }
 
 namespace Quiet::Input
@@ -25,6 +26,7 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
+    enum class RuntimeMode;
     class FreeCamera;
     class Scene;
 }
@@ -60,6 +62,10 @@ namespace Quiet::Core
         void NewScene();
         void SaveScene();
         void LoadScene();
+
+        void ResetEditorRuntimeState(Editor::EditorState& editorState);
+        void CreateRuntimeScene(Scene::RuntimeMode runtimeMode);
+        void DestroyRuntimeScene();
 
         void EnterSimulateMode();
         void StopSimulateMode();
