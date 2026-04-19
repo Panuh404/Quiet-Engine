@@ -1,7 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
-#include "../Scene/Camera/FreeCamera.h"
+#include "Scene/Camera/FreeCamera.h"
 
 #include <stdexcept>
 #include <utility>
@@ -19,6 +19,7 @@
 #include "Quiet/Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Scene/SceneDocument.h"
+#include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
@@ -543,7 +544,7 @@ namespace Quiet::Core
         const float deltaTime = CalculateDeltaTime(previousTime);
 
         m_Renderer->ApplyPendingViewportResize();
-        auto& uiLayer = GetUILayer();
+        auto& uiLayer = m_Renderer->GetImGuiLayer();
 
         FrameContext frame{};
         frame.DeltaTime = deltaTime;
@@ -594,7 +595,7 @@ namespace Quiet::Core
 
         uiLayer.BeginFrame();
         {
-            const Renderer::Vulkan::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
+            const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
 
             uiLayer.BuildEditorUI(
                 stats,
@@ -695,9 +696,9 @@ namespace Quiet::Core
         };
     }
 
-    Renderer::Vulkan::ImGuiStats Application::BuildEditorStats(float deltaTime, const Scene::Scene &scene) const
+    Renderer::UI::ImGuiStats Application::BuildEditorStats(float deltaTime, const Scene::Scene &scene) const
     {
-        Renderer::Vulkan::ImGuiStats stats{};
+        Renderer::UI::ImGuiStats stats{};
         stats.FrameTimeMs = deltaTime * 1000.0f;
         stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
         stats.ActorCount = static_cast<std::uint32_t>(scene.GetActors().size());
@@ -732,11 +733,6 @@ namespace Quiet::Core
         }
 
         return m_FreeCamera->GetPosition();
-    }
-
-    Renderer::Vulkan::ImGuiLayer & Application::GetUILayer() const
-    {
-        return m_Renderer->GetImGuiLayer();
     }
 
     bool Application::UpdatePilotedEditorCamera(float deltaTime)

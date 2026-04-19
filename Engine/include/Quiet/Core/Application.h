@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include "AppSpec.h"
@@ -32,11 +33,15 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace Quiet::Renderer::UI
+{
+    struct ImGuiStats;
+    class ImGuiLayer;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     struct CameraUniformData;
-    struct ImGuiStats;
-    class ImGuiLayer;
     class VulkanRenderer;
 }
 
@@ -87,7 +92,6 @@ namespace Quiet::Core
 
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
-        [[nodiscard]] Renderer::Vulkan::ImGuiLayer& GetUILayer() const;
 
         bool UpdatePilotedEditorCamera(float deltaTime);
 
@@ -99,7 +103,7 @@ namespace Quiet::Core
         struct FrameContext
         {
             float DeltaTime = 0.0f;
-            Renderer::Vulkan::ImGuiLayer* UILayer = nullptr;
+            Renderer::UI::ImGuiLayer* UILayer = nullptr;
         };
 
         [[nodiscard]] FrameContext BeginFrame(double& previousTime);
@@ -107,7 +111,7 @@ namespace Quiet::Core
         bool RunSandboxFrame(const FrameContext& frame);
         void FinalizePlatformWindows(bool frameCompleted) const;
         [[nodiscard]] std::function<void()> BuildEditorViewportOverlayCallback();
-        [[nodiscard]] Renderer::Vulkan::ImGuiStats BuildEditorStats(float deltaTime, const Scene::Scene& scene) const;
+        [[nodiscard]] Renderer::UI::ImGuiStats BuildEditorStats(float deltaTime, const Scene::Scene& scene) const;
 
     private:
         AppSpec m_Spec;

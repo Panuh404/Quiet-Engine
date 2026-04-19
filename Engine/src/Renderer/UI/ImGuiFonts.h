@@ -10,7 +10,7 @@
 #define QUIET_ENGINE_RESOURCES_PATH "Resources"
 #endif
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Renderer::UI
 {
     struct EditorFonts
     {

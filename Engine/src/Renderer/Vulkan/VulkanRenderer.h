@@ -3,8 +3,9 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
+#include "imgui.h"
+
 #include "Quiet/Platform/Window.h"
-#include "Renderer/Vulkan/ImGuiLayer.h"
 
 namespace Quiet::Platform
 {
@@ -25,6 +26,11 @@ namespace Quiet::Core
 namespace Quiet::Editor
 {
     struct EditorState;
+}
+
+namespace Quiet::Renderer::UI
+{
+    class ImGuiLayer;
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -55,7 +61,7 @@ namespace Quiet::Renderer::Vulkan
 
         bool DrawFrame(Scene::Scene& scene,
                        const CameraUniformData& cameraData,
-                       ImGuiLayer& imguiLayer);
+                       UI::ImGuiLayer& imguiLayer);
 
         void RecreateSwapchain();
         void ApplyPendingViewportResize();
@@ -63,8 +69,8 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] MeshLibrary& GetMeshLibrary() { return *m_MeshLibrary; }
         [[nodiscard]] const MeshLibrary& GetMeshLibrary() const { return *m_MeshLibrary; }
 
-        [[nodiscard]] ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
-        [[nodiscard]] const ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
+        [[nodiscard]] UI::ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
+        [[nodiscard]] const UI::ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
 
         [[nodiscard]] ImTextureID GetSceneViewportTextureID() const;
         [[nodiscard]] bool IsSceneViewportReady() const { return m_SceneViewportReady; }
@@ -81,7 +87,7 @@ namespace Quiet::Renderer::Vulkan
         void EnsureSceneViewportSize();
         void RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                       Scene::Scene& scene,
-                                      ImGuiLayer& imguiLayer);
+                                      UI::ImGuiLayer& imguiLayer);
 
     private:
         Platform::Window* m_Window = nullptr;
@@ -94,7 +100,7 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<DepthResources> m_DepthResources;
         std::unique_ptr<SceneViewportTarget> m_SceneViewportTarget;
         std::unique_ptr<GraphicsCommands> m_GraphicsCommands;
-        std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
+        std::unique_ptr<UI::ImGuiLayer> m_ImGuiLayer;
         std::unique_ptr<MeshLibrary> m_MeshLibrary;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;

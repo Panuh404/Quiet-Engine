@@ -1,10 +1,8 @@
 #pragma once
 
 #include "imgui.h"
-#include <filesystem>
 
-
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Renderer::UI
 {
     inline void ApplyDarkEditorTheme(ImGuiIO& io, float uiScale = 1.15f)
     {

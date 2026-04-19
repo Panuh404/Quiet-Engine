@@ -42,7 +42,20 @@ target_sources(Quiet_Engine
         src/Editor/EditorCommands.cpp
         src/Editor/EditorController.cpp
 
-        # Renderer
+        # Renderer - UI
+        src/Renderer/UI/ImGuiChrome.cpp
+        src/Renderer/UI/ImGuiDockspace.cpp
+        src/Renderer/UI/ImGuiDiagnostics.cpp
+        src/Renderer/UI/ImGuiFonts.h
+        src/Renderer/UI/ImGuiLayer.cpp
+        src/Renderer/UI/ImGuiLayer.h
+        src/Renderer/UI/ImGuiScenePanels.cpp
+        src/Renderer/UI/ImGuiTheme.h
+        src/Renderer/UI/ImGuiToolbarCommon.cpp
+        src/Renderer/UI/ImGuiToolbarCommon.h
+        src/Renderer/UI/ImGuiViewportPanels.cpp
+
+        # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp
         src/Renderer/Vulkan/CameraResources.h
         src/Renderer/Vulkan/DepthResources.cpp
@@ -51,10 +64,6 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/FrameSync.h
         src/Renderer/Vulkan/GraphicsCommands.cpp
         src/Renderer/Vulkan/GraphicsCommands.h
-        src/Renderer/Vulkan/ImGuiFonts.h
-        src/Renderer/Vulkan/ImGuiLayer.cpp
-        src/Renderer/Vulkan/ImGuiLayer.h
-        src/Renderer/Vulkan/ImGuiTheme.h
         src/Renderer/Vulkan/LogicalDevice.cpp
         src/Renderer/Vulkan/LogicalDevice.h
         src/Renderer/Vulkan/MeshLibrary.cpp

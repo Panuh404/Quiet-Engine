@@ -7,6 +7,8 @@
 #include <stdexcept>
 
 #include "GLFW/glfw3.h"
+#include "Quiet/Core/Application.h"
+#include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/VulkanInstance.h"
 #include "Renderer/Vulkan/VulkanSurface.h"
 #include "Renderer/Vulkan/PhysicalDevice.h"
@@ -178,7 +180,7 @@ namespace Quiet::Renderer::Vulkan
             *m_LogicalDevice,
             *m_Swapchain);
 
-        m_ImGuiLayer = std::make_unique<ImGuiLayer>(
+        m_ImGuiLayer = std::make_unique<UI::ImGuiLayer>(
             static_cast<GLFWwindow*>(window.GetNativeHandle()),
             m_VulkanInstance->GetHandle(),
             m_PhysicalDevice->GetHandle(),
@@ -237,7 +239,7 @@ namespace Quiet::Renderer::Vulkan
 
     bool VulkanRenderer::DrawFrame(Scene::Scene &scene,
                                    const CameraUniformData &cameraData,
-                                   ImGuiLayer &imguiLayer)
+                                   UI::ImGuiLayer &imguiLayer)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -376,7 +378,7 @@ namespace Quiet::Renderer::Vulkan
             *m_Swapchain
         );
 
-        m_ImGuiLayer = std::make_unique<ImGuiLayer>(
+        m_ImGuiLayer = std::make_unique<UI::ImGuiLayer>(
         static_cast<GLFWwindow*>(m_Window->GetNativeHandle()),
             m_VulkanInstance->GetHandle(),
             m_PhysicalDevice->GetHandle(),
@@ -455,7 +457,7 @@ namespace Quiet::Renderer::Vulkan
 
     void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                                   Scene::Scene &scene,
-                                                  ImGuiLayer& imguiLayer)
+                                                  UI::ImGuiLayer& imguiLayer)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         vkResetCommandBuffer(commandBuffer, 0);

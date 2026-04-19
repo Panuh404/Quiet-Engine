@@ -7,7 +7,7 @@
 #include "imgui.h"
 #include "glm/vec3.hpp"
 
-#include "Renderer/Vulkan/ImGuiFonts.h"
+#include "ImGuiFonts.h"
 
 struct GLFWwindow;
 struct ImDrawData;
@@ -34,7 +34,10 @@ namespace Quiet::Renderer::Vulkan
 {
     class LogicalDevice;
     class MeshLibrary;
+}
 
+namespace Quiet::Renderer::UI
+{
     struct ImGuiStats
     {
         float FrameTimeMs = 0.0f;
@@ -70,7 +73,7 @@ namespace Quiet::Renderer::Vulkan
                            Scene::Scene& scene,
                            Editor::EditorController& editorController,
                            Editor::EditorState& editorState,
-                           const MeshLibrary& meshLibrary,
+                           const Vulkan::MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
         void BuildRuntimeUI(std::uint32_t& outViewportWidth,
@@ -85,26 +88,36 @@ namespace Quiet::Renderer::Vulkan
     private:
         [[nodiscard]] float GetToolbarHeight() const;
 
-        void BuildMainMenuBar(Editor::EditorActions& editorActions);
+        // Dockspace
         void BuildDockspace();
+        void ApplyDefaultDockLayout(ImGuiID dockspaceID, const ImVec2& dockspaceSize);
+        [[nodiscard]] bool ShouldApplyDefaultDockLayout() const;
+
+        // ImGui Chrome
+        void BuildMainMenuBar(Editor::EditorActions& editorActions);
         void BuildTopbar(Editor::EditorActions& editorActions,
                          Editor::EditorState& editorState);
-        void BuildViewport(Editor::EditorState& editorState,
-                           ImTextureID sceneViewportTexture,
-                           const std::function<void()>& viewportOverlayCallback);
-        void BuildViewportToolbar(Editor::EditorState& editorState,
-                                  const ImVec2& imageMin);
-        void BuildConsoleWindow();
+
+        // Scene Panels
         void BuildInspector(Scene::Scene& scene,
                             Editor::EditorCommands& editorCommands,
                             Editor::EditorState& editorState,
-                            const MeshLibrary& meshLibrary);
+                            const Vulkan::MeshLibrary& meshLibrary);
         void BuildHierarchy(Scene::Scene& scene,
                             Editor::EditorActions& editorActions,
                             Editor::EditorState& editorState);
 
-        void ApplyDefaultDockLayout(ImGuiID dockspaceID, const ImVec2& dockspaceSize);
-        [[nodiscard]] bool ShouldApplyDefaultDockLayout() const;
+        // Viewport Panels
+        void BuildViewportToolbar(Editor::EditorState& editorState,
+                          const ImVec2& imageMin);
+
+        void BuildViewport(Editor::EditorState& editorState,
+                           ImTextureID sceneViewportTexture,
+                           const std::function<void()>& viewportOverlayCallback);
+
+        // Diagnostics
+        void BuildDebugWindow(const ImGuiStats& stats);
+        void BuildConsoleWindow();
 
         void CreateDescriptorPool();
         void DestroyDescriptorPool();
