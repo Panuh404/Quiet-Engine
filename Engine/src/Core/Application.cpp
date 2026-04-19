@@ -300,6 +300,97 @@ namespace Quiet::Core
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 
+    void Application::ProcessSandboxViewportResize()
+    {
+        const VkExtent2D swapchainExtent = m_Renderer->GetSwapchainExtent();
+        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
+
+        if (swapchainExtent.width == 0 || swapchainExtent.height == 0) return;
+        if (currentViewportExtent.width == swapchainExtent.width &&
+            currentViewportExtent.height == swapchainExtent.height)
+            return;
+
+        m_Renderer->RequestViewportResize(
+            swapchainExtent.width,
+            swapchainExtent.height
+        );
+        m_Renderer->ApplyPendingViewportResize();
+    }
+
+    void Application::ProcessEditorViewportResize(const Editor::EditorState &editorState)
+    {
+        if (editorState.ViewportWidth == 0 || editorState.ViewportHeight == 0)
+            return;
+
+        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
+
+        if (currentViewportExtent.width == editorState.ViewportWidth &&
+            currentViewportExtent.height == editorState.ViewportHeight)
+            return;
+
+        m_Renderer->RequestViewportResize(
+            editorState.ViewportWidth,
+            editorState.ViewportHeight
+        );
+    }
+
+    void Application::ProcessEditorRequests(Editor::EditorState &editorState)
+    {
+        if (editorState.RequestUndo)
+        {
+            m_EditorController->Undo(*m_Scene);
+            editorState.RequestUndo = false;
+        }
+
+        if (editorState.RequestRedo)
+        {
+            m_EditorController->Redo(*m_Scene);
+            editorState.RequestRedo = false;
+        }
+
+        if (editorState.RequestNewScene)
+        {
+            NewScene();
+            editorState.RequestNewScene = false;
+        }
+
+        if (editorState.RequestSaveScene)
+        {
+            SaveScene();
+            editorState.RequestSaveScene = false;
+        }
+
+        if (editorState.RequestLoadScene)
+        {
+            LoadScene();
+            editorState.RequestLoadScene = false;
+        }
+
+        if (editorState.RequestEnterSimulate)
+        {
+            EnterSimulateMode();
+            editorState.RequestEnterSimulate = false;
+        }
+
+        if (editorState.RequestStopSimulate)
+        {
+            StopSimulateMode();
+            editorState.RequestStopSimulate = false;
+        }
+
+        if (editorState.RequestEnterPlay)
+        {
+            EnterPlayMode();
+            editorState.RequestEnterPlay = false;
+        }
+
+        if (editorState.RequestStopPlay)
+        {
+            StopPlayMode();
+            editorState.RequestStopPlay = false;
+        }
+    }
+
     void Application::ResetEditorRuntimeState(Editor::EditorState &editorState)
     {
         editorState.RequestFocusSelected = false;
@@ -406,7 +497,19 @@ namespace Quiet::Core
         return *m_Scene;
     }
 
-        bool Application::RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
+    const Scene::Actor * Application::GetPreferredRenderCameraActor(const Scene::Scene &scene) const
+    {
+        const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor();
+        if (!cameraActor || !cameraActor->Camera.has_value()) return nullptr;
+
+        if (!m_Spec.IsEditor()) return cameraActor;
+        if (!m_EditorController) return nullptr;
+
+        const auto& editorState = m_EditorController->GetState();
+        return (editorState.CurrentSceneMode == Editor::SceneMode::Play) ? cameraActor : nullptr;
+    }
+
+    bool Application::RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
     {
         if (!m_EditorController)
         {
@@ -438,18 +541,9 @@ namespace Quiet::Core
         }
 
         activeScene.Update(deltaTime);
-
         uiLayer.BeginFrame();
         {
-            Renderer::Vulkan::ImGuiStats stats{};
-            stats.FrameTimeMs = deltaTime * 1000.0f;
-            stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
-            stats.ActorCount = static_cast<std::uint32_t>(activeScene.GetActors().size());
-            stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
-            stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
-            stats.MouseCaptured = m_MouseCaptureEnabled;
-            stats.CameraPosition = GetActiveRenderCameraPosition(activeScene);
-
+            const Renderer::Vulkan::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
             uiLayer.BuildEditorUI(
                 stats,
                 *m_Input,
@@ -458,95 +552,11 @@ namespace Quiet::Core
                 editorState,
                 m_Renderer->GetMeshLibrary(),
                 m_Renderer->GetSceneViewportTextureID(),
-                [this]()
-                {
-                    auto& editorStateInner = m_EditorController->GetState();
-                    auto& overlayScene = GetActiveScene();
-
-                    m_EditorController->TrySelectActorFromViewport(
-                        *m_Input,
-                        overlayScene,
-                        *m_FreeCamera,
-                        *m_Renderer,
-                        m_MouseCaptureEnabled
-                    );
-
-                    m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
-
-                    if (editorStateInner.RequestFocusSelected)
-                    {
-                        m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
-                        editorStateInner.RequestFocusSelected = false;
-                    }
-
-                    m_EditorController->BuildSelectedActorGizmo(
-                        overlayScene,
-                        *m_FreeCamera,
-                        *m_Renderer,
-                        m_MouseCaptureEnabled
-                    );
-                }
+                BuildEditorViewportOverlayCallback()
             );
 
-            if (editorState.RequestUndo)
-            {
-                m_EditorController->Undo(*m_Scene);
-                editorState.RequestUndo = false;
-            }
-            if (editorState.RequestRedo)
-            {
-                m_EditorController->Redo(*m_Scene);
-                editorState.RequestRedo = false;
-            }
-            if (editorState.RequestNewScene)
-            {
-                NewScene();
-                editorState.RequestNewScene = false;
-            }
-            if (editorState.RequestSaveScene)
-            {
-                SaveScene();
-                editorState.RequestSaveScene = false;
-            }
-            if (editorState.RequestLoadScene)
-            {
-                LoadScene();
-                editorState.RequestLoadScene = false;
-            }
-            if (editorState.RequestEnterSimulate)
-            {
-                EnterSimulateMode();
-                editorState.RequestEnterSimulate = false;
-            }
-            if (editorState.RequestStopSimulate)
-            {
-                StopSimulateMode();
-                editorState.RequestStopSimulate = false;
-            }
-            if (editorState.RequestEnterPlay)
-            {
-                EnterPlayMode();
-                editorState.RequestEnterPlay = false;
-            }
-            if (editorState.RequestStopPlay)
-            {
-                StopPlayMode();
-                editorState.RequestStopPlay = false;
-            }
-
-            if (editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
-            {
-                const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
-
-                if (currentViewportExtent.width != editorState.ViewportWidth ||
-                    currentViewportExtent.height != editorState.ViewportHeight)
-                {
-                    m_Renderer->RequestViewportResize(
-                        editorState.ViewportWidth,
-                        editorState.ViewportHeight
-                    );
-                }
-            }
+            ProcessEditorRequests(editorState);
+            ProcessEditorViewportResize(editorState);
         }
         uiLayer.EndFrame();
 
@@ -566,19 +576,7 @@ namespace Quiet::Core
 
         activeScene.Update(deltaTime);
 
-        const VkExtent2D swapchainExtent = m_Renderer->GetSwapchainExtent();
-        const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
-
-        if (swapchainExtent.width > 0 && swapchainExtent.height > 0 &&
-            (currentViewportExtent.width != swapchainExtent.width ||
-             currentViewportExtent.height != swapchainExtent.height))
-        {
-            m_Renderer->RequestViewportResize(
-                swapchainExtent.width,
-                swapchainExtent.height
-            );
-            m_Renderer->ApplyPendingViewportResize();
-        }
+        ProcessSandboxViewportResize();
 
         std::uint32_t runtimeViewportWidth = 0;
         std::uint32_t runtimeViewportHeight = 0;
@@ -606,6 +604,51 @@ namespace Quiet::Core
         }
     }
 
+    std::function<void()> Application::BuildEditorViewportOverlayCallback()
+    {
+        return [this]()
+        {
+            auto& editorState = m_EditorController->GetState();
+            auto& overlayScene = GetActiveScene();
+
+            m_EditorController->TrySelectActorFromViewport(
+                *m_Input,
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer,
+                m_MouseCaptureEnabled
+            );
+
+            m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
+
+            if (editorState.RequestFocusSelected)
+            {
+                m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
+                editorState.RequestFocusSelected = false;
+            }
+
+            m_EditorController->BuildSelectedActorGizmo(
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer,
+                m_MouseCaptureEnabled
+            );
+        };
+    }
+
+    Renderer::Vulkan::ImGuiStats Application::BuildEditorStats(float deltaTime, const Scene::Scene &scene) const
+    {
+        Renderer::Vulkan::ImGuiStats stats{};
+        stats.FrameTimeMs = deltaTime * 1000.0f;
+        stats.FPS = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
+        stats.ActorCount = static_cast<std::uint32_t>(scene.GetActors().size());
+        stats.MeshCount = static_cast<std::uint32_t>(m_Renderer->GetMeshLibrary().GetCount());
+        stats.SwapchainExtent = m_Renderer->GetSwapchainExtent();
+        stats.MouseCaptured = m_MouseCaptureEnabled;
+        stats.CameraPosition = GetActiveRenderCameraPosition(scene);
+        return stats;
+    }
+
     Renderer::Vulkan::CameraUniformData Application::BuildActiveRenderCameraData(const Scene::Scene &scene) const
     {
         const VkExtent2D sceneExtent = m_Renderer->GetSceneViewportExtent();
@@ -614,55 +657,21 @@ namespace Quiet::Core
         const float safeHeight = (sceneExtent.height > 0) ? static_cast<float>(sceneExtent.height) : 1.0f;
         const float aspect = safeWidth / safeHeight;
 
-        if (!m_Spec.IsEditor())
+        if (const Scene::Actor* cameraActor = GetPreferredRenderCameraActor(scene))
         {
-            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
-            {
-                if (cameraActor->Camera.has_value())
-                {
-                    return BuildSceneCameraUniformData(*cameraActor, aspect);
-                }
-            }
-            return m_FreeCamera->BuildUniformData(aspect, Renderer::UseRenderProjectionYFlip);
+            return BuildSceneCameraUniformData(*cameraActor, aspect);
         }
 
-        const auto& editorState = m_EditorController->GetState();
-        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
-
-        if (isPlayMode)
-        {
-            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
-            {
-                if (cameraActor->Camera.has_value())
-                {
-                    return BuildSceneCameraUniformData(*cameraActor, aspect);
-                }
-            }
-        }
         return m_FreeCamera->BuildUniformData(aspect, Renderer::UseRenderProjectionYFlip);
     }
 
     glm::vec3 Application::GetActiveRenderCameraPosition(const Scene::Scene &scene) const
     {
-        if (!m_Spec.IsEditor())
+        if (const Scene::Actor* cameraActor = GetPreferredRenderCameraActor(scene))
         {
-            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
-            {
-                return cameraActor->Transform.WorldTransform.Position;
-            }
-            return m_FreeCamera->GetPosition();
+            return cameraActor->Transform.WorldTransform.Position;
         }
 
-        const auto& editorState = m_EditorController->GetState();
-        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
-
-        if (isPlayMode)
-        {
-            if (const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor())
-            {
-                return cameraActor->Transform.WorldTransform.Position;
-            }
-        }
         return m_FreeCamera->GetPosition();
     }
 

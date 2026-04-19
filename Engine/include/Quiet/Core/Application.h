@@ -26,6 +26,7 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
+    struct Actor;
     enum class RuntimeMode;
     class FreeCamera;
     class Scene;
@@ -34,6 +35,7 @@ namespace Quiet::Scene
 namespace Quiet::Renderer::Vulkan
 {
     struct CameraUniformData;
+    struct ImGuiStats;
     class ImGuiLayer;
     class VulkanRenderer;
 }
@@ -63,6 +65,10 @@ namespace Quiet::Core
         void SaveScene();
         void LoadScene();
 
+        void ProcessSandboxViewportResize();
+        void ProcessEditorViewportResize(const Editor::EditorState& editorState);
+        void ProcessEditorRequests(Editor::EditorState& editorState);
+
         void ResetEditorRuntimeState(Editor::EditorState& editorState);
         void CreateRuntimeScene(Scene::RuntimeMode runtimeMode);
         void DestroyRuntimeScene();
@@ -80,10 +86,13 @@ namespace Quiet::Core
 
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;
+        [[nodiscard]] const Scene::Actor* GetPreferredRenderCameraActor(const Scene::Scene& scene) const;
 
         bool RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
         bool RunSandboxFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
         void FinalizePlatformWindows(bool frameCompleted) const;
+        [[nodiscard]] std::function<void()> BuildEditorViewportOverlayCallback();
+        [[nodiscard]] Renderer::Vulkan::ImGuiStats BuildEditorStats(float deltaTime, const Scene::Scene& scene) const;
 
     private:
         AppSpec m_Spec;
