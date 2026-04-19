@@ -1,9 +1,11 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 
+#include "EditorSceneHistory.h"
 #include "EditorState.h"
+#include "Quiet/Core/UUID.h"
+#include "Quiet/Math/Geometry.h"
 
 namespace Quiet::Input
 {
@@ -12,8 +14,6 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
-    class Actor;
-    class Scene;
     class FreeCamera;
 }
 
@@ -63,34 +63,14 @@ namespace Quiet::Editor
                                      bool mouseCaptureEnabled);
 
     private:
-        struct SceneSnapshot
-        {
-            std::vector<Scene::Actor> Actors;
-            std::optional<Core::UUID> SelectedActorID;
-        };
-
         [[nodiscard]] bool BuildViewportPickRay(const Input::Input& input,
                                                 const Scene::FreeCamera& camera,
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
-                                                Quiet::Math::Ray& outRay) const;
-
-        [[nodiscard]] SceneSnapshot CaptureSnapshot(const Scene::Scene& scene) const;
-        void RestoreSnapshot(Scene::Scene& scene, const SceneSnapshot& snapshot);
-        static bool AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs);
-        void PushUndoSnapshot(SceneSnapshot snapshot);
-        void PushRedoSnapshot(SceneSnapshot snapshot);
-
-        void RefreshHistoryFlags();
-        void RefreshDirtyState(const Scene::Scene& scene);
+                                                Math::Ray& outRay) const;
 
     private:
-        static constexpr std::size_t MaxHistoryEntries = 128;
-
         EditorState m_State{};
-        std::vector<SceneSnapshot> m_UndoStack;
-        std::vector<SceneSnapshot> m_RedoStack;
-        std::optional<SceneSnapshot> m_PendingSnapshot;
-        std::optional<SceneSnapshot> m_CleanSnapshot;
+        EditorSceneHistory m_History{};
         bool m_WasUsingGizmo = false;
     };
 }

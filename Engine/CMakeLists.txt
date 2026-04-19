@@ -41,6 +41,8 @@ target_sources(Quiet_Engine
         src/Editor/EditorActions.cpp
         src/Editor/EditorCommands.cpp
         src/Editor/EditorController.cpp
+        src/Editor/EditorSceneHistory.cpp
+        src/Editor/EditorViewportInteraction.cpp
 
         # Renderer - UI
         src/Renderer/UI/ImGuiChrome.cpp
@@ -120,6 +122,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorActions.h
         include/Quiet/Editor/EditorCommands.h
         include/Quiet/Editor/EditorController.h
+        include/Quiet/Editor/EditorSceneHistory.h
         include/Quiet/Editor/EditorState.h
 
         include/Quiet/Renderer/RenderConventions.h
