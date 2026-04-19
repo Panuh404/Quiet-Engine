@@ -65,6 +65,12 @@ namespace Quiet::Core
         void SaveScene();
         void LoadScene();
 
+        void InitializeCommonStartup();
+        void InitializeEditorStartup();
+        void InitializeSandboxStartup();
+        void ShutdownCommon();
+
+        void ProcessGlobalShortcuts();
         void ProcessSandboxViewportResize();
         void ProcessEditorViewportResize(const Editor::EditorState& editorState);
         void ProcessEditorRequests(Editor::EditorState& editorState);
@@ -81,15 +87,24 @@ namespace Quiet::Core
 
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
+        [[nodiscard]] Renderer::Vulkan::ImGuiLayer& GetUILayer() const;
 
         bool UpdatePilotedEditorCamera(float deltaTime);
 
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;
         [[nodiscard]] const Scene::Actor* GetPreferredRenderCameraActor(const Scene::Scene& scene) const;
+        [[nodiscard]] float CalculateDeltaTime(double& previousTime) const;
 
-        bool RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
-        bool RunSandboxFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer);
+        struct FrameContext
+        {
+            float DeltaTime = 0.0f;
+            Renderer::Vulkan::ImGuiLayer* UILayer = nullptr;
+        };
+
+        [[nodiscard]] FrameContext BeginFrame(double& previousTime);
+        bool RunEditorFrame(const FrameContext& frame);
+        bool RunSandboxFrame(const FrameContext& frame);
         void FinalizePlatformWindows(bool frameCompleted) const;
         [[nodiscard]] std::function<void()> BuildEditorViewportOverlayCallback();
         [[nodiscard]] Renderer::Vulkan::ImGuiStats BuildEditorStats(float deltaTime, const Scene::Scene& scene) const;

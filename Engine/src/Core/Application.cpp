@@ -95,81 +95,22 @@ namespace Quiet::Core
     {
         Log::Init();
         QUIET_CORE_INFO("Configured application mode: {}", ToString(m_Spec.Mode));
-        m_ProjectContext.SetRootPath(std::filesystem::current_path());
 
-        Platform::WindowDesc windowDesc{};
-        windowDesc.Width = m_Spec.Width;
-        windowDesc.Height = m_Spec.Height;
-        windowDesc.Title = m_Spec.Name;
-        windowDesc.StartMaximized = m_Spec.StartMaximized;
-
-        m_Window = std::make_unique<Platform::Window>(windowDesc);
-        if (!m_Window->IsVulkanSupported())
-        {
-            QUIET_CORE_ERROR("GLFW reports that Vulkan is not available.");
-            throw std::runtime_error(
-                "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
-            );
-        }
-        m_Input = std::make_unique<Input::Input>(*m_Window);
-        SetMouseCaptureEnabled(m_Spec.IsSandbox());
-
-        m_FreeCamera = std::make_unique<Scene::FreeCamera>();
-        m_Scene = std::make_unique<Scene::Scene>();
-        m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
-
-        LoadOrCreateStartupScene(
-            *m_Scene,
-            m_Renderer->GetMeshLibrary(),
-            m_ProjectContext.GetDefaultScenePath()
-        );
+        InitializeCommonStartup();
 
         if (m_Spec.IsEditor())
         {
-            m_EditorController = std::make_unique<Editor::EditorController>();
-
-            auto& editorState = m_EditorController->GetState();
-            editorState.CurrentSceneMode = Editor::SceneMode::Edit;
-            editorState.SceneDisplayName = m_ProjectContext.GetDefaultScenePath().filename().string();
-
-            m_EditorController->ResetSelection();
-            m_EditorController->ResetSceneHistory(*m_Scene);
+            InitializeEditorStartup();
         }
         else
         {
-            const VkExtent2D initialRuntimeExtent = m_Renderer->GetSwapchainExtent();
-            if (initialRuntimeExtent.width > 0 && initialRuntimeExtent.height > 0)
-            {
-                m_Renderer->RequestViewportResize(
-                    initialRuntimeExtent.width,
-                    initialRuntimeExtent.height
-                );
-            }
-
-            m_Scene->BeginRuntime(Scene::RuntimeMode::Play);
-            QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
+            InitializeSandboxStartup();
         }
     }
 
     Application::~Application()
     {
-        if (m_RuntimeScene && m_RuntimeScene->IsRuntimeActive())
-        {
-            m_RuntimeScene->EndRuntime();
-        }
-
-        if (m_Scene && m_Scene->IsRuntimeActive())
-        {
-            m_Scene->EndRuntime();
-        }
-
-        m_EditorController.reset();
-        m_RuntimeScene.reset();
-        m_Scene.reset();
-        m_FreeCamera.reset();
-        m_Renderer.reset();
-        m_Input.reset();
-        m_Window.reset();
+        ShutdownCommon();
         Log::Shutdown();
     }
 
@@ -180,28 +121,10 @@ namespace Quiet::Core
 
         while (m_Running && !m_Window->ShouldClose())
         {
-            m_Window->PollEvents();
-            m_Input->Update();
-
-            const bool shiftDown =
-               m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
-               m_Input->IsKeyDown(Input::KeyCode::RightShift);
-
-            if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
-            {
-                ToggleMouseCapture();
-            }
-
-            const double currentTime = glfwGetTime();
-            const float deltaTime = static_cast<float>(currentTime - previousTime);
-            previousTime = currentTime;
-
-            m_Renderer->ApplyPendingViewportResize();
-            auto& uiLayer = m_Renderer->GetImGuiLayer();
-
+            const FrameContext frame = BeginFrame(previousTime);
             const bool frameCompleted = m_Spec.IsEditor()
-                ? RunEditorFrame(deltaTime, uiLayer)
-                : RunSandboxFrame(deltaTime, uiLayer);
+                ? RunEditorFrame(frame)
+                : RunSandboxFrame(frame);
 
             FinalizePlatformWindows(frameCompleted);
         }
@@ -298,6 +221,99 @@ namespace Quiet::Core
         m_EditorController->ResetSceneHistory(*m_Scene);
         m_EditorController->GetState().PilotedCameraActorID.reset();
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
+    }
+
+    void Application::InitializeCommonStartup()
+    {
+        m_ProjectContext.SetRootPath(std::filesystem::current_path());
+
+        Platform::WindowDesc windowDesc{};
+        windowDesc.Width = m_Spec.Width;
+        windowDesc.Height = m_Spec.Height;
+        windowDesc.Title = m_Spec.Name;
+        windowDesc.StartMaximized = m_Spec.StartMaximized;
+
+        m_Window = std::make_unique<Platform::Window>(windowDesc);
+        if (!m_Window->IsVulkanSupported())
+        {
+            QUIET_CORE_ERROR("GLFW reports that Vulkan is not available.");
+            throw std::runtime_error(
+                "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
+            );
+        }
+
+        m_Input = std::make_unique<Input::Input>(*m_Window);
+        SetMouseCaptureEnabled(m_Spec.IsSandbox());
+
+        m_FreeCamera = std::make_unique<Scene::FreeCamera>();
+        m_Scene = std::make_unique<Scene::Scene>();
+        m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
+
+        LoadOrCreateStartupScene(
+            *m_Scene,
+            m_Renderer->GetMeshLibrary(),
+            m_ProjectContext.GetDefaultScenePath()
+        );
+    }
+
+    void Application::InitializeEditorStartup()
+    {
+        m_EditorController = std::make_unique<Editor::EditorController>();
+
+        auto& editorState = m_EditorController->GetState();
+        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+        editorState.SceneDisplayName = m_ProjectContext.GetDefaultScenePath().filename().string();
+
+        m_EditorController->ResetSelection();
+        m_EditorController->ResetSceneHistory(*m_Scene);
+    }
+
+    void Application::InitializeSandboxStartup()
+    {
+        const VkExtent2D initialRuntimeExtent = m_Renderer->GetSwapchainExtent();
+        if (initialRuntimeExtent.width > 0 && initialRuntimeExtent.height > 0)
+        {
+            m_Renderer->RequestViewportResize(
+                initialRuntimeExtent.width,
+                initialRuntimeExtent.height
+            );
+        }
+
+        m_Scene->BeginRuntime(Scene::RuntimeMode::Play);
+        QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
+    }
+
+    void Application::ShutdownCommon()
+    {
+        if (m_RuntimeScene && m_RuntimeScene->IsRuntimeActive())
+        {
+            m_RuntimeScene->EndRuntime();
+        }
+
+        if (m_Scene && m_Scene->IsRuntimeActive())
+        {
+            m_Scene->EndRuntime();
+        }
+
+        m_EditorController.reset();
+        m_RuntimeScene.reset();
+        m_Scene.reset();
+        m_FreeCamera.reset();
+        m_Renderer.reset();
+        m_Input.reset();
+        m_Window.reset();
+    }
+
+    void Application::ProcessGlobalShortcuts()
+    {
+        const bool shiftDown =
+            m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
+            m_Input->IsKeyDown(Input::KeyCode::RightShift);
+
+        if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
+        {
+            ToggleMouseCapture();
+        }
     }
 
     void Application::ProcessSandboxViewportResize()
@@ -509,7 +525,33 @@ namespace Quiet::Core
         return (editorState.CurrentSceneMode == Editor::SceneMode::Play) ? cameraActor : nullptr;
     }
 
-    bool Application::RunEditorFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
+    float Application::CalculateDeltaTime(double &previousTime) const
+    {
+        const double currentTime = glfwGetTime();
+        const float deltaTime = static_cast<float>(currentTime - previousTime);
+        previousTime = currentTime;
+        return deltaTime;
+    }
+
+    Application::FrameContext Application::BeginFrame(double &previousTime)
+    {
+        m_Window->PollEvents();
+        m_Input->Update();
+
+        ProcessGlobalShortcuts();
+
+        const float deltaTime = CalculateDeltaTime(previousTime);
+
+        m_Renderer->ApplyPendingViewportResize();
+        auto& uiLayer = GetUILayer();
+
+        FrameContext frame{};
+        frame.DeltaTime = deltaTime;
+        frame.UILayer = &uiLayer;
+        return frame;
+    }
+
+    bool Application::RunEditorFrame(const FrameContext& frame)
     {
         if (!m_EditorController)
         {
@@ -517,6 +559,14 @@ namespace Quiet::Core
             return false;
         }
 
+        if (!frame.UILayer)
+        {
+            QUIET_CORE_ERROR("Editor frame requested without a valid UI layer.");
+            return false;
+        }
+
+        auto& uiLayer = *frame.UILayer;
+        const float deltaTime = frame.DeltaTime;
         auto& editorState = m_EditorController->GetState();
 
         Scene::Scene& activeScene = GetActiveScene();
@@ -541,9 +591,11 @@ namespace Quiet::Core
         }
 
         activeScene.Update(deltaTime);
+
         uiLayer.BeginFrame();
         {
             const Renderer::Vulkan::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
+
             uiLayer.BuildEditorUI(
                 stats,
                 *m_Input,
@@ -565,8 +617,16 @@ namespace Quiet::Core
         return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer);
     }
 
-    bool Application::RunSandboxFrame(float deltaTime, Renderer::Vulkan::ImGuiLayer& uiLayer)
+    bool Application::RunSandboxFrame(const FrameContext& frame)
     {
+        if (!frame.UILayer)
+        {
+            QUIET_CORE_ERROR("Sandbox frame requested without a valid UI layer.");
+            return false;
+        }
+
+        auto& uiLayer = *frame.UILayer;
+        const float deltaTime = frame.DeltaTime;
         Scene::Scene& activeScene = *m_Scene;
 
         if (activeScene.IsRuntimeActive())
@@ -575,7 +635,6 @@ namespace Quiet::Core
         }
 
         activeScene.Update(deltaTime);
-
         ProcessSandboxViewportResize();
 
         std::uint32_t runtimeViewportWidth = 0;
@@ -673,6 +732,11 @@ namespace Quiet::Core
         }
 
         return m_FreeCamera->GetPosition();
+    }
+
+    Renderer::Vulkan::ImGuiLayer & Application::GetUILayer() const
+    {
+        return m_Renderer->GetImGuiLayer();
     }
 
     bool Application::UpdatePilotedEditorCamera(float deltaTime)
