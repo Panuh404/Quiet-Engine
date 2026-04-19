@@ -167,7 +167,8 @@ namespace Quiet::Core
             m_Renderer->GetMeshLibrary()
         );
 
-        editorState.SceneDisplayName = "DefaultScene.json";
+        m_ProjectContext.ResetActiveScenePath();
+        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
         m_EditorController->GetState().PilotedCameraActorID.reset();
@@ -189,7 +190,7 @@ namespace Quiet::Core
             return;
         }
 
-        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
+        const std::filesystem::path scenePath = m_ProjectContext.GetActiveScenePath();
         if (!Scene::SceneDocument::Save(*m_Scene, scenePath))
         {
             QUIET_CORE_ERROR("Failed to save scene to '{}'.", scenePath.string());
@@ -210,7 +211,7 @@ namespace Quiet::Core
             return;
         }
 
-        const std::filesystem::path scenePath = m_ProjectContext.GetDefaultScenePath();
+        const std::filesystem::path scenePath = m_ProjectContext.GetActiveScenePath();
         if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), scenePath))
         {
             QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());
@@ -253,7 +254,7 @@ namespace Quiet::Core
         LoadOrCreateStartupScene(
             *m_Scene,
             m_Renderer->GetMeshLibrary(),
-            m_ProjectContext.GetDefaultScenePath()
+            m_ProjectContext.GetActiveScenePath()
         );
     }
 
@@ -263,7 +264,7 @@ namespace Quiet::Core
 
         auto& editorState = m_EditorController->GetState();
         editorState.CurrentSceneMode = Editor::SceneMode::Edit;
-        editorState.SceneDisplayName = m_ProjectContext.GetDefaultScenePath().filename().string();
+        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
 
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
