@@ -11,6 +11,11 @@ target_sources(Quiet_Engine
         # Platform
         src/Platform/Window.cpp
 
+        # Project
+        src/Project/ProjectContext.cpp
+        src/Project/ProjectDescriptor.cpp
+        src/Project/ProjectRegistry.cpp
+
         # Input
         src/Input/Input.cpp
 
@@ -111,8 +116,11 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Application.h
         include/Quiet/Core/AppSpec.h
         include/Quiet/Core/Log.h
-        include/Quiet/Core/ProjectContext.h
         include/Quiet/Core/UUID.h
+
+        include/Quiet/Project/ProjectContext.h
+        include/Quiet/Project/ProjectDescriptor.h
+        include/Quiet/Project/ProjectRegistry.h
 
         include/Quiet/Input/Input.h
         include/Quiet/Input/KeyCodes.h

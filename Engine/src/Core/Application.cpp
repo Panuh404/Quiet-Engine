@@ -88,6 +88,27 @@ namespace
 
         return data;
     }
+
+    bool LoadOrCreateProjectRegistry(Quiet::Project::ProjectRegistry& registry)
+    {
+        const std::filesystem::path registryPath =
+        Quiet::Project::ProjectRegistryIO::GetDefaultRegistryFilePath();
+
+        if (!std::filesystem::exists(registryPath))
+        {
+            registry = Quiet::Project::ProjectRegistryIO::MakeDefault();
+            std::filesystem::create_directories(registry.ProjectsRoot);
+            return Quiet::Project::ProjectRegistryIO::SaveToFile(registryPath, registry);
+        }
+
+        if (!Quiet::Project::ProjectRegistryIO::LoadFromFile(registryPath, registry))
+        {
+            return false;
+        }
+
+        std::filesystem::create_directories(registry.ProjectsRoot);
+        return true;
+    }
 }
 
 namespace Quiet::Core
@@ -219,15 +240,46 @@ namespace Quiet::Core
         }
 
         editorState.SceneDisplayName = scenePath.filename().string();
+        editorState.PilotedCameraActorID.reset();
+
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
-        m_EditorController->GetState().PilotedCameraActorID.reset();
+
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 
     void Application::InitializeCommonStartup()
     {
-        m_ProjectContext.SetRootPath(std::filesystem::current_path());
+        if (!LoadOrCreateProjectRegistry(m_ProjectRegistry))
+        {
+            throw std::runtime_error("Failed to load or create project registry.");
+        }
+
+        std::filesystem::path projectFilePath = m_ProjectRegistry.LastOpenedProjectFile;
+        if (projectFilePath.empty())
+        {
+            const std::string defaultProjectName = "SandboxProject";
+            const std::filesystem::path projectFolder =
+                m_ProjectRegistry.ProjectsRoot / defaultProjectName;
+            projectFilePath = projectFolder / (defaultProjectName + ".quiet");
+        }
+
+        if (!Project::LoadOrCreateProject(m_ProjectContext, projectFilePath))
+        {
+            throw std::runtime_error("Failed to load or create .quiet project file.");
+        }
+
+        Project::ProjectRegistryIO::TouchRecentProject(
+            m_ProjectRegistry,
+            m_ProjectContext.GetProjectFilePath()
+        );
+
+        if (!Project::ProjectRegistryIO::SaveToFile(
+                Project::ProjectRegistryIO::GetDefaultRegistryFilePath(),
+                m_ProjectRegistry))
+        {
+            QUIET_CORE_WARN("Failed to save project registry.");
+        }
 
         Platform::WindowDesc windowDesc{};
         windowDesc.Width = m_Spec.Width;

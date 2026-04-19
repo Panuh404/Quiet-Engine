@@ -5,7 +5,8 @@
 
 #include "AppSpec.h"
 #include "glm/vec3.hpp"
-#include "ProjectContext.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Project/ProjectRegistry.h"
 
 #pragma region Forward declarations
 
@@ -31,6 +32,11 @@ namespace Quiet::Scene
     enum class RuntimeMode;
     class FreeCamera;
     class Scene;
+}
+
+namespace Quiet::Project
+{
+    class ProjectContext;
 }
 
 namespace Quiet::Renderer::UI
@@ -119,7 +125,8 @@ namespace Quiet::Core
         bool m_MouseCaptureEnabled = true;
         bool m_MouseCaptureBeforePlay = false;
 
-        ProjectContext m_ProjectContext;
+        Project::ProjectContext m_ProjectContext;
+        Project::ProjectRegistry m_ProjectRegistry{};
 
         std::unique_ptr<Platform::Window> m_Window;
         std::unique_ptr<Input::Input> m_Input;
