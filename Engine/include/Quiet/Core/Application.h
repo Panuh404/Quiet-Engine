@@ -78,6 +78,8 @@ namespace Quiet::Core
 
         bool OpenProject(const std::filesystem::path& projectFilePath);
         bool CreateProject(const std::string& projectName);
+        bool OpenSceneInProject(const std::filesystem::path& relativeScenePath);
+        bool SetProjectStartupScene(const std::filesystem::path& relativeScenePath);
 
         void InitializeCommonStartup();
         void InitializeEditorStartup();

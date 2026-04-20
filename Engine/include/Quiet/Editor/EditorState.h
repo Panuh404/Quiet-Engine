@@ -66,6 +66,8 @@ namespace Quiet::Editor
         bool RequestProjectManagerPopup = false;
         bool RequestOpenProjectConfirm = false;
         bool RequestCreateProjectConfirm = false;
+        bool RequestOpenProjectSceneConfirm = false;
+        bool RequestSetStartupSceneConfirm = false;
 
         bool CanUndo = false;
         bool CanRedo = false;
@@ -74,5 +76,6 @@ namespace Quiet::Editor
 
         std::array<char, 260> ProjectToOpenBuffer{};
         std::array<char, 128> NewProjectNameBuffer{};
+        std::array<char, 260> ProjectScenePathBuffer{};
     };
 }

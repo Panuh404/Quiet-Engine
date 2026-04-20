@@ -1,9 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 #include "ProjectDescriptor.h"
 
@@ -42,7 +44,7 @@ namespace Quiet::Project
 
             if (path.is_relative())
             {
-                m_ActiveScenePath = GetScenesPath() / std::move(path);
+                m_ActiveScenePath = GetScenesPath() / path;
             }
             else
             {
@@ -55,7 +57,56 @@ namespace Quiet::Project
             m_ActiveScenePath = GetStartupScenePath();
         }
 
-        bool EnsureDirectoriesExist() const
+        void SetStartupScene(std::filesystem::path relativeScenePath)
+        {
+            if (relativeScenePath.empty())
+            {
+                return;
+            }
+
+            relativeScenePath = relativeScenePath.lexically_normal();
+            m_ProjectDescriptor.StartupScene = relativeScenePath.generic_string();
+        }
+
+        [[nodiscard]] std::filesystem::path MakeSceneRelativePath(const std::filesystem::path& scenePath) const
+        {
+            if (scenePath.empty()) return {};
+            if (scenePath.is_relative()) return scenePath.lexically_normal();
+
+            const std::filesystem::path relative = scenePath.lexically_relative(GetScenesPath());
+            if (!relative.empty()) return relative.lexically_normal();
+
+            return scenePath.filename();
+        }
+
+        [[nodiscard]] std::vector<std::filesystem::path> EnumerateSceneFiles() const
+        {
+            std::vector<std::filesystem::path> result;
+            std::error_code ec;
+            if (!std::filesystem::exists(GetScenesPath(), ec)) return result;
+
+            for (std::filesystem::recursive_directory_iterator it(GetScenesPath(), ec), end; it != end; it.increment(ec))
+            {
+                if (ec) break;
+                if (!it->is_regular_file(ec)) continue;
+
+                const std::filesystem::path filePath = it->path();
+                if (filePath.extension() == ".json")
+                {
+                    result.push_back(MakeSceneRelativePath(filePath));
+                }
+            }
+
+            std::sort(result.begin(), result.end());
+            return result;
+        }
+
+        [[nodiscard]] bool SaveDescriptor() const
+        {
+            return ProjectDescriptorIO::SaveToFile(m_ProjectFilePath, m_ProjectDescriptor);
+        }
+
+        [[nodiscard]] bool EnsureDirectoriesExist() const
         {
             std::error_code ec;
             std::filesystem::create_directories(GetScenesPath(), ec);

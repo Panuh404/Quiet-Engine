@@ -329,6 +329,36 @@ namespace Quiet::Core
         return OpenProject(projectFilePath);
     }
 
+    bool Application::OpenSceneInProject(const std::filesystem::path &relativeScenePath)
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            QUIET_CORE_WARN("Cannot open scene while runtime mode is active.");
+            return false;
+        }
+
+        m_ProjectContext.SetActiveScenePath(relativeScenePath);
+        LoadScene();
+        return true;
+    }
+
+    bool Application::SetProjectStartupScene(const std::filesystem::path &relativeScenePath)
+    {
+        if (relativeScenePath.empty()) return false;
+
+        m_ProjectContext.SetStartupScene(relativeScenePath);
+        if (!m_ProjectContext.SaveDescriptor())
+        {
+            QUIET_CORE_ERROR("Failed to save project descriptor '{}'.",
+                             m_ProjectContext.GetProjectFilePath().string());
+            return false;
+        }
+
+        QUIET_CORE_INFO("Set startup scene to '{}'.", relativeScenePath.generic_string());
+        return true;
+    }
+
     void Application::InitializeCommonStartup()
     {
         if (!LoadOrCreateProjectRegistry(m_ProjectRegistry))
@@ -527,6 +557,18 @@ namespace Quiet::Core
         {
             CreateProject(editorState.NewProjectNameBuffer.data());
             editorState.RequestCreateProjectConfirm = false;
+        }
+
+        if (editorState.RequestOpenProjectSceneConfirm)
+        {
+            OpenSceneInProject(editorState.ProjectScenePathBuffer.data());
+            editorState.RequestOpenProjectSceneConfirm = false;
+        }
+
+        if (editorState.RequestSetStartupSceneConfirm)
+        {
+            SetProjectStartupScene(editorState.ProjectScenePathBuffer.data());
+            editorState.RequestSetStartupSceneConfirm = false;
         }
 
         if (editorState.RequestEnterSimulate)
