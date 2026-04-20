@@ -76,6 +76,9 @@ namespace Quiet::Core
         void SaveScene();
         void LoadScene();
 
+        bool OpenProject(const std::filesystem::path& projectFilePath);
+        bool CreateProject(const std::string& projectName);
+
         void InitializeCommonStartup();
         void InitializeEditorStartup();
         void InitializeSandboxStartup();

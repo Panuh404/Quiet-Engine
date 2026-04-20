@@ -26,5 +26,7 @@ namespace Quiet::Project
         static void TouchRecentProject(ProjectRegistry& registry,
                                        const std::filesystem::path& projectFilePath,
                                        std::size_t maxEntries = 12);
+
+        [[nodiscard]] static std::vector<std::filesystem::path> EnumerateProjectFiles(const std::filesystem::path& projectsRoot);
     };
 }

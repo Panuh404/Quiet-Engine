@@ -16,6 +16,8 @@
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorController.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Project/ProjectRegistry.h"
 #include "Scene/Scene.h"
 
 
@@ -102,6 +104,8 @@ namespace Quiet::Renderer::UI
                                    Scene::Scene& scene,
                                    Editor::EditorController& editorController,
                                    Editor::EditorState& editorState,
+                                   const Project::ProjectContext& projectContext,
+                                   const Project::ProjectRegistry& projectRegistry,
                                    const Vulkan::MeshLibrary& meshLibrary,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
@@ -109,7 +113,8 @@ namespace Quiet::Renderer::UI
         Editor::EditorCommands commands(editorController);
         Editor::EditorActions actions(input, scene, commands, editorState);
 
-        BuildMainMenuBar(actions);
+        BuildMainMenuBar(actions, editorState);
+        BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
         BuildTopbar(actions, editorState);
         BuildDockspace();
 

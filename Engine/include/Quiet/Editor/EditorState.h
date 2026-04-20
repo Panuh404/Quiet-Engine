@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -62,10 +63,16 @@ namespace Quiet::Editor
         bool RequestStopPlay = false;
         bool RequestUndo = false;
         bool RequestRedo = false;
+        bool RequestProjectManagerPopup = false;
+        bool RequestOpenProjectConfirm = false;
+        bool RequestCreateProjectConfirm = false;
 
         bool CanUndo = false;
         bool CanRedo = false;
         bool SceneDirty = false;
         std::string SceneDisplayName = "DefaultScene.json";
+
+        std::array<char, 260> ProjectToOpenBuffer{};
+        std::array<char, 128> NewProjectNameBuffer{};
     };
 }

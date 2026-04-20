@@ -131,5 +131,28 @@ namespace Quiet::Project
             registry.RecentProjectFiles.resize(maxEntries);
         }
     }
+
+    std::vector<std::filesystem::path> ProjectRegistryIO::EnumerateProjectFiles(const std::filesystem::path &projectsRoot)
+    {
+        std::vector<std::filesystem::path> result;
+        std::error_code ec;
+        if (!std::filesystem::exists(projectsRoot, ec)) return result;
+
+        for (std::filesystem::recursive_directory_iterator it(projectsRoot, ec), end; it != end; it.increment(ec))
+        {
+            if (ec) break;
+
+            if (!it->is_regular_file(ec)) continue;
+
+            const std::filesystem::path path = it->path();
+            if (path.extension() == ".quiet")
+            {
+                result.push_back(path);
+            }
+        }
+
+        std::sort(result.begin(), result.end());
+        return result;
+    }
 }
 

@@ -7,6 +7,7 @@
 #include <utility>
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -108,6 +109,28 @@ namespace
 
         std::filesystem::create_directories(registry.ProjectsRoot);
         return true;
+    }
+
+    std::string TrimCopy(std::string value)
+    {
+        const auto isSpace = [](unsigned char c) { return std::isspace(c) != 0; };
+        while (!value.empty() && isSpace(static_cast<unsigned char>(value.front())))
+        {
+            value.erase(value.begin());
+        }
+        while (!value.empty() && isSpace(static_cast<unsigned char>(value.back())))
+        {
+            value.pop_back();
+        }
+
+        return value;
+    }
+
+    bool IsValidProjectName(const std::string& name)
+    {
+        if (name.empty()) return false;
+        static constexpr const char* invalidChars = "\\/:*?\"<>|";
+        return name.find_first_of(invalidChars) == std::string::npos;
     }
 }
 
@@ -248,6 +271,64 @@ namespace Quiet::Core
         QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
     }
 
+    bool Application::OpenProject(const std::filesystem::path &projectFilePath)
+    {
+        auto& editorState = m_EditorController->GetState();
+        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        {
+            QUIET_CORE_WARN("Cannot open project while runtime mode is active.");
+            return false;
+        }
+
+        if (!Project::LoadOrCreateProject(m_ProjectContext, projectFilePath))
+        {
+            QUIET_CORE_ERROR("Failed to open project '{}'.", projectFilePath.string());
+            return false;
+        }
+
+        Project::ProjectRegistryIO::TouchRecentProject(
+            m_ProjectRegistry,
+            m_ProjectContext.GetProjectFilePath()
+        );
+
+        if (!Project::ProjectRegistryIO::SaveToFile(
+                Project::ProjectRegistryIO::GetDefaultRegistryFilePath(),
+                m_ProjectRegistry))
+        {
+            QUIET_CORE_WARN("Failed to save project registry.");
+        }
+
+        LoadOrCreateStartupScene(
+            *m_Scene,
+            m_Renderer->GetMeshLibrary(),
+            m_ProjectContext.GetStartupScenePath()
+        );
+
+        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
+        editorState.PilotedCameraActorID.reset();
+
+        m_EditorController->ResetSelection();
+        m_EditorController->ResetSceneHistory(*m_Scene);
+
+        QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
+        return true;
+    }
+
+    bool Application::CreateProject(const std::string &projectName)
+    {
+        const std::string trimmedName = TrimCopy(projectName);
+        if (!IsValidProjectName(trimmedName))
+        {
+            QUIET_CORE_WARN("Invalid project name '{}'.", projectName);
+            return false;
+        }
+
+        const std::filesystem::path projectFolder = m_ProjectRegistry.ProjectsRoot / trimmedName;
+        const std::filesystem::path projectFilePath = projectFolder / (trimmedName + ".quiet");
+
+        return OpenProject(projectFilePath);
+    }
+
     void Application::InitializeCommonStartup()
     {
         if (!LoadOrCreateProjectRegistry(m_ProjectRegistry))
@@ -306,7 +387,7 @@ namespace Quiet::Core
         LoadOrCreateStartupScene(
             *m_Scene,
             m_Renderer->GetMeshLibrary(),
-            m_ProjectContext.GetActiveScenePath()
+            m_ProjectContext.GetStartupScenePath()
         );
     }
 
@@ -434,6 +515,18 @@ namespace Quiet::Core
         {
             LoadScene();
             editorState.RequestLoadScene = false;
+        }
+
+        if (editorState.RequestOpenProjectConfirm)
+        {
+            OpenProject(editorState.ProjectToOpenBuffer.data());
+            editorState.RequestOpenProjectConfirm = false;
+        }
+
+        if (editorState.RequestCreateProjectConfirm)
+        {
+            CreateProject(editorState.NewProjectNameBuffer.data());
+            editorState.RequestCreateProjectConfirm = false;
         }
 
         if (editorState.RequestEnterSimulate)
@@ -656,6 +749,8 @@ namespace Quiet::Core
                 activeScene,
                 *m_EditorController,
                 editorState,
+                m_ProjectContext,
+                m_ProjectRegistry,
                 m_Renderer->GetMeshLibrary(),
                 m_Renderer->GetSceneViewportTextureID(),
                 BuildEditorViewportOverlayCallback()

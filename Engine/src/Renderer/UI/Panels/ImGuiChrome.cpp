@@ -1,8 +1,8 @@
-#include "ImGuiLayer.h"
+#include "Renderer/UI/ImGuiLayer.h"
 
 #include <imgui_internal.h>
 
-#include "ImGuiToolbarCommon.h"
+#include "../ImGuiToolbarCommon.h"
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorState.h"
@@ -41,7 +41,7 @@ namespace
 
 namespace Quiet::Renderer::UI
 {
-    void ImGuiLayer::BuildMainMenuBar(Editor::EditorActions& editorActions)
+    void ImGuiLayer::BuildMainMenuBar(Editor::EditorActions &editorActions, Editor::EditorState &editorState)
     {
         if (!ImGui::BeginMainMenuBar()) return;
 
@@ -50,6 +50,11 @@ namespace Quiet::Renderer::UI
             DrawMenuAction(editorActions, Editor::EditorActionID::NewScene);
             DrawMenuAction(editorActions, Editor::EditorActionID::SaveScene);
             DrawMenuAction(editorActions, Editor::EditorActionID::LoadScene);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Project Manager..."))
+            {
+                editorState.RequestProjectManagerPopup = true;
+            }
             ImGui::EndMenu();
         }
 

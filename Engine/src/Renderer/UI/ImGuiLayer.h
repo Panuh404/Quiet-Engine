@@ -25,6 +25,12 @@ namespace Quiet::Input
     class Input;
 }
 
+namespace Quiet::Project
+{
+    struct ProjectContext;
+    struct ProjectRegistry;
+}
+
 namespace Quiet::Scene
 {
     class Scene;
@@ -73,6 +79,8 @@ namespace Quiet::Renderer::UI
                            Scene::Scene& scene,
                            Editor::EditorController& editorController,
                            Editor::EditorState& editorState,
+                           const Project::ProjectContext& projectContext,
+                           const Project::ProjectRegistry& projectRegistry,
                            const Vulkan::MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
@@ -94,7 +102,8 @@ namespace Quiet::Renderer::UI
         [[nodiscard]] bool ShouldApplyDefaultDockLayout() const;
 
         // ImGui Chrome
-        void BuildMainMenuBar(Editor::EditorActions& editorActions);
+        void BuildMainMenuBar(Editor::EditorActions& editorActions,
+                              Editor::EditorState& editorState);
         void BuildTopbar(Editor::EditorActions& editorActions,
                          Editor::EditorState& editorState);
 
@@ -114,6 +123,10 @@ namespace Quiet::Renderer::UI
         void BuildViewport(Editor::EditorState& editorState,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
+
+        void BuildProjectManagerPopup(Editor::EditorState& editorState,
+                                      const Project::ProjectContext& projectContext,
+                                      const Project::ProjectRegistry& projectRegistry);
 
         // Diagnostics
         void BuildDebugWindow(const ImGuiStats& stats);

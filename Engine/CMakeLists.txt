@@ -50,17 +50,20 @@ target_sources(Quiet_Engine
         src/Editor/EditorViewportInteraction.cpp
 
         # Renderer - UI
-        src/Renderer/UI/ImGuiChrome.cpp
-        src/Renderer/UI/ImGuiDockspace.cpp
-        src/Renderer/UI/ImGuiDiagnostics.cpp
         src/Renderer/UI/ImGuiFonts.h
         src/Renderer/UI/ImGuiLayer.cpp
         src/Renderer/UI/ImGuiLayer.h
-        src/Renderer/UI/ImGuiScenePanels.cpp
         src/Renderer/UI/ImGuiTheme.h
         src/Renderer/UI/ImGuiToolbarCommon.cpp
         src/Renderer/UI/ImGuiToolbarCommon.h
-        src/Renderer/UI/ImGuiViewportPanels.cpp
+
+        # Renderer - UI - Panels
+        src/Renderer/UI/Panels/ImGuiChrome.cpp
+        src/Renderer/UI/Panels/ImGuiDiagnostics.cpp
+        src/Renderer/UI/Panels/ImGuiDockspace.cpp
+        src/Renderer/UI/Panels/ImGuiProjectManager.cpp
+        src/Renderer/UI/Panels/ImGuiScenePanels.cpp
+        src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
         # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp
