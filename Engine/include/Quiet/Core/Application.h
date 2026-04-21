@@ -18,6 +18,8 @@ namespace Quiet::Platform
 namespace Quiet::Editor
 {
     class EditorController;
+    class EditorSceneWorkflow;
+    class EditorRuntimeController;
     struct EditorState;
 }
 
@@ -37,6 +39,7 @@ namespace Quiet::Scene
 namespace Quiet::Project
 {
     class ProjectContext;
+    class ProjectWorkflow;
 }
 
 namespace Quiet::Renderer::UI
@@ -72,15 +75,6 @@ namespace Quiet::Core
         void ToggleMouseCapture();
         void SetMouseCaptureEnabled(bool enabled);
 
-        void NewScene();
-        void SaveScene();
-        void LoadScene();
-
-        bool OpenProject(const std::filesystem::path& projectFilePath);
-        bool CreateProject(const std::string& projectName);
-        bool OpenSceneInProject(const std::filesystem::path& relativeScenePath);
-        bool SetProjectStartupScene(const std::filesystem::path& relativeScenePath);
-        
         void InitializeCommonStartup();
         void InitializeEditorStartup();
         void InitializeSandboxStartup();
@@ -90,16 +84,6 @@ namespace Quiet::Core
         void ProcessSandboxViewportResize();
         void ProcessEditorViewportResize(const Editor::EditorState& editorState);
         void ProcessEditorRequests(Editor::EditorState& editorState);
-
-        void ResetEditorRuntimeState(Editor::EditorState& editorState);
-        void CreateRuntimeScene(Scene::RuntimeMode runtimeMode);
-        void DestroyRuntimeScene();
-
-        void EnterSimulateMode();
-        void StopSimulateMode();
-
-        void EnterPlayMode();
-        void StopPlayMode();
 
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
@@ -132,6 +116,11 @@ namespace Quiet::Core
 
         Project::ProjectContext m_ProjectContext;
         Project::ProjectRegistry m_ProjectRegistry{};
+        std::unique_ptr<Project::ProjectWorkflow> m_ProjectWorkflow;
+
+        std::unique_ptr<Editor::EditorController> m_EditorController;
+        std::unique_ptr<Editor::EditorSceneWorkflow> m_EditorSceneWorkflow;
+        std::unique_ptr<Editor::EditorRuntimeController> m_EditorRuntimeController;
 
         std::unique_ptr<Platform::Window> m_Window;
         std::unique_ptr<Input::Input> m_Input;
@@ -139,6 +128,5 @@ namespace Quiet::Core
         std::unique_ptr<Scene::Scene> m_Scene;
         std::unique_ptr<Scene::Scene> m_RuntimeScene;
         std::unique_ptr<Renderer::Vulkan::VulkanRenderer> m_Renderer;
-        std::unique_ptr<Editor::EditorController> m_EditorController;
     };
 }

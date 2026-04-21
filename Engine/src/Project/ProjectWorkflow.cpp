@@ -1,0 +1,181 @@
+#include "Quiet/Project/ProjectWorkflow.h"
+
+#include "Quiet/Core/Log.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Project/ProjectRegistry.h"
+#include "Quiet/Scene/SceneDocument.h"
+
+namespace
+{
+    bool LoadOrCreateProjectRegistry(Quiet::Project::ProjectRegistry& registry)
+    {
+        const std::filesystem::path registryPath =
+            Quiet::Project::ProjectRegistryIO::GetDefaultRegistryFilePath();
+
+        if (!std::filesystem::exists(registryPath))
+        {
+            registry = Quiet::Project::ProjectRegistryIO::MakeDefault();
+            std::filesystem::create_directories(registry.ProjectsRoot);
+            return Quiet::Project::ProjectRegistryIO::SaveToFile(registryPath, registry);
+        }
+
+        if (!Quiet::Project::ProjectRegistryIO::LoadFromFile(registryPath, registry))
+            return false;
+
+        std::filesystem::create_directories(registry.ProjectsRoot);
+        return true;
+    }
+
+    void LoadOrCreateStartupScene(Quiet::Scene::Scene& scene,
+                                  Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                  const std::filesystem::path& scenePath)
+    {
+        if (Quiet::Scene::SceneDocument::Load(scene, meshLibrary, scenePath))
+        {
+            QUIET_CORE_INFO("Loaded startup scene from '{}'.", scenePath.string());
+            return;
+        }
+
+        Quiet::Scene::SceneDocument::CreateDefault(scene, meshLibrary);
+        QUIET_CORE_WARN(
+            "Failed to load startup scene from '{}'. Created default scene instead.",
+            scenePath.string()
+        );
+    }
+
+    std::string TrimCopy(std::string value)
+    {
+        const auto isSpace = [](unsigned char c) { return std::isspace(c) != 0; };
+        while (!value.empty() && isSpace(static_cast<unsigned char>(value.front())))
+        {
+            value.erase(value.begin());
+        }
+
+        while (!value.empty() && isSpace(static_cast<unsigned char>(value.back())))
+        {
+            value.pop_back();
+        }
+        return value;
+    }
+
+    bool IsValidProjectName(const std::string& name)
+    {
+        if (name.empty()) return false;
+        static constexpr const char* invalidChars = "\\/:*?\"<>|";
+        return name.find_first_of(invalidChars) == std::string::npos;
+    }
+}
+
+namespace Quiet::Project
+{
+    ProjectWorkflow::ProjectWorkflow(ProjectContext &projectContext,
+                                     ProjectRegistry &projectRegistry,
+                                     Scene::Scene &scene,
+                                     Renderer::Vulkan::MeshLibrary &meshLibrary)
+                                         : m_ProjectContext(projectContext)
+                                         , m_ProjectRegistry(projectRegistry)
+                                         , m_Scene(scene)
+                                         , m_MeshLibrary(meshLibrary) {}
+
+    bool ProjectWorkflow::InitializeLastOpenedOrDefaultProject()
+    {
+        if (!LoadOrCreateRegistry())
+        {
+            QUIET_CORE_ERROR("Failed to load or create project registry.");
+            return false;
+        }
+        return OpenOrCreateProject(ResolveInitialProjectFilePath());
+    }
+
+    bool ProjectWorkflow::OpenOrCreateProject(const std::filesystem::path &projectFilePath)
+    {
+        if (!LoadOrCreateProject(m_ProjectContext, projectFilePath))
+        {
+            QUIET_CORE_ERROR("Failed to open project '{}'.", projectFilePath.string());
+            return false;
+        }
+
+        TouchRecentProject();
+        if (!SaveRegistry())
+        {
+            QUIET_CORE_WARN("Failed to save project registry.");
+        }
+
+        LoadOrCreateStartupScene();
+        QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
+        return true;
+    }
+
+    bool ProjectWorkflow::CreateProject(const std::string &projectName)
+    {
+        const std::string trimmedName = TrimCopy(projectName);
+        if (!IsValidProjectName(trimmedName))
+        {
+            QUIET_CORE_WARN("Invalid project name '{}'.", projectName);
+            return false;
+        }
+
+        const std::filesystem::path projectFolder = m_ProjectRegistry.ProjectsRoot / trimmedName;
+        const std::filesystem::path projectFilePath = projectFolder / (trimmedName + ".quiet");
+        return OpenOrCreateProject(projectFilePath);
+    }
+
+    bool ProjectWorkflow::SetStartupScene(const std::filesystem::path &relativeScenePath)
+    {
+        if (relativeScenePath.empty()) return false;
+        m_ProjectContext.SetStartupScene(relativeScenePath);
+        if (!m_ProjectContext.SaveDescriptor())
+        {
+            QUIET_CORE_ERROR(
+                "Failed to save project descriptor '{}'.",
+                m_ProjectContext.GetProjectFilePath().string()
+            );
+            return false;
+        }
+
+        QUIET_CORE_INFO("Set startup scene to '{}'.", relativeScenePath.generic_string());
+        return true;
+    }
+
+    bool ProjectWorkflow::LoadOrCreateRegistry()
+    {
+        return LoadOrCreateProjectRegistry(m_ProjectRegistry);
+    }
+
+    bool ProjectWorkflow::SaveRegistry()
+    {
+        return ProjectRegistryIO::SaveToFile(
+            ProjectRegistryIO::GetDefaultRegistryFilePath(),
+            m_ProjectRegistry
+        );
+    }
+
+    void ProjectWorkflow::TouchRecentProject()
+    {
+        ProjectRegistryIO::TouchRecentProject(
+            m_ProjectRegistry,
+            m_ProjectContext.GetProjectFilePath()
+        );
+    }
+
+    void ProjectWorkflow::LoadOrCreateStartupScene()
+    {
+        ::LoadOrCreateStartupScene(
+            m_Scene,
+            m_MeshLibrary,
+            m_ProjectContext.GetStartupScenePath()
+        );
+    }
+
+    std::filesystem::path ProjectWorkflow::ResolveInitialProjectFilePath() const
+    {
+        std::filesystem::path projectFilePath = m_ProjectRegistry.LastOpenedProjectFile;
+        if (!projectFilePath.empty()) return projectFilePath;
+
+        const std::string defaultProjectName = "SandboxProject";
+        const std::filesystem::path projectFolder =
+            m_ProjectRegistry.ProjectsRoot / defaultProjectName;
+
+        return projectFolder / (defaultProjectName + ".quiet");
+    }
+}

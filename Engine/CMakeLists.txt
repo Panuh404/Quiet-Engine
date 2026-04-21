@@ -15,6 +15,7 @@ target_sources(Quiet_Engine
         src/Project/ProjectContext.cpp
         src/Project/ProjectDescriptor.cpp
         src/Project/ProjectRegistry.cpp
+        src/Project/ProjectWorkflow.cpp
 
         # Input
         src/Input/Input.cpp
@@ -46,7 +47,9 @@ target_sources(Quiet_Engine
         src/Editor/EditorActions.cpp
         src/Editor/EditorCommands.cpp
         src/Editor/EditorController.cpp
+        src/Editor/EditorRuntimeController.cpp
         src/Editor/EditorSceneHistory.cpp
+        src/Editor/EditorSceneWorkflow.cpp
         src/Editor/EditorViewportInteraction.cpp
 
         # Renderer - UI
@@ -124,6 +127,7 @@ target_sources(Quiet_Engine
         include/Quiet/Project/ProjectContext.h
         include/Quiet/Project/ProjectDescriptor.h
         include/Quiet/Project/ProjectRegistry.h
+        include/Quiet/Project/ProjectWorkflow.h
 
         include/Quiet/Input/Input.h
         include/Quiet/Input/KeyCodes.h
@@ -133,7 +137,9 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorActions.h
         include/Quiet/Editor/EditorCommands.h
         include/Quiet/Editor/EditorController.h
+        include/Quiet/Editor/EditorRuntimeController.h
         include/Quiet/Editor/EditorSceneHistory.h
+        include/Quiet/Editor/EditorSceneWorkflow.h
         include/Quiet/Editor/EditorState.h
 
         include/Quiet/Renderer/RenderConventions.h

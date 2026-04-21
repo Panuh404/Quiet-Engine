@@ -21,6 +21,9 @@
 #include "Quiet/Renderer/RenderConventions.h"
 #include "Quiet/Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
+#include "Quiet/Editor/EditorRuntimeController.h"
+#include "Quiet/Editor/EditorSceneWorkflow.h"
+#include "Quiet/Project/ProjectWorkflow.h"
 #include "Quiet/Scene/SceneDocument.h"
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
@@ -40,23 +43,6 @@ namespace
             default:                            return "Unknown";
         }
     }
-
-    void LoadOrCreateStartupScene(Quiet::Scene::Scene& scene,
-                                  Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
-                                  const std::filesystem::path& scenePath)
-    {
-        if (Quiet::Scene::SceneDocument::Load(scene, meshLibrary, scenePath))
-        {
-            QUIET_CORE_INFO("Loaded startup scene from '{}'.", scenePath.string());
-            return;
-        }
-        Quiet::Scene::SceneDocument::CreateDefault(scene, meshLibrary);
-        QUIET_CORE_WARN(
-            "Failed to load startup scene from '{}'. Created default scene instead.",
-            scenePath.string()
-        );
-    }
-
 
     Quiet::Renderer::Vulkan::CameraUniformData BuildSceneCameraUniformData(const Quiet::Scene::Actor& cameraActor,
                                                                            float aspect)
@@ -90,49 +76,6 @@ namespace
         }
 
         return data;
-    }
-
-    bool LoadOrCreateProjectRegistry(Quiet::Project::ProjectRegistry& registry)
-    {
-        const std::filesystem::path registryPath =
-        Quiet::Project::ProjectRegistryIO::GetDefaultRegistryFilePath();
-
-        if (!std::filesystem::exists(registryPath))
-        {
-            registry = Quiet::Project::ProjectRegistryIO::MakeDefault();
-            std::filesystem::create_directories(registry.ProjectsRoot);
-            return Quiet::Project::ProjectRegistryIO::SaveToFile(registryPath, registry);
-        }
-
-        if (!Quiet::Project::ProjectRegistryIO::LoadFromFile(registryPath, registry))
-        {
-            return false;
-        }
-
-        std::filesystem::create_directories(registry.ProjectsRoot);
-        return true;
-    }
-
-    std::string TrimCopy(std::string value)
-    {
-        const auto isSpace = [](unsigned char c) { return std::isspace(c) != 0; };
-        while (!value.empty() && isSpace(static_cast<unsigned char>(value.front())))
-        {
-            value.erase(value.begin());
-        }
-        while (!value.empty() && isSpace(static_cast<unsigned char>(value.back())))
-        {
-            value.pop_back();
-        }
-
-        return value;
-    }
-
-    bool IsValidProjectName(const std::string& name)
-    {
-        if (name.empty()) return false;
-        static constexpr const char* invalidChars = "\\/:*?\"<>|";
-        return name.find_first_of(invalidChars) == std::string::npos;
     }
 }
 
@@ -199,201 +142,8 @@ namespace Quiet::Core
         );
     }
 
-    void Application::NewScene()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-        {
-            QUIET_CORE_WARN("Cannot create a new scene while runtime mode is active.");
-            return;
-        }
-
-        Scene::SceneDocument::CreateDefault(
-            *m_Scene,
-            m_Renderer->GetMeshLibrary()
-        );
-
-        m_ProjectContext.ResetActiveScenePath();
-        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
-        m_EditorController->ResetSelection();
-        m_EditorController->ResetSceneHistory(*m_Scene);
-        m_EditorController->GetState().Selection.PilotedCameraActorID.reset();
-        QUIET_CORE_INFO("Created new scene.");
-    }
-
-    void Application::SaveScene()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-        {
-            QUIET_CORE_WARN("Cannot save scene while runtime mode is active.");
-            return;
-        }
-
-        if (!m_ProjectContext.EnsureDirectoriesExist())
-        {
-            QUIET_CORE_ERROR("Failed to create project scene directories.");
-            return;
-        }
-
-        const std::filesystem::path scenePath = m_ProjectContext.GetActiveScenePath();
-        if (!Scene::SceneDocument::Save(*m_Scene, scenePath))
-        {
-            QUIET_CORE_ERROR("Failed to save scene to '{}'.", scenePath.string());
-            return;
-        }
-
-        editorState.Scene.DisplayName = scenePath.filename().string();
-        m_EditorController->MarkSceneSaved(*m_Scene);
-        QUIET_CORE_INFO("Saved scene to '{}'.", scenePath.string());
-    }
-
-    void Application::LoadScene()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-        {
-            QUIET_CORE_WARN("Cannot load scene while runtime mode is active.");
-            return;
-        }
-
-        const std::filesystem::path scenePath = m_ProjectContext.GetActiveScenePath();
-        if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), scenePath))
-        {
-            QUIET_CORE_WARN("Failed to load scene from '{}'.", scenePath.string());
-            return;
-        }
-
-        editorState.Scene.DisplayName = scenePath.filename().string();
-        editorState.Selection.PilotedCameraActorID.reset();
-
-        m_EditorController->ResetSelection();
-        m_EditorController->ResetSceneHistory(*m_Scene);
-
-        QUIET_CORE_INFO("Loaded scene from '{}'.", scenePath.string());
-    }
-
-    bool Application::OpenProject(const std::filesystem::path &projectFilePath)
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-        {
-            QUIET_CORE_WARN("Cannot open project while runtime mode is active.");
-            return false;
-        }
-
-        if (!Project::LoadOrCreateProject(m_ProjectContext, projectFilePath))
-        {
-            QUIET_CORE_ERROR("Failed to open project '{}'.", projectFilePath.string());
-            return false;
-        }
-
-        Project::ProjectRegistryIO::TouchRecentProject(
-            m_ProjectRegistry,
-            m_ProjectContext.GetProjectFilePath()
-        );
-
-        if (!Project::ProjectRegistryIO::SaveToFile(
-                Project::ProjectRegistryIO::GetDefaultRegistryFilePath(),
-                m_ProjectRegistry))
-        {
-            QUIET_CORE_WARN("Failed to save project registry.");
-        }
-
-        LoadOrCreateStartupScene(
-            *m_Scene,
-            m_Renderer->GetMeshLibrary(),
-            m_ProjectContext.GetStartupScenePath()
-        );
-
-        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
-        editorState.Selection.PilotedCameraActorID.reset();
-
-        m_EditorController->ResetSelection();
-        m_EditorController->ResetSceneHistory(*m_Scene);
-
-        QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
-        return true;
-    }
-
-    bool Application::CreateProject(const std::string &projectName)
-    {
-        const std::string trimmedName = TrimCopy(projectName);
-        if (!IsValidProjectName(trimmedName))
-        {
-            QUIET_CORE_WARN("Invalid project name '{}'.", projectName);
-            return false;
-        }
-
-        const std::filesystem::path projectFolder = m_ProjectRegistry.ProjectsRoot / trimmedName;
-        const std::filesystem::path projectFilePath = projectFolder / (trimmedName + ".quiet");
-
-        return OpenProject(projectFilePath);
-    }
-
-    bool Application::OpenSceneInProject(const std::filesystem::path &relativeScenePath)
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-        {
-            QUIET_CORE_WARN("Cannot open scene while runtime mode is active.");
-            return false;
-        }
-
-        m_ProjectContext.SetActiveScenePath(relativeScenePath);
-        LoadScene();
-        return true;
-    }
-
-    bool Application::SetProjectStartupScene(const std::filesystem::path &relativeScenePath)
-    {
-        if (relativeScenePath.empty()) return false;
-
-        m_ProjectContext.SetStartupScene(relativeScenePath);
-        if (!m_ProjectContext.SaveDescriptor())
-        {
-            QUIET_CORE_ERROR("Failed to save project descriptor '{}'.",
-                             m_ProjectContext.GetProjectFilePath().string());
-            return false;
-        }
-
-        QUIET_CORE_INFO("Set startup scene to '{}'.", relativeScenePath.generic_string());
-        return true;
-    }
-
     void Application::InitializeCommonStartup()
     {
-        if (!LoadOrCreateProjectRegistry(m_ProjectRegistry))
-        {
-            throw std::runtime_error("Failed to load or create project registry.");
-        }
-
-        std::filesystem::path projectFilePath = m_ProjectRegistry.LastOpenedProjectFile;
-        if (projectFilePath.empty())
-        {
-            const std::string defaultProjectName = "SandboxProject";
-            const std::filesystem::path projectFolder =
-                m_ProjectRegistry.ProjectsRoot / defaultProjectName;
-            projectFilePath = projectFolder / (defaultProjectName + ".quiet");
-        }
-
-        if (!Project::LoadOrCreateProject(m_ProjectContext, projectFilePath))
-        {
-            throw std::runtime_error("Failed to load or create .quiet project file.");
-        }
-
-        Project::ProjectRegistryIO::TouchRecentProject(
-            m_ProjectRegistry,
-            m_ProjectContext.GetProjectFilePath()
-        );
-
-        if (!Project::ProjectRegistryIO::SaveToFile(
-                Project::ProjectRegistryIO::GetDefaultRegistryFilePath(),
-                m_ProjectRegistry))
-        {
-            QUIET_CORE_WARN("Failed to save project registry.");
-        }
-
         Platform::WindowDesc windowDesc{};
         windowDesc.Width = m_Spec.Width;
         windowDesc.Height = m_Spec.Height;
@@ -416,23 +166,39 @@ namespace Quiet::Core
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
 
-        LoadOrCreateStartupScene(
+        m_ProjectWorkflow = std::make_unique<Project::ProjectWorkflow>(
+            m_ProjectContext,
+            m_ProjectRegistry,
             *m_Scene,
-            m_Renderer->GetMeshLibrary(),
-            m_ProjectContext.GetStartupScenePath()
+            m_Renderer->GetMeshLibrary()
         );
+
+        if (!m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject())
+        {
+            throw std::runtime_error("Failed to initialize project workflow.");
+        }
     }
 
     void Application::InitializeEditorStartup()
     {
         m_EditorController = std::make_unique<Editor::EditorController>();
+        m_EditorSceneWorkflow = std::make_unique<Editor::EditorSceneWorkflow>(
+            *m_Scene,
+            m_ProjectContext,
+            m_Renderer->GetMeshLibrary(),
+            *m_EditorController
+        );
+        m_EditorRuntimeController = std::make_unique<Editor::EditorRuntimeController>(
+            *m_EditorController,
+            *m_Scene,
+            m_RuntimeScene,
+            [this](const bool enabled) { SetMouseCaptureEnabled(enabled); },
+            [this]() { return m_MouseCaptureEnabled; }
+        );
 
         auto& editorState = m_EditorController->GetState();
         editorState.Scene.Mode = Editor::SceneMode::Edit;
-        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
-
-        m_EditorController->ResetSelection();
-        m_EditorController->ResetSceneHistory(*m_Scene);
+        m_EditorSceneWorkflow->ResetSceneSession();
     }
 
     void Application::InitializeSandboxStartup()
@@ -452,15 +218,15 @@ namespace Quiet::Core
 
     void Application::ShutdownCommon()
     {
-        if (m_RuntimeScene && m_RuntimeScene->IsRuntimeActive())
-        {
-            m_RuntimeScene->EndRuntime();
-        }
+        if (m_EditorRuntimeController)
+            m_EditorRuntimeController->Shutdown();
 
         if (m_Scene && m_Scene->IsRuntimeActive())
-        {
             m_Scene->EndRuntime();
-        }
+
+        m_EditorRuntimeController.reset();
+        m_EditorSceneWorkflow.reset();
+        m_ProjectWorkflow.reset();
 
         m_EditorController.reset();
         m_RuntimeScene.reset();
@@ -527,25 +293,25 @@ namespace Quiet::Core
                     m_EditorController->FocusSelectedActor(GetActiveScene(), *m_FreeCamera);
                     break;
                 case Editor::EditorRequestType::NewScene:
-                    NewScene();
+                    m_EditorSceneWorkflow->NewScene();
                     break;
                 case Editor::EditorRequestType::SaveScene:
-                    SaveScene();
+                    m_EditorSceneWorkflow->SaveScene();
                     break;
                 case Editor::EditorRequestType::LoadScene:
-                    LoadScene();
+                    m_EditorSceneWorkflow->LoadScene();
                     break;
                 case Editor::EditorRequestType::EnterSimulate:
-                    EnterSimulateMode();
+                    m_EditorRuntimeController->EnterSimulateMode();
                     break;
                 case Editor::EditorRequestType::StopSimulate:
-                    StopSimulateMode();
+                    m_EditorRuntimeController->StopSimulateMode();
                     break;
                 case Editor::EditorRequestType::EnterPlay:
-                    EnterPlayMode();
+                    m_EditorRuntimeController->EnterPlayMode();
                     break;
                 case Editor::EditorRequestType::StopPlay:
-                    StopPlayMode();
+                    m_EditorRuntimeController->StopPlayMode();
                     break;
                 case Editor::EditorRequestType::Undo:
                     m_EditorController->Undo(*m_Scene);
@@ -554,129 +320,48 @@ namespace Quiet::Core
                     m_EditorController->Redo(*m_Scene);
                     break;
                 case Editor::EditorRequestType::OpenProject:
-                    if (!request->Argument.empty())
-                        OpenProject(request->Argument);
+                    if (!request->Argument.empty() &&
+                        m_EditorSceneWorkflow->EnsureEditMode("open project") &&
+                        m_ProjectWorkflow->OpenOrCreateProject(request->Argument))
+                    {
+                        m_EditorSceneWorkflow->ResetSceneSession();
+                    }
                     break;
                 case Editor::EditorRequestType::CreateProject:
-                    if (!request->Argument.empty())
-                        CreateProject(request->Argument);
+                    if (!request->Argument.empty() &&
+                        m_EditorSceneWorkflow->EnsureEditMode("create project") &&
+                        m_ProjectWorkflow->CreateProject(request->Argument))
+                    {
+                        m_EditorSceneWorkflow->ResetSceneSession();
+                    }
                     break;
                 case Editor::EditorRequestType::OpenProjectScene:
                     if (!request->Argument.empty())
-                        OpenSceneInProject(request->Argument);
+                    {
+                        m_EditorSceneWorkflow->OpenSceneInProject(request->Argument);
+                    }
                     break;
                 case Editor::EditorRequestType::SetStartupScene:
                     if (!request->Argument.empty())
-                        SetProjectStartupScene(request->Argument);
+                    {
+                        m_ProjectWorkflow->SetStartupScene(request->Argument);
+                    }
                     break;
 
             }
         }
     }
 
-    void Application::ResetEditorRuntimeState(Editor::EditorState &editorState)
-    {
-        editorState.Selection.PilotedCameraActorID.reset();
-    }
-
-    void Application::CreateRuntimeScene(Scene::RuntimeMode runtimeMode)
-    {
-        DestroyRuntimeScene();
-
-        m_RuntimeScene = std::make_unique<Scene::Scene>(*m_Scene);
-        m_RuntimeScene->BeginRuntime(runtimeMode);
-    }
-
-    void Application::DestroyRuntimeScene()
-    {
-        if (!m_RuntimeScene) return;
-        if (m_RuntimeScene->IsRuntimeActive())
-        {
-            m_RuntimeScene->EndRuntime();
-        }
-        m_RuntimeScene.reset();
-    }
-
-    void Application::EnterSimulateMode()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-            return;
-
-        ResetEditorRuntimeState(editorState);
-        CreateRuntimeScene(Scene::RuntimeMode::Simulate);
-
-        editorState.Scene.Mode = Editor::SceneMode::Simulate;
-        QUIET_CORE_INFO("Entered simulate mode.");
-    }
-
-    void Application::StopSimulateMode()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Simulate)
-            return;
-
-        DestroyRuntimeScene();
-
-        editorState.Scene.Mode = Editor::SceneMode::Edit;
-        QUIET_CORE_INFO("Stopped simulate mode.");
-    }
-
-    void Application::EnterPlayMode()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
-            return;
-
-        ResetEditorRuntimeState(editorState);
-        CreateRuntimeScene(Scene::RuntimeMode::Play);
-
-        editorState.Scene.Mode = Editor::SceneMode::Play;
-
-        m_MouseCaptureBeforePlay = m_MouseCaptureEnabled;
-        SetMouseCaptureEnabled(true);
-
-        QUIET_CORE_INFO("Entered play mode.");
-    }
-
-    void Application::StopPlayMode()
-    {
-        auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Play)
-            return;
-
-        DestroyRuntimeScene();
-
-        editorState.Scene.Mode = Editor::SceneMode::Edit;
-        SetMouseCaptureEnabled(m_MouseCaptureBeforePlay);
-
-        QUIET_CORE_INFO("Stopped play mode.");
-    }
-
     Scene::Scene& Application::GetActiveScene()
     {
-        if (!m_Spec.IsEditor()) return *m_Scene;
-
-        const auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit && m_RuntimeScene)
-        {
-            return *m_RuntimeScene;
-        }
-
-        return *m_Scene;
+        if (!m_Spec.IsEditor() || !m_EditorRuntimeController) return *m_Scene;
+        return m_EditorRuntimeController->GetActiveScene();
     }
 
     const Scene::Scene& Application::GetActiveScene() const
     {
-        if (!m_Spec.IsEditor()) return *m_Scene;
-
-        const auto& editorState = m_EditorController->GetState();
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit && m_RuntimeScene)
-        {
-            return *m_RuntimeScene;
-        }
-
-        return *m_Scene;
+        if (!m_Spec.IsEditor() || !m_EditorRuntimeController) return *m_Scene;
+        return m_EditorRuntimeController->GetActiveScene();
     }
 
     const Scene::Actor * Application::GetPreferredRenderCameraActor(const Scene::Scene &scene) const
