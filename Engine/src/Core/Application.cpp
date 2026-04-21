@@ -14,6 +14,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <system_error>
+
 #include "imgui.h"
 #include "GLFW/glfw3.h"
 #include "Quiet/Renderer/RenderConventions.h"
@@ -517,88 +519,63 @@ namespace Quiet::Core
 
     void Application::ProcessEditorRequests(Editor::EditorState &editorState)
     {
-        if (editorState.RequestUndo)
+        while (const std::optional<Editor::EditorRequest> request = editorState.PopNextRequest())
         {
-            m_EditorController->Undo(*m_Scene);
-            editorState.RequestUndo = false;
-        }
+            switch (request->Type)
+            {
+                case Editor::EditorRequestType::FocusSelected:
+                    m_EditorController->FocusSelectedActor(GetActiveScene(), *m_FreeCamera);
+                    break;
+                case Editor::EditorRequestType::NewScene:
+                    NewScene();
+                    break;
+                case Editor::EditorRequestType::SaveScene:
+                    SaveScene();
+                    break;
+                case Editor::EditorRequestType::LoadScene:
+                    LoadScene();
+                    break;
+                case Editor::EditorRequestType::EnterSimulate:
+                    EnterSimulateMode();
+                    break;
+                case Editor::EditorRequestType::StopSimulate:
+                    StopSimulateMode();
+                    break;
+                case Editor::EditorRequestType::EnterPlay:
+                    EnterPlayMode();
+                    break;
+                case Editor::EditorRequestType::StopPlay:
+                    StopPlayMode();
+                    break;
+                case Editor::EditorRequestType::Undo:
+                    m_EditorController->Undo(*m_Scene);
+                    break;
+                case Editor::EditorRequestType::Redo:
+                    m_EditorController->Redo(*m_Scene);
+                    break;
+                case Editor::EditorRequestType::OpenProject:
+                    if (!request->Argument.empty())
+                        OpenProject(request->Argument);
+                    break;
+                case Editor::EditorRequestType::CreateProject:
+                    if (!request->Argument.empty())
+                        CreateProject(request->Argument);
+                    break;
+                case Editor::EditorRequestType::OpenProjectScene:
+                    if (!request->Argument.empty())
+                        OpenSceneInProject(request->Argument);
+                    break;
+                case Editor::EditorRequestType::SetStartupScene:
+                    if (!request->Argument.empty())
+                        SetProjectStartupScene(request->Argument);
+                    break;
 
-        if (editorState.RequestRedo)
-        {
-            m_EditorController->Redo(*m_Scene);
-            editorState.RequestRedo = false;
-        }
-
-        if (editorState.RequestNewScene)
-        {
-            NewScene();
-            editorState.RequestNewScene = false;
-        }
-
-        if (editorState.RequestSaveScene)
-        {
-            SaveScene();
-            editorState.RequestSaveScene = false;
-        }
-
-        if (editorState.RequestLoadScene)
-        {
-            LoadScene();
-            editorState.RequestLoadScene = false;
-        }
-
-        if (editorState.RequestOpenProjectConfirm)
-        {
-            OpenProject(editorState.ProjectToOpenBuffer.data());
-            editorState.RequestOpenProjectConfirm = false;
-        }
-
-        if (editorState.RequestCreateProjectConfirm)
-        {
-            CreateProject(editorState.NewProjectNameBuffer.data());
-            editorState.RequestCreateProjectConfirm = false;
-        }
-
-        if (editorState.RequestOpenProjectSceneConfirm)
-        {
-            OpenSceneInProject(editorState.ProjectScenePathBuffer.data());
-            editorState.RequestOpenProjectSceneConfirm = false;
-        }
-
-        if (editorState.RequestSetStartupSceneConfirm)
-        {
-            SetProjectStartupScene(editorState.ProjectScenePathBuffer.data());
-            editorState.RequestSetStartupSceneConfirm = false;
-        }
-
-        if (editorState.RequestEnterSimulate)
-        {
-            EnterSimulateMode();
-            editorState.RequestEnterSimulate = false;
-        }
-
-        if (editorState.RequestStopSimulate)
-        {
-            StopSimulateMode();
-            editorState.RequestStopSimulate = false;
-        }
-
-        if (editorState.RequestEnterPlay)
-        {
-            EnterPlayMode();
-            editorState.RequestEnterPlay = false;
-        }
-
-        if (editorState.RequestStopPlay)
-        {
-            StopPlayMode();
-            editorState.RequestStopPlay = false;
+            }
         }
     }
 
     void Application::ResetEditorRuntimeState(Editor::EditorState &editorState)
     {
-        editorState.RequestFocusSelected = false;
         editorState.PilotedCameraActorID.reset();
     }
 
@@ -858,7 +835,6 @@ namespace Quiet::Core
     {
         return [this]()
         {
-            auto& editorState = m_EditorController->GetState();
             auto& overlayScene = GetActiveScene();
 
             m_EditorController->TrySelectActorFromViewport(
@@ -870,13 +846,6 @@ namespace Quiet::Core
             );
 
             m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
-
-            if (editorState.RequestFocusSelected)
-            {
-                m_EditorController->FocusSelectedActor(overlayScene, *m_FreeCamera);
-                editorState.RequestFocusSelected = false;
-            }
-
             m_EditorController->BuildSelectedActorGizmo(
                 overlayScene,
                 *m_FreeCamera,

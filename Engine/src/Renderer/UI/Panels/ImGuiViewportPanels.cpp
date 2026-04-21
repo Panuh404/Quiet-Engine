@@ -170,7 +170,7 @@ namespace Quiet::Renderer::UI
                     true,
                     ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
             {
-                editorState.RequestFocusSelected = true;
+                editorState.QueueRequest(Editor::EditorRequestType::FocusSelected);
             }
         }
         ImGui::End();

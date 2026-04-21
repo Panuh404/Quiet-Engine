@@ -112,23 +112,23 @@ namespace Quiet::Editor
         switch (actionID)
         {
             case EditorActionID::NewScene:
-                m_State.RequestNewScene = true;
+                m_State.QueueRequest(EditorRequestType::NewScene);
                 break;
 
             case EditorActionID::SaveScene:
-                m_State.RequestSaveScene = true;
+                m_State.QueueRequest(EditorRequestType::SaveScene);
                 break;
 
             case EditorActionID::LoadScene:
-                m_State.RequestLoadScene = true;
+                m_State.QueueRequest(EditorRequestType::LoadScene);
                 break;
 
             case EditorActionID::Undo:
-                m_State.RequestUndo = true;
+                m_State.QueueRequest(EditorRequestType::Undo);
                 break;
 
             case EditorActionID::Redo:
-                m_State.RequestRedo = true;
+                m_State.QueueRequest(EditorRequestType::Redo);
                 break;
 
             case EditorActionID::CreateEmptyActor:
@@ -144,28 +144,28 @@ namespace Quiet::Editor
                 break;
 
             case EditorActionID::FocusSelected:
-                m_State.RequestFocusSelected = true;
+                m_State.QueueRequest(EditorRequestType::FocusSelected);
                 break;
 
             case EditorActionID::ToggleSimulate:
                 if (m_State.CurrentSceneMode == SceneMode::Edit)
                 {
-                    m_State.RequestEnterSimulate = true;
+                    m_State.QueueRequest(EditorRequestType::EnterSimulate);
                 }
                 else if (m_State.CurrentSceneMode == SceneMode::Simulate)
                 {
-                    m_State.RequestStopSimulate = true;
+                    m_State.QueueRequest(EditorRequestType::StopSimulate);
                 }
                 break;
 
             case EditorActionID::TogglePlay:
                 if (m_State.CurrentSceneMode == SceneMode::Edit)
                 {
-                    m_State.RequestEnterPlay = true;
+                    m_State.QueueRequest(EditorRequestType::EnterPlay);
                 }
                 else if (m_State.CurrentSceneMode == SceneMode::Play)
                 {
-                    m_State.RequestStopPlay = true;
+                    m_State.QueueRequest(EditorRequestType::StopPlay);
                 }
                 break;
         }

@@ -225,7 +225,10 @@ namespace Quiet::Renderer::UI
 
                     if (ImGui::Button("Create Project", ImVec2(-1.0f, 0.0f)))
                     {
-                        editorState.RequestCreateProjectConfirm = true;
+                        editorState.QueueRequest(
+                            Editor::EditorRequestType::CreateProject,
+                            editorState.NewProjectNameBuffer.data()
+                        );
                         ImGui::CloseCurrentPopup();
                     }
 
@@ -258,7 +261,10 @@ namespace Quiet::Renderer::UI
                                         editorState.ProjectToOpenBuffer.size(),
                                         recentProject
                                     );
-                                    editorState.RequestOpenProjectConfirm = true;
+                                    editorState.QueueRequest(
+                                        Editor::EditorRequestType::OpenProject,
+                                        editorState.ProjectToOpenBuffer.data()
+                                    );
                                     ImGui::CloseCurrentPopup();
                                 }
                             }
@@ -290,7 +296,10 @@ namespace Quiet::Renderer::UI
                                     editorState.ProjectToOpenBuffer.size(),
                                     projectFile
                                 );
-                                editorState.RequestOpenProjectConfirm = true;
+                                editorState.QueueRequest(
+                                    Editor::EditorRequestType::OpenProjectScene,
+                                    editorState.ProjectScenePathBuffer.data()
+                                );
                                 ImGui::CloseCurrentPopup();
                             }
                         }
@@ -398,7 +407,10 @@ namespace Quiet::Renderer::UI
 
                     if (ImGui::Button("Open Scene", ImVec2(150.0f, 0.0f)))
                     {
-                        editorState.RequestOpenProjectSceneConfirm = true;
+                        editorState.QueueRequest(
+                            Editor::EditorRequestType::OpenProjectScene,
+                            editorState.ProjectScenePathBuffer.data()
+                        );
                         ImGui::CloseCurrentPopup();
                     }
 
@@ -406,7 +418,10 @@ namespace Quiet::Renderer::UI
 
                     if (ImGui::Button("Set As Startup", ImVec2(170.0f, 0.0f)))
                     {
-                        editorState.RequestSetStartupSceneConfirm = true;
+                        editorState.QueueRequest(
+                            Editor::EditorRequestType::SetStartupScene,
+                            editorState.ProjectScenePathBuffer.data()
+                        );
                         ImGui::CloseCurrentPopup();
                     }
 

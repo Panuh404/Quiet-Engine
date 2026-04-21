@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <deque>
 #include <optional>
 #include <string>
 
@@ -29,6 +30,23 @@ namespace Quiet::Editor
         Play
     };
 
+    enum class EditorRequestType
+    {
+        FocusSelected,
+        NewScene, SaveScene, LoadScene,
+        EnterSimulate, StopSimulate,
+        EnterPlay, StopPlay,
+        Undo, Redo,
+        OpenProject, CreateProject,
+        OpenProjectScene, SetStartupScene,
+    };
+
+    struct EditorRequest
+    {
+        EditorRequestType Type{};
+        std::string Argument{};
+    };
+
     struct EditorState
     {
         std::optional<Core::UUID> SelectedActorID;
@@ -53,21 +71,7 @@ namespace Quiet::Editor
         float RotateSnap = 15.0f;
         float ScaleSnap = 0.1f;
 
-        bool RequestFocusSelected = false;
-        bool RequestNewScene = false;
-        bool RequestSaveScene = false;
-        bool RequestLoadScene = false;
-        bool RequestEnterSimulate = false;
-        bool RequestStopSimulate = false;
-        bool RequestEnterPlay = false;
-        bool RequestStopPlay = false;
-        bool RequestUndo = false;
-        bool RequestRedo = false;
-        bool RequestProjectManagerPopup = false;
-        bool RequestOpenProjectConfirm = false;
-        bool RequestCreateProjectConfirm = false;
-        bool RequestOpenProjectSceneConfirm = false;
-        bool RequestSetStartupSceneConfirm = false;
+        bool RequestProjectManagerPopup = false; // Local UI trigger
 
         bool CanUndo = false;
         bool CanRedo = false;
@@ -77,5 +81,31 @@ namespace Quiet::Editor
         std::array<char, 260> ProjectToOpenBuffer{};
         std::array<char, 128> NewProjectNameBuffer{};
         std::array<char, 260> ProjectScenePathBuffer{};
+
+        std::deque<EditorRequest> PendingRequests{};
+
+        void QueueRequest(EditorRequestType type)
+        {
+            PendingRequests.push_back(EditorRequest{ type });
+        }
+
+        void QueueRequest(EditorRequestType type, std::string argument)
+        {
+            PendingRequests.push_back(EditorRequest{ type, std::move(argument) });
+        }
+
+        [[nodiscard]] bool HasPendingRequests() const
+        {
+            return !PendingRequests.empty();
+        }
+
+        [[nodiscard]] std::optional<EditorRequest> PopNextRequest()
+        {
+            if (PendingRequests.empty()) return std::nullopt;
+
+            EditorRequest request = std::move(PendingRequests.front());
+            PendingRequests.pop_front();
+            return request;
+        }
     };
 }
