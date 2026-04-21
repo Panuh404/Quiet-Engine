@@ -53,7 +53,7 @@ namespace Quiet::Renderer::UI
             ImGui::Separator();
             if (ImGui::MenuItem("Project Manager..."))
             {
-                editorState.RequestProjectManagerPopup = true;
+                editorState.ProjectManager.RequestOpenPopup = true;
             }
             ImGui::EndMenu();
         }
@@ -164,7 +164,7 @@ namespace Quiet::Renderer::UI
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode == Editor::SceneMode::Edit)
         {
             if (DrawToolbarButton(
                     m_Fonts,
@@ -192,7 +192,7 @@ namespace Quiet::Renderer::UI
                 editorActions.Execute(Editor::EditorActionID::TogglePlay);
             }
         }
-        else if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        else if (editorState.Scene.Mode == Editor::SceneMode::Simulate)
         {
             if (DrawToolbarButton(
                     m_Fonts,
@@ -209,7 +209,7 @@ namespace Quiet::Renderer::UI
                 editorActions.Execute(Editor::EditorActionID::ToggleSimulate);
             }
         }
-        else if (editorState.CurrentSceneMode == Editor::SceneMode::Play)
+        else if (editorState.Scene.Mode == Editor::SceneMode::Play)
         {
             if (DrawToolbarButton(
                     m_Fonts,
@@ -227,11 +227,11 @@ namespace Quiet::Renderer::UI
             }
         }
 
-        std::string statusText = GetSceneModeLabel(editorState.CurrentSceneMode);
+        std::string statusText = GetSceneModeLabel(editorState.Scene.Mode);
         statusText += " ";
-        statusText += editorState.SceneDisplayName;
+        statusText += editorState.Scene.DisplayName;
 
-        if (editorState.SceneDirty && editorState.CurrentSceneMode == Editor::SceneMode::Edit)
+        if (editorState.Scene.Dirty && editorState.Scene.Mode == Editor::SceneMode::Edit)
         {
             statusText += " *";
         }
@@ -243,15 +243,15 @@ namespace Quiet::Renderer::UI
         if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
         else ImGui::SameLine();
 
-        if (editorState.CurrentSceneMode == Editor::SceneMode::Play)
+        if (editorState.Scene.Mode == Editor::SceneMode::Play)
         {
             ImGui::TextColored(ImVec4(0.25f, 0.80f, 1.0f, 1.0f), "%s", statusText.c_str());
         }
-        else if (editorState.CurrentSceneMode == Editor::SceneMode::Simulate)
+        else if (editorState.Scene.Mode == Editor::SceneMode::Simulate)
         {
             ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
         }
-        else if (editorState.SceneDirty)
+        else if (editorState.Scene.Dirty)
         {
             ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
         }

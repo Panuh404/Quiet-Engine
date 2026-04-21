@@ -202,7 +202,7 @@ namespace Quiet::Core
     void Application::NewScene()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
         {
             QUIET_CORE_WARN("Cannot create a new scene while runtime mode is active.");
             return;
@@ -214,17 +214,17 @@ namespace Quiet::Core
         );
 
         m_ProjectContext.ResetActiveScenePath();
-        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
+        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
-        m_EditorController->GetState().PilotedCameraActorID.reset();
+        m_EditorController->GetState().Selection.PilotedCameraActorID.reset();
         QUIET_CORE_INFO("Created new scene.");
     }
 
     void Application::SaveScene()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
         {
             QUIET_CORE_WARN("Cannot save scene while runtime mode is active.");
             return;
@@ -243,7 +243,7 @@ namespace Quiet::Core
             return;
         }
 
-        editorState.SceneDisplayName = scenePath.filename().string();
+        editorState.Scene.DisplayName = scenePath.filename().string();
         m_EditorController->MarkSceneSaved(*m_Scene);
         QUIET_CORE_INFO("Saved scene to '{}'.", scenePath.string());
     }
@@ -251,7 +251,7 @@ namespace Quiet::Core
     void Application::LoadScene()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
         {
             QUIET_CORE_WARN("Cannot load scene while runtime mode is active.");
             return;
@@ -264,8 +264,8 @@ namespace Quiet::Core
             return;
         }
 
-        editorState.SceneDisplayName = scenePath.filename().string();
-        editorState.PilotedCameraActorID.reset();
+        editorState.Scene.DisplayName = scenePath.filename().string();
+        editorState.Selection.PilotedCameraActorID.reset();
 
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
@@ -276,7 +276,7 @@ namespace Quiet::Core
     bool Application::OpenProject(const std::filesystem::path &projectFilePath)
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
         {
             QUIET_CORE_WARN("Cannot open project while runtime mode is active.");
             return false;
@@ -306,8 +306,8 @@ namespace Quiet::Core
             m_ProjectContext.GetStartupScenePath()
         );
 
-        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
-        editorState.PilotedCameraActorID.reset();
+        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
+        editorState.Selection.PilotedCameraActorID.reset();
 
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
@@ -334,7 +334,7 @@ namespace Quiet::Core
     bool Application::OpenSceneInProject(const std::filesystem::path &relativeScenePath)
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
         {
             QUIET_CORE_WARN("Cannot open scene while runtime mode is active.");
             return false;
@@ -428,8 +428,8 @@ namespace Quiet::Core
         m_EditorController = std::make_unique<Editor::EditorController>();
 
         auto& editorState = m_EditorController->GetState();
-        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
-        editorState.SceneDisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
+        editorState.Scene.Mode = Editor::SceneMode::Edit;
+        editorState.Scene.DisplayName = m_ProjectContext.GetActiveScenePath().filename().string();
 
         m_EditorController->ResetSelection();
         m_EditorController->ResetSceneHistory(*m_Scene);
@@ -502,18 +502,18 @@ namespace Quiet::Core
 
     void Application::ProcessEditorViewportResize(const Editor::EditorState &editorState)
     {
-        if (editorState.ViewportWidth == 0 || editorState.ViewportHeight == 0)
+        if (editorState.Viewport.Width == 0 || editorState.Viewport.Height == 0)
             return;
 
         const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
 
-        if (currentViewportExtent.width == editorState.ViewportWidth &&
-            currentViewportExtent.height == editorState.ViewportHeight)
+        if (currentViewportExtent.width == editorState.Viewport.Width &&
+            currentViewportExtent.height == editorState.Viewport.Height)
             return;
 
         m_Renderer->RequestViewportResize(
-            editorState.ViewportWidth,
-            editorState.ViewportHeight
+            editorState.Viewport.Width,
+            editorState.Viewport.Height
         );
     }
 
@@ -576,7 +576,7 @@ namespace Quiet::Core
 
     void Application::ResetEditorRuntimeState(Editor::EditorState &editorState)
     {
-        editorState.PilotedCameraActorID.reset();
+        editorState.Selection.PilotedCameraActorID.reset();
     }
 
     void Application::CreateRuntimeScene(Scene::RuntimeMode runtimeMode)
@@ -600,38 +600,38 @@ namespace Quiet::Core
     void Application::EnterSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
             return;
 
         ResetEditorRuntimeState(editorState);
         CreateRuntimeScene(Scene::RuntimeMode::Simulate);
 
-        editorState.CurrentSceneMode = Editor::SceneMode::Simulate;
+        editorState.Scene.Mode = Editor::SceneMode::Simulate;
         QUIET_CORE_INFO("Entered simulate mode.");
     }
 
     void Application::StopSimulateMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Simulate)
+        if (editorState.Scene.Mode != Editor::SceneMode::Simulate)
             return;
 
         DestroyRuntimeScene();
 
-        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+        editorState.Scene.Mode = Editor::SceneMode::Edit;
         QUIET_CORE_INFO("Stopped simulate mode.");
     }
 
     void Application::EnterPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
             return;
 
         ResetEditorRuntimeState(editorState);
         CreateRuntimeScene(Scene::RuntimeMode::Play);
 
-        editorState.CurrentSceneMode = Editor::SceneMode::Play;
+        editorState.Scene.Mode = Editor::SceneMode::Play;
 
         m_MouseCaptureBeforePlay = m_MouseCaptureEnabled;
         SetMouseCaptureEnabled(true);
@@ -642,12 +642,12 @@ namespace Quiet::Core
     void Application::StopPlayMode()
     {
         auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Play)
+        if (editorState.Scene.Mode != Editor::SceneMode::Play)
             return;
 
         DestroyRuntimeScene();
 
-        editorState.CurrentSceneMode = Editor::SceneMode::Edit;
+        editorState.Scene.Mode = Editor::SceneMode::Edit;
         SetMouseCaptureEnabled(m_MouseCaptureBeforePlay);
 
         QUIET_CORE_INFO("Stopped play mode.");
@@ -658,7 +658,7 @@ namespace Quiet::Core
         if (!m_Spec.IsEditor()) return *m_Scene;
 
         const auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit && m_RuntimeScene)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit && m_RuntimeScene)
         {
             return *m_RuntimeScene;
         }
@@ -671,7 +671,7 @@ namespace Quiet::Core
         if (!m_Spec.IsEditor()) return *m_Scene;
 
         const auto& editorState = m_EditorController->GetState();
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit && m_RuntimeScene)
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit && m_RuntimeScene)
         {
             return *m_RuntimeScene;
         }
@@ -688,7 +688,7 @@ namespace Quiet::Core
         if (!m_EditorController) return nullptr;
 
         const auto& editorState = m_EditorController->GetState();
-        return (editorState.CurrentSceneMode == Editor::SceneMode::Play) ? cameraActor : nullptr;
+        return (editorState.Scene.Mode == Editor::SceneMode::Play) ? cameraActor : nullptr;
     }
 
     float Application::CalculateDeltaTime(double &previousTime) const
@@ -736,9 +736,9 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
 
         Scene::Scene& activeScene = GetActiveScene();
-        const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
-        const bool isSimulateMode = (editorState.CurrentSceneMode == Editor::SceneMode::Simulate);
-        const bool isPlayMode = (editorState.CurrentSceneMode == Editor::SceneMode::Play);
+        const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
+        const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
+        const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
 
@@ -900,16 +900,16 @@ namespace Quiet::Core
 
         auto& editorState = m_EditorController->GetState();
 
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit ||
-            !editorState.PilotedCameraActorID.has_value())
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit ||
+            !editorState.Selection.PilotedCameraActorID.has_value())
         {
             return false;
         }
 
-        Scene::Actor* actor = m_Scene->FindActorByID(editorState.PilotedCameraActorID.value());
+        Scene::Actor* actor = m_Scene->FindActorByID(editorState.Selection.PilotedCameraActorID.value());
         if (!actor || !actor->Camera.has_value())
         {
-            editorState.PilotedCameraActorID.reset();
+            editorState.Selection.PilotedCameraActorID.reset();
             return false;
         }
 

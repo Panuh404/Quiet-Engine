@@ -27,7 +27,7 @@ namespace Quiet::Editor
 {
     void EditorController::ResetSelection()
     {
-        m_State.SelectedActorID.reset();
+        m_State.Selection.SelectedActorID.reset();
     }
 
     void EditorController::ResetSceneHistory(const Scene::Scene& scene)
@@ -66,7 +66,7 @@ namespace Quiet::Editor
 
         const ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard || io.WantTextInput) return;
-        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
+        if (m_State.Scene.Mode != SceneMode::Edit) return;
 
         using Input::KeyCode;
 
@@ -77,7 +77,7 @@ namespace Quiet::Editor
         if (ctrlDown) return;
 
         const bool isUsingViewportFlyControls =
-            m_State.ViewportImageHovered &&
+            m_State.Viewport.ImageHovered &&
             input.IsMouseButtonDown(Input::MouseCode::ButtonRight);
 
         if (isUsingViewportFlyControls)
@@ -85,31 +85,31 @@ namespace Quiet::Editor
             return;
         }
 
-        if (input.IsKeyPressed(KeyCode::T)) m_State.CurrentGizmoOperation = GizmoOperation::Translate;
-        if (input.IsKeyPressed(KeyCode::R)) m_State.CurrentGizmoOperation = GizmoOperation::Rotate;
-        if (input.IsKeyPressed(KeyCode::S)) m_State.CurrentGizmoOperation = GizmoOperation::Scale;
+        if (input.IsKeyPressed(KeyCode::T)) m_State.Gizmo.Operation = GizmoOperation::Translate;
+        if (input.IsKeyPressed(KeyCode::R)) m_State.Gizmo.Operation = GizmoOperation::Rotate;
+        if (input.IsKeyPressed(KeyCode::S)) m_State.Gizmo.Operation = GizmoOperation::Scale;
         if (input.IsKeyPressed(KeyCode::L))
         {
-            if (m_State.CurrentGizmoOperation != GizmoOperation::Scale)
+            if (m_State.Gizmo.Operation != GizmoOperation::Scale)
             {
-                m_State.CurrentGizmoMode =
-                    (m_State.CurrentGizmoMode == GizmoMode::World)
+                m_State.Gizmo.Mode =
+                    (m_State.Gizmo.Mode == GizmoMode::World)
                         ? GizmoMode::Local
                         : GizmoMode::World;
             }
         }
-        if (input.IsKeyPressed(KeyCode::G)) m_State.GizmoSnapEnabled = !m_State.GizmoSnapEnabled;
+        if (input.IsKeyPressed(KeyCode::G)) m_State.Gizmo.SnapEnabled = !m_State.Gizmo.SnapEnabled;
     }
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene,
                                               Scene::FreeCamera& camera)
     {
-        if (!m_State.SelectedActorID.has_value()) return;
+        if (!m_State.Selection.SelectedActorID.has_value()) return;
 
-        Scene::Actor* actor = scene.FindActorByID(m_State.SelectedActorID.value());
+        Scene::Actor* actor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
         if (!actor)
         {
-            m_State.SelectedActorID.reset();
+            m_State.Selection.SelectedActorID.reset();
             return;
         }
 

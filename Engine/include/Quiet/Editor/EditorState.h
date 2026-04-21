@@ -47,40 +47,66 @@ namespace Quiet::Editor
         std::string Argument{};
     };
 
-    struct EditorState
+    struct EditorSelectionState
     {
         std::optional<Core::UUID> SelectedActorID;
         std::optional<Core::UUID> PilotedCameraActorID;
+    };
 
-        std::uint32_t ViewportWidth = 0;
-        std::uint32_t ViewportHeight = 0;
+    struct EditorViewportState
+    {
+        std::uint32_t Width = 0;
+        std::uint32_t Height = 0;
 
-        bool ViewportFocused = false;
-        bool ViewportHovered = false;
-        bool ViewportImageHovered = false;
+        bool Focused = false;
+        bool Hovered = false;
+        bool ImageHovered = false;
 
-        float ViewportScreenX = 0.0f;
-        float ViewportScreenY = 0.0f;
+        float ScreenX = 0.0f;
+        float ScreenY = 0.0f;
+    };
 
-        GizmoOperation CurrentGizmoOperation = GizmoOperation::Translate;
-        GizmoMode CurrentGizmoMode = GizmoMode::World;
-        SceneMode CurrentSceneMode = SceneMode::Edit;
+    struct EditorGizmoState
+    {
+        GizmoOperation Operation = GizmoOperation::Translate;
+        GizmoMode Mode = GizmoMode::World;
 
-        bool GizmoSnapEnabled = false;
+        bool SnapEnabled = false;
         float TranslateSnap[3] = { 0.5f, 0.5f, 0.5f };
         float RotateSnap = 15.0f;
         float ScaleSnap = 0.1f;
+    };
 
-        bool RequestProjectManagerPopup = false; // Local UI trigger
+    struct EditorSceneState
+    {
+        SceneMode Mode = SceneMode::Edit;
+        bool Dirty = false;
+        std::string DisplayName = "DefaultScene.json";
+    };
 
+    struct EditorHistoryState
+    {
         bool CanUndo = false;
         bool CanRedo = false;
-        bool SceneDirty = false;
-        std::string SceneDisplayName = "DefaultScene.json";
+    };
+
+    struct EditorProjectManagerState
+    {
+        bool RequestOpenPopup = false;
 
         std::array<char, 260> ProjectToOpenBuffer{};
         std::array<char, 128> NewProjectNameBuffer{};
         std::array<char, 260> ProjectScenePathBuffer{};
+    };
+
+    struct EditorState
+    {
+        EditorSelectionState Selection{};
+        EditorViewportState Viewport{};
+        EditorGizmoState Gizmo{};
+        EditorSceneState Scene{};
+        EditorHistoryState History{};
+        EditorProjectManagerState ProjectManager{};
 
         std::deque<EditorRequest> PendingRequests{};
 

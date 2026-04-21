@@ -63,7 +63,7 @@ namespace Quiet::Renderer::UI
     void ImGuiLayer::BuildViewportToolbar(Editor::EditorState& editorState,
                                           const ImVec2& imageMin)
     {
-        if (editorState.CurrentSceneMode != Editor::SceneMode::Edit) return;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit) return;
         const ImVec2 toolbarPos(imageMin.x + 10.0f, imageMin.y + 10.0f);
 
         ImGuiWindowFlags flags =
@@ -90,9 +90,9 @@ namespace Quiet::Renderer::UI
                     Icons::Translate,
                     "T",
                     "Translate (T)",
-                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Translate))
+                    editorState.Gizmo.Operation == Editor::GizmoOperation::Translate))
             {
-                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Translate;
+                editorState.Gizmo.Operation = Editor::GizmoOperation::Translate;
             }
 
             ImGui::SameLine();
@@ -103,9 +103,9 @@ namespace Quiet::Renderer::UI
                     Icons::Rotate,
                     "R",
                     "Rotate (R)",
-                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Rotate))
+                    editorState.Gizmo.Operation == Editor::GizmoOperation::Rotate))
             {
-                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Rotate;
+                editorState.Gizmo.Operation = Editor::GizmoOperation::Rotate;
             }
 
             ImGui::SameLine();
@@ -116,17 +116,17 @@ namespace Quiet::Renderer::UI
                     Icons::Scale,
                     "S",
                     "Scale (S)",
-                    editorState.CurrentGizmoOperation == Editor::GizmoOperation::Scale))
+                    editorState.Gizmo.Operation == Editor::GizmoOperation::Scale))
             {
-                editorState.CurrentGizmoOperation = Editor::GizmoOperation::Scale;
+                editorState.Gizmo.Operation = Editor::GizmoOperation::Scale;
             }
 
             ImGui::SameLine();
             ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
             ImGui::SameLine();
 
-            const bool canToggleGizmoMode = editorState.CurrentGizmoOperation != Editor::GizmoOperation::Scale;
-            const bool isLocalMode = editorState.CurrentGizmoMode == Editor::GizmoMode::Local;
+            const bool canToggleGizmoMode = editorState.Gizmo.Operation != Editor::GizmoOperation::Scale;
+            const bool isLocalMode = editorState.Gizmo.Mode == Editor::GizmoMode::Local;
 
             if (DrawToolbarButton(
                     m_Fonts,
@@ -140,7 +140,7 @@ namespace Quiet::Renderer::UI
                     canToggleGizmoMode,
                     ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
             {
-                editorState.CurrentGizmoMode = isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
+                editorState.Gizmo.Mode = isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
             }
 
             ImGui::SameLine();
@@ -151,11 +151,11 @@ namespace Quiet::Renderer::UI
                     Icons::Snap,
                     "Snap",
                     "Toggle Snap (G)",
-                    editorState.GizmoSnapEnabled,
+                    editorState.Gizmo.SnapEnabled,
                     true,
                     ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
             {
-                editorState.GizmoSnapEnabled = !editorState.GizmoSnapEnabled;
+                editorState.Gizmo.SnapEnabled = !editorState.Gizmo.SnapEnabled;
             }
 
             ImGui::SameLine();
@@ -184,27 +184,27 @@ namespace Quiet::Renderer::UI
     {
         ImGui::Begin("Viewport");
         {
-            editorState.ViewportFocused = ImGui::IsWindowFocused();
-            editorState.ViewportHovered = ImGui::IsWindowHovered();
+            editorState.Viewport.Focused = ImGui::IsWindowFocused();
+            editorState.Viewport.Hovered = ImGui::IsWindowHovered();
 
             const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-            editorState.ViewportWidth = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
-            editorState.ViewportHeight = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
+            editorState.Viewport.Width = availableSize.x > 1.0f ? static_cast<std::uint32_t>(availableSize.x) : 0;
+            editorState.Viewport.Height = availableSize.y > 1.0f ? static_cast<std::uint32_t>(availableSize.y) : 0;
 
-            if (sceneViewportTexture && editorState.ViewportWidth > 0 && editorState.ViewportHeight > 0)
+            if (sceneViewportTexture && editorState.Viewport.Width > 0 && editorState.Viewport.Height > 0)
             {
                 const ImVec2 imageMin = ImGui::GetCursorScreenPos();
                 const ImVec2 imageSize(
-                    static_cast<float>(editorState.ViewportWidth),
-                    static_cast<float>(editorState.ViewportHeight)
+                    static_cast<float>(editorState.Viewport.Width),
+                    static_cast<float>(editorState.Viewport.Height)
                 );
 
                 ImGui::Image(sceneViewportTexture, imageSize);
 
-                editorState.ViewportImageHovered = ImGui::IsItemHovered();
-                editorState.ViewportScreenX = imageMin.x;
-                editorState.ViewportScreenY = imageMin.y;
+                editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
+                editorState.Viewport.ScreenX = imageMin.x;
+                editorState.Viewport.ScreenY = imageMin.y;
 
                 BuildViewportToolbar(editorState, imageMin);
 
@@ -215,7 +215,7 @@ namespace Quiet::Renderer::UI
             }
             else
             {
-                editorState.ViewportImageHovered = false;
+                editorState.Viewport.ImageHovered = false;
                 ImGui::TextUnformatted("Scene viewport unavailable.");
             }
         }

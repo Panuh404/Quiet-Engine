@@ -113,7 +113,7 @@ namespace Quiet::Editor
 
     void EditorSceneHistory::BeginMutation(const Scene::Scene& scene, const EditorState& state)
     {
-        if (state.CurrentSceneMode != SceneMode::Edit) return;
+        if (state.Scene.Mode != SceneMode::Edit) return;
 
         if (!m_PendingSnapshot)
         {
@@ -144,7 +144,7 @@ namespace Quiet::Editor
 
     bool EditorSceneHistory::Undo(Scene::Scene& scene, EditorState& state)
     {
-        if (state.CurrentSceneMode != SceneMode::Edit || m_UndoStack.empty())
+        if (state.Scene.Mode != SceneMode::Edit || m_UndoStack.empty())
         {
             RefreshHistoryFlags(state);
             return false;
@@ -164,7 +164,7 @@ namespace Quiet::Editor
 
     bool EditorSceneHistory::Redo(Scene::Scene& scene, EditorState& state)
     {
-        if (state.CurrentSceneMode != SceneMode::Edit || m_RedoStack.empty())
+        if (state.Scene.Mode != SceneMode::Edit || m_RedoStack.empty())
         {
             RefreshHistoryFlags(state);
             return false;
@@ -187,7 +187,7 @@ namespace Quiet::Editor
     {
         SceneSnapshot snapshot{};
         snapshot.Actors = scene.GetActors();
-        snapshot.SelectedActorID = state.SelectedActorID;
+        snapshot.SelectedActorID = state.Selection.SelectedActorID;
         return snapshot;
     }
 
@@ -196,7 +196,7 @@ namespace Quiet::Editor
                                              const SceneSnapshot& snapshot)
     {
         scene.GetActors() = snapshot.Actors;
-        state.SelectedActorID = snapshot.SelectedActorID;
+        state.Selection.SelectedActorID = snapshot.SelectedActorID;
     }
 
     bool EditorSceneHistory::AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs)
@@ -227,19 +227,19 @@ namespace Quiet::Editor
 
     void EditorSceneHistory::RefreshHistoryFlags(EditorState& state) const
     {
-        state.CanUndo = !m_UndoStack.empty();
-        state.CanRedo = !m_RedoStack.empty();
+        state.History.CanUndo = !m_UndoStack.empty();
+        state.History.CanRedo = !m_RedoStack.empty();
     }
 
     void EditorSceneHistory::RefreshDirtyState(const Scene::Scene& scene, EditorState& state) const
     {
         if (!m_CleanSnapshot.has_value())
         {
-            state.SceneDirty = false;
+            state.Scene.Dirty = false;
             return;
         }
 
         const SceneSnapshot currentSnapshot = CaptureSnapshot(scene, state);
-        state.SceneDirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors);
+        state.Scene.Dirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors);
     }
 }

@@ -16,7 +16,7 @@ namespace
                                 Fn&& fn)
     {
         auto& editorState = editorController.GetState();
-        if (editorState.CurrentSceneMode != Quiet::Editor::SceneMode::Edit)
+        if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit)
             return false;
 
         editorController.BeginSceneMutation(scene);
@@ -33,7 +33,7 @@ namespace Quiet::Editor
 
     bool EditorCommands::CanEditScene() const
     {
-        return m_EditorController.GetState().CurrentSceneMode == SceneMode::Edit;
+        return m_EditorController.GetState().Scene.Mode == SceneMode::Edit;
     }
 
     void EditorCommands::BeginInteraction(const Scene::Scene& scene)
@@ -53,21 +53,21 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             auto& actor = scene.CreateActor(name);
-            m_EditorController.GetState().SelectedActorID = actor.ID;
+            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
             return true;
         });
     }
 
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
-        const auto selectedActorID = m_EditorController.GetState().SelectedActorID;
+        const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;
         if (!selectedActorID.has_value()) return false;
         return DuplicateActor(scene, selectedActorID.value());
     }
 
     bool EditorCommands::DeleteSelectedActor(Scene::Scene& scene)
     {
-        const auto selectedActorID = m_EditorController.GetState().SelectedActorID;
+        const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;
         if (!selectedActorID.has_value()) return false;
         return DeleteActor(scene, selectedActorID.value());
     }
@@ -78,7 +78,7 @@ namespace Quiet::Editor
         {
             Scene::Actor* duplicate = scene.TryDuplicateActor(actorID);
             if (!duplicate) return false;
-            m_EditorController.GetState().SelectedActorID = duplicate->ID;
+            m_EditorController.GetState().Selection.SelectedActorID = duplicate->ID;
             return true;
         });
     }
@@ -91,16 +91,16 @@ namespace Quiet::Editor
             if (!destroyed) return false;
 
             auto& editorState = m_EditorController.GetState();
-            if (editorState.SelectedActorID.has_value() &&
-                editorState.SelectedActorID.value() == actorID)
+            if (editorState.Selection.SelectedActorID.has_value() &&
+                editorState.Selection.SelectedActorID.value() == actorID)
             {
-                editorState.SelectedActorID.reset();
+                editorState.Selection.SelectedActorID.reset();
             }
 
-            if (editorState.PilotedCameraActorID.has_value() &&
-                editorState.PilotedCameraActorID.value() == actorID)
+            if (editorState.Selection.PilotedCameraActorID.has_value() &&
+                editorState.Selection.PilotedCameraActorID.value() == actorID)
             {
-                editorState.PilotedCameraActorID.reset();
+                editorState.Selection.PilotedCameraActorID.reset();
             }
 
             return true;
@@ -297,10 +297,10 @@ namespace Quiet::Editor
             actor->Camera.reset();
 
             auto& editorState = m_EditorController.GetState();
-            if (editorState.PilotedCameraActorID.has_value() &&
-                editorState.PilotedCameraActorID.value() == actorID)
+            if (editorState.Selection.PilotedCameraActorID.has_value() &&
+                editorState.Selection.PilotedCameraActorID.value() == actorID)
             {
-                editorState.PilotedCameraActorID.reset();
+                editorState.Selection.PilotedCameraActorID.reset();
             }
 
             if (wasPrimary)

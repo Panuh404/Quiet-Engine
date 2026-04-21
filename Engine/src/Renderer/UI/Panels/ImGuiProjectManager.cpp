@@ -119,7 +119,7 @@ namespace Quiet::Renderer::UI
         static ImGuiTextFilter sceneFilter;
         static ImGuiTextFilter projectFilter;
 
-        if (editorState.RequestProjectManagerPopup)
+        if (editorState.ProjectManager.RequestOpenPopup)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowSize(ImVec2(1040.0f, 900.0f), ImGuiCond_Appearing);
@@ -130,7 +130,7 @@ namespace Quiet::Renderer::UI
             );
 
             ImGui::OpenPopup("Project Manager");
-            editorState.RequestProjectManagerPopup = false;
+            editorState.ProjectManager.RequestOpenPopup = false;
         }
 
         ImGuiWindowFlags windowFlags =
@@ -147,7 +147,7 @@ namespace Quiet::Renderer::UI
         const std::vector<std::filesystem::path> discoveredProjects =
             Project::ProjectRegistryIO::EnumerateProjectFiles(projectRegistry.ProjectsRoot);
 
-        const bool hasSelectedScene = BufferHasText(editorState.ProjectScenePathBuffer.data());
+        const bool hasSelectedScene = BufferHasText(editorState.ProjectManager.ProjectScenePathBuffer.data());
         const std::filesystem::path startupSceneRelative =
             projectContext.MakeSceneRelativePath(projectContext.GetStartupScenePath());
 
@@ -210,14 +210,14 @@ namespace Quiet::Renderer::UI
                     ImGui::SetNextItemWidth(-1.0f);
                     ImGui::InputText(
                         "##ProjectName",
-                        editorState.NewProjectNameBuffer.data(),
-                        editorState.NewProjectNameBuffer.size()
+                        editorState.ProjectManager.NewProjectNameBuffer.data(),
+                        editorState.ProjectManager.NewProjectNameBuffer.size()
                     );
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
                     ImGui::TextUnformatted("A new folder and .quiet file will be created under the projects root.");
                     ImGui::PopStyleColor();
 
-                    const bool canCreateProject = BufferHasText(editorState.NewProjectNameBuffer.data());
+                    const bool canCreateProject = BufferHasText(editorState.ProjectManager.NewProjectNameBuffer.data());
                     if (!canCreateProject)
                     {
                         ImGui::BeginDisabled();
@@ -227,7 +227,7 @@ namespace Quiet::Renderer::UI
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::CreateProject,
-                            editorState.NewProjectNameBuffer.data()
+                            editorState.ProjectManager.NewProjectNameBuffer.data()
                         );
                         ImGui::CloseCurrentPopup();
                     }
@@ -257,13 +257,13 @@ namespace Quiet::Renderer::UI
                                 if (DrawListRow(title, recentProject.string(), false))
                                 {
                                     CopyPathToBuffer(
-                                        editorState.ProjectToOpenBuffer.data(),
-                                        editorState.ProjectToOpenBuffer.size(),
+                                        editorState.ProjectManager.ProjectToOpenBuffer.data(),
+                                        editorState.ProjectManager.ProjectToOpenBuffer.size(),
                                         recentProject
                                     );
                                     editorState.QueueRequest(
                                         Editor::EditorRequestType::OpenProject,
-                                        editorState.ProjectToOpenBuffer.data()
+                                        editorState.ProjectManager.ProjectToOpenBuffer.data()
                                     );
                                     ImGui::CloseCurrentPopup();
                                 }
@@ -292,13 +292,13 @@ namespace Quiet::Renderer::UI
                             if (DrawListRow(title, projectFile.string(), false))
                             {
                                 CopyPathToBuffer(
-                                    editorState.ProjectToOpenBuffer.data(),
-                                    editorState.ProjectToOpenBuffer.size(),
+                                    editorState.ProjectManager.ProjectToOpenBuffer.data(),
+                                    editorState.ProjectManager.ProjectToOpenBuffer.size(),
                                     projectFile
                                 );
                                 editorState.QueueRequest(
                                     Editor::EditorRequestType::OpenProjectScene,
-                                    editorState.ProjectScenePathBuffer.data()
+                                    editorState.ProjectManager.ProjectScenePathBuffer.data()
                                 );
                                 ImGui::CloseCurrentPopup();
                             }
@@ -334,7 +334,7 @@ namespace Quiet::Renderer::UI
                             anyShown = true;
                             const bool isStartup = (startupSceneRelative == scenePath);
                             const bool isSelected =
-                                IsSelectedPath(editorState.ProjectScenePathBuffer.data(), scenePath);
+                                IsSelectedPath(editorState.ProjectManager.ProjectScenePathBuffer.data(), scenePath);
 
                             std::string title = scenePath.generic_string();
                             if (isStartup)
@@ -345,8 +345,8 @@ namespace Quiet::Renderer::UI
                             if (DrawListRow(title, "", isSelected, isStartup && !isSelected))
                             {
                                 CopyPathToBuffer(
-                                    editorState.ProjectScenePathBuffer.data(),
-                                    editorState.ProjectScenePathBuffer.size(),
+                                    editorState.ProjectManager.ProjectScenePathBuffer.data(),
+                                    editorState.ProjectManager.ProjectScenePathBuffer.size(),
                                     scenePath
                                 );
                             }
@@ -369,21 +369,21 @@ namespace Quiet::Renderer::UI
                         {
                             ImGui::TextUnformatted("Selected Scene");
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.86f, 0.88f, 0.91f, 1.0f));
-                            ImGui::TextWrapped("%s", editorState.ProjectScenePathBuffer.data());
+                            ImGui::TextWrapped("%s", editorState.ProjectManager.ProjectScenePathBuffer.data());
                             ImGui::PopStyleColor();
 
                             ImGui::Spacing();
 
                             if (ImGui::Button("Copy Path", ImVec2(120.0f, 0.0f)))
                             {
-                                ImGui::SetClipboardText(editorState.ProjectScenePathBuffer.data());
+                                ImGui::SetClipboardText(editorState.ProjectManager.ProjectScenePathBuffer.data());
                             }
 
                             ImGui::SameLine();
 
                             if (ImGui::Button("Clear Selection", ImVec2(140.0f, 0.0f)))
                             {
-                                editorState.ProjectScenePathBuffer[0] = '\0';
+                                editorState.ProjectManager.ProjectScenePathBuffer[0] = '\0';
                             }
                         }
                         else
@@ -409,7 +409,7 @@ namespace Quiet::Renderer::UI
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::OpenProjectScene,
-                            editorState.ProjectScenePathBuffer.data()
+                            editorState.ProjectManager.ProjectScenePathBuffer.data()
                         );
                         ImGui::CloseCurrentPopup();
                     }
@@ -420,7 +420,7 @@ namespace Quiet::Renderer::UI
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::SetStartupScene,
-                            editorState.ProjectScenePathBuffer.data()
+                            editorState.ProjectManager.ProjectScenePathBuffer.data()
                         );
                         ImGui::CloseCurrentPopup();
                     }

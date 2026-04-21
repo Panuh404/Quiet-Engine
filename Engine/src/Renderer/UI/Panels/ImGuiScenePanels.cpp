@@ -50,10 +50,10 @@ namespace Quiet::Renderer::UI
         ImGui::Begin("Inspector");
         {
             Scene::Actor* selectedActor = nullptr;
-            if (editorState.SelectedActorID.has_value())
+            if (editorState.Selection.SelectedActorID.has_value())
             {
-                selectedActor = scene.FindActorByID(editorState.SelectedActorID.value());
-                if (!selectedActor) editorState.SelectedActorID.reset();
+                selectedActor = scene.FindActorByID(editorState.Selection.SelectedActorID.value());
+                if (!selectedActor) editorState.Selection.SelectedActorID.reset();
             }
 
             if (!selectedActor)
@@ -63,7 +63,7 @@ namespace Quiet::Renderer::UI
                 return;
             }
 
-            const bool isEditMode = editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+            const bool isEditMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
             auto& actor = *selectedActor;
             auto& transform = actor.Transform.WorldTransform;
 
@@ -228,8 +228,8 @@ namespace Quiet::Renderer::UI
                 if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                     const bool isPilotingThisCamera =
-                        editorState.PilotedCameraActorID.has_value() &&
-                        editorState.PilotedCameraActorID.value() == actor.ID;
+                        editorState.Selection.PilotedCameraActorID.has_value() &&
+                        editorState.Selection.PilotedCameraActorID.value() == actor.ID;
 
                     if (isEditMode)
                     {
@@ -237,14 +237,14 @@ namespace Quiet::Renderer::UI
                         {
                             if (ImGui::Button("Pilot Camera"))
                             {
-                                editorState.PilotedCameraActorID = actor.ID;
+                                editorState.Selection.PilotedCameraActorID = actor.ID;
                             }
                         }
                         else
                         {
                             if (ImGui::Button("Stop Piloting"))
                             {
-                                editorState.PilotedCameraActorID.reset();
+                                editorState.Selection.PilotedCameraActorID.reset();
                             }
                         }
                     }
@@ -300,7 +300,7 @@ namespace Quiet::Renderer::UI
     {
         ImGui::Begin("Scene");
         {
-            const bool isEditMode = (editorState.CurrentSceneMode == Editor::SceneMode::Edit);
+            const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
             DrawToolbarAction(editorActions, Editor::EditorActionID::CreateEmptyActor, "Create Empty");
 
             ImGui::Separator();
@@ -312,8 +312,8 @@ namespace Quiet::Renderer::UI
             for (std::size_t i = 0; i < actors.size(); ++i)
             {
                 const bool isSelected =
-                    editorState.SelectedActorID.has_value() &&
-                    editorState.SelectedActorID.value() == actors[i].ID;
+                    editorState.Selection.SelectedActorID.has_value() &&
+                    editorState.Selection.SelectedActorID.value() == actors[i].ID;
 
                 const std::string displayName = actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name;
                 const std::string label = displayName + "##" + Core::UUIDToString(actors[i].ID);
@@ -325,7 +325,7 @@ namespace Quiet::Renderer::UI
 
                 if (ImGui::Selectable(label.c_str(), isSelected) && isEditMode)
                 {
-                    editorState.SelectedActorID = actors[i].ID;
+                    editorState.Selection.SelectedActorID = actors[i].ID;
                 }
 
                 if (!isEditMode)
@@ -336,7 +336,7 @@ namespace Quiet::Renderer::UI
                 if (ImGui::BeginPopupContextItem(label.c_str()))
                 {
                     const bool canEdit =
-                        editorState.CurrentSceneMode == Editor::SceneMode::Edit;
+                        editorState.Scene.Mode == Editor::SceneMode::Edit;
 
                     if (ImGui::MenuItem("Duplicate",
                                         editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
@@ -362,7 +362,7 @@ namespace Quiet::Renderer::UI
 
             if (pendingAction.has_value() && pendingActorSelection.has_value())
             {
-                editorState.SelectedActorID = pendingActorSelection.value();
+                editorState.Selection.SelectedActorID = pendingActorSelection.value();
                 editorActions.Execute(pendingAction.value());
             }
         }

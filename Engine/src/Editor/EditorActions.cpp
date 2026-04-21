@@ -35,12 +35,12 @@ namespace Quiet::Editor
             case EditorActionID::FocusSelected:     return "Focus Selected";
 
             case EditorActionID::ToggleSimulate:
-                return (m_State.CurrentSceneMode == SceneMode::Simulate)
+                return (m_State.Scene.Mode == SceneMode::Simulate)
                     ? "Stop Simulate"
                     : "Simulate";
 
             case EditorActionID::TogglePlay:
-                return (m_State.CurrentSceneMode == SceneMode::Play)
+                return (m_State.Scene.Mode == SceneMode::Play)
                     ? "Stop Play"
                     : "Play";
 
@@ -70,10 +70,10 @@ namespace Quiet::Editor
 
     bool EditorActions::CanExecute(EditorActionID actionID) const
     {
-        const bool isEditMode = (m_State.CurrentSceneMode == SceneMode::Edit);
-        const bool isSimulating = (m_State.CurrentSceneMode == SceneMode::Simulate);
-        const bool isPlaying = (m_State.CurrentSceneMode == SceneMode::Play);
-        const bool hasSelection = m_State.SelectedActorID.has_value();
+        const bool isEditMode = (m_State.Scene.Mode == SceneMode::Edit);
+        const bool isSimulating = (m_State.Scene.Mode == SceneMode::Simulate);
+        const bool isPlaying = (m_State.Scene.Mode == SceneMode::Play);
+        const bool hasSelection = m_State.Selection.SelectedActorID.has_value();
 
         switch (actionID)
         {
@@ -84,10 +84,10 @@ namespace Quiet::Editor
                 return isEditMode;
 
             case EditorActionID::Undo:
-                return isEditMode && m_State.CanUndo;
+                return isEditMode && m_State.History.CanUndo;
 
             case EditorActionID::Redo:
-                return isEditMode && m_State.CanRedo;
+                return isEditMode && m_State.History.CanRedo;
 
             case EditorActionID::DuplicateSelected:
             case EditorActionID::DeleteSelected:
@@ -148,22 +148,22 @@ namespace Quiet::Editor
                 break;
 
             case EditorActionID::ToggleSimulate:
-                if (m_State.CurrentSceneMode == SceneMode::Edit)
+                if (m_State.Scene.Mode == SceneMode::Edit)
                 {
                     m_State.QueueRequest(EditorRequestType::EnterSimulate);
                 }
-                else if (m_State.CurrentSceneMode == SceneMode::Simulate)
+                else if (m_State.Scene.Mode == SceneMode::Simulate)
                 {
                     m_State.QueueRequest(EditorRequestType::StopSimulate);
                 }
                 break;
 
             case EditorActionID::TogglePlay:
-                if (m_State.CurrentSceneMode == SceneMode::Edit)
+                if (m_State.Scene.Mode == SceneMode::Edit)
                 {
                     m_State.QueueRequest(EditorRequestType::EnterPlay);
                 }
-                else if (m_State.CurrentSceneMode == SceneMode::Play)
+                else if (m_State.Scene.Mode == SceneMode::Play)
                 {
                     m_State.QueueRequest(EditorRequestType::StopPlay);
                 }

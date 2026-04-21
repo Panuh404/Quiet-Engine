@@ -54,8 +54,8 @@ namespace Quiet::Editor
                                                       bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
-        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
-        if (!m_State.ViewportImageHovered) return;
+        if (m_State.Scene.Mode != SceneMode::Edit) return;
+        if (!m_State.Viewport.ImageHovered) return;
         if (!input.IsMouseButtonPressed(Input::MouseCode::ButtonLeft)) return;
         if (ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
 
@@ -101,12 +101,12 @@ namespace Quiet::Editor
 
         if (bestHitID.has_value())
         {
-            m_State.SelectedActorID = bestHitID;
+            m_State.Selection.SelectedActorID = bestHitID;
             QUIET_CORE_TRACE("Viewport pick selected actor.");
         }
         else
         {
-            m_State.SelectedActorID.reset();
+            m_State.Selection.SelectedActorID.reset();
         }
     }
 
@@ -116,10 +116,10 @@ namespace Quiet::Editor
                                                    bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
-        if (m_State.CurrentSceneMode != SceneMode::Edit) return;
+        if (m_State.Scene.Mode != SceneMode::Edit) return;
         if (!renderer.IsSceneViewportReady()) return;
-        if (!m_State.SelectedActorID.has_value()) return;
-        if (m_State.ViewportWidth == 0 || m_State.ViewportHeight == 0) return;
+        if (!m_State.Selection.SelectedActorID.has_value()) return;
+        if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return;
 
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
         const float aspect =
@@ -127,10 +127,10 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.height);
 
         const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
-        Scene::Actor* actor = scene.FindActorByID(m_State.SelectedActorID.value());
+        Scene::Actor* actor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
         if (!actor)
         {
-            m_State.SelectedActorID.reset();
+            m_State.Selection.SelectedActorID.reset();
             return;
         }
 
@@ -166,36 +166,36 @@ namespace Quiet::Editor
         ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(
-            m_State.ViewportScreenX,
-            m_State.ViewportScreenY,
-            static_cast<float>(m_State.ViewportWidth),
-            static_cast<float>(m_State.ViewportHeight)
+            m_State.Viewport.ScreenX,
+            m_State.Viewport.ScreenY,
+            static_cast<float>(m_State.Viewport.Width),
+            static_cast<float>(m_State.Viewport.Height)
         );
 
-        const ImGuizmo::OPERATION operation = ToImGuizmoOperation(m_State.CurrentGizmoOperation);
-        const ImGuizmo::MODE mode = ToImGuizmoMode(m_State.CurrentGizmoMode);
+        const ImGuizmo::OPERATION operation = ToImGuizmoOperation(m_State.Gizmo.Operation);
+        const ImGuizmo::MODE mode = ToImGuizmoMode(m_State.Gizmo.Mode);
 
         float snapValues[3] = { 0.0f, 0.0f, 0.0f };
         const float* snapPointer = nullptr;
 
-        if (m_State.GizmoSnapEnabled)
+        if (m_State.Gizmo.SnapEnabled)
         {
-            switch (m_State.CurrentGizmoOperation)
+            switch (m_State.Gizmo.Operation)
             {
                 case GizmoOperation::Translate:
-                    snapValues[0] = m_State.TranslateSnap[0];
-                    snapValues[1] = m_State.TranslateSnap[1];
-                    snapValues[2] = m_State.TranslateSnap[2];
+                    snapValues[0] = m_State.Gizmo.TranslateSnap[0];
+                    snapValues[1] = m_State.Gizmo.TranslateSnap[1];
+                    snapValues[2] = m_State.Gizmo.TranslateSnap[2];
                     snapPointer = snapValues;
                     break;
 
                 case GizmoOperation::Rotate:
-                    snapValues[0] = m_State.RotateSnap;
+                    snapValues[0] = m_State.Gizmo.RotateSnap;
                     snapPointer = snapValues;
                     break;
 
                 case GizmoOperation::Scale:
-                    snapValues[0] = m_State.ScaleSnap;
+                    snapValues[0] = m_State.Gizmo.ScaleSnap;
                     snapPointer = snapValues;
                     break;
             }
@@ -250,20 +250,20 @@ namespace Quiet::Editor
     {
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
         if (sceneExtent.width == 0 || sceneExtent.height == 0) return false;
-        if (m_State.ViewportWidth == 0 || m_State.ViewportHeight == 0) return false;
+        if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return false;
 
         const auto [mouseX, mouseY] = input.GetMousePosition();
-        const float localX = static_cast<float>(mouseX) - m_State.ViewportScreenX;
-        const float localY = static_cast<float>(mouseY) - m_State.ViewportScreenY;
+        const float localX = static_cast<float>(mouseX) - m_State.Viewport.ScreenX;
+        const float localY = static_cast<float>(mouseY) - m_State.Viewport.ScreenY;
 
         if (localX < 0.0f || localY < 0.0f ||
-            localX > static_cast<float>(m_State.ViewportWidth) ||
-            localY > static_cast<float>(m_State.ViewportHeight))
+            localX > static_cast<float>(m_State.Viewport.Width) ||
+            localY > static_cast<float>(m_State.Viewport.Height))
         {
             return false;
         }
 
-        const auto viewportHeight = static_cast<float>(m_State.ViewportHeight);
+        const auto viewportHeight = static_cast<float>(m_State.Viewport.Height);
         const float flippedY = viewportHeight - localY;
 
         const float aspect =
@@ -274,8 +274,8 @@ namespace Quiet::Editor
         const glm::vec4 viewport(
             0.0f,
             0.0f,
-            static_cast<float>(m_State.ViewportWidth),
-            static_cast<float>(m_State.ViewportHeight)
+            static_cast<float>(m_State.Viewport.Width),
+            static_cast<float>(m_State.Viewport.Height)
         );
 
         const glm::vec3 nearPoint = glm::unProjectZO(
