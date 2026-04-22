@@ -47,9 +47,17 @@ namespace Quiet::Renderer::Vulkan
 
     std::shared_ptr<StaticMesh> MeshLibrary::Get(const std::string& name) const
     {
+        if (auto mesh = TryGet(name)) return mesh;
+        throw std::runtime_error("Mesh not found in MeshLibrary: " + name);
+    }
+
+    std::shared_ptr<StaticMesh> MeshLibrary::TryGet(const std::string &name) const
+    {
         const auto it = m_Meshes.find(name);
         if (it == m_Meshes.end())
-            throw std::runtime_error("Mesh not found in MeshLibrary: " + name);
+        {
+            return nullptr;
+        }
         return it->second;
     }
 

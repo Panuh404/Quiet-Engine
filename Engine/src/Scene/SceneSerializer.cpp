@@ -119,7 +119,7 @@ namespace Quiet::Scene
                 const auto& staticMeshJson = actorJson["static_mesh"];
                 const std::string resourceId = staticMeshJson.at("resource_id").get<std::string>();
 
-                if (auto mesh = meshLibrary.Get(resourceId))
+                if (auto mesh = meshLibrary.TryGet(resourceId))
                 {
                     actor.StaticMesh = StaticMeshComponent{};
                     actor.StaticMesh->MeshResourceID = resourceId;

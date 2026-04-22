@@ -28,7 +28,10 @@ namespace Quiet::Renderer::Vulkan
                         const LogicalDevice& logicalDevice,
                         const GraphicsCommands& graphicsCommands);
 
+
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
+
+        std::shared_ptr<StaticMesh> TryGet(const std::string &name) const;
         bool Has(const std::string& name) const;
 
         [[nodiscard]] std::vector<std::string> GetNames() const;
