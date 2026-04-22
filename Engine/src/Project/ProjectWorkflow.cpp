@@ -1,5 +1,7 @@
 #include "Quiet/Project/ProjectWorkflow.h"
 
+#include <cctype>
+
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Project/ProjectRegistry.h"
@@ -61,8 +63,11 @@ namespace
     bool IsValidProjectName(const std::string& name)
     {
         if (name.empty()) return false;
+        if (name == "." || name == "..") return false;
+
         static constexpr const char* invalidChars = "\\/:*?\"<>|";
         return name.find_first_of(invalidChars) == std::string::npos;
+
     }
 }
 

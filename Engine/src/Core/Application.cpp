@@ -24,7 +24,6 @@
 #include "Quiet/Editor/EditorRuntimeController.h"
 #include "Quiet/Editor/EditorSceneWorkflow.h"
 #include "Quiet/Project/ProjectWorkflow.h"
-#include "Quiet/Scene/SceneDocument.h"
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
@@ -419,49 +418,13 @@ namespace Quiet::Core
         auto& uiLayer = *frame.UILayer;
         const float deltaTime = frame.DeltaTime;
         auto& editorState = m_EditorController->GetState();
-
         Scene::Scene& activeScene = GetActiveScene();
-        const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
-        const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
-        const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
-        const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-
-        const bool isUsingEditorFlyControls =
-            (isEditMode || isSimulateMode) &&
-            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
-
-        if (!isPilotingEditCamera && isUsingEditorFlyControls)
-        {
-            m_FreeCamera->Update(*m_Input, deltaTime);
-        }
-
-        if (isSimulateMode || isPlayMode)
-        {
-            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
-        }
-
-        activeScene.Update(deltaTime);
+        UpdateEditorSceneForFrame(activeScene, editorState, deltaTime);
 
         uiLayer.BeginFrame();
         {
-            const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
-
-            uiLayer.BuildEditorUI(
-                stats,
-                *m_Input,
-                activeScene,
-                *m_EditorController,
-                editorState,
-                m_ProjectContext,
-                m_ProjectRegistry,
-                m_Renderer->GetMeshLibrary(),
-                m_Renderer->GetSceneViewportTextureID(),
-                BuildEditorViewportOverlayCallback()
-            );
-
-            ProcessEditorRequests(editorState);
-            ProcessEditorViewportResize(editorState);
+            BuildAndProcessEditorUI(uiLayer, activeScene, editorState, deltaTime);
         }
         uiLayer.EndFrame();
 
@@ -482,24 +445,11 @@ namespace Quiet::Core
         const float deltaTime = frame.DeltaTime;
         Scene::Scene& activeScene = *m_Scene;
 
-        if (activeScene.IsRuntimeActive())
-        {
-            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
-        }
-
-        activeScene.Update(deltaTime);
-        ProcessSandboxViewportResize();
-
-        std::uint32_t runtimeViewportWidth = 0;
-        std::uint32_t runtimeViewportHeight = 0;
+        UpdateSandboxSceneForFrame(activeScene, deltaTime);
 
         uiLayer.BeginFrame();
         {
-            uiLayer.BuildRuntimeUI(
-                runtimeViewportWidth,
-                runtimeViewportHeight,
-                m_Renderer->GetSceneViewportTextureID()
-            );
+            BuildSandboxUI(uiLayer);
         }
         uiLayer.EndFrame();
 
@@ -577,6 +527,73 @@ namespace Quiet::Core
         }
 
         return m_FreeCamera->GetPosition();
+    }
+
+    void Application::UpdateEditorSceneForFrame(Scene::Scene &activeScene,
+                                                Editor::EditorState &editorState,
+                                                float deltaTime)
+    {
+        const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
+        const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
+        const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
+
+        const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
+        const bool isUsingEditorFlyControls =
+            (isEditMode || isSimulateMode) &&
+            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+
+        if (!isPilotingEditCamera && isUsingEditorFlyControls)
+        {
+            m_FreeCamera->Update(*m_Input, deltaTime);
+        }
+
+        if (isSimulateMode || isPlayMode)
+        {
+            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
+        }
+        activeScene.Update(deltaTime);
+    }
+
+    void Application::BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer &uiLayer,
+                                              Scene::Scene &activeScene,
+                                              Editor::EditorState &editorState,
+                                              float deltaTime)
+    {
+        const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
+        uiLayer.BuildEditorUI(
+            stats,
+            *m_Input,
+            activeScene,
+            *m_EditorController,
+            editorState,
+            m_ProjectContext,
+            m_ProjectRegistry,
+            m_Renderer->GetMeshLibrary(),
+            m_Renderer->GetSceneViewportTextureID(),
+            BuildEditorViewportOverlayCallback());
+
+        ProcessEditorRequests(editorState);
+        ProcessEditorViewportResize(editorState);
+    }
+
+    void Application::UpdateSandboxSceneForFrame(Scene::Scene &activeScene, float deltaTime)
+    {
+        if (activeScene.IsRuntimeActive())
+            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
+
+        activeScene.Update(deltaTime);
+        ProcessSandboxViewportResize();
+    }
+
+    void Application::BuildSandboxUI(Renderer::UI::ImGuiLayer &uiLayer)
+    {
+        std::uint32_t runtimeViewportWidth = 0;
+        std::uint32_t runtimeViewportHeight = 0;
+
+        uiLayer.BuildRuntimeUI(
+            runtimeViewportWidth,
+            runtimeViewportHeight,
+            m_Renderer->GetSceneViewportTextureID());
     }
 
     bool Application::UpdatePilotedEditorCamera(float deltaTime)

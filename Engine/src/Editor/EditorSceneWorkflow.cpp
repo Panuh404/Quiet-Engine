@@ -95,7 +95,13 @@ namespace Quiet::Editor
     bool EditorSceneWorkflow::OpenSceneInProject(const std::filesystem::path &relativeScenePath)
     {
         if (!EnsureEditMode("open scene")) return false;
+
+        const std::filesystem::path previousScenePath = m_ProjectContext.GetActiveScenePath();
         m_ProjectContext.SetActiveScenePath(relativeScenePath);
-        return LoadScene();
+
+        if (LoadScene()) return true;
+
+        m_ProjectContext.SetActiveScenePath(previousScenePath);
+        return false;
     }
 }
