@@ -64,8 +64,9 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiChrome.cpp
         src/Renderer/UI/Panels/ImGuiDiagnostics.cpp
         src/Renderer/UI/Panels/ImGuiDockspace.cpp
+        src/Renderer/UI/Panels/ImGuiHierarchyPanel.cpp
+        src/Renderer/UI/Panels/ImGuiInspectorPanel.cpp
         src/Renderer/UI/Panels/ImGuiProjectManager.cpp
-        src/Renderer/UI/Panels/ImGuiScenePanels.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
         # Renderer - Vulkan
