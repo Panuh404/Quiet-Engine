@@ -392,7 +392,13 @@ namespace Quiet::Core
 
         const float deltaTime = CalculateDeltaTime(previousTime);
 
-        m_Renderer->ApplyPendingViewportResize();
+        const bool deferViewportResize =
+            m_Spec.IsEditor() &&
+            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonLeft);
+
+        if (!deferViewportResize)
+            m_Renderer->ApplyPendingViewportResize();
+
         auto& uiLayer = m_Renderer->GetImGuiLayer();
 
         FrameContext frame{};

@@ -27,9 +27,15 @@ namespace Quiet::Renderer::UI
 
     namespace ToolbarStyle
     {
-        inline constexpr float ButtonSize = 46.0f;
-        inline constexpr float WideButtonWidth = 78.0f;
-        inline constexpr float ButtonHeight = 48.0f;
+        inline float ButtonHeight()
+        {
+            return (ImGui::GetFrameHeight() > 36.0f)
+                ? ImGui::GetFrameHeight()
+                : 36.0f;
+        }
+
+        inline float ButtonSize() { return ButtonHeight(); }
+        inline float WideButtonWidth() { return ButtonHeight() * 1.65f; }
     }
 
     [[nodiscard]] std::string MakeToolbarLabel(const EditorFonts& fonts,
@@ -45,6 +51,6 @@ namespace Quiet::Renderer::UI
                            bool active = false,
                            bool enabled = true,
                            const ImVec2& size = ImVec2(
-                               ToolbarStyle::ButtonSize,
-                               ToolbarStyle::ButtonHeight));
+                               ToolbarStyle::ButtonSize(),
+                               ToolbarStyle::ButtonHeight()));
 }

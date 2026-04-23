@@ -111,7 +111,7 @@ namespace Quiet::Renderer::UI
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(12.0f, 8.0f)));
 
         ImGui::Begin("##MainTopbar", nullptr, windowFlags);
         ImGui::PopStyleVar(3);
@@ -203,8 +203,8 @@ namespace Quiet::Renderer::UI
                     false,
                     editorActions.CanExecute(Editor::EditorActionID::ToggleSimulate),
                     ImVec2(
-                        m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth,
-                        ToolbarStyle::ButtonHeight)))
+                        m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
             {
                 editorActions.Execute(Editor::EditorActionID::ToggleSimulate);
             }
@@ -220,8 +220,8 @@ namespace Quiet::Renderer::UI
                     false,
                     editorActions.CanExecute(Editor::EditorActionID::TogglePlay),
                     ImVec2(
-                        m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth,
-                        ToolbarStyle::ButtonHeight)))
+                        m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
             {
                 editorActions.Execute(Editor::EditorActionID::TogglePlay);
             }

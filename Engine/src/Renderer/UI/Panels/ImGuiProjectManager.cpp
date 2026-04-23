@@ -42,10 +42,10 @@ namespace
         ImGui::Spacing();
     }
 
-    void DrawMetaRow(const char* label, const std::string& value)
+    void DrawMetaRow(const char* label, const std::string& value, const float valueColumnX)
     {
         ImGui::Text("%s", label);
-        ImGui::SameLine(165.0f);
+        ImGui::SameLine(valueColumnX);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.86f, 0.88f, 0.91f, 1.0f));
         ImGui::TextWrapped("%s", value.c_str());
         ImGui::PopStyleColor();
@@ -122,7 +122,7 @@ namespace Quiet::Renderer::UI
         if (editorState.ProjectManager.RequestOpenPopup)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowSize(ImVec2(1040.0f, 900.0f), ImGuiCond_Appearing);
+            ImGui::SetNextWindowSize(Scale(ImVec2(1040.0f, 900.0f)), ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(
                 viewport->GetCenter(),
                 ImGuiCond_Appearing,
@@ -151,8 +151,8 @@ namespace Quiet::Renderer::UI
         const std::filesystem::path startupSceneRelative =
             projectContext.MakeSceneRelativePath(projectContext.GetStartupScenePath());
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Scale(ImVec2(10.0f, 8.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Scale(ImVec2(10.0f, 7.0f)));
 
         DrawSectionHeader(
             "Manage Quiet projects, switch scenes, and control the project startup scene."
@@ -160,7 +160,7 @@ namespace Quiet::Renderer::UI
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
-        ImGui::BeginChild("##ProjectSummaryCard", ImVec2(0.0f, 280.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ProjectSummaryCard", Scale(ImVec2(0.0f, 280.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::TextUnformatted(projectContext.GetProjectName().c_str());
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
@@ -185,8 +185,8 @@ namespace Quiet::Renderer::UI
             }
 
             ImGui::Spacing();
-            DrawMetaRow("Created", descriptor.CreatedAtUtc);
-            DrawMetaRow("Last Updated", descriptor.UpdatedAtUtc);
+            DrawMetaRow("Created", descriptor.CreatedAtUtc, Scale(165.0f));
+            DrawMetaRow("Last Updated", descriptor.UpdatedAtUtc, Scale(165.0f));
         }
         ImGui::EndChild();
         ImGui::PopStyleColor();
@@ -243,7 +243,7 @@ namespace Quiet::Renderer::UI
 
                     DrawSectionHeader("Recent Projects");
 
-                    ImGui::BeginChild("##RecentProjects", ImVec2(0.0f, 180.0f), ImGuiChildFlags_Borders);
+                    ImGui::BeginChild("##RecentProjects", Scale(ImVec2(0.0f, 180.0f)), ImGuiChildFlags_Borders);
                     {
                         if (projectRegistry.RecentProjectFiles.empty())
                         {
@@ -277,7 +277,7 @@ namespace Quiet::Renderer::UI
                     DrawSectionHeader("Projects In Root", projectRegistry.ProjectsRoot.string().c_str());
                     projectFilter.Draw("Filter Projects", -1.0f);
 
-                    ImGui::BeginChild("##DiscoveredProjects", ImVec2(0.0f, 215.0f), ImGuiChildFlags_Borders);
+                    ImGui::BeginChild("##DiscoveredProjects", Scale(ImVec2(0.0f, 215.0f)), ImGuiChildFlags_Borders);
                     {
                         bool anyShown = false;
                         for (const auto& projectFile : discoveredProjects)
@@ -321,7 +321,7 @@ namespace Quiet::Renderer::UI
                     DrawSectionHeader("Project Scenes", "Select a scene to open it or mark it as the project startup scene.");
                     sceneFilter.Draw("Filter Scenes", -1.0f);
 
-                    ImGui::BeginChild("##ProjectScenes", ImVec2(0.0f, 430.0f), ImGuiChildFlags_Borders);
+                    ImGui::BeginChild("##ProjectScenes", Scale(ImVec2(0.0f, 430.0f)), ImGuiChildFlags_Borders);
                     {
                         bool anyShown = false;
                         for (const auto& scenePath : scenes)
@@ -361,9 +361,9 @@ namespace Quiet::Renderer::UI
 
                     ImGui::Spacing();
 
-                    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, Scale(8.0f));
                     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
-                    ImGui::BeginChild("##SelectedSceneCard", ImVec2(0.0f, 112.0f), ImGuiChildFlags_Borders);
+                    ImGui::BeginChild("##SelectedSceneCard", Scale(ImVec2(0.0f, 112.0f)), ImGuiChildFlags_Borders);
                     {
                         if (hasSelectedScene)
                         {
@@ -374,14 +374,14 @@ namespace Quiet::Renderer::UI
 
                             ImGui::Spacing();
 
-                            if (ImGui::Button("Copy Path", ImVec2(120.0f, 0.0f)))
+                            if (ImGui::Button("Copy Path", Scale(ImVec2(120.0f, 0.0f))))
                             {
                                 ImGui::SetClipboardText(editorState.ProjectManager.ProjectScenePathBuffer.data());
                             }
 
                             ImGui::SameLine();
 
-                            if (ImGui::Button("Clear Selection", ImVec2(140.0f, 0.0f)))
+                            if (ImGui::Button("Clear Selection", Scale(ImVec2(140.0f, 0.0f))))
                             {
                                 editorState.ProjectManager.ProjectScenePathBuffer[0] = '\0';
                             }
@@ -405,7 +405,7 @@ namespace Quiet::Renderer::UI
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::Button("Open Scene", ImVec2(150.0f, 0.0f)))
+                    if (ImGui::Button("Open Scene", Scale(ImVec2(150.0f, 0.0f))))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::OpenProjectScene,
@@ -416,7 +416,7 @@ namespace Quiet::Renderer::UI
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("Set As Startup", ImVec2(170.0f, 0.0f)))
+                    if (ImGui::Button("Set As Startup", Scale(ImVec2(170.0f, 0.0f))))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::SetStartupScene,
@@ -440,7 +440,7 @@ namespace Quiet::Renderer::UI
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::Button("Close", ImVec2(140.0f, 0.0f)))
+        if (ImGui::Button("Close", Scale(ImVec2(140.0f, 0.0f))))
         {
             ImGui::CloseCurrentPopup();
         }

@@ -401,6 +401,7 @@ namespace Quiet::Renderer::Vulkan
         m_ViewportResizePending = false;
         m_PendingViewportWidth = 0;
         m_PendingViewportHeight = 0;
+        m_ViewportResizeStableFrames = 0;
 
         oldSwapchain.reset();
         m_Window->ResetFramebufferResizedFlag();
@@ -434,25 +435,43 @@ namespace Quiet::Renderer::Vulkan
 
     void VulkanRenderer::RequestViewportResize(std::uint32_t width, std::uint32_t height)
     {
-        m_PendingViewportWidth = width;
-        m_PendingViewportHeight = height;
+        if (m_PendingViewportWidth != width || m_PendingViewportHeight != height)
+        {
+            m_PendingViewportWidth = width;
+            m_PendingViewportHeight = height;
+            m_ViewportResizeStableFrames = 0;
+        }
+
         m_ViewportResizePending = true;
     }
 
     void VulkanRenderer::EnsureSceneViewportSize()
     {
-        if (m_ViewportResizePending && m_PendingViewportWidth > 0 && m_PendingViewportHeight > 0)
+        if (!m_ViewportResizePending || m_PendingViewportWidth == 0 || m_PendingViewportHeight == 0)
+            return;
+
+        const VkExtent2D currentExtent = GetSceneViewportExtent();
+        if (currentExtent.width == m_PendingViewportWidth &&
+            currentExtent.height == m_PendingViewportHeight)
         {
-            vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
-
-            m_SceneViewportTarget->Resize(
-                m_PendingViewportWidth,
-                m_PendingViewportHeight
-            );
-
             m_ViewportResizePending = false;
-            m_SceneViewportReady = false;
+            m_ViewportResizeStableFrames = 0;
+            return;
         }
+
+        ++m_ViewportResizeStableFrames;
+        if (m_ViewportResizeStableFrames < 3) return;
+
+        vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+
+        m_SceneViewportTarget->Resize(
+            m_PendingViewportWidth,
+            m_PendingViewportHeight
+        );
+
+        m_ViewportResizePending = false;
+        m_ViewportResizeStableFrames = 0;
+        m_SceneViewportReady = false;
     }
 
     void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,

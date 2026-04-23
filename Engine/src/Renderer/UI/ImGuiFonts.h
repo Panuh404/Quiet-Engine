@@ -68,8 +68,8 @@ namespace Quiet::Renderer::UI
 
         ImFontConfig iconConfig{};
         iconConfig.PixelSnapH = true;
-        iconConfig.GlyphMinAdvanceX = sizePixels * 0.90f;
-        iconConfig.GlyphOffset = ImVec2(0.0f, 1.0f);
+        iconConfig.GlyphMinAdvanceX = sizePixels;
+        iconConfig.GlyphOffset = ImVec2(0.0f, 0.0f);
 
         return io.Fonts->AddFontFromFileTTF(
             path.string().c_str(),

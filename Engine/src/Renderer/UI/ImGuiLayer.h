@@ -93,6 +93,13 @@ namespace Quiet::Renderer::UI
         [[nodiscard]] bool WantsMouseCapture() const;
         [[nodiscard]] bool WantsKeyboardCapture() const;
 
+        [[nodiscard]] float GetUIScale() const { return m_UIScale; }
+        [[nodiscard]] float Scale(float value) const { return value * m_UIScale; }
+        [[nodiscard]] ImVec2 Scale(const ImVec2& value) const
+        {
+            return {value.x * m_UIScale, value.y * m_UIScale};
+        }
+
     private:
         [[nodiscard]] float GetToolbarHeight() const;
 
@@ -141,5 +148,6 @@ namespace Quiet::Renderer::UI
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
         bool m_DefaultLayoutApplied = false;
         bool m_RequestResetLayout = false;
+        float m_UIScale = 1.0f;
     };
 }

@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 #include <stdexcept>
+#include <algorithm>
 
 #include "ImGuiToolbarCommon.h"
 #include "Renderer/UI/ImGuiTheme.h"
@@ -16,10 +17,6 @@
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorController.h"
-#include "Quiet/Project/ProjectContext.h"
-#include "Quiet/Project/ProjectRegistry.h"
-#include "Scene/Scene.h"
-
 
 namespace Quiet::Renderer::UI
 {
@@ -42,14 +39,24 @@ namespace Quiet::Renderer::UI
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
+        float contentScaleX = 1.0f;
+        float contentScaleY = 1.0f;
+        glfwGetWindowContentScale(window, &contentScaleX, &contentScaleY);
+
+        m_UIScale = std::clamp(std::max(contentScaleX, contentScaleY), 1.0f, 2.0f);
+
+        constexpr float kBaseUIFontSize = 16.0f;
+        constexpr float kBaseBoldFontSize = 16.0f;
+        constexpr float kBaseMonoFontSize = 14.0f;
+
         m_Fonts = SetupEditorFonts(
             io,
-            28.0f, // UI
-            28.0f, // Bold
-            24.0f  // Mono
+            kBaseUIFontSize * m_UIScale,
+            kBaseBoldFontSize * m_UIScale,
+            kBaseMonoFontSize * m_UIScale
         );
 
-        ApplyDarkEditorTheme(io);
+        ApplyDarkEditorTheme(io, m_UIScale);
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -156,7 +163,7 @@ namespace Quiet::Renderer::UI
         const float textHeight = ImGui::GetFontSize();
         const float frameHeight = textHeight + style.FramePadding.y * 2.0f;
         const float contentHeight =
-            (frameHeight > ToolbarStyle::ButtonHeight) ? frameHeight : ToolbarStyle::ButtonHeight;
+            (frameHeight > ToolbarStyle::ButtonHeight()) ? frameHeight : ToolbarStyle::ButtonHeight();
 
         return contentHeight + style.WindowPadding.y * 2.0f + 6.0f;
     }

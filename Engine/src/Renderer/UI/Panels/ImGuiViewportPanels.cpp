@@ -53,7 +53,7 @@ namespace Quiet::Renderer::UI
         }
         else
         {
-            ImGui::SetCursorPos(ImVec2(24.0f, 24.0f));
+            ImGui::SetCursorPos(Scale(ImVec2(24.0f, 24.0f)));
             ImGui::TextUnformatted("Runtime viewport unavailable.");
         }
 
@@ -64,7 +64,8 @@ namespace Quiet::Renderer::UI
                                           const ImVec2& imageMin)
     {
         if (editorState.Scene.Mode != Editor::SceneMode::Edit) return;
-        const ImVec2 toolbarPos(imageMin.x + 10.0f, imageMin.y + 10.0f);
+        const float toolbarOffset = Scale(10.0f);
+        const ImVec2 toolbarPos(imageMin.x + toolbarOffset, imageMin.y + toolbarOffset);
 
         ImGuiWindowFlags flags =
             ImGuiWindowFlags_NoDecoration |
@@ -78,9 +79,9 @@ namespace Quiet::Renderer::UI
         ImGui::SetNextWindowPos(toolbarPos);
         ImGui::SetNextWindowBgAlpha(0.90f);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Scale(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(10.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Scale(ImVec2(8.0f, 8.0f)));
 
         ImGui::Begin("##ViewportToolbar", nullptr, flags);
         {
@@ -138,7 +139,7 @@ namespace Quiet::Renderer::UI
                         : "World/Local mode is not used for Scale",
                     isLocalMode,
                     canToggleGizmoMode,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
+                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight()))                        )
             {
                 editorState.Gizmo.Mode = isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
             }
@@ -153,7 +154,7 @@ namespace Quiet::Renderer::UI
                     "Toggle Snap (G)",
                     editorState.Gizmo.SnapEnabled,
                     true,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
+                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
             {
                 editorState.Gizmo.SnapEnabled = !editorState.Gizmo.SnapEnabled;
             }
@@ -168,7 +169,7 @@ namespace Quiet::Renderer::UI
                     "Focus Selected (F)",
                     false,
                     true,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize : ToolbarStyle::WideButtonWidth, ToolbarStyle::ButtonHeight)))
+                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
             {
                 editorState.QueueRequest(Editor::EditorRequestType::FocusSelected);
             }

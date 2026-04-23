@@ -109,6 +109,7 @@ namespace Quiet::Renderer::Vulkan
 
         std::uint32_t m_PendingViewportWidth = 0;
         std::uint32_t m_PendingViewportHeight = 0;
+        std::uint32_t m_ViewportResizeStableFrames = 0;
         bool m_ViewportResizePending = false;
         bool m_SceneViewportReady = false;
     };

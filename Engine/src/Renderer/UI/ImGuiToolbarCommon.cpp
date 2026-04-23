@@ -26,9 +26,15 @@ namespace Quiet::Renderer::UI
 
         ImFont* buttonFont = fonts.HasIcons ? fonts.Icons : fonts.UI;
         const bool pushFont = (buttonFont != nullptr);
-        if (pushFont)
+        if (pushFont) ImGui::PushFont(buttonFont);
+
+        const bool iconButton = (fonts.HasIcons && buttonFont == fonts.Icons);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+        if (iconButton)
         {
-            ImGui::PushFont(buttonFont);
+            const float padY = ImGui::GetStyle().FramePadding.y;
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, padY));
         }
 
         if (active)
@@ -41,14 +47,14 @@ namespace Quiet::Renderer::UI
         const std::string label = MakeToolbarLabel(fonts, id, iconUtf8, fallbackText);
         const bool pressed = ImGui::Button(label.c_str(), size);
 
-        if (active)     ImGui::PopStyleColor(3);
-        if (pushFont)   ImGui::PopFont();
-        if (!enabled)   ImGui::EndDisabled();
+        if (active) ImGui::PopStyleColor(3);
+        if (iconButton) ImGui::PopStyleVar();
+        ImGui::PopStyleVar();
+        if (pushFont) ImGui::PopFont();
+        if (!enabled) ImGui::EndDisabled();
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-        {
             ImGui::SetTooltip("%s", tooltip);
-        }
 
         return pressed && enabled;
     }

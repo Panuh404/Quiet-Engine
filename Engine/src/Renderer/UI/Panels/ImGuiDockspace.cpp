@@ -29,8 +29,7 @@ namespace Quiet::Renderer::UI
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoNavFocus |
-            ImGuiWindowFlags_NoBackground;
+            ImGuiWindowFlags_NoNavFocus;
 
         ImGui::SetNextWindowPos(dockspacePos);
         ImGui::SetNextWindowSize(dockspaceSize);
@@ -44,7 +43,7 @@ namespace Quiet::Renderer::UI
         ImGui::PopStyleVar(3);
 
         const ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-        const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+        const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
 
         if (!m_DefaultLayoutApplied && ShouldApplyDefaultDockLayout())
         {
