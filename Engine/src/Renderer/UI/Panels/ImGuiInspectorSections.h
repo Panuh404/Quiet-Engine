@@ -9,6 +9,11 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace Quiet::Project
+{
+    class ProjectContext;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
@@ -34,6 +39,7 @@ namespace Quiet::Renderer::UI
     void DrawStaticMeshSection(Scene::Scene& scene,
                                Scene::Actor& actor,
                                Editor::EditorCommands& commands,
+                               const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary);
 
     void DrawRotatorSection(Scene::Scene& scene,

@@ -12,6 +12,7 @@ namespace Quiet::Renderer::UI
     void ImGuiLayer::BuildInspector(Scene::Scene &scene,
                                     Editor::EditorCommands &commands,
                                     Editor::EditorState &editorState,
+                                    const Project::ProjectContext& projectContext,
                                     const Vulkan::MeshLibrary &meshLibrary)
     {
         ImGui::Begin("Inspector");
@@ -55,7 +56,7 @@ namespace Quiet::Renderer::UI
             ImGui::Separator();
             ImGui::Text("Components");
 
-            DrawStaticMeshSection(scene, actor, commands, meshLibrary);
+            DrawStaticMeshSection(scene, actor, commands, projectContext, meshLibrary);
             DrawRotatorSection(scene, actor, commands, tracked);
             DrawCameraSection(scene, actor, commands, editorState, tracked, isEditMode);
 

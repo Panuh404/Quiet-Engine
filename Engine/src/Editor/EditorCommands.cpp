@@ -4,6 +4,8 @@
 
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Core/Log.h"
+#include "Quiet/Project/AssetRecord.h"
+#include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"
@@ -11,9 +13,9 @@
 namespace
 {
     template<typename Fn>
-    bool ApplyImmediateMutation(Quiet::Editor::EditorController& editorController,
-                                Quiet::Scene::Scene& scene,
-                                Fn&& fn)
+    bool ApplyImmediateMutation(
+        Quiet::Editor::EditorController& editorController,
+        Quiet::Scene::Scene& scene, Fn&& fn)
     {
         auto& editorState = editorController.GetState();
         if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit)
@@ -23,6 +25,27 @@ namespace
         const bool changed = fn();
         const bool committed = editorController.EndSceneMutation(scene);
         return changed && committed;
+    }
+
+    const Quiet::Project::AssetRecord* FindMeshAssetRecord(
+        const Quiet::Project::ProjectContext& projectContext,
+        const std::string& meshResourceID)
+    {
+        const auto& registry = projectContext.GetAssetRegistry();
+        const auto* record = Quiet::Project::AssetRegistryIO::FindByID(registry, meshResourceID);
+        if (!record) return nullptr;
+
+        if (record->Type != Quiet::Project::AssetType::Mesh) return nullptr;
+        return record;
+    }
+
+    std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> ResolveMeshResource(
+        const Quiet::Project::ProjectContext& projectContext,
+        const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+        const std::string& meshResourceID)
+    {
+        if (!FindMeshAssetRecord(projectContext, meshResourceID)) return nullptr;
+        return meshLibrary.TryGet(meshResourceID);
     }
 }
 
@@ -152,30 +175,36 @@ namespace Quiet::Editor
     }
 
     bool EditorCommands::AddStaticMesh(Scene::Scene& scene,
-                                       Core::UUID actorID,
+                                       const Core::UUID actorID,
+                                       const Project::ProjectContext& projectContext,
                                        const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        const auto meshAssetIDs = projectContext.EnumerateMeshAssetIDs();
+        if (meshAssetIDs.empty())
         {
-            Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor) return false;
+            QUIET_CORE_WARN("No mesh assets are registered in the current project");
+            return false;
+        }
 
-            const auto names = meshLibrary.GetNames();
-            if (names.empty())
-            {
-                QUIET_CORE_WARN("Cannot add StaticMesh component. Mesh library is empty.");
-                return false;
-            }
+        const std::string& defaultMeshID = meshAssetIDs.front();
+        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, defaultMeshID);
+        if (!mesh)
+        {
+            QUIET_CORE_WARN(
+                "Default mesh asset '{}' is registered but not currently available in the mesh library.",
+                defaultMeshID);
+            return false;
+        }
 
-            const std::string& meshID = names.front();
-            if (!meshLibrary.Has(meshID)) return false;
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            auto* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->StaticMesh.has_value()) return false;
 
-            actor->StaticMesh = Scene::StaticMeshComponent{
-                meshID,
-                meshLibrary.Get(meshID),
-                true
-            };
-
+            actor->StaticMesh = Scene::StaticMeshComponent{};
+            actor->StaticMesh->MeshResourceID = defaultMeshID;
+            actor->StaticMesh->Mesh = mesh;
+            actor->StaticMesh->Visible= true;
             return true;
         });
     }
@@ -195,21 +224,27 @@ namespace Quiet::Editor
     bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene,
                                                Core::UUID actorID,
                                                const std::string& meshResourceID,
+                                               const Project::ProjectContext& projectContext,
                                                const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
+        if (!mesh)
         {
-            Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value()) return false;
+            QUIET_CORE_WARN(
+                "Mesh asset '{}' is not registered in the project or is not currently loaded.",
+                meshResourceID
+            );
+            return false;
+        }
 
-            if (!meshLibrary.Has(meshResourceID))
-            {
-                QUIET_CORE_WARN("Mesh resource '{}' is not registered.", meshResourceID);
-                return false;
-            }
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            auto* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->StaticMesh.has_value()) return false;
+            if (actor->StaticMesh->MeshResourceID == meshResourceID) return false;
 
             actor->StaticMesh->MeshResourceID = meshResourceID;
-            actor->StaticMesh->Mesh = meshLibrary.Get(meshResourceID);
+            actor->StaticMesh->Mesh = mesh;
             return true;
         });
     }

@@ -118,6 +118,7 @@ namespace Quiet::Renderer::UI
         void BuildInspector(Scene::Scene& scene,
                             Editor::EditorCommands& editorCommands,
                             Editor::EditorState& editorState,
+                            const Project::ProjectContext& projectContext,
                             const Vulkan::MeshLibrary& meshLibrary);
         void BuildHierarchy(Scene::Scene& scene,
                             Editor::EditorActions& editorActions,

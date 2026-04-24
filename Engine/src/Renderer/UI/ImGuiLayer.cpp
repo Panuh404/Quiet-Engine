@@ -128,7 +128,7 @@ namespace Quiet::Renderer::UI
         BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
         BuildDebugWindow(stats);
 
-        BuildInspector(scene, commands, editorState, meshLibrary);
+        BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
         BuildHierarchy(scene, actions, editorState);
         BuildConsoleWindow();
 

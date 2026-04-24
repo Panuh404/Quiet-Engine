@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <imgui.h>
 
+#include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 #include "Scene/Scene.h"
 
@@ -57,45 +58,59 @@ namespace Quiet::Renderer::UI
     void DrawStaticMeshSection(Scene::Scene& scene,
                                Scene::Actor& actor,
                                Editor::EditorCommands& commands,
+                               const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary)
     {
+        const auto meshAssetIDs = projectContext.EnumerateMeshAssetIDs();
+
         if (!actor.StaticMesh.has_value())
         {
             if (ImGui::Button("Add Static Mesh"))
-                commands.AddStaticMesh(scene, actor.ID, meshLibrary);
+                commands.AddStaticMesh(scene, actor.ID, projectContext, meshLibrary);
+
+            if (meshAssetIDs.empty())
+                ImGui::TextDisabled("No mesh assets registered.");
+
             return;
         }
 
         if (!ImGui::CollapsingHeader("Static Mesh", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        const auto names = meshLibrary.GetNames();
-
-        int currentIndex = 0;
-        for (int i = 0; i < static_cast<int>(names.size()); ++i)
+        if (meshAssetIDs.empty())
+            ImGui::TextDisabled("No mesh assets registered.");
+        else
         {
-            if (names[i] == actor.StaticMesh->MeshResourceID)
+            int currentIndex = 0;
+            bool foundCurrent = false;
+
+            for (int i = 0; i < static_cast<int>(meshAssetIDs.size()); ++i)
             {
-                currentIndex = i;
-                break;
-            }
-        }
-
-        const char* currentPreview = names.empty() ? "<none>" : names[currentIndex].c_str();
-
-        if (ImGui::BeginCombo("Mesh Resource", currentPreview))
-        {
-            for (int i = 0; i < static_cast<int>(names.size()); ++i)
-            {
-                const bool isSelected = (i == currentIndex);
-                if (ImGui::Selectable(names[i].c_str(), isSelected))
-                    commands.SetStaticMeshResource(scene, actor.ID, names[i], meshLibrary);
-
-                if (isSelected)
-                    ImGui::SetItemDefaultFocus();
+                if (meshAssetIDs[i] == actor.StaticMesh->MeshResourceID)
+                {
+                    currentIndex = i;
+                    foundCurrent = true;
+                    break;
+                }
             }
 
-            ImGui::EndCombo();
+            const char* currentPreview =
+                foundCurrent
+                    ? meshAssetIDs[currentIndex].c_str()
+                    : actor.StaticMesh->MeshResourceID.c_str();
+
+            if (ImGui::BeginCombo("Mesh Resource", currentPreview))
+            {
+                for (const auto & meshAssetID : meshAssetIDs)
+                {
+                    const bool isSelected = (meshAssetID == actor.StaticMesh->MeshResourceID);
+                    if (ImGui::Selectable(meshAssetID.c_str(), isSelected))
+                        commands.SetStaticMeshResource(scene, actor.ID, meshAssetID, projectContext, meshLibrary);
+                    if (isSelected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
         }
 
         bool visible = actor.StaticMesh->Visible;

@@ -9,6 +9,11 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace Quiet::Project
+{
+    class ProjectContext;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
@@ -42,6 +47,7 @@ namespace Quiet::Editor
 
         bool AddStaticMesh(Scene::Scene& scene,
                            Core::UUID actorID,
+                           const Project::ProjectContext& projectContext,
                            const Renderer::Vulkan::MeshLibrary& meshLibrary);
 
         bool RemoveStaticMesh(Scene::Scene& scene, Core::UUID actorID);
@@ -49,6 +55,7 @@ namespace Quiet::Editor
         bool SetStaticMeshResource(Scene::Scene& scene,
                                    Core::UUID actorID,
                                    const std::string& meshResourceID,
+                                   const Project::ProjectContext& projectContext,
                                    const Renderer::Vulkan::MeshLibrary& meshLibrary);
 
         bool SetStaticMeshVisible(Scene::Scene& scene,
