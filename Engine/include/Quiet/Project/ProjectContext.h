@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "AssetRegistry.h"
 #include "ProjectDescriptor.h"
 
 namespace Quiet::Project
@@ -28,11 +29,20 @@ namespace Quiet::Project
         [[nodiscard]] const std::filesystem::path& GetProjectFilePath() const { return m_ProjectFilePath; }
         [[nodiscard]] const ProjectDescriptor& GetProjectDescriptor() const { return m_ProjectDescriptor; }
         [[nodiscard]] const std::string& GetProjectName() const { return m_ProjectDescriptor.Name; }
+
         [[nodiscard]] std::filesystem::path GetScenesPath() const { return m_RootPath / m_ProjectDescriptor.ScenesDirectory; }
         [[nodiscard]] std::filesystem::path GetAssetsPath() const { return m_RootPath / m_ProjectDescriptor.AssetsDirectory; }
         [[nodiscard]] std::filesystem::path GetCachePath() const { return m_RootPath / m_ProjectDescriptor.CacheDirectory; }
         [[nodiscard]] std::filesystem::path GetStartupScenePath() const { return GetScenesPath() / m_ProjectDescriptor.StartupScene; }
         [[nodiscard]] const std::filesystem::path& GetActiveScenePath() const { return m_ActiveScenePath; }
+
+        [[nodiscard]] std::filesystem::path GetAssetRegistryPath() const { return m_RootPath / "AssetRegistry.json"; }
+        [[nodiscard]] const AssetRegistry& GetAssetRegistry() const { return m_AssetRegistry; }
+        [[nodiscard]] AssetRegistry& GetAssetRegistry() { return m_AssetRegistry; }
+        [[nodiscard]] std::vector<std::string> EnumerateMeshAssetIDs() const
+        {
+            return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh);
+        }
 
         void SetActiveScenePath(std::filesystem::path path)
         {
@@ -41,15 +51,8 @@ namespace Quiet::Project
                 ResetActiveScenePath();
                 return;
             }
-
-            if (path.is_relative())
-            {
-                m_ActiveScenePath = GetScenesPath() / path;
-            }
-            else
-            {
-                m_ActiveScenePath = std::move(path);
-            }
+            if (path.is_relative()) m_ActiveScenePath = GetScenesPath() / path;
+            else m_ActiveScenePath = std::move(path);
         }
 
         void ResetActiveScenePath()
@@ -59,11 +62,7 @@ namespace Quiet::Project
 
         void SetStartupScene(std::filesystem::path relativeScenePath)
         {
-            if (relativeScenePath.empty())
-            {
-                return;
-            }
-
+            if (relativeScenePath.empty()) return;
             relativeScenePath = relativeScenePath.lexically_normal();
             m_ProjectDescriptor.StartupScene = relativeScenePath.generic_string();
         }
@@ -106,6 +105,8 @@ namespace Quiet::Project
             return ProjectDescriptorIO::SaveToFile(m_ProjectFilePath, m_ProjectDescriptor);
         }
 
+        [[nodiscard]] bool LoadOrCreateAssetRegistry();
+
         [[nodiscard]] bool EnsureDirectoriesExist() const
         {
             std::error_code ec;
@@ -124,6 +125,7 @@ namespace Quiet::Project
         std::filesystem::path m_ProjectFilePath;
         std::filesystem::path m_ActiveScenePath;
         ProjectDescriptor m_ProjectDescriptor{};
+        AssetRegistry m_AssetRegistry{};
     };
 
     bool LoadOrCreateProject(ProjectContext& projectContext, const std::filesystem::path& projectFilePath);

@@ -12,6 +12,7 @@ target_sources(Quiet_Engine
         src/Platform/Window.cpp
 
         # Project
+        src/Project/AssetRegistry.cpp
         src/Project/ProjectContext.cpp
         src/Project/ProjectDescriptor.cpp
         src/Project/ProjectRegistry.cpp
@@ -127,6 +128,9 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Log.h
         include/Quiet/Core/UUID.h
 
+        include/Quiet/Project/AssetRegistry.h
+        include/Quiet/Project/AssetRecord.h
+        include/Quiet/Project/AssetType.h
         include/Quiet/Project/ProjectContext.h
         include/Quiet/Project/ProjectDescriptor.h
         include/Quiet/Project/ProjectRegistry.h
