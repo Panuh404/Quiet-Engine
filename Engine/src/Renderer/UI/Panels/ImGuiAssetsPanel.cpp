@@ -59,6 +59,8 @@ namespace Quiet::Renderer::UI
 
             const auto& registry = projectContext.GetAssetRegistry();
 
+            std::string pendingRemoveAssetID;
+
             if (ImGui::BeginTable("AssetsTable", 5,
                                   ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_Borders |
@@ -80,13 +82,18 @@ namespace Quiet::Renderer::UI
                     ImGui::TextUnformatted(record.ID.c_str());
 
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::TextUnformatted(std::string(Quiet::Project::ToString(record.Type)).c_str());
+                    const std::string typeLabel = std::string(Quiet::Project::ToString(record.Type));
+                    ImGui::TextUnformatted(typeLabel.c_str());
 
                     ImGui::TableSetColumnIndex(2);
                     if (record.Path.empty())
+                    {
                         ImGui::TextDisabled("<built-in>");
+                    }
                     else
+                    {
                         ImGui::TextUnformatted(record.Path.c_str());
+                    }
 
                     ImGui::TableSetColumnIndex(3);
                     const std::string status = MakeStatusLabel(record, meshLibrary);
@@ -94,17 +101,38 @@ namespace Quiet::Renderer::UI
 
                     ImGui::TableSetColumnIndex(4);
                     if (record.BuiltIn)
+                    {
                         ImGui::TextDisabled("Locked");
+                    }
                     else
                     {
                         const std::string buttonLabel = "Remove##" + record.ID;
                         if (ImGui::Button(buttonLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
                         {
-                            projectContext.RemoveAssetByID(record.ID);
+                            pendingRemoveAssetID = record.ID;
                         }
                     }
                 }
+
                 ImGui::EndTable();
+            }
+
+            if (!pendingRemoveAssetID.empty())
+            {
+                const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
+                if (!removed)
+                {
+                    ImGui::OpenPopup("Remove Asset Failed");
+                }
+            }
+            if (ImGui::BeginPopupModal("Remove Asset Failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::TextWrapped("Failed to remove the selected asset from the registry.");
+                if (ImGui::Button("OK"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
         }
         ImGui::End();
