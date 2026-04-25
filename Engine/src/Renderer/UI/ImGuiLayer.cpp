@@ -17,6 +17,7 @@
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorController.h"
+#include "Quiet/Project/ProjectContext.h"
 
 namespace Quiet::Renderer::UI
 {
@@ -106,30 +107,31 @@ namespace Quiet::Renderer::UI
         ImGuizmo::BeginFrame();
     }
 
-    void ImGuiLayer::BuildEditorUI(const ImGuiStats& stats,
-                                   Input::Input& input,
-                                   Scene::Scene& scene,
-                                   Editor::EditorController& editorController,
-                                   Editor::EditorState& editorState,
-                                   const Project::ProjectContext& projectContext,
-                                   const Project::ProjectRegistry& projectRegistry,
-                                   const Vulkan::MeshLibrary& meshLibrary,
+    void ImGuiLayer::BuildEditorUI(const ImGuiStats &stats,
+                                   Input::Input &input,
+                                   Scene::Scene &scene,
+                                   Editor::EditorController &editorController,
+                                   Editor::EditorState &editorState,
+                                   Project::ProjectContext &projectContext,
+                                   const Project::ProjectRegistry &projectRegistry,
+                                   const Vulkan::MeshLibrary &meshLibrary,
                                    ImTextureID sceneViewportTexture,
-                                   const std::function<void()>& viewportOverlayCallback)
+                                   const std::function<void()> &viewportOverlayCallback)
     {
         Editor::EditorCommands commands(editorController);
         Editor::EditorActions actions(input, scene, commands, editorState);
 
+        BuildDockspace();
+        BuildTopbar(actions, editorState);
+        BuildHierarchy(scene, actions, editorState);
+        BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
+
+        BuildAssetsPanel(projectContext, meshLibrary);
         BuildMainMenuBar(actions, editorState);
         BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
-        BuildTopbar(actions, editorState);
-        BuildDockspace();
 
-        BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
         BuildDebugWindow(stats);
-
-        BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
-        BuildHierarchy(scene, actions, editorState);
+        BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
         BuildConsoleWindow();
 
         actions.HandleShortcuts(stats.MouseCaptured);

@@ -23,6 +23,9 @@ namespace Quiet::Project
 
         static void EnsureBuiltInAssets(AssetRegistry& registry);
 
+        static bool AddOrUpdate(AssetRegistry& registry, AssetRecord record);
+        static bool RemoveByID(AssetRegistry& registry, std::string_view id);
+
         [[nodiscard]] static const AssetRecord* FindByID(const AssetRegistry& registry, std::string_view id);
         [[nodiscard]] static std::vector<const AssetRecord*> GetAssetsByType(
             const AssetRegistry& registry,

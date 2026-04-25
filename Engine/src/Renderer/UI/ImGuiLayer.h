@@ -74,16 +74,16 @@ namespace Quiet::Renderer::UI
         ImGuiLayer& operator=(const ImGuiLayer&) = delete;
 
         void BeginFrame();
-        void BuildEditorUI(const ImGuiStats& stats,
-                           Input::Input& input,
-                           Scene::Scene& scene,
-                           Editor::EditorController& editorController,
-                           Editor::EditorState& editorState,
-                           const Project::ProjectContext& projectContext,
-                           const Project::ProjectRegistry& projectRegistry,
-                           const Vulkan::MeshLibrary& meshLibrary,
+        void BuildEditorUI(const ImGuiStats &stats,
+                           Input::Input &input,
+                           Scene::Scene &scene,
+                           Editor::EditorController &editorController,
+                           Editor::EditorState &editorState,
+                           Project::ProjectContext &projectContext,
+                           const Project::ProjectRegistry &projectRegistry,
+                           const Vulkan::MeshLibrary &meshLibrary,
                            ImTextureID sceneViewportTexture,
-                           const std::function<void()>& viewportOverlayCallback);
+                           const std::function<void()> &viewportOverlayCallback);
         void BuildRuntimeUI(std::uint32_t& outViewportWidth,
                             std::uint32_t& outViewportHeight,
                             ImTextureID sceneViewportTexture);
@@ -123,6 +123,8 @@ namespace Quiet::Renderer::UI
         void BuildHierarchy(Scene::Scene& scene,
                             Editor::EditorActions& editorActions,
                             Editor::EditorState& editorState);
+        void BuildAssetsPanel(Project::ProjectContext& projectContext,
+                              const Vulkan::MeshLibrary& meshLibrary);
 
         // Viewport Panels
         void BuildViewportToolbar(Editor::EditorState& editorState,

@@ -107,6 +107,17 @@ namespace Quiet::Project
 
         [[nodiscard]] bool LoadOrCreateAssetRegistry();
 
+        [[nodiscard]] bool SaveAssetRegistry() const
+        {
+            return AssetRegistryIO::SaveToFile(GetAssetRegistryPath(), m_AssetRegistry);
+        }
+
+        [[nodiscard]] bool RegisterMeshAsset(std::string assetID,
+                                             std::filesystem::path assetPath,
+                                             bool builtIn = false);
+
+        [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
+
         [[nodiscard]] bool EnsureDirectoriesExist() const
         {
             std::error_code ec;

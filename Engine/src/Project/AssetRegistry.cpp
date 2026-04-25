@@ -137,6 +137,30 @@ namespace Quiet::Project
         SortRecords(registry);
     }
 
+    bool AssetRegistryIO::AddOrUpdate(AssetRegistry &registry, AssetRecord record)
+    {
+        if (!record.IsValid()) return false;
+        UpsertRecord(registry, std::move(record));
+        SortRecords(registry);
+        return true;
+    }
+
+    bool AssetRegistryIO::RemoveByID(AssetRegistry &registry, std::string_view id)
+    {
+        const auto it = std::remove_if(
+            registry.Records.begin(),
+            registry.Records.end(),
+            [&](const AssetRecord& record)
+            {
+                return record.ID == id;
+            });
+
+        if (it == registry.Records.end()) return false;
+        registry.Records.erase(it, registry.Records.end());
+        SortRecords(registry);
+        return true;
+    }
+
     const AssetRecord * AssetRegistryIO::FindByID(const AssetRegistry &registry, std::string_view id)
     {
         const auto it = std::find_if(
