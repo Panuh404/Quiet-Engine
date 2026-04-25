@@ -193,8 +193,6 @@ namespace Quiet::Renderer::Vulkan
             m_DepthResources->GetFormat());
 
         m_MeshLibrary = std::make_unique<MeshLibrary>();
-        m_MeshLibrary->CreateQuad("Quad", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
-        m_MeshLibrary->CreateCube("Cube", *m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands);
 
         m_CameraResources = std::make_unique<CameraResources>(
             *m_PhysicalDevice,

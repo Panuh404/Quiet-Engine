@@ -3,6 +3,7 @@
 #include <cctype>
 
 #include "Quiet/Core/Log.h"
+#include "Quiet/Project/ProjectAssetLoader.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Project/ProjectRegistry.h"
 #include "Quiet/Scene/SceneDocument.h"
@@ -75,10 +76,12 @@ namespace Quiet::Project
 {
     ProjectWorkflow::ProjectWorkflow(ProjectContext &projectContext,
                                      ProjectRegistry &projectRegistry,
+                                     ProjectAssetLoader &projectAssetLoader,
                                      Scene::Scene &scene,
                                      Renderer::Vulkan::MeshLibrary &meshLibrary)
                                          : m_ProjectContext(projectContext)
                                          , m_ProjectRegistry(projectRegistry)
+                                         , m_ProjectAssetLoader(projectAssetLoader)
                                          , m_Scene(scene)
                                          , m_MeshLibrary(meshLibrary) {}
 
@@ -104,6 +107,14 @@ namespace Quiet::Project
         if (!SaveRegistry())
         {
             QUIET_CORE_WARN("Failed to save project registry.");
+        }
+
+        if (!m_ProjectAssetLoader.ReloadMeshAssets())
+        {
+            QUIET_CORE_WARN(
+                "Project '{}' has mesh assets that are registered but not fully loadable yet.",
+                m_ProjectContext.GetProjectFilePath().string()
+            );
         }
 
         LoadOrCreateStartupScene();

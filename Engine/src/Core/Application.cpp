@@ -23,6 +23,7 @@
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Editor/EditorRuntimeController.h"
 #include "Quiet/Editor/EditorSceneWorkflow.h"
+#include "Quiet/Project/ProjectAssetLoader.h"
 #include "Quiet/Project/ProjectWorkflow.h"
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
@@ -165,9 +166,18 @@ namespace Quiet::Core
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
 
+        m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
+            m_ProjectContext,
+            m_Renderer->GetMeshLibrary(),
+            m_Renderer->GetPhysicalDevice(),
+            m_Renderer->GetLogicalDevice(),
+            m_Renderer->GetGraphicsCommands()
+        );
+
         m_ProjectWorkflow = std::make_unique<Project::ProjectWorkflow>(
             m_ProjectContext,
             m_ProjectRegistry,
+            *m_ProjectAssetLoader,
             *m_Scene,
             m_Renderer->GetMeshLibrary()
         );
@@ -226,6 +236,7 @@ namespace Quiet::Core
         m_EditorRuntimeController.reset();
         m_EditorSceneWorkflow.reset();
         m_ProjectWorkflow.reset();
+        m_ProjectAssetLoader.reset();
 
         m_EditorController.reset();
         m_RuntimeScene.reset();

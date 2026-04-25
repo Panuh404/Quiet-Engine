@@ -40,6 +40,7 @@ namespace Quiet::Project
 {
     class ProjectContext;
     class ProjectWorkflow;
+    class ProjectAssetLoader;
 }
 
 namespace Quiet::Renderer::UI
@@ -127,6 +128,7 @@ namespace Quiet::Core
         Project::ProjectContext m_ProjectContext;
         Project::ProjectRegistry m_ProjectRegistry{};
         std::unique_ptr<Project::ProjectWorkflow> m_ProjectWorkflow;
+        std::unique_ptr<Project::ProjectAssetLoader> m_ProjectAssetLoader;
 
         std::unique_ptr<Editor::EditorController> m_EditorController;
         std::unique_ptr<Editor::EditorSceneWorkflow> m_EditorSceneWorkflow;

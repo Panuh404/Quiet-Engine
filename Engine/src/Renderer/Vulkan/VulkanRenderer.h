@@ -75,6 +75,10 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] ImTextureID GetSceneViewportTextureID() const;
         [[nodiscard]] bool IsSceneViewportReady() const { return m_SceneViewportReady; }
 
+        [[nodiscard]] const PhysicalDevice& GetPhysicalDevice() const { return *m_PhysicalDevice; }
+        [[nodiscard]] const LogicalDevice& GetLogicalDevice() const { return *m_LogicalDevice; }
+        [[nodiscard]] const GraphicsCommands& GetGraphicsCommands() const { return *m_GraphicsCommands; }
+
         [[nodiscard]] VkExtent2D GetSwapchainExtent() const;
         [[nodiscard]] VkExtent2D GetSceneViewportExtent() const;
 

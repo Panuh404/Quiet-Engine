@@ -6,6 +6,11 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace Quiet::Project
+{
+    class ProjectAssetLoader;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
@@ -21,6 +26,7 @@ namespace Quiet::Project
     public:
         ProjectWorkflow(ProjectContext& projectContext,
                         ProjectRegistry& projectRegistry,
+                        ProjectAssetLoader& projectAssetLoader,
                         Scene::Scene& scene,
                         Renderer::Vulkan::MeshLibrary& meshLibrary);
 
@@ -39,6 +45,7 @@ namespace Quiet::Project
     private:
         ProjectContext& m_ProjectContext;
         ProjectRegistry& m_ProjectRegistry;
+        ProjectAssetLoader& m_ProjectAssetLoader;
         Scene::Scene& m_Scene;
         Renderer::Vulkan::MeshLibrary& m_MeshLibrary;
     };
