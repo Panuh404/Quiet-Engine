@@ -4,10 +4,8 @@
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
-#include "Renderer/Vulkan/GraphicsCommands.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/MeshImporter.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
 
 
 namespace Quiet::Project
@@ -37,8 +35,10 @@ namespace Quiet::Project
                 if (!LoadBuiltInMesh(*record)) allSupportedAssetsLoaded = false;
                 continue;
             }
-            InspectExternalMeshRecord(*record);
-            allSupportedAssetsLoaded = false;
+            if (!LoadExternalMesh(*record))
+            {
+                allSupportedAssetsLoaded = false;
+            }
         }
         return allSupportedAssetsLoaded;
     }
@@ -76,10 +76,9 @@ namespace Quiet::Project
         return false;
     }
 
-    void ProjectAssetLoader::InspectExternalMeshRecord(const AssetRecord &record) const
+    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord &record)
     {
-        const std::filesystem::path assetPath = record.Path.empty() ? std::filesystem::path{}
-            : (m_ProjectContext.GetRootPath() / record.Path).lexically_normal();
+        if (m_MeshLibrary.Has(record.ID)) return true;
 
         if (record.Path.empty())
         {
@@ -87,8 +86,11 @@ namespace Quiet::Project
                 "Mesh asset '{}' is registered without a source path.",
                 record.ID
             );
-            return;
+            return false;
         }
+
+        const std::filesystem::path assetPath =
+            (m_ProjectContext.GetRootPath() / record.Path).lexically_normal();
 
         if (!std::filesystem::exists(assetPath))
         {
@@ -97,13 +99,54 @@ namespace Quiet::Project
                 record.ID,
                 assetPath.string()
             );
-            return;
+            return false;
+        }
+
+        std::vector<Renderer::Vulkan::Vertex> vertices;
+        std::vector<std::uint16_t> indices;
+        std::string error;
+
+        if (!Renderer::Vulkan::MeshImporter::LoadFromFile(assetPath, vertices, indices, error))
+        {
+            QUIET_CORE_WARN(
+                "Failed to import mesh asset '{}' from '{}': {}",
+                record.ID,
+                assetPath.string(),
+                error
+            );
+            return false;
+        }
+
+        try
+        {
+            m_MeshLibrary.CreateStaticMesh(
+                record.ID,
+                m_PhysicalDevice,
+                m_LogicalDevice,
+                m_GraphicsCommands,
+                vertices,
+                indices
+            );
+        }
+        catch (const std::exception& e)
+        {
+            QUIET_CORE_ERROR(
+                "Failed to create runtime mesh resource '{}' from '{}': {}",
+                record.ID,
+                assetPath.string(),
+                e.what()
+            );
+            return false;
         }
 
         QUIET_CORE_INFO(
-            "Mesh asset '{}' is registered at '{}' but external mesh importing is not implemented yet.",
+            "Loaded mesh asset '{}' from '{}'. vertices={} indices={}",
             record.ID,
-            assetPath.string()
+            assetPath.string(),
+            vertices.size(),
+            indices.size()
         );
+
+        return true;
     }
 }

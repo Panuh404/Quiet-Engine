@@ -85,6 +85,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/GraphicsCommands.h
         src/Renderer/Vulkan/LogicalDevice.cpp
         src/Renderer/Vulkan/LogicalDevice.h
+        src/Renderer/Vulkan/MeshImporter.cpp
+        src/Renderer/Vulkan/MeshImporter.h
         src/Renderer/Vulkan/MeshLibrary.cpp
         src/Renderer/Vulkan/MeshLibrary.h
         src/Renderer/Vulkan/PhysicalDevice.cpp
@@ -186,6 +188,7 @@ target_link_libraries(Quiet_Engine
         spdlog::spdlog
         glm
         nlohmann_json::nlohmann_json
+        assimp
 )
 
 if (MSVC)

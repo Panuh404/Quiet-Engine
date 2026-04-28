@@ -28,6 +28,12 @@ namespace Quiet::Renderer::Vulkan
                         const LogicalDevice& logicalDevice,
                         const GraphicsCommands& graphicsCommands);
 
+        void CreateStaticMesh(const std::string& name,
+                              const PhysicalDevice& physicalDevice,
+                              const LogicalDevice& logicalDevice,
+                              const GraphicsCommands& graphicsCommands,
+                              const std::vector<Vertex>& vertices,
+                              const std::vector<std::uint16_t>& indices);
 
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
 

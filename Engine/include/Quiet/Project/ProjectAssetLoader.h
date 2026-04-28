@@ -30,7 +30,7 @@ namespace Quiet::Project
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
-        void InspectExternalMeshRecord(const AssetRecord& record) const;
+        bool LoadExternalMesh(const Project::AssetRecord& record);
 
     private:
         ProjectContext& m_ProjectContext;

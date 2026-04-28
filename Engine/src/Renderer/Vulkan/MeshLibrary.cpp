@@ -10,19 +10,14 @@ namespace Quiet::Renderer::Vulkan
                                  const LogicalDevice &logicalDevice,
                                  const GraphicsCommands& graphicsCommands)
     {
-        if (Has(name))
-        {
-            QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
-            throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
-        }
-        m_Meshes[name] = std::make_shared<StaticMesh>(
-           physicalDevice,
-           logicalDevice,
-           graphicsCommands,
-           BuildQuadVertices(),
-           BuildQuadIndices()
-       );
-        QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
+        CreateStaticMesh(
+            name,
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            BuildQuadVertices(),
+            BuildQuadIndices()
+        );
     }
 
     void MeshLibrary::CreateCube(const std::string& name,
@@ -30,17 +25,39 @@ namespace Quiet::Renderer::Vulkan
                                  const LogicalDevice& logicalDevice,
                                  const GraphicsCommands& graphicsCommands)
     {
-        if (Has(name))
-        {
-            QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
-            throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
-        }
-        m_Meshes[name] = std::make_shared<StaticMesh>(
+        CreateStaticMesh(
+            name,
             physicalDevice,
             logicalDevice,
             graphicsCommands,
             BuildCubeVertices(),
             BuildCubeIndices()
+        );
+    }
+
+    void MeshLibrary::CreateStaticMesh(const std::string& name,
+                                       const PhysicalDevice& physicalDevice,
+                                       const LogicalDevice& logicalDevice,
+                                       const GraphicsCommands& graphicsCommands,
+                                       const std::vector<Vertex>& vertices,
+                                       const std::vector<std::uint16_t>& indices)
+    {
+        if (Has(name))
+        {
+            QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
+            throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
+        }
+        if (vertices.empty() || indices.empty())
+        {
+            QUIET_CORE_ERROR("Mesh '{}' cannot be created with empty geometry.", name);
+            throw std::runtime_error("Static mesh has empty geometry: " + name);
+        }
+        m_Meshes[name] = std::make_shared<StaticMesh>(
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            vertices,
+            indices
         );
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
