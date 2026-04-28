@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
 
@@ -26,6 +27,7 @@ namespace
 namespace Quiet::Renderer::UI
 {
     void ImGuiLayer::BuildAssetsPanel(Project::ProjectContext& projectContext,
+                                      Editor::EditorState& editorState,
                                       const Vulkan::MeshLibrary& meshLibrary)
     {
         ImGui::Begin("Assets");
@@ -39,7 +41,7 @@ namespace Quiet::Renderer::UI
             ImGui::InputText("Asset ID", assetIDBuffer.data(), assetIDBuffer.size());
             ImGui::InputText("Source Path", assetPathBuffer.data(), assetPathBuffer.size());
 
-            if (ImGui::Button("Register Mesh"))
+            if (ImGui::Button("Register Mesh Asset"))
             {
                 std::string assetID = assetIDBuffer.data();
                 std::string assetPath = assetPathBuffer.data();
@@ -48,11 +50,34 @@ namespace Quiet::Renderer::UI
                 {
                     assetIDBuffer[0] = '\0';
                     assetPathBuffer[0] = '\0';
+
+                    editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+                }
+                else
+                {
+                    ImGui::OpenPopup("Register Mesh Asset Failed");
                 }
             }
 
             ImGui::SameLine();
-            ImGui::TextDisabled("Metadata only for now; importing/loading comes later.");
+
+            if (ImGui::Button("Reload Assets"))
+            {
+                editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+            }
+
+            if (ImGui::BeginPopupModal("Register Mesh Asset Failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::TextWrapped("Failed to register mesh asset. Check that the Asset ID is valid.");
+                if (ImGui::Button("OK"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+
+            ImGui::SameLine();
+            ImGui::TextDisabled("Supported mesh files are imported through Assimp on reload.");
 
             ImGui::Separator();
             ImGui::Text("Registry");

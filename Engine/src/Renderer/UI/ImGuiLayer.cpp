@@ -126,7 +126,7 @@ namespace Quiet::Renderer::UI
         BuildHierarchy(scene, actions, editorState);
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
 
-        BuildAssetsPanel(projectContext, meshLibrary);
+        BuildAssetsPanel(projectContext, editorState, meshLibrary);
         BuildMainMenuBar(actions, editorState);
         BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
 

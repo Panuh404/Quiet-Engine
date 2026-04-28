@@ -357,7 +357,18 @@ namespace Quiet::Core
                         m_ProjectWorkflow->SetStartupScene(request->Argument);
                     }
                     break;
-
+                case Editor::EditorRequestType::ReloadAssets:
+                    if (!m_ProjectAssetLoader)
+                    {
+                        QUIET_CORE_WARN("Cannot reload assets because the project asset loader is not available.");
+                        break;
+                    }
+                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadMeshAssets();
+                    if (!allAssetsLoaded)
+                    {
+                        QUIET_CORE_WARN("Some registered mesh assets could not be loaded.");
+                    }
+                    break;
             }
         }
     }
