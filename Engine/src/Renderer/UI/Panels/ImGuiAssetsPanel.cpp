@@ -77,7 +77,7 @@ namespace Quiet::Renderer::UI
             }
 
             ImGui::SameLine();
-            ImGui::TextDisabled("Supported mesh files are imported through Assimp on reload.");
+            ImGui::TextDisabled("Use project-relative paths when possible, e.g. Assets/Meshes/model.obj.");
 
             ImGui::Separator();
             ImGui::Text("Registry");

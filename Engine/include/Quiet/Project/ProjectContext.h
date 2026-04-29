@@ -131,6 +131,8 @@ namespace Quiet::Project
             return !ec;
         }
 
+        [[nodiscard]] std::filesystem::path NormalizeAssetPath(std::filesystem::path assetPath) const;
+
     private:
         std::filesystem::path m_RootPath;
         std::filesystem::path m_ProjectFilePath;

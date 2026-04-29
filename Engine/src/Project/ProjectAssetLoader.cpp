@@ -89,8 +89,11 @@ namespace Quiet::Project
             return false;
         }
 
+        const std::filesystem::path rawAssetPath = record.Path;
         const std::filesystem::path assetPath =
-            (m_ProjectContext.GetRootPath() / record.Path).lexically_normal();
+            rawAssetPath.is_absolute()
+                ? rawAssetPath.lexically_normal()
+                : (m_ProjectContext.GetRootPath() / rawAssetPath).lexically_normal();
 
         if (!std::filesystem::exists(assetPath))
         {

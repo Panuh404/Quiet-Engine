@@ -57,7 +57,7 @@ namespace Quiet::Project
         assetID = TrimCopy(std::move(assetID));
         if (!IsValidAssetID(assetID)) return false;
 
-        assetPath = assetPath.lexically_normal();
+        assetPath = NormalizeAssetPath(std::move(assetPath));
 
         AssetRecord record{};
         record.ID = std::move(assetID);
@@ -81,6 +81,20 @@ namespace Quiet::Project
 
         AssetRegistryIO::EnsureBuiltInAssets(m_AssetRegistry);
         return SaveAssetRegistry();
+    }
+
+    std::filesystem::path ProjectContext::NormalizeAssetPath(std::filesystem::path assetPath) const
+    {
+        if (assetPath.empty()) return {};
+        assetPath = assetPath.lexically_normal();
+
+        if (assetPath.is_relative()) return assetPath.generic_string();
+        const std::filesystem::path relativeToRoot = assetPath.lexically_relative(GetRootPath());
+
+        if (!relativeToRoot.empty() && *relativeToRoot.begin() != "..")
+            return relativeToRoot.lexically_normal().generic_string();
+
+        return assetPath.lexically_normal().generic_string();
     }
 
     bool LoadOrCreateProject(ProjectContext& projectContext,
