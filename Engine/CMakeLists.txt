@@ -125,6 +125,7 @@ target_sources(Quiet_Engine
         ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
         ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
         ${imguizmo_SOURCE_DIR}/ImGuizmo.h
+        ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.cpp
 
     PUBLIC
         include/Quiet/Core/Application.h
@@ -169,6 +170,7 @@ target_include_directories(Quiet_Engine
         ${imgui_SOURCE_DIR}
         ${imgui_SOURCE_DIR}/backends
         ${imguizmo_SOURCE_DIR}
+        ${imgui_file_dialog_SOURCE_DIR}
 )
 
 target_compile_features(Quiet_Engine

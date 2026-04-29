@@ -104,7 +104,12 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/assimp/assimp.git
         GIT_TAG v6.0.4
 )
-FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp)
+FetchContent_Declare(
+        imgui_file_dialog
+        GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
+        GIT_TAG v0.6.7
+)
+FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog)
 
 find_package(Vulkan REQUIRED)
 
