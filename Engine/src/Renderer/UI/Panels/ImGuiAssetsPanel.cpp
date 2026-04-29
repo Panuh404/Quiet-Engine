@@ -22,6 +22,12 @@ namespace
         }
         return "Unknown";
     }
+
+    static std::string ExtractFileNameNoExt(const std::string& path)
+    {
+        std::filesystem::path p(path);
+        return p.stem().string();
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -38,13 +44,64 @@ namespace Quiet::Renderer::UI
             ImGui::Text("Register Mesh Asset");
             ImGui::Separator();
 
-            ImGui::InputText("Asset ID", assetIDBuffer.data(), assetIDBuffer.size());
-            ImGui::InputText("Source Path", assetPathBuffer.data(), assetPathBuffer.size());
+            ImGui::Text("Asset ID");
+            ImGui::InputText("##AssetID", assetIDBuffer.data(), assetIDBuffer.size());
 
-            if (ImGui::Button("Register Mesh Asset"))
+            ImGui::Text("Source Path");
+            ImGui::InputText("##AssetPath", assetPathBuffer.data(), assetPathBuffer.size());
+
+            if (ImGui::Button("Browse"))
+            {
+#ifdef _WIN32
+                std::system("explorer .");
+#else
+                std::system("xdg-open .");
+#endif
+            }
+
+            if (assetPathBuffer[0] != '\0')
+            {
+                std::filesystem::path testPath = assetPathBuffer.data();
+
+                if (!testPath.is_absolute())
+                {
+                    testPath = projectContext.GetRootPath() / testPath;
+                }
+
+                if (std::filesystem::exists(testPath))
+                {
+                    ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "File found");
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "File not found");
+                }
+            }
+
+            if (ImGui::Button("Register"))
             {
                 std::string assetID = assetIDBuffer.data();
                 std::string assetPath = assetPathBuffer.data();
+
+                if (assetID.empty() && !assetPath.empty())
+                {
+                    assetID = ExtractFileNameNoExt(assetPath);
+                }
+
+                bool valid = true;
+                if (assetPath.empty())
+                {
+                    valid = false;
+                    ImGui::OpenPopup("Invalid Asset Path");
+                }
+
+                if (ImGui::BeginPopupModal("Invalid Asset Path", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextWrapped("Source path cannot be empty.");
+                    if (ImGui::Button("OK"))
+                        ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                }
 
                 if (projectContext.RegisterMeshAsset(assetID, assetPath, false))
                 {
