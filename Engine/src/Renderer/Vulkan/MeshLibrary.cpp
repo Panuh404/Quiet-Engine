@@ -98,6 +98,14 @@ namespace Quiet::Renderer::Vulkan
         return names;
     }
 
+    std::optional<MeshStats> MeshLibrary::GetStats(const std::string &name) const
+    {
+        const auto mesh = TryGet(name);
+        if (!mesh) return std::nullopt;
+
+        return MeshStats{ mesh->GetVertexCount(), mesh->GetIndexCount() };
+    }
+
     std::vector<Vertex> MeshLibrary::BuildQuadVertices()
     {
         return {{

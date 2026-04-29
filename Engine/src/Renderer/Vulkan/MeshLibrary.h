@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -12,6 +13,12 @@ namespace Quiet::Renderer::Vulkan
     class LogicalDevice;
     class GraphicsCommands;
     class StaticMesh;
+
+    struct MeshStats
+    {
+        std::uint32_t VertexCount = 0;
+        std::uint32_t IndexCount = 0;
+    };
 
     class MeshLibrary
     {
@@ -41,6 +48,7 @@ namespace Quiet::Renderer::Vulkan
         bool Has(const std::string& name) const;
 
         [[nodiscard]] std::vector<std::string> GetNames() const;
+        [[nodiscard]] std::optional<MeshStats> GetStats(const std::string& name) const;
 
         static std::vector<Vertex> BuildQuadVertices();
         static std::vector<std::uint16_t> BuildQuadIndices();

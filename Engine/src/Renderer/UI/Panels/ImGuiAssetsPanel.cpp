@@ -86,7 +86,7 @@ namespace Quiet::Renderer::UI
 
             std::string pendingRemoveAssetID;
 
-            if (ImGui::BeginTable("AssetsTable", 5,
+            if (ImGui::BeginTable("AssetsTable", 7,
                                   ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_Borders |
                                   ImGuiTableFlags_Resizable |
@@ -96,6 +96,8 @@ namespace Quiet::Renderer::UI
                 ImGui::TableSetupColumn("Type");
                 ImGui::TableSetupColumn("Path");
                 ImGui::TableSetupColumn("Status");
+                ImGui::TableSetupColumn("Vertices", ImGuiTableColumnFlags_WidthFixed, Scale(90.0f));
+                ImGui::TableSetupColumn("Indices", ImGuiTableColumnFlags_WidthFixed, Scale(90.0f));
                 ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, Scale(110.0f));
                 ImGui::TableHeadersRow();
 
@@ -125,6 +127,26 @@ namespace Quiet::Renderer::UI
                     ImGui::TextUnformatted(status.c_str());
 
                     ImGui::TableSetColumnIndex(4);
+                    if (const auto stats = meshLibrary.GetStats(record.ID))
+                    {
+                        ImGui::Text("%u", stats->VertexCount);
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableSetColumnIndex(5);
+                    if (const auto stats = meshLibrary.GetStats(record.ID))
+                    {
+                        ImGui::Text("%u", stats->IndexCount);
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableSetColumnIndex(6);
                     if (record.BuiltIn)
                     {
                         ImGui::TextDisabled("Locked");

@@ -44,6 +44,7 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkBuffer GetVertexBuffer() const;
         [[nodiscard]] VkBuffer GetIndexBuffer() const;
         [[nodiscard]] std::uint32_t GetIndexCount() const { return m_IndexCount; }
+        [[nodiscard]] std::uint32_t GetVertexCount() const { return m_VertexCount; }
 
         [[nodiscard]] const glm::vec3& GetLocalBoundsMin() const { return m_LocalBoundsMin; }
         [[nodiscard]] const glm::vec3& GetLocalBoundsMax() const { return m_LocalBoundsMax; }
