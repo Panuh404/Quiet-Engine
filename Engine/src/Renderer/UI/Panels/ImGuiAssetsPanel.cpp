@@ -8,7 +8,8 @@
 
 #include <imgui.h>
 
-#include "ImGuiFileDialog.h"
+
+#include "ImGuiAssetFileDialog.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/MeshLibrary.h"
@@ -96,26 +97,60 @@ namespace
     void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
     {
         ImGui::TextUnformatted(title);
-
         if (subtitle && subtitle[0] != '\0')
         {
             ImGui::TextDisabled("%s", subtitle);
         }
-
         ImGui::Separator();
     }
 
-    void DrawPathStatus(const Quiet::Project::ProjectContext& projectContext,
-                        const std::string& assetPath)
+    bool DrawRegisterMeshForm(Quiet::Project::ProjectContext& projectContext,
+                          Quiet::Editor::EditorState& editorState,
+                          std::array<char, 128>& assetIDBuffer,
+                          std::array<char, 260>& assetPathBuffer,
+                          std::string& errorMessage)
     {
-        if (assetPath.empty())
+        bool registered = false;
+
+        const std::string currentPath = assetPathBuffer.data();
+        const bool hasPath = !currentPath.empty();
+        const bool fileExists = hasPath && DoesAssetPathExist(projectContext, currentPath);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
+
+        ImGui::TextUnformatted("Asset ID");
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint(
+            "##AssetID",
+            "Leave empty to auto-generate from filename",
+            assetIDBuffer.data(),
+            assetIDBuffer.size()
+        );
+
+        ImGui::TextUnformatted("Source Path");
+
+        constexpr float browseWidth = 96.0f;
+        ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
+        ImGui::InputTextWithHint(
+            "##AssetPath",
+            "Assets/Meshes/model.obj",
+            assetPathBuffer.data(),
+            assetPathBuffer.size()
+        );
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Browse", ImVec2(browseWidth, 0.0f)))
         {
-            ImGui::TextDisabled("Select or paste a mesh file path.");
-            return;
+            Quiet::Renderer::UI::OpenMeshAssetFileDialog(projectContext);
         }
 
-        const bool exists = DoesAssetPathExist(projectContext, assetPath);
-        if (exists)
+        if (!hasPath)
+        {
+            ImGui::TextDisabled("Select or paste a supported mesh file.");
+        }
+        else if (fileExists)
         {
             ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.42f, 1.0f), "File found");
         }
@@ -123,119 +158,57 @@ namespace
         {
             ImGui::TextColored(ImVec4(0.95f, 0.30f, 0.30f, 1.0f), "File not found");
         }
-    }
 
-    bool DrawRegisterMeshForm(Quiet::Project::ProjectContext& projectContext,
-                              Quiet::Editor::EditorState& editorState,
-                              std::array<char, 128>& assetIDBuffer,
-                              std::array<char, 260>& assetPathBuffer,
-                              std::string& errorMessage)
-    {
-        bool registered = false;
+        ImGui::Spacing();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
+        const bool canRegister = hasPath && fileExists;
 
-        ImGui::Text("Asset ID");
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputText("##AssetID", assetIDBuffer.data(), assetIDBuffer.size());
-
-        ImGui::Text("Source Path");
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputText("##AssetPath", assetPathBuffer.data(), assetPathBuffer.size());
-
-        ImGui::PopStyleVar(2);
-
-        DrawPathStatus(projectContext, assetPathBuffer.data());
-
-        if (ImGui::Button("Browse"))
+        if (!canRegister)
         {
-            IGFD::FileDialogConfig config;
-            config.path = projectContext.GetRootPath().string();
-
-            ImGuiFileDialog::Instance()->OpenDialog(
-                kMeshFileDialogKey,
-                "Select Mesh File",
-                ".obj,.fbx,.gltf,.glb,.dae",
-                config
-            );
+            ImGui::BeginDisabled();
         }
 
-        ImGui::SameLine();
-
-        if (ImGui::Button("Register"))
+        if (ImGui::Button("Register", ImVec2(150.0f, 0.0f)))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
 
-            if (assetPath.empty())
+            if (assetID.empty())
             {
-                errorMessage = "Source path cannot be empty.";
-                ImGui::OpenPopup("Register Mesh Asset Failed");
+                assetID = ExtractFileNameNoExt(assetPath);
+            }
+
+            if (projectContext.RegisterMeshAsset(assetID, assetPath, false))
+            {
+                assetIDBuffer[0] = '\0';
+                assetPathBuffer[0] = '\0';
+
+                editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
+                registered = true;
             }
             else
             {
-                if (assetID.empty())
-                {
-                    assetID = ExtractFileNameNoExt(assetPath);
-                }
-
-                if (projectContext.RegisterMeshAsset(assetID, assetPath, false))
-                {
-                    assetIDBuffer[0] = '\0';
-                    assetPathBuffer[0] = '\0';
-
-                    editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
-                    registered = true;
-                }
-                else
-                {
-                    errorMessage =
-                        "Failed to register mesh asset. Check that the Asset ID is valid.";
-                    ImGui::OpenPopup("Register Mesh Asset Failed");
-                }
+                errorMessage =
+                    "Failed to register mesh asset. Check that the Asset ID is valid.";
+                ImGui::OpenPopup("Register Mesh Asset Failed");
             }
+        }
+
+        if (!canRegister)
+        {
+            ImGui::EndDisabled();
         }
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Reload Assets"))
+        if (ImGui::Button("Reload", ImVec2(150.0f, 0.0f)))
         {
             editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
         }
 
-        ImGui::SameLine();
-        ImGui::TextDisabled("Assimp imports supported mesh files on reload.");
+        ImGui::PopStyleVar(2);
 
         return registered;
-    }
-
-    void HandleMeshFileDialog(const Quiet::Project::ProjectContext& projectContext,
-                              std::array<char, 128>& assetIDBuffer,
-                              std::array<char, 260>& assetPathBuffer)
-    {
-        if (!ImGuiFileDialog::Instance()->Display(kMeshFileDialogKey))
-        {
-            return;
-        }
-
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            const std::string selectedPath = ImGuiFileDialog::Instance()->GetFilePathName();
-            const std::string selectedName = ImGuiFileDialog::Instance()->GetCurrentFileName();
-
-            const std::string normalizedPath =
-                projectContext.NormalizeAssetPath(selectedPath).generic_string();
-
-            CopyToBuffer(assetPathBuffer, normalizedPath);
-
-            if (assetIDBuffer[0] == '\0')
-            {
-                CopyToBuffer(assetIDBuffer, std::filesystem::path(selectedName).stem().string());
-            }
-        }
-
-        ImGuiFileDialog::Instance()->Close();
     }
 
     void DrawFailurePopup(const char* title, const std::string& message)
@@ -267,20 +240,35 @@ namespace Quiet::Renderer::UI
             static std::string registerErrorMessage;
             static std::string removeErrorMessage;
 
-            DrawSectionHeader(
-                "Register Mesh Asset",
-                "Pick a supported mesh file, assign an asset ID, then register it in the project."
-            );
+            ImGui::TextUnformatted("Register");
+            ImGui::TextDisabled("Pick a supported mesh file and register it as a project asset.");
+            ImGui::Separator();
 
-            DrawRegisterMeshForm(
-                projectContext,
-                editorState,
-                assetIDBuffer,
-                assetPathBuffer,
-                registerErrorMessage
-            );
+            ImGui::Spacing();
 
-            HandleMeshFileDialog(projectContext, assetIDBuffer, assetPathBuffer);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, Scale(10.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
+
+            if (ImGui::BeginChild("RegisterMeshAssetCard", Scale(ImVec2(0.0f, 190.0f)), true))
+            {
+                DrawRegisterMeshForm(
+                    projectContext,
+                    editorState,
+                    assetIDBuffer,
+                    assetPathBuffer,
+                    registerErrorMessage
+                );
+            }
+            ImGui::EndChild();
+
+            ImGui::PopStyleVar(3);
+
+            if (const auto selectedMesh = DrawMeshAssetFileDialog(projectContext))
+            {
+                CopyToBuffer(assetPathBuffer, selectedMesh->AssetPath);
+                if (assetIDBuffer[0] == '\0') CopyToBuffer(assetIDBuffer, selectedMesh->AssetID);
+            }
 
             DrawFailurePopup("Register Mesh Asset Failed", registerErrorMessage);
 
