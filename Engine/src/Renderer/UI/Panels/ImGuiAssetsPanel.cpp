@@ -194,6 +194,129 @@ namespace
         }
         return count;
     }
+
+    void DrawAssetDetailsPopup(const Quiet::Project::ProjectContext& projectContext,
+                               const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                               const std::string& assetID)
+    {
+        if (assetID.empty()) return;
+
+        const auto* record = Quiet::Project::AssetRegistryIO::FindByID(
+            projectContext.GetAssetRegistry(),
+            assetID
+        );
+
+        if (!record) return;
+
+        const auto stats = meshLibrary.GetStats(record->ID);
+        const std::string status = MakeStatusLabel(*record, meshLibrary);
+
+        if (ImGui::BeginPopupModal("Asset Details", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextUnformatted("Asset Details");
+            ImGui::Separator();
+
+            ImGui::Text("ID:");
+            ImGui::SameLine(120.0f);
+            ImGui::TextUnformatted(record->ID.c_str());
+
+            ImGui::Text("Type:");
+            ImGui::SameLine(120.0f);
+            const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
+            ImGui::TextUnformatted(typeLabel.c_str());
+
+            ImGui::Text("Status:");
+            ImGui::SameLine(120.0f);
+            ImGui::TextColored(MakeStatusColor(status), "%s", status.c_str());
+
+            ImGui::Text("Path:");
+            ImGui::SameLine(120.0f);
+            if (record->Path.empty())
+                ImGui::TextDisabled("<built-in>");
+            else
+                ImGui::TextWrapped("%s", record->Path.c_str());
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::TextUnformatted("Runtime Mesh");
+            ImGui::Separator();
+
+            if (stats.has_value())
+            {
+                ImGui::Text("Importer:");
+                ImGui::SameLine(120.0f);
+                if (!stats->ImporterName.empty())
+                    ImGui::TextUnformatted(stats->ImporterName.c_str());
+                else
+                    ImGui::TextDisabled("-");
+
+                ImGui::Text("Meshes:");
+                ImGui::SameLine(120.0f);
+                ImGui::Text("%u", stats->ImportedMeshCount);
+
+                ImGui::Text("Vertices:");
+                ImGui::SameLine(120.0f);
+                ImGui::Text("%u", stats->VertexCount);
+
+                ImGui::Text("Indices:");
+                ImGui::SameLine(120.0f);
+                ImGui::Text("%u", stats->IndexCount);
+
+                ImGui::Text("Warnings:");
+                ImGui::SameLine(120.0f);
+                ImGui::Text("%u", stats->WarningCount);
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::TextUnformatted("Bounds");
+                ImGui::Separator();
+
+                if (stats->BoundsValid)
+                {
+                    ImGui::Text("Min:");
+                    ImGui::SameLine(120.0f);
+                    ImGui::Text("%.3f, %.3f, %.3f",
+                                stats->BoundsMin.x,
+                                stats->BoundsMin.y,
+                                stats->BoundsMin.z);
+
+                    ImGui::Text("Max:");
+                    ImGui::SameLine(120.0f);
+                    ImGui::Text("%.3f, %.3f, %.3f",
+                                stats->BoundsMax.x,
+                                stats->BoundsMax.y,
+                                stats->BoundsMax.z);
+                }
+                else
+                {
+                    ImGui::TextDisabled("No bounds available.");
+                }
+
+                if (!stats->Warnings.empty())
+                {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Import Warnings");
+                    ImGui::Separator();
+
+                    for (const std::string& warning : stats->Warnings)
+                    {
+                        ImGui::BulletText("%s", warning.c_str());
+                    }
+                }
+            }
+            else
+                ImGui::TextDisabled("This asset is not currently loaded.");
+
+            ImGui::Spacing();
+            ImGui::Separator();
+
+            if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::EndPopup();
+        }
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -209,6 +332,7 @@ namespace Quiet::Renderer::UI
             static std::array<char, 260> assetPathBuffer{};
             static std::string registerErrorMessage;
             static std::string removeErrorMessage;
+            static std::string selectedDetailsAssetID;
 
             ImGui::TextUnformatted("Register");
             ImGui::TextDisabled("Pick a supported mesh file and register it as a project asset.");
@@ -250,10 +374,11 @@ namespace Quiet::Renderer::UI
 
             const auto& registry = projectContext.GetAssetRegistry();
             std::string pendingRemoveAssetID;
+            std::string pendingDetailsAssetID;
 
             if (ImGui::BeginTable(
                     "AssetsTable",
-                    9,
+                    10,
                     ImGuiTableFlags_RowBg |
                     ImGuiTableFlags_Borders |
                     ImGuiTableFlags_Resizable |
@@ -267,6 +392,7 @@ namespace Quiet::Renderer::UI
                 ImGui::TableSetupColumn("Vertices", ImGuiTableColumnFlags_WidthFixed, Scale(85.0f));
                 ImGui::TableSetupColumn("Indices", ImGuiTableColumnFlags_WidthFixed, Scale(85.0f));
                 ImGui::TableSetupColumn("Refs", ImGuiTableColumnFlags_WidthFixed, Scale(55.0f));
+                ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, Scale(90.0f));
                 ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, Scale(120.0f));
                 ImGui::TableHeadersRow();
 
@@ -327,8 +453,16 @@ namespace Quiet::Renderer::UI
                     else
                         ImGui::TextDisabled("0");
 
-                    // Actions (Remove)
+                    // Details
                     ImGui::TableSetColumnIndex(8);
+                    const std::string detailsLabel = "Details##" + record.ID;
+                    if (ImGui::Button(detailsLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+                    {
+                        pendingDetailsAssetID = record.ID;
+                    }
+
+                    // Actions (Remove)
+                    ImGui::TableSetColumnIndex(9);
                     if (record.BuiltIn)
                         ImGui::TextDisabled("Locked");
                     else if (runtimeModeActive)
@@ -353,6 +487,11 @@ namespace Quiet::Renderer::UI
                 ImGui::EndTable();
             }
 
+            if (!pendingDetailsAssetID.empty())
+            {
+                selectedDetailsAssetID = pendingDetailsAssetID;
+                ImGui::OpenPopup("Asset Details");
+            }
             if (!pendingRemoveAssetID.empty())
             {
                 const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
@@ -362,7 +501,7 @@ namespace Quiet::Renderer::UI
                     ImGui::OpenPopup("Remove Asset Failed");
                 }
             }
-
+            DrawAssetDetailsPopup(projectContext, meshLibrary, selectedDetailsAssetID);
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
         }
         ImGui::End();

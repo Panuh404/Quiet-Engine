@@ -21,6 +21,7 @@ namespace
         stats.BoundsMax = importResult.Bounds.Max;
         stats.ImporterName = importResult.ImporterName;
         stats.WarningCount = static_cast<std::uint32_t>(importResult.Warnings.size());
+        stats.Warnings = importResult.Warnings;
         return stats;
     }
 }

@@ -27,6 +27,7 @@ namespace Quiet::Renderer::Vulkan
 
         std::string ImporterName;
         std::uint32_t WarningCount = 0;
+        std::vector<std::string> Warnings;
     };
 
     class MeshLibrary
