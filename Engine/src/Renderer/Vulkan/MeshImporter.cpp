@@ -42,15 +42,15 @@ namespace
     bool AppendMesh(const aiMesh& mesh,
                     const aiMatrix4x4& transform,
                     std::vector<Quiet::Renderer::Vulkan::Vertex>& outVertices,
-                    std::vector<std::uint16_t>& outIndices,
+                    std::vector<Quiet::Renderer::Vulkan::Index>& outIndices,
                     std::string& outError)
     {
         if (!mesh.HasPositions()) return true;
 
         const std::size_t baseVertex = outVertices.size();
-        if (baseVertex + mesh.mNumVertices > std::numeric_limits<std::uint16_t>::max())
+        if (baseVertex + mesh.mNumVertices > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
         {
-            outError = "Imported mesh exceeds uint16 index limit.";
+            outError = "Imported mesh exceeds uint32 index limit.";
             return false;
         }
         outVertices.reserve(outVertices.size() + mesh.mNumVertices);
@@ -73,12 +73,12 @@ namespace
             for (unsigned int index = 0; index < face.mNumIndices; ++index)
             {
                 const std::size_t resolvedIndex = baseVertex + face.mIndices[index];
-                if (resolvedIndex > std::numeric_limits<std::uint16_t>::max())
+                if (resolvedIndex > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
                 {
-                    outError = "Imported mesh index exceeds uint16 range.";
+                    outError = "Imported mesh index exceeds uint32 range.";
                     return false;
                 }
-                outIndices.push_back(static_cast<std::uint16_t>(resolvedIndex));
+                outIndices.push_back(static_cast<Quiet::Renderer::Vulkan::Index>(resolvedIndex));
             }
         }
 
@@ -89,7 +89,7 @@ namespace
                       const aiNode& node,
                       const aiMatrix4x4& parentTransform,
                       std::vector<Quiet::Renderer::Vulkan::Vertex>& outVertices,
-                      std::vector<std::uint16_t>& outIndices,
+                      std::vector<Quiet::Renderer::Vulkan::Index>& outIndices,
                       std::string& outError,
                       std::uint32_t& outImportedMeshCount)
     {
@@ -125,7 +125,7 @@ namespace Quiet::Renderer::Vulkan
 {
     bool MeshImporter::LoadFromFile(const std::filesystem::path &path,
                                        std::vector<Vertex> &outVertices,
-                                       std::vector<std::uint16_t> &outIndices,
+                                       std::vector<Index> &outIndices,
                                        std::string &outError)
     {
         outVertices.clear();

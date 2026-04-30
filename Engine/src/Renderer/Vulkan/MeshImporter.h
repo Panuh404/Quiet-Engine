@@ -13,7 +13,7 @@ namespace Quiet::Renderer::Vulkan
     public:
         static bool LoadFromFile(const std::filesystem::path& path,
                                  std::vector<Vertex>& outVertices,
-                                 std::vector<std::uint16_t>& outIndices,
+                                 std::vector<Index>& outIndices,
                                  std::string& outError);
     };
 }

@@ -97,10 +97,10 @@ namespace Quiet::Renderer::Vulkan
                            const LogicalDevice& logicalDevice,
                            const GraphicsCommands& graphicsCommands,
                            const std::vector<Vertex>& vertices,
-                           const std::vector<std::uint16_t>& indices)
+                           const std::vector<Index>& indices)
     {
         const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(Vertex);
-        const VkDeviceSize indexBufferSize = indices.size() * sizeof(std::uint16_t);
+        const VkDeviceSize indexBufferSize = indices.size() * sizeof(Index);
 
         {
             VulkanBuffer stagingVertexBuffer(

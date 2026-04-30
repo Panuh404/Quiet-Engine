@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -25,6 +26,7 @@ namespace Quiet::Renderer::Vulkan
         static VkVertexInputBindingDescription GetBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
     };
+    using Index = std::uint32_t;
 
     class StaticMesh
     {
@@ -33,7 +35,7 @@ namespace Quiet::Renderer::Vulkan
                    const LogicalDevice& logicalDevice,
                    const GraphicsCommands& graphicsCommands,
                    const std::vector<Vertex>& vertices,
-                   const std::vector<std::uint16_t>& indices);
+                   const std::vector<Index>& indices);
         ~StaticMesh();
 
         StaticMesh(const StaticMesh&) = delete;

@@ -6,13 +6,14 @@
 #include <vector>
 #include <optional>
 
+#include "StaticMesh.h"
+
+
 namespace Quiet::Renderer::Vulkan
 {
-    struct Vertex;
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
-    class StaticMesh;
 
     struct MeshStats
     {
@@ -40,14 +41,14 @@ namespace Quiet::Renderer::Vulkan
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
                               const std::vector<Vertex>& vertices,
-                              const std::vector<std::uint16_t>& indices);
+                              const std::vector<Index>& indices);
 
         void ReplaceStaticMesh(const std::string& name,
                                const PhysicalDevice& physicalDevice,
                                const LogicalDevice& logicalDevice,
                                const GraphicsCommands& graphicsCommands,
                                const std::vector<Vertex>& vertices,
-                               const std::vector<std::uint16_t>& indices);
+                               const std::vector<Index>& indices);
 
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
 
@@ -58,10 +59,10 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] std::optional<MeshStats> GetStats(const std::string& name) const;
 
         static std::vector<Vertex> BuildQuadVertices();
-        static std::vector<std::uint16_t> BuildQuadIndices();
+        static std::vector<Index> BuildQuadIndices();
 
         static std::vector<Vertex> BuildCubeVertices();
-        static std::vector<std::uint16_t> BuildCubeIndices();
+        static std::vector<Index> BuildCubeIndices();
 
         [[nodiscard]] std::size_t GetCount() const { return m_Meshes.size(); }
 

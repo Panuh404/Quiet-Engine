@@ -104,7 +104,7 @@ namespace Quiet::Project
         }
 
         std::vector<Renderer::Vulkan::Vertex> vertices;
-        std::vector<std::uint16_t> indices;
+        std::vector<Renderer::Vulkan::Index> indices;
         std::string error;
 
         if (!Renderer::Vulkan::MeshImporter::LoadFromFile(assetPath, vertices, indices, error))

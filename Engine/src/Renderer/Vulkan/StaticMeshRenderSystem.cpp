@@ -73,7 +73,7 @@ namespace Quiet::Renderer::Vulkan
             const VkDeviceSize offsets[] = { 0 };
 
             vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
-            vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT16);
+            vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
             TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();

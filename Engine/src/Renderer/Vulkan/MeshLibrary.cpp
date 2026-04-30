@@ -40,7 +40,7 @@ namespace Quiet::Renderer::Vulkan
                                        const LogicalDevice& logicalDevice,
                                        const GraphicsCommands& graphicsCommands,
                                        const std::vector<Vertex>& vertices,
-                                       const std::vector<std::uint16_t>& indices)
+                                       const std::vector<Index>& indices)
     {
         if (Has(name))
         {
@@ -67,7 +67,7 @@ namespace Quiet::Renderer::Vulkan
                                         const LogicalDevice& logicalDevice,
                                         const GraphicsCommands& graphicsCommands,
                                         const std::vector<Vertex>& vertices,
-                                        const std::vector<std::uint16_t>& indices)
+                                        const std::vector<Index>& indices)
     {
         if (vertices.empty() || indices.empty())
         {
@@ -140,7 +140,7 @@ namespace Quiet::Renderer::Vulkan
         }};
     }
 
-    std::vector<std::uint16_t> MeshLibrary::BuildQuadIndices()
+    std::vector<Index> MeshLibrary::BuildQuadIndices()
     {
         return {{ 0, 1, 2, 2, 3, 0 }};
     }
@@ -159,7 +159,7 @@ namespace Quiet::Renderer::Vulkan
         };
     }
 
-    std::vector<std::uint16_t> MeshLibrary::BuildCubeIndices()
+    std::vector<Index> MeshLibrary::BuildCubeIndices()
     {
         return {
             // back
