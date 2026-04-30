@@ -363,10 +363,18 @@ namespace Quiet::Core
                         QUIET_CORE_WARN("Cannot reload assets because the project asset loader is not available.");
                         break;
                     }
-                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadMeshAssets();
+
+                    m_Renderer->WaitIdle();
+                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadMeshAssets(true);
                     if (!allAssetsLoaded)
                     {
                         QUIET_CORE_WARN("Some registered mesh assets could not be loaded.");
+                    }
+
+                    RelinkSceneStaticMeshes(*m_Scene);
+                    if (m_RuntimeScene)
+                    {
+                        RelinkSceneStaticMeshes(*m_RuntimeScene);
                     }
                     break;
             }
@@ -657,5 +665,28 @@ namespace Quiet::Core
 
         m_FreeCamera->SetPose(state.Position, state.YawDegrees, state.PitchDegrees);
         return true;
+    }
+
+    void Application::RelinkSceneStaticMeshes(Scene::Scene &scene)
+    {
+        auto& meshLibrary = m_Renderer->GetMeshLibrary();
+
+        for (auto& actor : scene.GetActors())
+        {
+            if (!actor.StaticMesh.has_value()) continue;
+            const std::string& meshID = actor.StaticMesh->MeshResourceID;
+            if (auto mesh = meshLibrary.TryGet(meshID))
+            {
+                actor.StaticMesh->Mesh = mesh;
+            }
+            else
+            {
+                QUIET_CORE_WARN(
+                    "Could not relink actor '{}' to missing mesh resource '{}'.",
+                    actor.Name,
+                    meshID
+                );
+            }
+        }
     }
 }

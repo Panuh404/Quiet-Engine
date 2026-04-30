@@ -63,6 +63,7 @@ namespace Quiet::Renderer::Vulkan
                        const CameraUniformData& cameraData,
                        UI::ImGuiLayer& imguiLayer);
 
+        void WaitIdle() const;
         void RecreateSwapchain();
         void ApplyPendingViewportResize();
 

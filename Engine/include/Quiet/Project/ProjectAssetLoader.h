@@ -26,11 +26,11 @@ namespace Quiet::Project
                            const Renderer::Vulkan::LogicalDevice& logicalDevice,
                            const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
 
-        bool ReloadMeshAssets();
+        bool ReloadMeshAssets(bool forceReimport = false);
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
-        bool LoadExternalMesh(const Project::AssetRecord& record);
+        bool LoadExternalMesh(const Project::AssetRecord& record, bool forceReimport);
 
     private:
         ProjectContext& m_ProjectContext;

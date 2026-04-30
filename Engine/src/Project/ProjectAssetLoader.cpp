@@ -21,7 +21,7 @@ namespace Quiet::Project
                                                , m_LogicalDevice(logicalDevice)
                                                , m_GraphicsCommands(graphicsCommands) {}
 
-    bool ProjectAssetLoader::ReloadMeshAssets()
+    bool ProjectAssetLoader::ReloadMeshAssets(const bool forceReimport)
     {
         const auto meshAssets =
             AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Mesh);
@@ -35,7 +35,7 @@ namespace Quiet::Project
                 if (!LoadBuiltInMesh(*record)) allSupportedAssetsLoaded = false;
                 continue;
             }
-            if (!LoadExternalMesh(*record))
+            if (!LoadExternalMesh(*record, forceReimport))
             {
                 allSupportedAssetsLoaded = false;
             }
@@ -76,16 +76,14 @@ namespace Quiet::Project
         return false;
     }
 
-    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord &record)
+    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord& record,
+                                          const bool forceReimport)
     {
-        if (m_MeshLibrary.Has(record.ID)) return true;
-
+        const bool alreadyLoaded = m_MeshLibrary.Has(record.ID);
+        if (alreadyLoaded && !forceReimport) return true;
         if (record.Path.empty())
         {
-            QUIET_CORE_WARN(
-                "Mesh asset '{}' is registered without a source path.",
-                record.ID
-            );
+            QUIET_CORE_WARN("Mesh asset '{}' is registered without a source path.", record.ID);
             return false;
         }
 
@@ -122,14 +120,28 @@ namespace Quiet::Project
 
         try
         {
-            m_MeshLibrary.CreateStaticMesh(
-                record.ID,
-                m_PhysicalDevice,
-                m_LogicalDevice,
-                m_GraphicsCommands,
-                vertices,
-                indices
-            );
+            if (alreadyLoaded)
+            {
+                m_MeshLibrary.ReplaceStaticMesh(
+                    record.ID,
+                    m_PhysicalDevice,
+                    m_LogicalDevice,
+                    m_GraphicsCommands,
+                    vertices,
+                    indices
+                );
+            }
+            else
+            {
+                m_MeshLibrary.CreateStaticMesh(
+                    record.ID,
+                    m_PhysicalDevice,
+                    m_LogicalDevice,
+                    m_GraphicsCommands,
+                    vertices,
+                    indices
+                );
+            }
         }
         catch (const std::exception& e)
         {
@@ -143,7 +155,8 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "Loaded mesh asset '{}' from '{}'. vertices={} indices={}",
+            "{} mesh asset '{}' from '{}'. vertices={} indices={}",
+            alreadyLoaded ? "Reloaded" : "Loaded",
             record.ID,
             assetPath.string(),
             vertices.size(),

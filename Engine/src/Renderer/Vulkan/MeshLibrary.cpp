@@ -62,6 +62,30 @@ namespace Quiet::Renderer::Vulkan
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
 
+    void MeshLibrary::ReplaceStaticMesh(const std::string& name,
+                                        const PhysicalDevice& physicalDevice,
+                                        const LogicalDevice& logicalDevice,
+                                        const GraphicsCommands& graphicsCommands,
+                                        const std::vector<Vertex>& vertices,
+                                        const std::vector<std::uint16_t>& indices)
+    {
+        if (vertices.empty() || indices.empty())
+        {
+            QUIET_CORE_ERROR("Mesh '{}' cannot be replaced with empty geometry.", name);
+            throw std::runtime_error("Static mesh has empty geometry: " + name);
+        }
+
+        m_Meshes[name] = std::make_shared<StaticMesh>(
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            vertices,
+            indices
+        );
+
+        QUIET_CORE_INFO("Replaced mesh resource '{}'.", name);
+    }
+
     std::shared_ptr<StaticMesh> MeshLibrary::Get(const std::string& name) const
     {
         if (auto mesh = TryGet(name)) return mesh;

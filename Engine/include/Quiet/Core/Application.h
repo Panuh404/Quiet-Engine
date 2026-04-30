@@ -101,6 +101,7 @@ namespace Quiet::Core
 
         void BuildSandboxUI(Renderer::UI::ImGuiLayer& uiLayer);
         bool UpdatePilotedEditorCamera(float deltaTime);
+        void RelinkSceneStaticMeshes(Scene::Scene& scene);
 
         [[nodiscard]] Scene::Scene& GetActiveScene();
         [[nodiscard]] const Scene::Scene& GetActiveScene() const;

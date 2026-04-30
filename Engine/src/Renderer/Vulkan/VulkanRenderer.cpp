@@ -317,6 +317,12 @@ namespace Quiet::Renderer::Vulkan
         return true;
     }
 
+    void VulkanRenderer::WaitIdle() const
+    {
+        if (m_LogicalDevice)
+            vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+    }
+
     void VulkanRenderer::RecreateSwapchain()
     {
         auto [width, height] = m_Window->GetFramebufferSize();
