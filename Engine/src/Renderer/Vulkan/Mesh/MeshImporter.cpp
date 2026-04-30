@@ -2,10 +2,13 @@
 
 #include <limits>
 #include <string>
+#include <algorithm>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace
 {
@@ -39,21 +42,39 @@ namespace
         return MakeDefaultColor(fallbackPosition);
     }
 
+    void IncludePointInBounds(Quiet::Renderer::Vulkan::MeshBounds& bounds,
+                              const glm::vec3& point)
+    {
+        if (!bounds.Valid)
+        {
+            bounds.Min = point;
+            bounds.Max = point;
+            bounds.Valid = true;
+            return;
+        }
+
+        bounds.Min.x = std::min(bounds.Min.x, point.x);
+        bounds.Min.y = std::min(bounds.Min.y, point.y);
+        bounds.Min.z = std::min(bounds.Min.z, point.z);
+
+        bounds.Max.x = std::max(bounds.Max.x, point.x);
+        bounds.Max.y = std::max(bounds.Max.y, point.y);
+        bounds.Max.z = std::max(bounds.Max.z, point.z);
+    }
+
     bool AppendMesh(const aiMesh& mesh,
                     const aiMatrix4x4& transform,
-                    std::vector<Quiet::Renderer::Vulkan::Vertex>& outVertices,
-                    std::vector<Quiet::Renderer::Vulkan::Index>& outIndices,
-                    std::string& outError)
+                    Quiet::Renderer::Vulkan::MeshImportResult& result)
     {
         if (!mesh.HasPositions()) return true;
 
-        const std::size_t baseVertex = outVertices.size();
+        const std::size_t baseVertex = result.Vertices.size();
         if (baseVertex + mesh.mNumVertices > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
         {
-            outError = "Imported mesh exceeds uint32 index limit.";
+            result.Error = "Imported mesh exceeds uint32 index limit.";
             return false;
         }
-        outVertices.reserve(outVertices.size() + mesh.mNumVertices);
+        result.Vertices.reserve(result.Vertices.size() + mesh.mNumVertices);
 
         for (unsigned int vertexIndex = 0; vertexIndex < mesh.mNumVertices; ++vertexIndex)
         {
@@ -62,7 +83,8 @@ namespace
             vertex.Position = transformedPosition;
             vertex.Color = GetVertexColor(mesh, vertexIndex, transformedPosition);
 
-            outVertices.push_back(vertex);
+            result.Vertices.push_back(vertex);
+            IncludePointInBounds(result.Bounds, vertex.Position);
         }
 
         for (unsigned int faceIndex = 0; faceIndex < mesh.mNumFaces; ++faceIndex)
@@ -75,10 +97,10 @@ namespace
                 const std::size_t resolvedIndex = baseVertex + face.mIndices[index];
                 if (resolvedIndex > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
                 {
-                    outError = "Imported mesh index exceeds uint32 range.";
+                    result.Error = "Imported mesh index exceeds uint32 range.";
                     return false;
                 }
-                outIndices.push_back(static_cast<Quiet::Renderer::Vulkan::Index>(resolvedIndex));
+                result.Indices.push_back(static_cast<Quiet::Renderer::Vulkan::Index>(resolvedIndex));
             }
         }
 
@@ -88,10 +110,7 @@ namespace
     bool TraverseNode(const aiScene& scene,
                       const aiNode& node,
                       const aiMatrix4x4& parentTransform,
-                      std::vector<Quiet::Renderer::Vulkan::Vertex>& outVertices,
-                      std::vector<Quiet::Renderer::Vulkan::Index>& outIndices,
-                      std::string& outError,
-                      std::uint32_t& outImportedMeshCount)
+                      Quiet::Renderer::Vulkan::MeshImportResult& result)
     {
         const aiMatrix4x4 nodeTransform = parentTransform * node.mTransformation;
 
@@ -100,21 +119,21 @@ namespace
             const unsigned int sceneMeshIndex = node.mMeshes[meshIndex];
             if (sceneMeshIndex >= scene.mNumMeshes)
             {
-                outError = "Node references an invalid mesh index.";
+                result.Error = "Node references an invalid mesh index.";
                 return false;
             }
             const aiMesh* mesh = scene.mMeshes[sceneMeshIndex];
             if (!mesh) continue;
-            if (!AppendMesh(*mesh, nodeTransform, outVertices, outIndices, outError)) return false;
+            if (!AppendMesh(*mesh, nodeTransform, result)) return false;
 
-            ++outImportedMeshCount;
+            ++result.ImportedMeshCount;
         }
 
         for (unsigned int childIndex = 0; childIndex < node.mNumChildren; ++childIndex)
         {
             const aiNode* child = node.mChildren[childIndex];
             if (!child) continue;
-            if (!TraverseNode(scene, *child, nodeTransform, outVertices, outIndices, outError, outImportedMeshCount))
+            if (!TraverseNode(scene, *child, nodeTransform, result))
                 return false;
         }
         return true;
@@ -123,14 +142,10 @@ namespace
 
 namespace Quiet::Renderer::Vulkan
 {
-    bool MeshImporter::LoadFromFile(const std::filesystem::path &path,
-                                       std::vector<Vertex> &outVertices,
-                                       std::vector<Index> &outIndices,
-                                       std::string &outError)
+    MeshImportResult MeshImporter::LoadFromFile(const std::filesystem::path &path)
     {
-        outVertices.clear();
-        outIndices.clear();
-        outError.clear();
+        MeshImportResult result{};
+        result.ImporterName = "Assimp";
 
         Assimp::Importer importer;
 
@@ -146,35 +161,39 @@ namespace Quiet::Renderer::Vulkan
         const aiScene* scene = importer.ReadFile(path.string(), importFlags);
         if (!scene)
         {
-            outError = importer.GetErrorString();
-            if (outError.empty())
+            result.Error = importer.GetErrorString();
+            if (result.Error.empty())
             {
-                outError = "Assimp failed to read file.";
+                result.Error = "Assimp failed to read file.";
             }
-            return false;
+            return result;
         }
+
         if (!scene->mRootNode)
         {
-            outError = "Imported scene has no root node.";
-            return false;
+            result.Error = "Imported scene has no root node.";
+            return result;
         }
+
         if (!scene->HasMeshes())
         {
-            outError = "Imported scene contains no meshes.";
-            return false;
+            result.Error = "Imported scene contains no meshes.";
+            return result;
         }
 
-        std::uint32_t importedMeshCount = 0;
         const aiMatrix4x4 identity{};
 
-        if (!TraverseNode(*scene, *scene->mRootNode, identity, outVertices, outIndices, outError, importedMeshCount))
-            return false;
-
-        if (importedMeshCount == 0 || outVertices.empty() || outIndices.empty())
+        if (!TraverseNode(*scene, *scene->mRootNode, identity, result))
         {
-            outError = "Imported scene did not produce renderable geometry.";
-            return false;
+            return result;
         }
-        return true;
+
+        if (result.ImportedMeshCount == 0 || !result.HasGeometry())
+        {
+            result.Error = "Imported scene did not produce renderable geometry.";
+            return result;
+        }
+
+        return result;
     }
 }

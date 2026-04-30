@@ -26,7 +26,7 @@
 #include "Quiet/Project/ProjectAssetLoader.h"
 #include "Quiet/Project/ProjectWorkflow.h"
 #include "Renderer/UI/ImGuiLayer.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera/CameraController.h"

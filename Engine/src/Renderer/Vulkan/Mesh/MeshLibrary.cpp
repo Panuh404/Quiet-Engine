@@ -1,7 +1,7 @@
 #include "MeshLibrary.h"
 
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
 {

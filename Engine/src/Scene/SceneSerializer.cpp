@@ -5,7 +5,7 @@
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/UUID.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scene

@@ -8,7 +8,7 @@
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/DepthResources.h"
-#include "Renderer/Vulkan/StaticMesh.h"
+#include "StaticMesh.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Renderer/Vulkan/ShaderModule.h"
 

@@ -4,7 +4,7 @@
 #include <imgui.h>
 
 #include "Quiet/Project/ProjectContext.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Renderer::UI

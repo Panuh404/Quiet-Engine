@@ -4,8 +4,8 @@
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
-#include "Renderer/Vulkan/MeshImporter.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshImporter.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 
 
 namespace Quiet::Project
@@ -103,17 +103,14 @@ namespace Quiet::Project
             return false;
         }
 
-        std::vector<Renderer::Vulkan::Vertex> vertices;
-        std::vector<Renderer::Vulkan::Index> indices;
-        std::string error;
-
-        if (!Renderer::Vulkan::MeshImporter::LoadFromFile(assetPath, vertices, indices, error))
+        Renderer::Vulkan::MeshImportResult importResult = Renderer::Vulkan::MeshImporter::LoadFromFile(assetPath);
+        if (!importResult.Succeeded())
         {
             QUIET_CORE_WARN(
                 "Failed to import mesh asset '{}' from '{}': {}",
                 record.ID,
                 assetPath.string(),
-                error
+                importResult.Error
             );
             return false;
         }
@@ -127,8 +124,8 @@ namespace Quiet::Project
                     m_PhysicalDevice,
                     m_LogicalDevice,
                     m_GraphicsCommands,
-                    vertices,
-                    indices
+                    importResult.Vertices,
+                    importResult.Indices
                 );
             }
             else
@@ -138,8 +135,8 @@ namespace Quiet::Project
                     m_PhysicalDevice,
                     m_LogicalDevice,
                     m_GraphicsCommands,
-                    vertices,
-                    indices
+                    importResult.Vertices,
+                    importResult.Indices
                 );
             }
         }
@@ -155,12 +152,14 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "{} mesh asset '{}' from '{}'. vertices={} indices={}",
+            "{} mesh asset '{}' from '{}'. meshes={} vertices={} indices={} boundsValid={}",
             alreadyLoaded ? "Reloaded" : "Loaded",
             record.ID,
             assetPath.string(),
-            vertices.size(),
-            indices.size()
+            importResult.ImportedMeshCount,
+            importResult.Vertices.size(),
+            importResult.Indices.size(),
+            importResult.Bounds.Valid
         );
 
         return true;

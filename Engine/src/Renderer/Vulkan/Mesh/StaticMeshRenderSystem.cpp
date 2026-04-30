@@ -4,8 +4,8 @@
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/CameraResources.h"
-#include "Renderer/Vulkan/StaticMesh.h"
-#include "Renderer/Vulkan/StaticMeshPipeline.h"
+#include "StaticMesh.h"
+#include "StaticMeshPipeline.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"

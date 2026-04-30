@@ -17,11 +17,11 @@
 #include "Renderer/Vulkan/DepthResources.h"
 #include "Renderer/Vulkan/SceneViewportTarget.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
 #include "Renderer/Vulkan/CameraResources.h"
-#include "Renderer/Vulkan/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/FrameSync.h"
-#include "Renderer/Vulkan/StaticMeshRenderSystem.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 namespace
 {

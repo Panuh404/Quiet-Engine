@@ -2,7 +2,7 @@
 
 #include <imgui_internal.h>
 
-#include "../ImGuiToolbarCommon.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorState.h"

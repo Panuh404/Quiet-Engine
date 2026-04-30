@@ -1,6 +1,6 @@
 #include "Quiet/Scene/SceneDocument.h"
 
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneSerializer.h"
 #include "Scene/Components/RotatorComponent.h"

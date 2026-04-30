@@ -2,7 +2,7 @@
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Renderer/UI/ImGuiLayer.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"
 

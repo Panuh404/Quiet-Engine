@@ -1,4 +1,4 @@
-#include "../../include/Quiet/Input/Input.h"
+#include "Quiet/Input/Input.h"
 
 #include "GLFW/glfw3.h"
 #include "Quiet/Core/Log.h"

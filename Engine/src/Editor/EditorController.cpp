@@ -17,7 +17,7 @@
 #include "Quiet/Input/Input.h"
 #include "Quiet/Math/Geometry.h"
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Actor.h"
 #include "Scene/Camera/FreeCamera.h"

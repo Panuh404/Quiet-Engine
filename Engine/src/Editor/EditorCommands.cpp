@@ -6,7 +6,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/ProjectContext.h"
-#include "Renderer/Vulkan/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"
 
