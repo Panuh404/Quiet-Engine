@@ -125,6 +125,7 @@ namespace Quiet::Renderer::UI
                             Editor::EditorState& editorState);
         void BuildAssetsPanel(Project::ProjectContext& projectContext,
                               Editor::EditorState& editorState,
+                              Scene::Scene& scene,
                               const Vulkan::MeshLibrary& meshLibrary);
 
         // Viewport Panels
