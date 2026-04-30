@@ -253,16 +253,17 @@ namespace Quiet::Renderer::UI
 
             if (ImGui::BeginTable(
                     "AssetsTable",
-                    8,
+                    9,
                     ImGuiTableFlags_RowBg |
                     ImGuiTableFlags_Borders |
                     ImGuiTableFlags_Resizable |
                     ImGuiTableFlags_SizingStretchProp))
             {
-                ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthStretch, 0.22f);
+                ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthStretch, 0.20f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, Scale(80.0f));
-                ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch, 0.42f);
+                ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch, 0.40f);
                 ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, Scale(110.0f));
+                ImGui::TableSetupColumn("Meshes", ImGuiTableColumnFlags_WidthFixed, Scale(70.0f));
                 ImGui::TableSetupColumn("Vertices", ImGuiTableColumnFlags_WidthFixed, Scale(85.0f));
                 ImGui::TableSetupColumn("Indices", ImGuiTableColumnFlags_WidthFixed, Scale(85.0f));
                 ImGui::TableSetupColumn("Refs", ImGuiTableColumnFlags_WidthFixed, Scale(55.0f));
@@ -298,29 +299,36 @@ namespace Quiet::Renderer::UI
                     ImGui::TableSetColumnIndex(3);
                     ImGui::TextColored(MakeStatusColor(status), "%s", status.c_str());
 
-                    // Vertices
+                    // Meshes
                     ImGui::TableSetColumnIndex(4);
+                    if (stats.has_value() && stats->ImportedMeshCount > 0)
+                        ImGui::Text("%u", stats->ImportedMeshCount);
+                    else
+                        ImGui::TextDisabled("-");
+
+                    // Vertices
+                    ImGui::TableSetColumnIndex(5);
                     if (stats.has_value())
                         ImGui::Text("%u", stats->VertexCount);
                     else
                         ImGui::TextDisabled("-");
 
                     // Indices
-                    ImGui::TableSetColumnIndex(5);
+                    ImGui::TableSetColumnIndex(6);
                     if (stats.has_value())
                         ImGui::Text("%u", stats->IndexCount);
                     else
                         ImGui::TextDisabled("-");
 
                     // Reference Count
-                    ImGui::TableSetColumnIndex(6);
+                    ImGui::TableSetColumnIndex(7);
                     if (referenceCount > 0)
                         ImGui::TextColored(ImVec4(0.95f, 0.76f, 0.32f, 1.0f), "%u", referenceCount);
                     else
                         ImGui::TextDisabled("0");
 
                     // Actions (Remove)
-                    ImGui::TableSetColumnIndex(7);
+                    ImGui::TableSetColumnIndex(8);
                     if (record.BuiltIn)
                         ImGui::TextDisabled("Locked");
                     else if (runtimeModeActive)

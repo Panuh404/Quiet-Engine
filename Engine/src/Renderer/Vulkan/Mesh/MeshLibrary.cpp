@@ -3,6 +3,35 @@
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
+namespace
+{
+    Quiet::Renderer::Vulkan::MeshStats MakeFallbackStats(
+        const std::vector<Quiet::Renderer::Vulkan::Vertex>& vertices,
+        const std::vector<Quiet::Renderer::Vulkan::Index>& indices)
+    {
+        Quiet::Renderer::Vulkan::MeshStats stats{};
+        stats.VertexCount = static_cast<std::uint32_t>(vertices.size());
+        stats.IndexCount = static_cast<std::uint32_t>(indices.size());
+        stats.ImportedMeshCount = 1;
+        stats.ImporterName = "BuiltIn";
+
+        if (!vertices.empty())
+        {
+            stats.BoundsMin = vertices.front().Position;
+            stats.BoundsMax = vertices.front().Position;
+            stats.BoundsValid = true;
+
+            for (const auto& vertex : vertices)
+            {
+                stats.BoundsMin = glm::min(stats.BoundsMin, vertex.Position);
+                stats.BoundsMax = glm::max(stats.BoundsMax, vertex.Position);
+            }
+        }
+
+        return stats;
+    }
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     void MeshLibrary::CreateQuad(const std::string &name,
@@ -16,7 +45,8 @@ namespace Quiet::Renderer::Vulkan
             logicalDevice,
             graphicsCommands,
             BuildQuadVertices(),
-            BuildQuadIndices()
+            BuildQuadIndices(),
+            MakeFallbackStats(BuildQuadVertices(), BuildQuadIndices())
         );
     }
 
@@ -31,7 +61,8 @@ namespace Quiet::Renderer::Vulkan
             logicalDevice,
             graphicsCommands,
             BuildCubeVertices(),
-            BuildCubeIndices()
+            BuildCubeIndices(),
+            MakeFallbackStats(BuildQuadVertices(), BuildQuadIndices())
         );
     }
 
@@ -40,18 +71,24 @@ namespace Quiet::Renderer::Vulkan
                                        const LogicalDevice& logicalDevice,
                                        const GraphicsCommands& graphicsCommands,
                                        const std::vector<Vertex>& vertices,
-                                       const std::vector<Index>& indices)
+                                       const std::vector<Index>& indices,
+                                       MeshStats stats)
     {
         if (Has(name))
         {
             QUIET_CORE_ERROR("Mesh '{}' is already registered.", name);
             throw std::runtime_error("Mesh already exists in MeshLibrary: " + name);
         }
+
         if (vertices.empty() || indices.empty())
         {
             QUIET_CORE_ERROR("Mesh '{}' cannot be created with empty geometry.", name);
             throw std::runtime_error("Static mesh has empty geometry: " + name);
         }
+
+        stats.VertexCount = static_cast<std::uint32_t>(vertices.size());
+        stats.IndexCount = static_cast<std::uint32_t>(indices.size());
+
         m_Meshes[name] = std::make_shared<StaticMesh>(
             physicalDevice,
             logicalDevice,
@@ -59,6 +96,7 @@ namespace Quiet::Renderer::Vulkan
             vertices,
             indices
         );
+        m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
     }
 
@@ -67,13 +105,17 @@ namespace Quiet::Renderer::Vulkan
                                         const LogicalDevice& logicalDevice,
                                         const GraphicsCommands& graphicsCommands,
                                         const std::vector<Vertex>& vertices,
-                                        const std::vector<Index>& indices)
+                                        const std::vector<Index>& indices,
+                                        MeshStats stats)
     {
         if (vertices.empty() || indices.empty())
         {
             QUIET_CORE_ERROR("Mesh '{}' cannot be replaced with empty geometry.", name);
             throw std::runtime_error("Static mesh has empty geometry: " + name);
         }
+
+        stats.VertexCount = static_cast<std::uint32_t>(vertices.size());
+        stats.IndexCount = static_cast<std::uint32_t>(indices.size());
 
         m_Meshes[name] = std::make_shared<StaticMesh>(
             physicalDevice,
@@ -82,7 +124,7 @@ namespace Quiet::Renderer::Vulkan
             vertices,
             indices
         );
-
+        m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Replaced mesh resource '{}'.", name);
     }
 
@@ -124,10 +166,16 @@ namespace Quiet::Renderer::Vulkan
 
     std::optional<MeshStats> MeshLibrary::GetStats(const std::string &name) const
     {
+        const auto it = m_Stats.find(name);
+        if (it != m_Stats.end()) return it->second;
+
         const auto mesh = TryGet(name);
         if (!mesh) return std::nullopt;
 
-        return MeshStats{ mesh->GetVertexCount(), mesh->GetIndexCount() };
+        MeshStats fallback{};
+        fallback.VertexCount = mesh->GetVertexCount();
+        fallback.IndexCount = mesh->GetIndexCount();
+        return fallback;
     }
 
     std::vector<Vertex> MeshLibrary::BuildQuadVertices()

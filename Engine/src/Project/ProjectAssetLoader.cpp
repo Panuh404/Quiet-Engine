@@ -7,6 +7,23 @@
 #include "Renderer/Vulkan/Mesh/MeshImporter.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 
+namespace
+{
+    Quiet::Renderer::Vulkan::MeshStats MakeMeshStatsFromImportResult(
+        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    {
+        Quiet::Renderer::Vulkan::MeshStats stats{};
+        stats.VertexCount = static_cast<std::uint32_t>(importResult.Vertices.size());
+        stats.IndexCount = static_cast<std::uint32_t>(importResult.Indices.size());
+        stats.ImportedMeshCount = importResult.ImportedMeshCount;
+        stats.BoundsValid = importResult.Bounds.Valid;
+        stats.BoundsMin = importResult.Bounds.Min;
+        stats.BoundsMax = importResult.Bounds.Max;
+        stats.ImporterName = importResult.ImporterName;
+        stats.WarningCount = static_cast<std::uint32_t>(importResult.Warnings.size());
+        return stats;
+    }
+}
 
 namespace Quiet::Project
 {
@@ -115,6 +132,7 @@ namespace Quiet::Project
             return false;
         }
 
+        const Renderer::Vulkan::MeshStats stats = MakeMeshStatsFromImportResult(importResult);
         try
         {
             if (alreadyLoaded)
@@ -125,7 +143,8 @@ namespace Quiet::Project
                     m_LogicalDevice,
                     m_GraphicsCommands,
                     importResult.Vertices,
-                    importResult.Indices
+                    importResult.Indices,
+                    stats
                 );
             }
             else
@@ -136,7 +155,8 @@ namespace Quiet::Project
                     m_LogicalDevice,
                     m_GraphicsCommands,
                     importResult.Vertices,
-                    importResult.Indices
+                    importResult.Indices,
+                    stats
                 );
             }
         }
