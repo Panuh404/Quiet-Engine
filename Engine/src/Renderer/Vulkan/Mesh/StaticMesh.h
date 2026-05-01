@@ -7,7 +7,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include "Renderer/Vulkan/VulkanBuffer.h"
 #include "glm/vec3.hpp"
 #include "Quiet/Math/Geometry.h"
 

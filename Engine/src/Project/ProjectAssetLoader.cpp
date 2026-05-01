@@ -6,6 +6,7 @@
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshImporter.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 
 namespace
 {
@@ -63,35 +64,41 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::LoadBuiltInMesh(const AssetRecord &record)
     {
-        if (m_MeshLibrary.Has(record.ID)) return true;
+        if (m_MeshLibrary.Has(record.ID)) { return true; }
 
-        if (record.ID == "Cube")
+        const auto primitive = Renderer::Vulkan::MeshPrimitives::Create(record.ID);
+        if (!primitive.has_value() || !primitive->IsValid())
         {
-            m_MeshLibrary.CreateCube(
+            QUIET_CORE_WARN(
+                "Built-in mesh asset '{}' is registered but has no primitive creator.",
+                record.ID
+            );
+            return false;
+        }
+
+        try
+        {
+            m_MeshLibrary.CreateStaticMesh(
                 record.ID,
                 m_PhysicalDevice,
                 m_LogicalDevice,
-                m_GraphicsCommands
+                m_GraphicsCommands,
+                primitive->Vertices,
+                primitive->Indices,
+                primitive->Stats
             );
-            return true;
         }
-
-        if (record.ID == "Quad")
+        catch (const std::exception& e)
         {
-            m_MeshLibrary.CreateQuad(
+            QUIET_CORE_ERROR(
+                "Failed to create built-in mesh asset '{}': {}",
                 record.ID,
-                m_PhysicalDevice,
-                m_LogicalDevice,
-                m_GraphicsCommands
+                e.what()
             );
-            return true;
+            return false;
         }
 
-        QUIET_CORE_WARN(
-            "Built-in mesh asset '{}' is registered but has no loader implementation.",
-            record.ID
-        );
-        return false;
+        return true;
     }
 
     bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord& record,

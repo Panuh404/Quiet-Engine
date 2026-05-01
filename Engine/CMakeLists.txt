@@ -76,6 +76,21 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiProjectManager.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
+        # Renderer - Vulkan - Mesh
+        src/Renderer/Vulkan/Mesh/MeshImporter.cpp
+        src/Renderer/Vulkan/Mesh/MeshImporter.h
+        src/Renderer/Vulkan/Mesh/MeshImportResult.h
+        src/Renderer/Vulkan/Mesh/MeshLibrary.cpp
+        src/Renderer/Vulkan/Mesh/MeshLibrary.h
+        src/Renderer/Vulkan/Mesh/MeshPrimitives.cpp
+        src/Renderer/Vulkan/Mesh/MeshPrimitives.h
+        src/Renderer/Vulkan/Mesh/StaticMesh.cpp
+        src/Renderer/Vulkan/Mesh/StaticMesh.h
+        src/Renderer/Vulkan/Mesh/StaticMeshPipeline.cpp
+        src/Renderer/Vulkan/Mesh/StaticMeshPipeline.h
+        src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
+        src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
+
         # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp
         src/Renderer/Vulkan/CameraResources.h
@@ -87,11 +102,6 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/GraphicsCommands.h
         src/Renderer/Vulkan/LogicalDevice.cpp
         src/Renderer/Vulkan/LogicalDevice.h
-        src/Renderer/Vulkan/Mesh/MeshImporter.cpp
-        src/Renderer/Vulkan/Mesh/MeshImporter.h
-        src/Renderer/Vulkan/Mesh/MeshImportResult.h
-        src/Renderer/Vulkan/Mesh/MeshLibrary.cpp
-        src/Renderer/Vulkan/Mesh/MeshLibrary.h
         src/Renderer/Vulkan/PhysicalDevice.cpp
         src/Renderer/Vulkan/PhysicalDevice.h
         src/Renderer/Vulkan/RenderTypes.h
@@ -101,12 +111,6 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/ShaderCompiler.h
         src/Renderer/Vulkan/ShaderModule.cpp
         src/Renderer/Vulkan/ShaderModule.h
-        src/Renderer/Vulkan/Mesh/StaticMesh.cpp
-        src/Renderer/Vulkan/Mesh/StaticMesh.h
-        src/Renderer/Vulkan/Mesh/StaticMeshPipeline.cpp
-        src/Renderer/Vulkan/Mesh/StaticMeshPipeline.h
-        src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
-        src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
         src/Renderer/Vulkan/Swapchain.cpp
         src/Renderer/Vulkan/Swapchain.h
         src/Renderer/Vulkan/VulkanBuffer.cpp

@@ -6,6 +6,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
+
 namespace Quiet::Project
 {
     namespace
@@ -132,8 +134,18 @@ namespace Quiet::Project
 
     void AssetRegistryIO::EnsureBuiltInAssets(AssetRegistry &registry)
     {
-        UpsertRecord(registry, AssetRecord{ "Cube", AssetType::Mesh, "", true } );
-        UpsertRecord(registry, AssetRecord{ "Quad", AssetType::Mesh, "", true } );
+        for (const std::string& primitiveID : Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+        {
+            UpsertRecord(
+                registry,
+                AssetRecord{
+                    primitiveID,
+                    AssetType::Mesh,
+                    "",
+                    true
+                }
+            );
+        }
         SortRecords(registry);
     }
 
