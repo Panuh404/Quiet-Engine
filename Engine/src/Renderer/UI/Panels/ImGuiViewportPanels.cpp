@@ -173,6 +173,28 @@ namespace Quiet::Renderer::UI
             {
                 editorState.QueueRequest(Editor::EditorRequestType::FocusSelected);
             }
+
+            ImGui::SameLine();
+
+            if (DrawToolbarButton(
+                    m_Fonts,
+                    "ViewportDebugIcons",
+                    Icons::DebugIcons,
+                    "Icons",
+                    editorState.Viewport.ShowDebugIcons
+                        ? "Hide editor icons"
+                        : "Show editor icons",
+                    editorState.Viewport.ShowDebugIcons,
+                    true,
+                    ImVec2(
+                        m_Fonts.HasIcons
+                            ? ToolbarStyle::ButtonSize()
+                            : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
+            {
+                editorState.Viewport.ShowDebugIcons = !editorState.Viewport.ShowDebugIcons;
+            }
+
         }
         ImGui::End();
 

@@ -21,6 +21,7 @@ namespace Quiet::Renderer::UI
         inline constexpr const char* Scale     = "\xef\x81\xa5"; // U+F065 expand
         inline constexpr const char* Focus     = "\xef\x81\x9b"; // U+F05B crosshairs
         inline constexpr const char* Snap      = "\xef\x81\xb6"; // U+F076 magnet
+        inline constexpr const char* DebugIcons = "\xef\x81\xae"; // U+F06E eye
         inline constexpr const char* World     = "\xef\x82\xac"; // globe
         inline constexpr const char* Local     = "\xef\x86\xb2"; // cube
     }
