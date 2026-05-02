@@ -45,6 +45,14 @@ namespace Quiet::Scene
         json root;
         root["actors"] = json::array();
 
+        const SceneRenderSettings& renderSettings = scene.GetRenderSettings();
+        root["render_settings"] = {
+            { "light_direction", SerializeVec3(renderSettings.LightDirection) },
+            { "light_intensity", renderSettings.LightIntensity },
+            { "ambient_color", SerializeVec3(renderSettings.AmbientColor) },
+            { "ambient_intensity", renderSettings.AmbientIntensity }
+        };
+
         for (const auto& actor : scene.GetActors())
         {
             json actorJson;
@@ -119,6 +127,31 @@ namespace Quiet::Scene
         }
 
         scene.Clear();
+
+        if (root.contains("render_settings"))
+        {
+            const auto& renderSettingsJson = root["render_settings"];
+            SceneRenderSettings& renderSettings = scene.GetRenderSettings();
+
+            if (renderSettingsJson.contains("light_direction"))
+            {
+                renderSettings.LightDirection =
+                    DeserializeVec3(renderSettingsJson.at("light_direction"));
+            }
+
+            renderSettings.LightIntensity =
+                renderSettingsJson.value("light_intensity", renderSettings.LightIntensity);
+
+            if (renderSettingsJson.contains("ambient_color"))
+            {
+                renderSettings.AmbientColor =
+                    DeserializeVec3(renderSettingsJson.at("ambient_color"));
+            }
+
+            renderSettings.AmbientIntensity =
+                renderSettingsJson.value("ambient_intensity", renderSettings.AmbientIntensity);
+        }
+
         for (const auto& actorJson : root["actors"])
         {
             Core::UUID id{};

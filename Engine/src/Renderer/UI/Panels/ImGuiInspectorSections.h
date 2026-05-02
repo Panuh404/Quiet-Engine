@@ -36,6 +36,10 @@ namespace Quiet::Renderer::UI
                                  Editor::EditorCommands& commands,
                                  const TrackedInspectorInteraction& tracked);
 
+    void DrawSceneLightingSection(Scene::Scene& scene,
+                                  Editor::EditorCommands& commands,
+                                  const TrackedInspectorInteraction& tracked);
+
     void DrawStaticMeshSection(Scene::Scene& scene,
                                Scene::Actor& actor,
                                Editor::EditorCommands& commands,

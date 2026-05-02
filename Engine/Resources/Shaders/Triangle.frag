@@ -17,7 +17,13 @@ void main()
 {
     vec3 normal = normalize(vWorldNormal);
 
-    vec3 lightDirection = normalize(pc.LightDirectionIntensity.xyz);
+    vec3 rawLightDirection = pc.LightDirectionIntensity.xyz;
+    float lightLength = length(rawLightDirection);
+    vec3 lightDirection =
+        lightLength > 0.0001
+        ? rawLightDirection / lightLength
+        : vec3(0.0, 1.0, 0.0);
+
     float lightIntensity = pc.LightDirectionIntensity.w;
 
     vec3 ambient = pc.AmbientColorIntensity.rgb * pc.AmbientColorIntensity.w;

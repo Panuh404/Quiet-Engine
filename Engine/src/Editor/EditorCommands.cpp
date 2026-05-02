@@ -366,6 +366,30 @@ namespace Quiet::Editor
         return true;
     }
 
+    bool EditorCommands::SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction)
+    {
+        scene.GetRenderSettings().LightDirection = direction;
+        return true;
+    }
+
+    bool EditorCommands::SetSceneLightIntensity(Scene::Scene& scene, const float intensity)
+    {
+        scene.GetRenderSettings().LightIntensity = intensity;
+        return true;
+    }
+
+    bool EditorCommands::SetSceneAmbientColor(Scene::Scene& scene, const glm::vec3& color)
+    {
+        scene.GetRenderSettings().AmbientColor = color;
+        return true;
+    }
+
+    bool EditorCommands::SetSceneAmbientIntensity(Scene::Scene& scene, const float intensity)
+    {
+        scene.GetRenderSettings().AmbientIntensity = intensity;
+        return true;
+    }
+
     bool EditorCommands::AddCamera(Scene::Scene &scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()

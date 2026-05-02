@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
+
 #include "Scene/Actor.h"
+#include "Scene/SceneRenderSettings.h"
 
 namespace Quiet::Input
 {
@@ -44,6 +46,9 @@ namespace Quiet::Scene
         [[nodiscard]] std::vector<Actor>& GetActors() { return m_Actors; }
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }
 
+        [[nodiscard]] SceneRenderSettings& GetRenderSettings() { return m_RenderSettings; }
+        [[nodiscard]] const SceneRenderSettings& GetRenderSettings() const { return m_RenderSettings; }
+
         [[nodiscard]] Actor* FindActorByID(Core::UUID id);
         [[nodiscard]] const Actor* FindActorByID(Core::UUID id) const;
 
@@ -63,6 +68,7 @@ namespace Quiet::Scene
         void UpdateRuntime(float deltaTime);
 
     private:
+        SceneRenderSettings m_RenderSettings{};
         std::vector<Actor> m_Actors;
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
     };

@@ -84,6 +84,7 @@ namespace Quiet::Scene
 
     void Scene::Clear()
     {
+        m_RenderSettings = SceneRenderSettings{};
         m_Actors.clear();
         m_RuntimeMode = RuntimeMode::None;
     }

@@ -1,6 +1,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include <stdexcept>
+#include "glm/vec4.hpp"
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
@@ -71,10 +72,23 @@ namespace Quiet::Renderer::Vulkan
             vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
+            const Scene::SceneRenderSettings& renderSettings = context.SceneData->GetRenderSettings();
+
             TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
+            push.LightDirectionIntensity = glm::vec4(
+                renderSettings.LightDirection,
+                renderSettings.LightIntensity
+            );
+            push.AmbientColorIntensity = glm::vec4(
+                renderSettings.AmbientColor,
+                renderSettings.AmbientIntensity
+            );
+
             if (actor.Material.has_value())
+            {
                 push.BaseColor = actor.Material->BaseColor;
+            }
 
             vkCmdPushConstants(
                 context.CommandBuffer,

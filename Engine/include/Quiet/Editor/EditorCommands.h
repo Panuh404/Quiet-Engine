@@ -76,6 +76,11 @@ namespace Quiet::Editor
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);
         bool SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed);
 
+        bool SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction);
+        bool SetSceneLightIntensity(Scene::Scene& scene, float intensity);
+        bool SetSceneAmbientColor(Scene::Scene& scene, const glm::vec3& color);
+        bool SetSceneAmbientIntensity(Scene::Scene& scene, float intensity);
+
     #pragma region Camera
         bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);

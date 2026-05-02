@@ -24,8 +24,8 @@ layout(location = 1) out vec3 vWorldNormal;
 
 void main()
 {
-    gl_Position = ubo.Projection * ubo.View * pc.Model * vec4(inPosition, 1.0);\
-    
+    gl_Position = ubo.Projection * ubo.View * pc.Model * vec4(inPosition, 1.0);
+
     mat3 normalMatrix = transpose(inverse(mat3(pc.Model)));
     vWorldNormal = normalize(normalMatrix * inNormal);
 

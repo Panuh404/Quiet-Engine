@@ -21,21 +21,39 @@ namespace Quiet::Renderer::UI
             if (editorState.Selection.SelectedActorID.has_value())
             {
                 selectedActor = scene.FindActorByID(editorState.Selection.SelectedActorID.value());
-                if (!selectedActor)
-                    editorState.Selection.SelectedActorID.reset();
+                if (!selectedActor) editorState.Selection.SelectedActorID.reset();
             }
+
+            const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
+            const TrackedInspectorInteraction tracked{ scene, commands, isEditMode };
+
+            if (!isEditMode)
+            {
+                ImGui::TextColored(
+                    ImVec4(0.30f, 0.85f, 0.35f, 1.0f),
+                    "Simulating runtime copy. Editing is disabled."
+                );
+                ImGui::Separator();
+            }
+
+            if (!isEditMode) ImGui::BeginDisabled();
+
+            DrawSceneLightingSection(scene, commands, tracked);
 
             if (!selectedActor)
             {
-                ImGui::Text("No actor selected.");
+                ImGui::Separator();
+                ImGui::TextDisabled("No actor selected.");
+
+                if (!isEditMode) ImGui::EndDisabled();
+
                 ImGui::End();
                 return;
             }
 
-            const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
-            auto& actor = *selectedActor;
+            ImGui::Separator();
 
-            const TrackedInspectorInteraction tracked{ scene, commands, isEditMode };
+            auto& actor = *selectedActor;
 
             ImGui::Text("Actor");
             ImGui::Separator();
@@ -50,6 +68,7 @@ namespace Quiet::Renderer::UI
             }
 
             if (!isEditMode) ImGui::BeginDisabled();
+            ImGui::Separator();
 
             DrawActorDetailsSection(scene, actor, commands, tracked);
 

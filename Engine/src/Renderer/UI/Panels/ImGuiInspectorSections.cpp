@@ -55,6 +55,42 @@ namespace Quiet::Renderer::UI
         tracked.End();
     }
 
+    void DrawSceneLightingSection(Scene::Scene &scene,
+                                  Editor::EditorCommands &commands,
+                                  const TrackedInspectorInteraction &tracked)
+    {
+        if (!ImGui::CollapsingHeader("Scene Lighting", ImGuiTreeNodeFlags_DefaultOpen)) return;
+        Scene::SceneRenderSettings& settings = scene.GetRenderSettings();
+
+        glm::vec3 lightDirection = settings.LightDirection;
+        if (ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.01f, -1.0f, 1.0f))
+            commands.SetSceneLightDirection(scene, lightDirection);
+
+        tracked.Begin();
+        tracked.End();
+
+        float lightIntensity = settings.LightIntensity;
+        if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
+            commands.SetSceneLightIntensity(scene, lightIntensity);
+
+        tracked.Begin();
+        tracked.End();
+
+        glm::vec3 ambientColor = settings.AmbientColor;
+        if (ImGui::ColorEdit3("Ambient Color", &ambientColor.x))
+            commands.SetSceneAmbientColor(scene, ambientColor);
+
+        tracked.Begin();
+        tracked.End();
+
+        float ambientIntensity = settings.AmbientIntensity;
+        if (ImGui::DragFloat("Ambient Intensity", &ambientIntensity, 0.01f, 0.0f, 1.0f))
+            commands.SetSceneAmbientIntensity(scene, ambientIntensity);
+
+        tracked.Begin();
+        tracked.End();
+    }
+
     void DrawStaticMeshSection(Scene::Scene& scene,
                                Scene::Actor& actor,
                                Editor::EditorCommands& commands,
