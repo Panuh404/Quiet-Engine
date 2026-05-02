@@ -1,8 +1,10 @@
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 #include <cstring>
-#include <glm/glm.hpp>
+#include <stdexcept>
+
 #include <glm/common.hpp>
+#include <glm/glm.hpp>
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/GraphicsCommands.h"
@@ -76,19 +78,27 @@ namespace Quiet::Renderer::Vulkan
         return binding;
     }
 
-    std::array<VkVertexInputAttributeDescription, 2> Vertex::GetAttributeDescriptions()
+    std::array<VkVertexInputAttributeDescription, 3> Vertex::GetAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 2> attributes{};
+        std::array<VkVertexInputAttributeDescription, 3> attributes{};
 
+        // Position
         attributes[0].location = 0;
         attributes[0].binding = 0;
         attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributes[0].offset = offsetof(Vertex, Position);
 
+        // Color
         attributes[1].location = 1;
         attributes[1].binding = 0;
         attributes[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributes[1].offset = offsetof(Vertex, Color);
+
+        // Normal
+        attributes[2].location = 2;
+        attributes[2].binding = 0;
+        attributes[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributes[2].offset = offsetof(Vertex, Normal);
 
         return attributes;
     }

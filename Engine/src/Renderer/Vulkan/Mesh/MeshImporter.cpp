@@ -7,6 +7,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <glm/geometric.hpp>
 
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
@@ -19,6 +20,23 @@ namespace
             transform.b1 * point.x + transform.b2 * point.y + transform.b3 * point.z + transform.b4,
             transform.c1 * point.x + transform.c2 * point.y + transform.c3 * point.z + transform.c4
         };
+    }
+
+    glm::vec3 TransformDirection(const aiMatrix4x4& transform, const aiVector3D& direction)
+    {
+        glm::vec3 transformed{
+            transform.a1 * direction.x + transform.a2 * direction.y + transform.a3 * direction.z,
+            transform.b1 * direction.x + transform.b2 * direction.y + transform.b3 * direction.z,
+            transform.c1 * direction.x + transform.c2 * direction.y + transform.c3 * direction.z
+        };
+
+        const float length = glm::length(transformed);
+        if (length <= 0.00001f)
+        {
+            return { 0.0f, 1.0f, 0.0f };
+        }
+
+        return transformed / length;
     }
 
     glm::vec3 MakeDefaultColor(const glm::vec3& position)
@@ -82,6 +100,15 @@ namespace
             Quiet::Renderer::Vulkan::Vertex vertex{};
             vertex.Position = transformedPosition;
             vertex.Color = GetVertexColor(mesh, vertexIndex, transformedPosition);
+
+            if (mesh.HasNormals() && mesh.mNormals)
+            {
+                vertex.Normal = TransformDirection(transform, mesh.mNormals[vertexIndex]);
+            }
+            else
+            {
+                vertex.Normal = { 0.0f, 1.0f, 0.0f };
+            }
 
             result.Vertices.push_back(vertex);
             IncludePointInBounds(result.Bounds, vertex.Position);
