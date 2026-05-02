@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.h>
 
 #include "glm/vec3.hpp"
+#include "glm/vec2.hpp"
 #include "Quiet/Math/Geometry.h"
 
 namespace Quiet::Renderer::Vulkan

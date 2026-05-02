@@ -136,10 +136,11 @@ namespace Quiet::Renderer::UI
         if (!ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         glm::vec4 baseColor = actor.Material->BaseColor;
+        tracked.Begin();
+
         if (ImGui::ColorEdit4("Base Color", &baseColor.x))
             commands.SetMaterialBaseColor(scene, actor.ID, baseColor);
 
-        tracked.Begin();
         tracked.End();
 
         if (ImGui::Button("Remove Material"))
