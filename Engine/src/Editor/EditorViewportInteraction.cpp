@@ -472,7 +472,8 @@ namespace Quiet::Editor
         }
 
         Math::Ray ray{};
-        if (!BuildViewportPickRay(input, camera, renderer, ray)) return;
+        if (!BuildViewportPickRay(mousePosition.x, mousePosition.y, camera, renderer, ray))
+            return;
 
         auto& actors = scene.GetActors();
         float closestHit = std::numeric_limits<float>::max();
@@ -754,7 +755,8 @@ namespace Quiet::Editor
         drawList->PopClipRect();
     }
 
-    bool EditorController::BuildViewportPickRay(const Input::Input& input,
+    bool EditorController::BuildViewportPickRay(float mouseScreenX,
+                                                float mouseScreenY,
                                                 const Scene::FreeCamera& camera,
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
                                                 Math::Ray& outRay) const
@@ -763,16 +765,13 @@ namespace Quiet::Editor
         if (sceneExtent.width == 0 || sceneExtent.height == 0) return false;
         if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return false;
 
-        const auto [mouseX, mouseY] = input.GetMousePosition();
-        const float localX = static_cast<float>(mouseX) - m_State.Viewport.ScreenX;
-        const float localY = static_cast<float>(mouseY) - m_State.Viewport.ScreenY;
+        const float localX = mouseScreenX - m_State.Viewport.ScreenX;
+        const float localY = mouseScreenY - m_State.Viewport.ScreenY;
 
         if (localX < 0.0f || localY < 0.0f ||
             localX > static_cast<float>(m_State.Viewport.Width) ||
             localY > static_cast<float>(m_State.Viewport.Height))
-        {
             return false;
-        }
 
         const auto viewportHeight = static_cast<float>(m_State.Viewport.Height);
         const float flippedY = viewportHeight - localY;
@@ -781,7 +780,9 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+        const auto cameraData =
+            camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+
         const glm::vec4 viewport(
             0.0f,
             0.0f,
@@ -803,8 +804,11 @@ namespace Quiet::Editor
             viewport
         );
 
+        const glm::vec3 direction = farPoint - nearPoint;
+        if (glm::length(direction) <= 0.00001f) return false;
+
         outRay.Origin = nearPoint;
-        outRay.Direction = glm::normalize(farPoint - nearPoint);
+        outRay.Direction = glm::normalize(direction);
         return true;
     }
 

@@ -68,7 +68,8 @@ namespace Quiet::Editor
                                     const Renderer::Vulkan::VulkanRenderer& renderer) const;
 
     private:
-        [[nodiscard]] bool BuildViewportPickRay(const Input::Input& input,
+        [[nodiscard]] bool BuildViewportPickRay(float mouseScreenX,
+                                                float mouseScreenY,
                                                 const Scene::FreeCamera& camera,
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
                                                 Math::Ray& outRay) const;
