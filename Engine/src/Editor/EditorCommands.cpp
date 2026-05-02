@@ -112,6 +112,20 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::CreateDirectionalLightActor(Scene::Scene &scene, const std::string &actorName)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? "Directional Light" : actorName);
+
+            actor.DirectionalLight = Scene::DirectionalLightComponent{};
+            actor.Transform.WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
+
+            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            return true;
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;
@@ -330,6 +344,66 @@ namespace Quiet::Editor
         if (!actor || !actor->Material.has_value()) return false;
 
         actor->Material->BaseColor = baseColor;
+        return true;
+    }
+
+    bool EditorCommands::AddDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->DirectionalLight.has_value()) return false;
+
+            actor->DirectionalLight = Scene::DirectionalLightComponent{};
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->DirectionalLight.has_value()) return false;
+
+            actor->DirectionalLight.reset();
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value()) return false;
+
+        actor->DirectionalLight->Enabled = enabled;
+        return true;
+    }
+
+    bool EditorCommands::SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value()) return false;
+
+        actor->DirectionalLight->Direction = direction;
+        return true;
+    }
+
+    bool EditorCommands::SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value()) return false;
+
+        actor->DirectionalLight->Color = color;
+        return true;
+    }
+
+    bool EditorCommands::SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value()) return false;
+
+        actor->DirectionalLight->Intensity = intensity;
         return true;
     }
 

@@ -40,6 +40,8 @@ namespace Quiet::Editor
                                    const std::string& meshResourceID,
                                    const Project::ProjectContext& projectContext,
                                    const Renderer::Vulkan::MeshLibrary& meshLibrary);
+        bool CreateDirectionalLightActor(Scene::Scene& scene,
+                                         const std::string& actorName = "Directional Light");
         bool DuplicateSelectedActor(Scene::Scene& scene);
         bool DeleteSelectedActor(Scene::Scene& scene);
 
@@ -71,6 +73,13 @@ namespace Quiet::Editor
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
+
+        bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
+        bool SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled);
+        bool SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction);
+        bool SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color);
+        bool SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity);
 
         bool AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed = 45.0f);
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);

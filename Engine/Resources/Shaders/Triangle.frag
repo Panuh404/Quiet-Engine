@@ -5,6 +5,7 @@ layout(push_constant) uniform TransformData
     mat4 Model;
     vec4 BaseColor;
     vec4 LightDirectionIntensity;
+    vec4 LightColor;
     vec4 AmbientColorIntensity;
 } pc;
 
@@ -29,7 +30,8 @@ void main()
     vec3 ambient = pc.AmbientColorIntensity.rgb * pc.AmbientColorIntensity.w;
     float diffuse = max(dot(normal, lightDirection), 0.0);
 
-    vec3 litColor = vBaseColor.rgb * clamp(ambient + diffuse * lightIntensity, 0.0, 1.0);
+    vec3 direct = pc.LightColor.rgb * diffuse * lightIntensity;
+    vec3 litColor = vBaseColor.rgb * clamp(ambient + direct, 0.0, 1.0);
 
     outColor = vec4(litColor, vBaseColor.a);
 }

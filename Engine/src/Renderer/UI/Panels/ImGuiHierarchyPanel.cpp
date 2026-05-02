@@ -115,7 +115,10 @@ namespace Quiet::Renderer::UI
                 if (ImGui::MenuItem("Empty Actor"))
                     editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
 
-                ImGui::Separator();
+                if (ImGui::MenuItem("Directional Light"))
+                {
+                    editorCommands.CreateDirectionalLightActor(scene);
+                }
 
                 DrawPrimitiveCreateMenu(
                     scene,

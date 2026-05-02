@@ -51,6 +51,11 @@ namespace Quiet::Renderer::UI
                              Editor::EditorCommands& commands,
                              const TrackedInspectorInteraction& tracked);
 
+    void DrawDirectionalLightSection(Scene::Scene& scene,
+                                     Scene::Actor& actor,
+                                     Editor::EditorCommands& commands,
+                                     const TrackedInspectorInteraction& tracked);
+
     void DrawRotatorSection(Scene::Scene& scene,
                             Scene::Actor& actor,
                             Editor::EditorCommands& commands,

@@ -27,6 +27,7 @@ target_sources(Quiet_Engine
         src/Scene/Scene.cpp
         src/Scene/Scene.h
         src/Scene/SceneDocument.cpp
+        src/Scene/SceneRenderSettings.h
         src/Scene/SceneSerializer.cpp
         src/Scene/SceneSerializer.h
         src/Scene/Transform.h
@@ -41,6 +42,7 @@ target_sources(Quiet_Engine
 
         # Scene - Components
         src/Scene/Components/CameraComponent.h
+        src/Scene/Components/DirectionalLightComponent.h
         src/Scene/Components/MaterialComponent.h
         src/Scene/Components/RotatorComponent.h
         src/Scene/Components/StaticMeshComponent.h

@@ -9,7 +9,22 @@
 #include "Renderer/Vulkan/CameraResources.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Scene/Actor.h"
+#include "Scene/Components/DirectionalLightComponent.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneRenderSettings.h"
+
+namespace
+{
+    const Quiet::Scene::DirectionalLightComponent* FindActiveDirectionalLight(const Quiet::Scene::Scene& scene)
+    {
+        for (const Quiet::Scene::Actor& actor : scene.GetActors())
+        {
+            if (actor.DirectionalLight.has_value() && actor.DirectionalLight->Enabled)
+                return &actor.DirectionalLight.value();
+        }
+        return nullptr;
+    }
+}
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -54,6 +69,9 @@ namespace Quiet::Renderer::Vulkan
         std::uint32_t drawCount = 0;
         std::uint32_t skippedCount = 0;
 
+        const Scene::SceneRenderSettings& renderSettings = context.SceneData->GetRenderSettings();
+        const Scene::DirectionalLightComponent* activeLight = FindActiveDirectionalLight(*context.SceneData);
+
         for (const auto& actor : context.SceneData->GetActors())
         {
             if (!actor.StaticMesh.has_value() ||
@@ -72,14 +90,28 @@ namespace Quiet::Renderer::Vulkan
             vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-            const Scene::SceneRenderSettings& renderSettings = context.SceneData->GetRenderSettings();
-
             TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
-            push.LightDirectionIntensity = glm::vec4(
-                renderSettings.LightDirection,
-                renderSettings.LightIntensity
-            );
+            if (activeLight)
+            {
+                push.LightDirectionIntensity = glm::vec4(
+                    activeLight->Direction,
+                    activeLight->Intensity
+                );
+                push.LightColor = glm::vec4(
+                    activeLight->Color,
+                    1.0f
+                );
+            }
+            else
+            {
+                push.LightDirectionIntensity = glm::vec4(
+                    renderSettings.LightDirection,
+                    renderSettings.LightIntensity
+                );
+                push.LightColor = glm::vec4(1.0f);
+            }
+
             push.AmbientColorIntensity = glm::vec4(
                 renderSettings.AmbientColor,
                 renderSettings.AmbientIntensity

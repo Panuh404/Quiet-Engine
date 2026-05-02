@@ -7,6 +7,19 @@
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Scene.h"
 
+namespace
+{
+    bool HasActiveDirectionalLight(const Quiet::Scene::Scene& scene)
+    {
+        for (const Quiet::Scene::Actor& actor : scene.GetActors())
+        {
+            if (actor.DirectionalLight.has_value() && actor.DirectionalLight->Enabled)
+                return true;
+        }
+        return false;
+    }
+}
+
 namespace Quiet::Renderer::UI
 {
     void TrackedInspectorInteraction::Begin() const
@@ -61,20 +74,35 @@ namespace Quiet::Renderer::UI
     {
         if (!ImGui::CollapsingHeader("Scene Lighting", ImGuiTreeNodeFlags_DefaultOpen)) return;
         Scene::SceneRenderSettings& settings = scene.GetRenderSettings();
+        const bool hasActiveDirectionalLight = HasActiveDirectionalLight(scene);
+        if (hasActiveDirectionalLight)
+        {
+            ImGui::TextDisabled("Direct light is controlled by the first enabled Directional Light actor.");
+            ImGui::TextDisabled("Ambient settings below still apply.");
+        }
+        else
+        {
+            ImGui::TextDisabled("Using scene fallback direct light.");
+        }
+
+        if (hasActiveDirectionalLight) ImGui::BeginDisabled();
 
         glm::vec3 lightDirection = settings.LightDirection;
-        if (ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.01f, -1.0f, 1.0f))
+        if (ImGui::DragFloat3("Fallback Light Direction", &lightDirection.x, 0.01f, -1.0f, 1.0f))
             commands.SetSceneLightDirection(scene, lightDirection);
 
         tracked.Begin();
         tracked.End();
 
         float lightIntensity = settings.LightIntensity;
-        if (ImGui::DragFloat("Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
+        if (ImGui::DragFloat("Fallback Light Intensity", &lightIntensity, 0.01f, 0.0f, 10.0f))
             commands.SetSceneLightIntensity(scene, lightIntensity);
 
         tracked.Begin();
         tracked.End();
+
+        if (hasActiveDirectionalLight)
+            ImGui::EndDisabled();
 
         glm::vec3 ambientColor = settings.AmbientColor;
         if (ImGui::ColorEdit3("Ambient Color", &ambientColor.x))
@@ -181,6 +209,53 @@ namespace Quiet::Renderer::UI
 
         if (ImGui::Button("Remove Material"))
             commands.RemoveMaterial(scene, actor.ID);
+    }
+
+    void DrawDirectionalLightSection(Scene::Scene &scene,
+                                     Scene::Actor &actor,
+                                     Editor::EditorCommands &commands,
+                                     const TrackedInspectorInteraction &tracked)
+    {
+        if (!actor.DirectionalLight.has_value())
+        {
+            if (ImGui::Button("Add Directional Light"))
+                commands.AddDirectionalLight(scene, actor.ID);
+            return;
+        }
+
+        if (!ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen))
+            return;
+
+        bool enabled = actor.DirectionalLight->Enabled;
+        if (ImGui::Checkbox("Enabled", &enabled))
+            commands.SetDirectionalLightEnabled(scene, actor.ID, enabled);
+
+        tracked.Begin();
+        tracked.End();
+
+        glm::vec3 direction = actor.DirectionalLight->Direction;
+        if (ImGui::DragFloat3("Direction", &direction.x, 0.01f, -1.0f, 1.0f))
+            commands.SetDirectionalLightDirection(scene, actor.ID, direction);
+
+        tracked.Begin();
+        tracked.End();
+
+        glm::vec3 color = actor.DirectionalLight->Color;
+        if (ImGui::ColorEdit3("Color", &color.x))
+            commands.SetDirectionalLightColor(scene, actor.ID, color);
+
+        tracked.Begin();
+        tracked.End();
+
+        float intensity = actor.DirectionalLight->Intensity;
+        if (ImGui::DragFloat("Intensity", &intensity, 0.01f, 0.0f, 10.0f))
+            commands.SetDirectionalLightIntensity(scene, actor.ID, intensity);
+
+        tracked.Begin();
+        tracked.End();
+
+        if (ImGui::Button("Remove Directional Light"))
+            commands.RemoveDirectionalLight(scene, actor.ID);
     }
 
     void DrawRotatorSection(Scene::Scene& scene,

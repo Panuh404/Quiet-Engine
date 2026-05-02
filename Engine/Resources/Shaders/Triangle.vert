@@ -11,6 +11,7 @@ layout(push_constant) uniform TransformData
     mat4 Model;
     vec4 BaseColor;
     vec4 LightDirectionIntensity;
+    vec4 LightColor;
     vec4 AmbientColorIntensity;
 } pc;
 

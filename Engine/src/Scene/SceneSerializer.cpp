@@ -80,6 +80,16 @@ namespace Quiet::Scene
                 };
             }
 
+            if (actor.DirectionalLight.has_value())
+            {
+                actorJson["directional_light"] = {
+                    { "enabled", actor.DirectionalLight->Enabled },
+                    { "direction", SerializeVec3(actor.DirectionalLight->Direction) },
+                    { "color", SerializeVec3(actor.DirectionalLight->Color) },
+                    { "intensity", actor.DirectionalLight->Intensity }
+                };
+            }
+
             if (actor.Rotator.has_value())
             {
                 actorJson["rotator"] = {
@@ -197,6 +207,28 @@ namespace Quiet::Scene
                 }
 
                 actor.Material = material;
+            }
+
+            if (actorJson.contains("directional_light"))
+            {
+                const auto& lightJson = actorJson["directional_light"];
+
+                DirectionalLightComponent light{};
+                light.Enabled = lightJson.value("enabled", true);
+
+                if (lightJson.contains("direction"))
+                {
+                    light.Direction = DeserializeVec3(lightJson.at("direction"));
+                }
+
+                if (lightJson.contains("color"))
+                {
+                    light.Color = DeserializeVec3(lightJson.at("color"));
+                }
+
+                light.Intensity = lightJson.value("intensity", light.Intensity);
+
+                actor.DirectionalLight = light;
             }
 
             if (actorJson.contains("rotator"))

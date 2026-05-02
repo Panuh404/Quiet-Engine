@@ -58,18 +58,6 @@ namespace Quiet::Renderer::UI
             ImGui::Text("Actor");
             ImGui::Separator();
 
-            if (!isEditMode)
-            {
-                ImGui::TextColored(
-                    ImVec4(0.30f, 0.85f, 0.35f, 1.0f),
-                    "Simulating runtime copy. Editing is disabled."
-                );
-                ImGui::Separator();
-            }
-
-            if (!isEditMode) ImGui::BeginDisabled();
-            ImGui::Separator();
-
             DrawActorDetailsSection(scene, actor, commands, tracked);
 
             ImGui::Separator();
@@ -77,6 +65,7 @@ namespace Quiet::Renderer::UI
 
             DrawStaticMeshSection(scene, actor, commands, projectContext, meshLibrary);
             DrawMaterialSection(scene, actor, commands, tracked);
+            DrawDirectionalLightSection(scene, actor, commands, tracked);
             DrawRotatorSection(scene, actor, commands, tracked);
             DrawCameraSection(scene, actor, commands, editorState, tracked, isEditMode);
 
