@@ -517,6 +517,13 @@ namespace Quiet::Core
             );
 
             m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
+
+            m_EditorController->DrawViewportDebugIcons(
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer
+            );
+
             m_EditorController->BuildSelectedActorGizmo(
                 overlayScene,
                 *m_FreeCamera,

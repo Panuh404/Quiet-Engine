@@ -15,6 +15,7 @@ namespace Quiet::Input
 namespace Quiet::Scene
 {
     class FreeCamera;
+    class Scene;
 }
 
 namespace Quiet::Math
@@ -61,6 +62,10 @@ namespace Quiet::Editor
                                      Scene::FreeCamera& camera,
                                      const Renderer::Vulkan::VulkanRenderer& renderer,
                                      bool mouseCaptureEnabled);
+
+        void DrawViewportDebugIcons(const Scene::Scene& scene,
+                                    const Scene::FreeCamera& camera,
+                                    const Renderer::Vulkan::VulkanRenderer& renderer) const;
 
     private:
         [[nodiscard]] bool BuildViewportPickRay(const Input::Input& input,

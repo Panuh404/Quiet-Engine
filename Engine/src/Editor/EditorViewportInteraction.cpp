@@ -18,6 +18,8 @@
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Actor.h"
+#include "Scene/Components/CameraComponent.h"
+#include "Scene/Components/DirectionalLightComponent.h"
 #include "Scene/Camera/FreeCamera.h"
 #include "Scene/Scene.h"
 
@@ -42,6 +44,111 @@ namespace
             case Quiet::Editor::GizmoMode::World:   return ImGuizmo::WORLD;
             default:                                return ImGuizmo::WORLD;
         }
+    }
+
+    bool ProjectWorldToViewport(const glm::vec3& worldPosition,
+                                const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                const Quiet::Editor::EditorViewportState& viewportState,
+                                ImVec2& outScreenPosition)
+    {
+        if (viewportState.Width == 0 || viewportState.Height == 0) return false;
+
+        const glm::vec4 clip = cameraData.Projection * cameraData.View * glm::vec4(worldPosition, 1.0f);
+        if (clip.w <= 0.0001f) return false;
+
+        const glm::vec3 ndc = glm::vec3(clip) / clip.w;
+        if (ndc.z < 0.0f || ndc.z > 1.0f) return false;
+
+        const float viewportWidth = static_cast<float>(viewportState.Width);
+        const float viewportHeight = static_cast<float>(viewportState.Height);
+
+        outScreenPosition.x = viewportState.ScreenX + ((ndc.x * 0.5f) + 0.5f) * viewportWidth;
+        outScreenPosition.y = viewportState.ScreenY + (1.0f - ((ndc.y * 0.5f) + 0.5f)) * viewportHeight;
+
+        return true;
+    }
+
+    void DrawCameraDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected)
+    {
+        const ImU32 color = selected
+            ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(80, 190, 255, 230);
+
+        const ImU32 fill = selected
+            ? IM_COL32(80, 190, 255, 90)
+            : IM_COL32(80, 190, 255, 45);
+
+        constexpr float halfWidth = 9.0f;
+        constexpr float halfHeight = 6.0f;
+
+        const ImVec2 min(position.x - halfWidth, position.y - halfHeight);
+        const ImVec2 max(position.x + halfWidth, position.y + halfHeight);
+
+        drawList->AddRectFilled(min, max, fill, 2.0f);
+        drawList->AddRect(min, max, color, 2.0f, 0, 2.0f);
+
+        drawList->AddTriangle(
+            ImVec2(max.x, position.y - 4.0f),
+            ImVec2(max.x + 8.0f, position.y - 8.0f),
+            ImVec2(max.x + 8.0f, position.y + 8.0f),
+            color,
+            2.0f
+        );
+    }
+
+    void DrawDirectionalLightDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected)
+    {
+        const ImU32 color = selected
+            ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(255, 220, 80, 235);
+
+        const ImU32 fill = selected
+            ? IM_COL32(255, 220, 80, 100)
+            : IM_COL32(255, 220, 80, 55);
+
+        drawList->AddCircleFilled(position, 7.0f, fill, 20);
+        drawList->AddCircle(position, 7.0f, color, 20, 2.0f);
+
+        drawList->AddLine(
+            ImVec2(position.x - 14.0f, position.y - 14.0f),
+            ImVec2(position.x - 5.0f, position.y - 5.0f),
+            color,
+            2.0f
+        );
+
+        drawList->AddLine(
+            ImVec2(position.x + 5.0f, position.y + 5.0f),
+            ImVec2(position.x + 14.0f, position.y + 14.0f),
+            color,
+            2.0f
+        );
+
+        drawList->AddLine(
+            ImVec2(position.x + 14.0f, position.y - 14.0f),
+            ImVec2(position.x + 5.0f, position.y - 5.0f),
+            color,
+            2.0f
+        );
+
+        drawList->AddLine(
+            ImVec2(position.x - 5.0f, position.y + 5.0f),
+            ImVec2(position.x - 14.0f, position.y + 14.0f),
+            color,
+            2.0f
+        );
+    }
+
+    void DrawDebugLabel(ImDrawList* drawList, const ImVec2& position, const char* label, bool selected)
+    {
+        const ImU32 textColor = selected
+            ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(210, 220, 230, 230);
+
+        drawList->AddText(
+            ImVec2(position.x + 14.0f, position.y - 8.0f),
+            textColor,
+            label
+        );
     }
 }
 
@@ -243,6 +350,85 @@ namespace Quiet::Editor
         m_WasUsingGizmo = isUsingGizmo;
     }
 
+    void EditorController::DrawViewportDebugIcons(const Scene::Scene &scene,
+                                                  const Scene::FreeCamera &camera,
+                                                  const Renderer::Vulkan::VulkanRenderer &renderer) const
+    {
+        if (m_State.Scene.Mode == SceneMode::Play) return;
+        if (!renderer.IsSceneViewportReady()) return;
+        if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return;
+
+        const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
+        if (sceneExtent.width == 0 || sceneExtent.height == 0) return;
+
+        const float aspect =
+            static_cast<float>(sceneExtent.width) /
+            static_cast<float>(sceneExtent.height);
+
+        const auto cameraData =
+            camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        const ImVec2 viewportMin(
+            m_State.Viewport.ScreenX,
+            m_State.Viewport.ScreenY
+        );
+
+        const ImVec2 viewportMax(
+            m_State.Viewport.ScreenX + static_cast<float>(m_State.Viewport.Width),
+            m_State.Viewport.ScreenY + static_cast<float>(m_State.Viewport.Height)
+        );
+
+        drawList->PushClipRect(viewportMin, viewportMax, true);
+        for (const Scene::Actor& actor : scene.GetActors())
+        {
+            if (!actor.Camera.has_value() && !actor.DirectionalLight.has_value())
+                continue;
+
+            ImVec2 screenPosition{};
+            if (!ProjectWorldToViewport(
+                    actor.Transform.WorldTransform.Position,
+                    cameraData,
+                    m_State.Viewport,
+                    screenPosition))
+            {
+                continue;
+            }
+
+            const bool selected =
+                m_State.Selection.SelectedActorID.has_value() &&
+                m_State.Selection.SelectedActorID.value() == actor.ID;
+
+            float verticalOffset = 0.0f;
+
+            if (actor.Camera.has_value())
+            {
+                const ImVec2 iconPosition(
+                    screenPosition.x,
+                    screenPosition.y + verticalOffset
+                );
+
+                DrawCameraDebugIcon(drawList, iconPosition, selected);
+                DrawDebugLabel(drawList, iconPosition, "Camera", selected);
+
+                verticalOffset += 22.0f;
+            }
+
+            if (actor.DirectionalLight.has_value())
+            {
+                const ImVec2 iconPosition(
+                    screenPosition.x,
+                    screenPosition.y + verticalOffset
+                );
+
+                DrawDirectionalLightDebugIcon(drawList, iconPosition, selected);
+                DrawDebugLabel(drawList, iconPosition, "Light", selected);
+            }
+        }
+        drawList->PopClipRect();
+    }
+
     bool EditorController::BuildViewportPickRay(const Input::Input& input,
                                                 const Scene::FreeCamera& camera,
                                                 const Renderer::Vulkan::VulkanRenderer& renderer,
@@ -296,4 +482,5 @@ namespace Quiet::Editor
         outRay.Direction = glm::normalize(farPoint - nearPoint);
         return true;
     }
+
 }
