@@ -16,5 +16,11 @@ namespace Quiet::Renderer::Vulkan
     {
         alignas(16) glm::mat4 Model{1.0f};
         alignas(16) glm::vec4 BaseColor{ 1.0f };
+
+        // xyz = direction from surface toward light, w = intensity
+        alignas(16) glm::vec4 LightDirectionIntensity{ -0.35f, 0.85f, -0.35f, 1.0f };
+
+        // rgb = ambient color, w = ambient intensity
+        alignas(16) glm::vec4 AmbientColorIntensity{ 1.0f, 1.0f, 1.0f, 0.25f };
     };
 }

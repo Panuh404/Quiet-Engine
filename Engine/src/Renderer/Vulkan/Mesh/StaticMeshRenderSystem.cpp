@@ -15,14 +15,10 @@ namespace Quiet::Renderer::Vulkan
     void StaticMeshRenderSystem::Record(const StaticMeshRenderContext &context) const
     {
         if (context.CommandBuffer == VK_NULL_HANDLE)
-        {
             throw std::runtime_error("StaticMeshRenderSystem received null command buffer.");
-        }
 
         if (!context.Pipeline || !context.Camera || !context.SceneData)
-        {
             throw std::runtime_error("StaticMeshRenderSystem received invalid render context.");
-        }
 
         vkCmdBindPipeline(
             context.CommandBuffer,
@@ -78,14 +74,12 @@ namespace Quiet::Renderer::Vulkan
             TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
             if (actor.Material.has_value())
-            {
                 push.BaseColor = actor.Material->BaseColor;
-            }
 
             vkCmdPushConstants(
                 context.CommandBuffer,
                 context.Pipeline->GetLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
                 sizeof(TransformPushConstants),
                 &push
@@ -96,10 +90,5 @@ namespace Quiet::Renderer::Vulkan
                 1, 0, 0, 0);
             ++drawCount;
         }
-        // QUIET_CORE_TRACE(
-        //     "StaticMeshRenderSystem: drew {} actors, skipped {}.",
-        //     drawCount,
-        //     skippedCount
-        // );
     }
 }
