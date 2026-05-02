@@ -27,18 +27,35 @@ namespace
         return value / length;
     }
 
-    Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position, const glm::vec3& normal)
+    Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position,
+                                               const glm::vec3& normal,
+                                               const glm::vec2& texCoord)
     {
         return {
             position,
             MakeColorFromPosition(position),
-            SafeNormalize(normal, { 0.0f, 1.0f, 0.0f })
+            SafeNormalize(normal, { 0.0f, 1.0f, 0.0f }),
+            texCoord
         };
+    }
+
+    [[maybe_unused]] Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position,
+                                                                const glm::vec3& normal)
+    {
+        return MakeVertex(
+            position,
+            SafeNormalize(normal, { 0.0f, 1.0f, 0.0f }),
+            { 0.0f, 0.0f }
+        );
     }
 
     Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position)
     {
-        return MakeVertex(position, SafeNormalize(position, { 0.0f, 1.0f, 0.0f }));
+        return MakeVertex(
+            position,
+            SafeNormalize(position, { 0.0f, 1.0f, 0.0f }),
+            { 0.0f, 0.0f }
+        );
     }
 
     Quiet::Renderer::Vulkan::MeshStats MakePrimitiveStats(
@@ -125,9 +142,9 @@ namespace Quiet::Renderer::Vulkan
         return MakePrimitive(
             // Vertices
             {
-                MakeVertex({  0.0f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }),
-                MakeVertex({ -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }),
-                MakeVertex({  0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f })
+                MakeVertex({  0.0f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 1.0f }),
+                MakeVertex({ -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }),
+                MakeVertex({  0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f })
             },
             // Indices
             {
@@ -141,10 +158,10 @@ namespace Quiet::Renderer::Vulkan
         return MakePrimitive(
            // Vertices
            {
-               MakeVertex({ -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }),
-               MakeVertex({  0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }),
-               MakeVertex({  0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }),
-               MakeVertex({ -0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f })
+               MakeVertex({ -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }),
+               MakeVertex({  0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }),
+               MakeVertex({  0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }),
+               MakeVertex({ -0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f })
            },
            // Indices
            {
@@ -158,10 +175,10 @@ namespace Quiet::Renderer::Vulkan
         return MakePrimitive(
            // Vertices
            {
-               MakeVertex({ -0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }),
-               MakeVertex({  0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }),
-               MakeVertex({  0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }),
-               MakeVertex({ -0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f })
+               MakeVertex({ -0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }),
+               MakeVertex({  0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }),
+               MakeVertex({  0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }),
+               MakeVertex({ -0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f })
            },
            // Indices
            {

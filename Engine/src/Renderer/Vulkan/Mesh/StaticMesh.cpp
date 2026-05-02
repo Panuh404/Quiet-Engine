@@ -78,9 +78,9 @@ namespace Quiet::Renderer::Vulkan
         return binding;
     }
 
-    std::array<VkVertexInputAttributeDescription, 3> Vertex::GetAttributeDescriptions()
+    std::array<VkVertexInputAttributeDescription, 4> Vertex::GetAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 3> attributes{};
+        std::array<VkVertexInputAttributeDescription, 4> attributes{};
 
         // Position
         attributes[0].location = 0;
@@ -99,6 +99,12 @@ namespace Quiet::Renderer::Vulkan
         attributes[2].binding = 0;
         attributes[2].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributes[2].offset = offsetof(Vertex, Normal);
+
+        // UV
+        attributes[3].location = 3;
+        attributes[3].binding = 0;
+        attributes[3].format = VK_FORMAT_R32G32_SFLOAT;
+        attributes[3].offset = offsetof(Vertex, TexCoord);
 
         return attributes;
     }

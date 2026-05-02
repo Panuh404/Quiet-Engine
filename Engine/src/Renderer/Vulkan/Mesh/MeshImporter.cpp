@@ -60,6 +60,17 @@ namespace
         return MakeDefaultColor(fallbackPosition);
     }
 
+    glm::vec2 GetTexCoord(const aiMesh& mesh, const unsigned int vertexIndex)
+    {
+        if (mesh.HasTextureCoords(0) && mesh.mTextureCoords[0])
+        {
+            const aiVector3D& texCoord = mesh.mTextureCoords[0][vertexIndex];
+            return { texCoord.x, texCoord.y };
+        }
+
+        return { 0.0f, 0.0f };
+    }
+
     void IncludePointInBounds(Quiet::Renderer::Vulkan::MeshBounds& bounds,
                               const glm::vec3& point)
     {
@@ -102,13 +113,11 @@ namespace
             vertex.Color = GetVertexColor(mesh, vertexIndex, transformedPosition);
 
             if (mesh.HasNormals() && mesh.mNormals)
-            {
                 vertex.Normal = TransformDirection(transform, mesh.mNormals[vertexIndex]);
-            }
             else
-            {
                 vertex.Normal = { 0.0f, 1.0f, 0.0f };
-            }
+
+            vertex.TexCoord = GetTexCoord(mesh, vertexIndex);
 
             result.Vertices.push_back(vertex);
             IncludePointInBounds(result.Bounds, vertex.Position);
