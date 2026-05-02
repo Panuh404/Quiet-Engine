@@ -34,6 +34,11 @@ namespace Quiet::Editor
         bool EndInteraction(const Scene::Scene& scene);
 
         bool CreateEmptyActor(Scene::Scene& scene, const std::string& name = "Actor");
+        bool CreateStaticMeshActor(Scene::Scene& scene,
+                                   const std::string& actorName,
+                                   const std::string& meshResourceID,
+                                   const Project::ProjectContext& projectContext,
+                                   const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool DuplicateSelectedActor(Scene::Scene& scene);
         bool DeleteSelectedActor(Scene::Scene& scene);
 

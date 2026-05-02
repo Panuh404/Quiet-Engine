@@ -1,9 +1,11 @@
 #pragma once
 
+#include <optional>
+#include <string>
+#include <string_view>
 #include <vector>
 
-#include "MeshLibrary.h"
-#include "Renderer/Vulkan/Mesh/StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 
 namespace Quiet::Renderer::Vulkan
 {

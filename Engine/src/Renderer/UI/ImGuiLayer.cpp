@@ -123,7 +123,7 @@ namespace Quiet::Renderer::UI
 
         BuildDockspace();
         BuildTopbar(actions, editorState);
-        BuildHierarchy(scene, actions, editorState);
+        BuildHierarchy(scene, actions, commands, editorState, projectContext, meshLibrary);
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
 
         BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary);

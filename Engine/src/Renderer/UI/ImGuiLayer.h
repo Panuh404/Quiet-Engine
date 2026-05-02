@@ -122,7 +122,10 @@ namespace Quiet::Renderer::UI
                             const Vulkan::MeshLibrary& meshLibrary);
         void BuildHierarchy(Scene::Scene& scene,
                             Editor::EditorActions& editorActions,
-                            Editor::EditorState& editorState);
+                            Editor::EditorCommands& editorCommands,
+                            Editor::EditorState& editorState,
+                            const Project::ProjectContext& projectContext,
+                            const Vulkan::MeshLibrary& meshLibrary);
         void BuildAssetsPanel(Project::ProjectContext& projectContext,
                               Editor::EditorState& editorState,
                               Scene::Scene& scene,

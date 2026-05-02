@@ -1,5 +1,12 @@
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <utility>
+
+#include <glm/common.hpp>
+
 namespace
 {
     constexpr float kPi = 3.14159265358979323846f;

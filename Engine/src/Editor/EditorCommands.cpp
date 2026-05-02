@@ -81,6 +81,36 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::CreateStaticMeshActor(Scene::Scene &scene,
+                                               const std::string &actorName,
+                                               const std::string &meshResourceID,
+                                               const Project::ProjectContext &projectContext,
+                                               const Renderer::Vulkan::MeshLibrary &meshLibrary)
+    {
+        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
+        if (!mesh)
+        {
+            QUIET_CORE_WARN(
+                "Cannot create mesh actor because mesh asset '{}' is not registered or loaded.",
+                meshResourceID
+            );
+            return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
+
+            actor.StaticMesh = Scene::StaticMeshComponent{};
+            actor.StaticMesh->MeshResourceID = meshResourceID;
+            actor.StaticMesh->Mesh = mesh;
+            actor.StaticMesh->Visible = true;
+
+            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            return true;
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;

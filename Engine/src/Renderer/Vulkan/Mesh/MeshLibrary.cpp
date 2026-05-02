@@ -1,8 +1,9 @@
 #include "MeshLibrary.h"
 
-#include "MeshPrimitives.h"
+#include <algorithm>
+#include <stdexcept>
+
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
 {

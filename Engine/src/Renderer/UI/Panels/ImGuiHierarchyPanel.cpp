@@ -2,7 +2,9 @@
 
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
+#include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorState.h"
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -31,14 +33,49 @@ namespace
 
 namespace Quiet::Renderer::UI
 {
-    void ImGuiLayer::BuildHierarchy(Scene::Scene &scene,
-                                    Editor::EditorActions &editorActions,
-                                    Editor::EditorState &editorState)
+    void ImGuiLayer::BuildHierarchy(Scene::Scene& scene,
+                                    Editor::EditorActions& editorActions,
+                                    Editor::EditorCommands& editorCommands,
+                                    Editor::EditorState& editorState,
+                                    const Project::ProjectContext& projectContext,
+                                    const Vulkan::MeshLibrary& meshLibrary)
     {
         ImGui::Begin("Scene");
         {
             const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
-            DrawToolbarAction(editorActions, Editor::EditorActionID::CreateEmptyActor, "Create Empty");
+            if (!isEditMode) ImGui::BeginDisabled();
+
+            if (ImGui::Button("Create"))
+                ImGui::OpenPopup("CreateActorPopup");
+
+            if (!isEditMode) ImGui::EndDisabled();
+
+            if (ImGui::BeginPopup("CreateActorPopup"))
+            {
+                if (ImGui::MenuItem("Empty Actor"))
+                    editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
+
+                ImGui::Separator();
+                if (ImGui::BeginMenu("Primitive Mesh"))
+                {
+                    for (const std::string& primitiveID : Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+                    {
+                        const std::string label = primitiveID + " Actor";
+                        if (ImGui::MenuItem(label.c_str()))
+                        {
+                            editorCommands.CreateStaticMeshActor(
+                                scene,
+                                label,
+                                primitiveID,
+                                projectContext,
+                                meshLibrary
+                            );
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndPopup();
+            }
 
             ImGui::Separator();
 
