@@ -1,5 +1,7 @@
 #include "Quiet/Editor/EditorController.h"
 
+#include <algorithm>
+#include <array>
 #include <limits>
 #include <optional>
 
@@ -238,6 +240,191 @@ namespace
             }
         }
         return bestActorID;
+    }
+
+    struct ScreenRect
+    {
+        ImVec2 Min{};
+        ImVec2 Max{};
+        bool Valid = false;
+    };
+
+    void ExpandScreenRect(ScreenRect& rect, const ImVec2& point)
+    {
+        if (!rect.Valid)
+        {
+            rect.Min = point;
+            rect.Max = point;
+            rect.Valid = true;
+            return;
+        }
+
+        rect.Min.x = std::min(rect.Min.x, point.x);
+        rect.Min.y = std::min(rect.Min.y, point.y);
+        rect.Max.x = std::max(rect.Max.x, point.x);
+        rect.Max.y = std::max(rect.Max.y, point.y);
+    }
+
+    std::array<glm::vec3, 8> BuildAABBCorners(const glm::vec3& boundsMin,
+                                              const glm::vec3& boundsMax)
+    {
+        return {
+            glm::vec3{ boundsMin.x, boundsMin.y, boundsMin.z },
+            glm::vec3{ boundsMax.x, boundsMin.y, boundsMin.z },
+            glm::vec3{ boundsMin.x, boundsMax.y, boundsMin.z },
+            glm::vec3{ boundsMax.x, boundsMax.y, boundsMin.z },
+            glm::vec3{ boundsMin.x, boundsMin.y, boundsMax.z },
+            glm::vec3{ boundsMax.x, boundsMin.y, boundsMax.z },
+            glm::vec3{ boundsMin.x, boundsMax.y, boundsMax.z },
+            glm::vec3{ boundsMax.x, boundsMax.y, boundsMax.z }
+        };
+    }
+
+    bool ProjectStaticMeshBoundsToViewport(const Quiet::Scene::Actor& actor,
+                                           const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                           const Quiet::Editor::EditorViewportState& viewportState,
+                                           ScreenRect& outRect)
+    {
+        if (!actor.StaticMesh.has_value() ||
+            !actor.StaticMesh->IsValid() ||
+            !actor.StaticMesh->Visible)
+            return false;
+
+        const auto& mesh = actor.StaticMesh->Mesh;
+        const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
+
+        const auto corners = BuildAABBCorners(
+            mesh->GetLocalBoundsMin(),
+            mesh->GetLocalBoundsMax()
+        );
+
+        ScreenRect rect{};
+        for (const glm::vec3& corner : corners)
+        {
+            const glm::vec3 worldCorner = glm::vec3(model * glm::vec4(corner, 1.0f));
+            ImVec2 screenPoint{};
+            if (ProjectWorldToViewport(
+                    worldCorner,
+                    cameraData,
+                    viewportState,
+                    screenPoint))
+            {
+                ExpandScreenRect(rect, screenPoint);
+            }
+        }
+
+        if (!rect.Valid) return false;
+        outRect = rect;
+        return true;
+    }
+
+    void DrawSelectedBoundsOverlay(ImDrawList* drawList,
+                                   const ScreenRect& rect)
+    {
+        const ImU32 color = IM_COL32(255, 210, 70, 255);
+        const ImU32 shadow = IM_COL32(0, 0, 0, 170);
+
+        constexpr float padding = 4.0f;
+
+        const ImVec2 min(rect.Min.x - padding, rect.Min.y - padding);
+        const ImVec2 max(rect.Max.x + padding, rect.Max.y + padding);
+
+        drawList->AddRect(
+            ImVec2(min.x + 1.0f, min.y + 1.0f),
+            ImVec2(max.x + 1.0f, max.y + 1.0f),
+            shadow,
+            2.0f,
+            0,
+            3.0f
+        );
+
+        drawList->AddRect(
+            min,
+            max,
+            color,
+            2.0f,
+            0,
+            2.0f
+        );
+    }
+
+    void DrawSelectedOriginMarker(ImDrawList* drawList,
+                                  const ImVec2& position)
+    {
+        const ImU32 color = IM_COL32(255, 210, 70, 255);
+        const ImU32 shadow = IM_COL32(0, 0, 0, 170);
+
+        drawList->AddCircleFilled(
+            ImVec2(position.x + 1.0f, position.y + 1.0f),
+            5.0f,
+            shadow,
+            16
+        );
+
+        drawList->AddCircleFilled(
+            position,
+            5.0f,
+            color,
+            16
+        );
+
+        drawList->AddCircle(
+            position,
+            9.0f,
+            color,
+            20,
+            2.0f
+        );
+    }
+
+    void DrawSelectedActorName(ImDrawList* drawList,
+                               const ImVec2& position,
+                               const std::string& actorName)
+    {
+        if (actorName.empty()) return;
+
+        const ImU32 textColor = IM_COL32(255, 255, 255, 255);
+        const ImU32 shadow = IM_COL32(0, 0, 0, 190);
+        const ImVec2 textPosition(position.x + 12.0f, position.y + 10.0f);
+
+        drawList->AddText(
+            ImVec2(textPosition.x + 1.0f, textPosition.y + 1.0f),
+            shadow,
+            actorName.c_str()
+        );
+
+        drawList->AddText(
+            textPosition,
+            textColor,
+            actorName.c_str()
+        );
+    }
+
+    void DrawSelectedActorViewportOverlay(const Quiet::Scene::Actor& actor,
+                                          const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                          const Quiet::Editor::EditorViewportState& viewportState,
+                                          ImDrawList* drawList)
+    {
+        ImVec2 actorScreenPosition{};
+        if (!ProjectWorldToViewport(
+                actor.Transform.WorldTransform.Position,
+                cameraData,
+                viewportState,
+                actorScreenPosition))
+            return;
+
+        ScreenRect boundsRect{};
+        if (ProjectStaticMeshBoundsToViewport(
+                actor,
+                cameraData,
+                viewportState,
+                boundsRect))
+        {
+            DrawSelectedBoundsOverlay(drawList, boundsRect);
+        }
+
+        DrawSelectedOriginMarker(drawList, actorScreenPosition);
+        DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
     }
 }
 
@@ -538,6 +725,23 @@ namespace Quiet::Editor
                 DrawDebugLabel(drawList, iconPosition, "Light", selected);
             }
         }
+
+        if (m_State.Selection.SelectedActorID.has_value())
+        {
+            const Scene::Actor* selectedActor =
+                scene.FindActorByID(m_State.Selection.SelectedActorID.value());
+
+            if (selectedActor)
+            {
+                DrawSelectedActorViewportOverlay(
+                    *selectedActor,
+                    cameraData,
+                    m_State.Viewport,
+                    drawList
+                );
+            }
+        }
+
         drawList->PopClipRect();
     }
 
