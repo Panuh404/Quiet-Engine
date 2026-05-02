@@ -6,6 +6,8 @@
 #include <utility>
 
 #include <glm/common.hpp>
+#include <glm/geometric.hpp>
+#include <glm/vec2.hpp>
 
 namespace
 {
@@ -39,7 +41,8 @@ namespace
         };
     }
 
-    [[maybe_unused]] Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position,
+    [[maybe_unused]]
+    Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position,
                                                                 const glm::vec3& normal)
     {
         return MakeVertex(
@@ -49,6 +52,7 @@ namespace
         );
     }
 
+    [[maybe_unused]]
     Quiet::Renderer::Vulkan::Vertex MakeVertex(const glm::vec3& position)
     {
         return MakeVertex(
@@ -92,6 +96,59 @@ namespace
         primitive.Indices = std::move(indices);
         primitive.Stats = MakePrimitiveStats(primitive.Vertices, primitive.Indices);
         return primitive;
+    }
+
+    void AddQuadFace(std::vector<Quiet::Renderer::Vulkan::Vertex>& vertices,
+                     std::vector<Quiet::Renderer::Vulkan::Index>& indices,
+                     const glm::vec3& a,
+                     const glm::vec3& b,
+                     const glm::vec3& c,
+                     const glm::vec3& d,
+                     const glm::vec3& normal)
+    {
+        using Quiet::Renderer::Vulkan::Index;
+
+        const auto start = static_cast<Index>(vertices.size());
+
+        vertices.push_back(MakeVertex(a, normal, { 0.0f, 0.0f }));
+        vertices.push_back(MakeVertex(b, normal, { 1.0f, 0.0f }));
+        vertices.push_back(MakeVertex(c, normal, { 1.0f, 1.0f }));
+        vertices.push_back(MakeVertex(d, normal, { 0.0f, 1.0f }));
+
+        indices.push_back(start + 0);
+        indices.push_back(start + 1);
+        indices.push_back(start + 2);
+
+        indices.push_back(start + 2);
+        indices.push_back(start + 3);
+        indices.push_back(start + 0);
+    }
+
+    void AddTriangleFace(std::vector<Quiet::Renderer::Vulkan::Vertex>& vertices,
+                         std::vector<Quiet::Renderer::Vulkan::Index>& indices,
+                         const glm::vec3& a,
+                         const glm::vec3& b,
+                         const glm::vec3& c,
+                         const glm::vec2& uvA,
+                         const glm::vec2& uvB,
+                         const glm::vec2& uvC)
+    {
+        using Quiet::Renderer::Vulkan::Index;
+
+        const auto start = static_cast<Index>(vertices.size());
+
+        const glm::vec3 normal = SafeNormalize(
+            glm::cross(b - a, c - a),
+            { 0.0f, 1.0f, 0.0f }
+        );
+
+        vertices.push_back(MakeVertex(a, normal, uvA));
+        vertices.push_back(MakeVertex(b, normal, uvB));
+        vertices.push_back(MakeVertex(c, normal, uvC));
+
+        indices.push_back(start + 0);
+        indices.push_back(start + 1);
+        indices.push_back(start + 2);
     }
 }
 
@@ -189,65 +246,157 @@ namespace Quiet::Renderer::Vulkan
     }
     MeshPrimitive MeshPrimitives::CreateCube()
     {
-        return MakePrimitive(
-           // Vertices
-           {
-               MakeVertex({ -0.5f, -0.5f, -0.5f }),
-               MakeVertex({  0.5f, -0.5f, -0.5f }),
-               MakeVertex({  0.5f,  0.5f, -0.5f }),
-               MakeVertex({ -0.5f,  0.5f, -0.5f }),
+        constexpr float h = 0.5f;
 
-               MakeVertex({ -0.5f, -0.5f,  0.5f }),
-               MakeVertex({  0.5f, -0.5f,  0.5f }),
-               MakeVertex({  0.5f,  0.5f,  0.5f }),
-               MakeVertex({ -0.5f,  0.5f,  0.5f })
-           },
-           // Indices
-           {
-               // Back
-               0, 1, 2,
-               2, 3, 0,
-               // Front
-               4, 5, 6,
-               6, 7, 4,
-               // Left
-               0, 4, 7,
-               7, 3, 0,
-               // Right
-               1, 5, 6,
-               6, 2, 1,
-               // Bottom
-               0, 1, 5,
-               5, 4, 0,
-               // Top
-               3, 2, 6,
-               6, 7, 3
-           }
-       );
+        std::vector<Vertex> vertices;
+        std::vector<Index> indices;
+
+        vertices.reserve(24);
+        indices.reserve(36);
+
+        // Front +Z
+        AddQuadFace(
+            vertices,
+            indices,
+            { -h, -h,  h },
+            {  h, -h,  h },
+            {  h,  h,  h },
+            { -h,  h,  h },
+            { 0.0f, 0.0f, 1.0f }
+        );
+
+        // Back -Z
+        AddQuadFace(
+            vertices,
+            indices,
+            {  h, -h, -h },
+            { -h, -h, -h },
+            { -h,  h, -h },
+            {  h,  h, -h },
+            { 0.0f, 0.0f, -1.0f }
+        );
+
+        // Left -X
+        AddQuadFace(
+            vertices,
+            indices,
+            { -h, -h, -h },
+            { -h, -h,  h },
+            { -h,  h,  h },
+            { -h,  h, -h },
+            { -1.0f, 0.0f, 0.0f }
+        );
+
+        // Right +X
+        AddQuadFace(
+            vertices,
+            indices,
+            {  h, -h,  h },
+            {  h, -h, -h },
+            {  h,  h, -h },
+            {  h,  h,  h },
+            { 1.0f, 0.0f, 0.0f }
+        );
+
+        // Bottom -Y
+        AddQuadFace(
+            vertices,
+            indices,
+            { -h, -h, -h },
+            {  h, -h, -h },
+            {  h, -h,  h },
+            { -h, -h,  h },
+            { 0.0f, -1.0f, 0.0f }
+        );
+
+        // Top +Y
+        AddQuadFace(
+            vertices,
+            indices,
+            { -h,  h,  h },
+            {  h,  h,  h },
+            {  h,  h, -h },
+            { -h,  h, -h },
+            { 0.0f, 1.0f, 0.0f }
+        );
+        return MakePrimitive(std::move(vertices), std::move(indices));
     }
     MeshPrimitive MeshPrimitives::CreatePyramid()
     {
-        return MakePrimitive(
-           // Vertices
-           {
-               MakeVertex({ -0.5f, -0.5f, -0.5f }),
-               MakeVertex({  0.5f, -0.5f, -0.5f }),
-               MakeVertex({  0.5f, -0.5f,  0.5f }),
-               MakeVertex({ -0.5f, -0.5f,  0.5f }),
-               MakeVertex({  0.0f,  0.5f,  0.0f })
-           },
-           // Indices
-           {
-               // Base
-               0, 1, 2,
-               2, 3, 0,
-               // Sides
-               0, 1, 4,
-               1, 2, 4,
-               2, 3, 4,
-               3, 0, 4
-           }
-       );
+        constexpr float h = 0.5f;
+
+        constexpr glm::vec3 baseFrontLeft{ -h, -h,  h };
+        constexpr glm::vec3 baseFrontRight{ h, -h,  h };
+        constexpr glm::vec3 baseBackRight{ h, -h, -h };
+        constexpr glm::vec3 baseBackLeft{ -h, -h, -h };
+        constexpr glm::vec3 tip{ 0.0f, h, 0.0f };
+
+        std::vector<Vertex> vertices;
+        std::vector<Index> indices;
+
+        vertices.reserve(18);
+        indices.reserve(18);
+
+        // Base -Y
+        AddQuadFace(
+            vertices,
+            indices,
+            baseBackLeft,
+            baseBackRight,
+            baseFrontRight,
+            baseFrontLeft,
+            { 0.0f, -1.0f, 0.0f }
+        );
+
+        // Front +Z
+        AddTriangleFace(
+            vertices,
+            indices,
+            baseFrontLeft,
+            baseFrontRight,
+            tip,
+            { 0.0f, 0.0f },
+            { 1.0f, 0.0f },
+            { 0.5f, 1.0f }
+        );
+
+        // Right +X
+        AddTriangleFace(
+            vertices,
+            indices,
+            baseFrontRight,
+            baseBackRight,
+            tip,
+            { 0.0f, 0.0f },
+            { 1.0f, 0.0f },
+            { 0.5f, 1.0f }
+        );
+
+        // Back -Z
+        AddTriangleFace(
+            vertices,
+            indices,
+            baseBackRight,
+            baseBackLeft,
+            tip,
+            { 0.0f, 0.0f },
+            { 1.0f, 0.0f },
+            { 0.5f, 1.0f }
+        );
+
+        // Left -X
+        AddTriangleFace(
+            vertices,
+            indices,
+            baseBackLeft,
+            baseFrontLeft,
+            tip,
+            { 0.0f, 0.0f },
+            { 1.0f, 0.0f },
+            { 0.5f, 1.0f }
+        );
+
+        return MakePrimitive(std::move(vertices), std::move(indices));
     }
     MeshPrimitive MeshPrimitives::CreateSphere()
     {
@@ -281,7 +430,10 @@ namespace Quiet::Renderer::Vulkan
                     radius * cosTheta,
                     radius * sinTheta * sinPhi
                 };
-                vertices.push_back(MakeVertex(position));
+                const glm::vec3 normal = SafeNormalize(position, { 0.0f, 1.0f, 0.0f });
+                const glm::vec2 texCoord{ u, 1.0f - v };
+
+                vertices.push_back(MakeVertex(position, normal, texCoord));
             }
         }
 
@@ -309,6 +461,7 @@ namespace Quiet::Renderer::Vulkan
 
         return MakePrimitive(std::move(vertices), std::move(indices));
     }
+
     MeshPrimitive MeshPrimitives::CreateCylinder()
     {
         constexpr std::uint32_t segments = 32;
@@ -319,8 +472,9 @@ namespace Quiet::Renderer::Vulkan
         std::vector<Index> indices;
 
         vertices.reserve((segments + 1) * 2 + 2 + segments * 2);
+        indices.reserve(segments * 12);
 
-        // Side vertices
+        // Sides
         for (std::uint32_t segment = 0; segment <= segments; ++segment)
         {
             const float u = static_cast<float>(segment) / static_cast<float>(segments);
@@ -329,15 +483,29 @@ namespace Quiet::Renderer::Vulkan
             const float x = std::cos(angle) * radius;
             const float z = std::sin(angle) * radius;
 
-            vertices.push_back(MakeVertex({ x, -halfHeight, z }));
-            vertices.push_back(MakeVertex({ x,  halfHeight, z }));
+            const glm::vec3 normal = SafeNormalize(
+                { std::cos(angle), 0.0f, std::sin(angle) },
+                { 1.0f, 0.0f, 0.0f }
+            );
+
+            vertices.push_back(MakeVertex(
+                { x, -halfHeight, z },
+                normal,
+                { u, 0.0f }
+            ));
+
+            vertices.push_back(MakeVertex(
+                { x, halfHeight, z },
+                normal,
+                { u, 1.0f }
+            ));
         }
 
         for (std::uint32_t segment = 0; segment < segments; ++segment)
         {
             const Index base = segment * 2;
 
-            indices.push_back(base);
+            indices.push_back(base + 0);
             indices.push_back(base + 1);
             indices.push_back(base + 2);
 
@@ -348,19 +516,27 @@ namespace Quiet::Renderer::Vulkan
 
         // Bottom cap
         const auto bottomCenter = static_cast<Index>(vertices.size());
-        vertices.push_back(MakeVertex({ 0.0f, -halfHeight, 0.0f }));
+        vertices.push_back(MakeVertex(
+            { 0.0f, -halfHeight, 0.0f },
+            { 0.0f, -1.0f, 0.0f },
+            { 0.5f, 0.5f }
+        ));
 
         const auto bottomRingStart = static_cast<Index>(vertices.size());
+
         for (std::uint32_t segment = 0; segment < segments; ++segment)
         {
             const float u = static_cast<float>(segment) / static_cast<float>(segments);
             const float angle = u * kPi * 2.0f;
 
-            vertices.push_back(MakeVertex({
-                std::cos(angle) * radius,
-                -halfHeight,
-                std::sin(angle) * radius
-            }));
+            const float cosAngle = std::cos(angle);
+            const float sinAngle = std::sin(angle);
+
+            vertices.push_back(MakeVertex(
+                { cosAngle * radius, -halfHeight, sinAngle * radius },
+                { 0.0f, -1.0f, 0.0f },
+                { 0.5f + cosAngle * 0.5f, 0.5f + sinAngle * 0.5f }
+            ));
         }
 
         for (std::uint32_t segment = 0; segment < segments; ++segment)
@@ -369,25 +545,33 @@ namespace Quiet::Renderer::Vulkan
             const Index next = bottomRingStart + ((segment + 1) % segments);
 
             indices.push_back(bottomCenter);
-            indices.push_back(next);
             indices.push_back(current);
+            indices.push_back(next);
         }
 
         // Top cap
         const auto topCenter = static_cast<Index>(vertices.size());
-        vertices.push_back(MakeVertex({ 0.0f, halfHeight, 0.0f }));
+        vertices.push_back(MakeVertex(
+            { 0.0f, halfHeight, 0.0f },
+            { 0.0f, 1.0f, 0.0f },
+            { 0.5f, 0.5f }
+        ));
 
         const auto topRingStart = static_cast<Index>(vertices.size());
+
         for (std::uint32_t segment = 0; segment < segments; ++segment)
         {
             const float u = static_cast<float>(segment) / static_cast<float>(segments);
             const float angle = u * kPi * 2.0f;
 
-            vertices.push_back(MakeVertex({
-                std::cos(angle) * radius,
-                halfHeight,
-                std::sin(angle) * radius
-            }));
+            const float cosAngle = std::cos(angle);
+            const float sinAngle = std::sin(angle);
+
+            vertices.push_back(MakeVertex(
+                { cosAngle * radius, halfHeight, sinAngle * radius },
+                { 0.0f, 1.0f, 0.0f },
+                { 0.5f + cosAngle * 0.5f, 0.5f + sinAngle * 0.5f }
+            ));
         }
 
         for (std::uint32_t segment = 0; segment < segments; ++segment)
