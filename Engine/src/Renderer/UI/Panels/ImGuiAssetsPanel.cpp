@@ -184,7 +184,7 @@ namespace
     }
 
     std::uint32_t CountMeshReferences(const Quiet::Scene::Scene& scene,
-                                  const std::string& meshID)
+                                      const std::string& meshID)
     {
         std::uint32_t count = 0;
         for (const auto& actor : scene.GetActors())
@@ -195,9 +195,57 @@ namespace
         return count;
     }
 
+    void DrawDetailRow(const char* label, const char* value, const float labelWidth)
+    {
+        ImGui::TextDisabled("%s", label);
+        ImGui::SameLine(labelWidth);
+
+        if (value && value[0] != '\0')
+            ImGui::TextUnformatted(value);
+        else
+            ImGui::TextDisabled("-");
+    }
+
+    void DrawDetailRowWrapped(const char* label, const std::string& value, const float labelWidth)
+    {
+        ImGui::TextDisabled("%s", label);
+        ImGui::SameLine(labelWidth);
+
+        if (value.empty())
+        {
+            ImGui::TextDisabled("-");
+            return;
+        }
+
+        ImGui::TextWrapped("%s", value.c_str());
+    }
+
+    void DrawDetailRowUInt(const char* label, const std::uint32_t value, const float labelWidth)
+    {
+        ImGui::TextDisabled("%s", label);
+        ImGui::SameLine(labelWidth);
+        ImGui::Text("%u", value);
+    }
+
+    void DrawDetailRowVec3(const char* label, const glm::vec3& value, const float labelWidth)
+    {
+        ImGui::TextDisabled("%s", label);
+        ImGui::SameLine(labelWidth);
+        ImGui::Text("%.3f, %.3f, %.3f", value.x, value.y, value.z);
+    }
+
+    void DrawDetailsSectionTitle(const char* title)
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextUnformatted(title);
+        ImGui::Separator();
+    }
+
     void DrawAssetDetailsPopup(const Quiet::Project::ProjectContext& projectContext,
                                const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
-                               const std::string& assetID)
+                               const std::string& assetID,
+                               const float uiScale)
     {
         if (assetID.empty()) return;
 
@@ -205,104 +253,76 @@ namespace
             projectContext.GetAssetRegistry(),
             assetID
         );
-
         if (!record) return;
 
         const auto stats = meshLibrary.GetStats(record->ID);
         const std::string status = MakeStatusLabel(*record, meshLibrary);
+        const ImVec4 statusColor = MakeStatusColor(status);
+
+        const float labelWidth = 128.0f * uiScale;
+        const float modalWidth = 640.0f * uiScale;
+
+        ImGui::SetNextWindowSize(ImVec2(modalWidth, 0.0f), ImGuiCond_Appearing);
 
         if (ImGui::BeginPopupModal("Asset Details", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::TextUnformatted("Asset Details");
-            ImGui::Separator();
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f * uiScale, 7.0f * uiScale));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f * uiScale, 8.0f * uiScale));
 
-            ImGui::Text("ID:");
-            ImGui::SameLine(120.0f);
             ImGui::TextUnformatted(record->ID.c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(statusColor, "  %s", status.c_str());
 
-            ImGui::Text("Type:");
-            ImGui::SameLine(120.0f);
+            DrawDetailsSectionTitle("Asset Record");
+
             const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
-            ImGui::TextUnformatted(typeLabel.c_str());
 
-            ImGui::Text("Status:");
-            ImGui::SameLine(120.0f);
-            ImGui::TextColored(MakeStatusColor(status), "%s", status.c_str());
+            DrawDetailRow("ID", record->ID.c_str(), labelWidth);
+            DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
+            DrawDetailRow("Status", status.c_str(), labelWidth);
+            DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
 
-            ImGui::Text("Path:");
-            ImGui::SameLine(120.0f);
             if (record->Path.empty())
-                ImGui::TextDisabled("<built-in>");
+                DrawDetailRow("Path", "<built-in>", labelWidth);
             else
-                ImGui::TextWrapped("%s", record->Path.c_str());
+                DrawDetailRowWrapped("Path", record->Path, labelWidth);
 
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::TextUnformatted("Runtime Mesh");
-            ImGui::Separator();
-
+            DrawDetailsSectionTitle("Runtime Mesh");
             if (stats.has_value())
             {
-                ImGui::Text("Importer:");
-                ImGui::SameLine(120.0f);
-                if (!stats->ImporterName.empty())
-                    ImGui::TextUnformatted(stats->ImporterName.c_str());
-                else
-                    ImGui::TextDisabled("-");
+                DrawDetailRowWrapped("Importer", stats->ImporterName, labelWidth);
+                DrawDetailRowUInt("Meshes", stats->ImportedMeshCount, labelWidth);
+                DrawDetailRowUInt("Vertices", stats->VertexCount, labelWidth);
+                DrawDetailRowUInt("Indices", stats->IndexCount, labelWidth);
+                DrawDetailRowUInt("Warnings", stats->WarningCount, labelWidth);
 
-                ImGui::Text("Meshes:");
-                ImGui::SameLine(120.0f);
-                ImGui::Text("%u", stats->ImportedMeshCount);
-
-                ImGui::Text("Vertices:");
-                ImGui::SameLine(120.0f);
-                ImGui::Text("%u", stats->VertexCount);
-
-                ImGui::Text("Indices:");
-                ImGui::SameLine(120.0f);
-                ImGui::Text("%u", stats->IndexCount);
-
-                ImGui::Text("Warnings:");
-                ImGui::SameLine(120.0f);
-                ImGui::Text("%u", stats->WarningCount);
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::TextUnformatted("Bounds");
-                ImGui::Separator();
-
+                DrawDetailsSectionTitle("Bounds");
                 if (stats->BoundsValid)
                 {
-                    ImGui::Text("Min:");
-                    ImGui::SameLine(120.0f);
-                    ImGui::Text("%.3f, %.3f, %.3f",
-                                stats->BoundsMin.x,
-                                stats->BoundsMin.y,
-                                stats->BoundsMin.z);
+                    DrawDetailRowVec3("Min", stats->BoundsMin, labelWidth);
+                    DrawDetailRowVec3("Max", stats->BoundsMax, labelWidth);
 
-                    ImGui::Text("Max:");
-                    ImGui::SameLine(120.0f);
-                    ImGui::Text("%.3f, %.3f, %.3f",
-                                stats->BoundsMax.x,
-                                stats->BoundsMax.y,
-                                stats->BoundsMax.z);
+                    const glm::vec3 size = stats->BoundsMax - stats->BoundsMin;
+                    DrawDetailRowVec3("Size", size, labelWidth);
                 }
                 else
-                {
                     ImGui::TextDisabled("No bounds available.");
-                }
 
-                if (!stats->Warnings.empty())
+                DrawDetailsSectionTitle("Import Warnings");
+                if (stats->Warnings.empty())
+                    ImGui::TextDisabled("No import warnings.");
+                else
                 {
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::TextUnformatted("Import Warnings");
-                    ImGui::Separator();
-
+                    ImGui::BeginChild(
+                        "AssetImportWarnings",
+                        ImVec2(0.0f, 120.0f * uiScale),
+                        true
+                    );
                     for (const std::string& warning : stats->Warnings)
                     {
                         ImGui::BulletText("%s", warning.c_str());
                     }
+                    ImGui::EndChild();
                 }
             }
             else
@@ -311,9 +331,16 @@ namespace
             ImGui::Spacing();
             ImGui::Separator();
 
-            if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
+            const float closeButtonWidth = 120.0f * uiScale;
+            const float availableWidth = ImGui::GetContentRegionAvail().x;
+
+            if (availableWidth > closeButtonWidth)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - closeButtonWidth);
+
+            if (ImGui::Button("Close", ImVec2(closeButtonWidth, 0.0f)))
                 ImGui::CloseCurrentPopup();
 
+            ImGui::PopStyleVar(2);
             ImGui::EndPopup();
         }
     }
@@ -501,7 +528,7 @@ namespace Quiet::Renderer::UI
                     ImGui::OpenPopup("Remove Asset Failed");
                 }
             }
-            DrawAssetDetailsPopup(projectContext, meshLibrary, selectedDetailsAssetID);
+            DrawAssetDetailsPopup(projectContext, meshLibrary, selectedDetailsAssetID, GetUIScale());
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
         }
         ImGui::End();
