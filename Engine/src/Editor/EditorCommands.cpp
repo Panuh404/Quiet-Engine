@@ -105,6 +105,7 @@ namespace Quiet::Editor
             actor.StaticMesh->MeshResourceID = meshResourceID;
             actor.StaticMesh->Mesh = mesh;
             actor.StaticMesh->Visible = true;
+            actor.Material = Scene::MaterialComponent{};
 
             m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
             return true;
@@ -235,6 +236,10 @@ namespace Quiet::Editor
             actor->StaticMesh->MeshResourceID = defaultMeshID;
             actor->StaticMesh->Mesh = mesh;
             actor->StaticMesh->Visible= true;
+            if (!actor->Material.has_value())
+            {
+                actor->Material = Scene::MaterialComponent{};
+            }
             return true;
         });
     }
@@ -247,6 +252,7 @@ namespace Quiet::Editor
             if (!actor || !actor->StaticMesh.has_value()) return false;
 
             actor->StaticMesh.reset();
+            actor->Material.reset();
             return true;
         });
     }
@@ -293,9 +299,41 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::AddRotator(Scene::Scene& scene,
-                                    Core::UUID actorID,
-                                    float initialSpeed)
+    bool EditorCommands::AddMaterial(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+           Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->Material.has_value()) return false;
+
+            actor->Material = Scene::MaterialComponent{};
+            actor->Material->BaseColor = baseColor;
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveMaterial(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->Material.has_value()) return false;
+
+            actor->Material.reset();
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetMaterialBaseColor(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Material.has_value()) return false;
+
+        actor->Material->BaseColor = baseColor;
+        return true;
+    }
+
+    bool EditorCommands::AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -319,9 +357,7 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene,
-                                         Core::UUID actorID,
-                                         float speed)
+    bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor || !actor->Rotator.has_value()) return false;

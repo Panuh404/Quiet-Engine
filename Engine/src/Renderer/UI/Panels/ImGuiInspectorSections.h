@@ -42,6 +42,11 @@ namespace Quiet::Renderer::UI
                                const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary);
 
+    void DrawMaterialSection(Scene::Scene& scene,
+                             Scene::Actor& actor,
+                             Editor::EditorCommands& commands,
+                             const TrackedInspectorInteraction& tracked);
+
     void DrawRotatorSection(Scene::Scene& scene,
                             Scene::Actor& actor,
                             Editor::EditorCommands& commands,

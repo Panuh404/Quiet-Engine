@@ -3,6 +3,7 @@
 
 #include "Quiet/Core/UUID.h"
 #include "glm/vec3.hpp"
+#include "glm/vec4.hpp"
 
 namespace Quiet::Scene
 {
@@ -66,6 +67,10 @@ namespace Quiet::Editor
         bool SetStaticMeshVisible(Scene::Scene& scene,
                                   Core::UUID actorID,
                                   bool visible);
+
+        bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
+        bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
+        bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
 
         bool AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed = 45.0f);
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);

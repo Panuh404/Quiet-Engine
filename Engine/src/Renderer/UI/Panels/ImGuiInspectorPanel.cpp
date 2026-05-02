@@ -57,6 +57,7 @@ namespace Quiet::Renderer::UI
             ImGui::Text("Components");
 
             DrawStaticMeshSection(scene, actor, commands, projectContext, meshLibrary);
+            DrawMaterialSection(scene, actor, commands, tracked);
             DrawRotatorSection(scene, actor, commands, tracked);
             DrawCameraSection(scene, actor, commands, editorState, tracked, isEditMode);
 

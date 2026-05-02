@@ -121,6 +121,31 @@ namespace Quiet::Renderer::UI
             commands.RemoveStaticMesh(scene, actor.ID);
     }
 
+    void DrawMaterialSection(Scene::Scene& scene,
+                             Scene::Actor& actor,
+                             Editor::EditorCommands& commands,
+                             const TrackedInspectorInteraction& tracked)
+    {
+        if (!actor.StaticMesh.has_value()) return;
+        if (!actor.Material.has_value())
+        {
+            if (ImGui::Button("Add Material"))
+                commands.AddMaterial(scene, actor.ID);
+            return;
+        }
+        if (!ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+        glm::vec4 baseColor = actor.Material->BaseColor;
+        if (ImGui::ColorEdit4("Base Color", &baseColor.x))
+            commands.SetMaterialBaseColor(scene, actor.ID, baseColor);
+
+        tracked.Begin();
+        tracked.End();
+
+        if (ImGui::Button("Remove Material"))
+            commands.RemoveMaterial(scene, actor.ID);
+    }
+
     void DrawRotatorSection(Scene::Scene& scene,
                             Scene::Actor& actor,
                             Editor::EditorCommands& commands,

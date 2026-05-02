@@ -77,6 +77,10 @@ namespace Quiet::Renderer::Vulkan
 
             TransformPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
+            if (actor.Material.has_value())
+            {
+                push.BaseColor = actor.Material->BaseColor;
+            }
 
             vkCmdPushConstants(
                 context.CommandBuffer,

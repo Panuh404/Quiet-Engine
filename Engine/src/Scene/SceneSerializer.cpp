@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include "glm/vec4.hpp"
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/UUID.h"
@@ -16,6 +17,10 @@ namespace Quiet::Scene
     {
         return json::array({ value.x, value.y, value.z });
     }
+    static json SerializeVec4(const glm::vec4& value)
+    {
+        return json::array({ value.x, value.y, value.z, value.w });
+    }
 
     static glm::vec3 DeserializeVec3(const json& value)
     {
@@ -23,6 +28,15 @@ namespace Quiet::Scene
             value.at(0).get<float>(),
             value.at(1).get<float>(),
             value.at(2).get<float>()
+        };
+    }
+    static glm::vec4 DeserializeVec4(const json& value)
+    {
+        return {
+            value.at(0).get<float>(),
+            value.at(1).get<float>(),
+            value.at(2).get<float>(),
+            value.at(3).get<float>()
         };
     }
 
@@ -48,6 +62,13 @@ namespace Quiet::Scene
                 actorJson["static_mesh"] = {
                     { "resource_id", actor.StaticMesh->MeshResourceID },
                     { "visible", actor.StaticMesh->Visible }
+                };
+            }
+
+            if (actor.Material.has_value())
+            {
+                actorJson["material"] = {
+                    { "base_color", SerializeVec4(actor.Material->BaseColor) }
                 };
             }
 
@@ -130,6 +151,19 @@ namespace Quiet::Scene
                 {
                     QUIET_CORE_WARN("Scene references missing mesh resource '{}'.", resourceId);
                 }
+            }
+
+            if (actorJson.contains("material"))
+            {
+                const auto& materialJson = actorJson["material"];
+
+                MaterialComponent material{};
+                if (materialJson.contains("base_color"))
+                {
+                    material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
+                }
+
+                actor.Material = material;
             }
 
             if (actorJson.contains("rotator"))
