@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <optional>
 
@@ -249,6 +250,18 @@ namespace
         bool Valid = false;
     };
 
+    glm::vec3 SafeNormalize(const glm::vec3& value, const glm::vec3& fallback)
+    {
+        const float length = glm::length(value);
+        if (length <= 0.00001f)             return fallback;
+        return value / length;
+    }
+
+    glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point)
+    {
+        return glm::vec3(transform * glm::vec4(point, 1.0f));
+    }
+
     void ExpandScreenRect(ScreenRect& rect, const ImVec2& point)
     {
         if (!rect.Valid)
@@ -425,6 +438,185 @@ namespace
 
         DrawSelectedOriginMarker(drawList, actorScreenPosition);
         DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
+    }
+
+    bool DrawProjectedLine(ImDrawList* drawList,
+                           const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                           const Quiet::Editor::EditorViewportState& viewportState,
+                           const glm::vec3& worldA,
+                           const glm::vec3& worldB,
+                           ImU32 color,
+                           float thickness)
+    {
+        ImVec2 screenA{};
+        ImVec2 screenB{};
+
+        if (!ProjectWorldToViewport(worldA, cameraData, viewportState, screenA)) return false;
+        if (!ProjectWorldToViewport(worldB, cameraData, viewportState, screenB)) return false;
+        drawList->AddLine(screenA, screenB, color, thickness);
+        return true;
+    }
+
+    void DrawScreenArrowHead(ImDrawList* drawList,
+                             const ImVec2& start,
+                             const ImVec2& end,
+                             ImU32 color,
+                             float thickness)
+    {
+        const ImVec2 delta(end.x - start.x, end.y - start.y);
+        const float length = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+
+        if (length <= 0.00001f) return;
+
+        const ImVec2 direction(delta.x / length, delta.y / length);
+        const ImVec2 perpendicular(-direction.y, direction.x);
+
+        constexpr float arrowLength = 11.0f;
+        constexpr float arrowWidth = 6.0f;
+
+        const ImVec2 left(
+            end.x - direction.x * arrowLength + perpendicular.x * arrowWidth,
+            end.y - direction.y * arrowLength + perpendicular.y * arrowWidth
+        );
+
+        const ImVec2 right(
+            end.x - direction.x * arrowLength - perpendicular.x * arrowWidth,
+            end.y - direction.y * arrowLength - perpendicular.y * arrowWidth
+        );
+
+        drawList->AddLine(end, left, color, thickness);
+        drawList->AddLine(end, right, color, thickness);
+    }
+
+    void DrawCameraFrustumOverlay(ImDrawList* drawList,
+                                  const Quiet::Scene::Actor& actor,
+                                  const Quiet::Scene::CameraComponent& cameraComponent,
+                                  const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                  const Quiet::Editor::EditorViewportState& viewportState,
+                                  bool selected)
+    {
+        const ImU32 color = selected
+            ? IM_COL32(255, 255, 255, 230)
+            : IM_COL32(80, 190, 255, 150);
+
+        const ImU32 centerColor = selected
+            ? IM_COL32(255, 255, 255, 240)
+            : IM_COL32(80, 190, 255, 180);
+
+        const float aspect = viewportState.Height > 0
+            ? static_cast<float>(viewportState.Width) / static_cast<float>(viewportState.Height)
+            : 1.0f;
+
+        const float fovRadians = glm::radians(cameraComponent.FieldOfViewDegrees);
+
+        const float nearDistance = std::max(cameraComponent.NearClip, 0.05f);
+        const float farDistance = std::max(nearDistance + 0.1f, 1.25f);
+
+        const float nearHalfHeight = std::tan(fovRadians * 0.5f) * nearDistance;
+        const float nearHalfWidth = nearHalfHeight * aspect;
+
+        const float farHalfHeight = std::tan(fovRadians * 0.5f) * farDistance;
+        const float farHalfWidth = farHalfHeight * aspect;
+
+        const glm::vec3 nearCenter{ 0.0f, 0.0f, -nearDistance };
+        const glm::vec3 farCenter{ 0.0f, 0.0f, -farDistance };
+
+        const std::array<glm::vec3, 4> nearCorners =
+        {
+            nearCenter + glm::vec3{ -nearHalfWidth,  nearHalfHeight, 0.0f },
+            nearCenter + glm::vec3{  nearHalfWidth,  nearHalfHeight, 0.0f },
+            nearCenter + glm::vec3{  nearHalfWidth, -nearHalfHeight, 0.0f },
+            nearCenter + glm::vec3{ -nearHalfWidth, -nearHalfHeight, 0.0f }
+        };
+
+        const std::array<glm::vec3, 4> farCorners =
+        {
+            farCenter + glm::vec3{ -farHalfWidth,  farHalfHeight, 0.0f },
+            farCenter + glm::vec3{  farHalfWidth,  farHalfHeight, 0.0f },
+            farCenter + glm::vec3{  farHalfWidth, -farHalfHeight, 0.0f },
+            farCenter + glm::vec3{ -farHalfWidth, -farHalfHeight, 0.0f }
+        };
+
+        const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
+        const glm::vec3 worldOrigin = actor.Transform.WorldTransform.Position;
+
+        std::array<glm::vec3, 4> worldNear{};
+        std::array<glm::vec3, 4> worldFar{};
+
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            worldNear[i] = TransformPoint(model, nearCorners[i]);
+            worldFar[i] = TransformPoint(model, farCorners[i]);
+        }
+
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            const std::size_t next = (i + 1) % 4;
+
+            DrawProjectedLine(drawList, cameraData, viewportState, worldNear[i], worldNear[next], color, 1.5f);
+            DrawProjectedLine(drawList, cameraData, viewportState, worldFar[i], worldFar[next], color, 1.5f);
+            DrawProjectedLine(drawList, cameraData, viewportState, worldNear[i], worldFar[i], color, 1.5f);
+            DrawProjectedLine(drawList, cameraData, viewportState, worldOrigin, worldFar[i], color, 1.0f);
+        }
+
+        ImVec2 originScreen{};
+        if (ProjectWorldToViewport(worldOrigin, cameraData, viewportState, originScreen))
+        {
+            drawList->AddCircleFilled(originScreen, selected ? 4.0f : 3.0f, centerColor, 16);
+        }
+    }
+
+    void DrawDirectionalLightDirectionOverlay(ImDrawList* drawList,
+                                              const Quiet::Scene::Actor& actor,
+                                              const Quiet::Scene::DirectionalLightComponent& lightComponent,
+                                              const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                              const Quiet::Editor::EditorViewportState& viewportState,
+                                              bool selected)
+    {
+        const ImU32 color = selected
+            ? IM_COL32(255, 255, 255, 240)
+            : IM_COL32(255, 220, 80, 170);
+
+        const glm::vec3 origin = actor.Transform.WorldTransform.Position;
+
+        // DirectionalLightComponent::Direction is direction from the surface toward light.
+        // The visible arrow shows the emitted light direction, so it points the opposite way.
+        const glm::vec3 emittedDirection = SafeNormalize(
+            -lightComponent.Direction,
+            { 0.0f, -1.0f, 0.0f }
+        );
+
+        constexpr float rayLength = 1.75f;
+        constexpr float sideOffset = 0.18f;
+
+        const glm::vec3 upFallback{ 0.0f, 1.0f, 0.0f };
+        glm::vec3 right = glm::cross(emittedDirection, upFallback);
+
+        if (glm::length(right) <= 0.00001f)
+            right = glm::cross(emittedDirection, glm::vec3{ 1.0f, 0.0f, 0.0f });
+
+        right = SafeNormalize(right, { 1.0f, 0.0f, 0.0f });
+
+        const std::array<glm::vec3, 3> rayOrigins =
+        {
+            origin,
+            origin + right * sideOffset,
+            origin - right * sideOffset
+        };
+
+        for (const glm::vec3& rayOrigin : rayOrigins)
+        {
+            const glm::vec3 rayEnd = rayOrigin + emittedDirection * rayLength;
+            ImVec2 screenStart{};
+            ImVec2 screenEnd{};
+
+            if (!ProjectWorldToViewport(rayOrigin, cameraData, viewportState, screenStart) ||
+                !ProjectWorldToViewport(rayEnd, cameraData, viewportState, screenEnd))
+                continue;
+
+            drawList->AddLine(screenStart, screenEnd, color, selected ? 2.0f : 1.5f);
+            DrawScreenArrowHead(drawList, screenStart, screenEnd, color, selected ? 2.0f : 1.5f);
+        }
     }
 }
 
@@ -707,6 +899,30 @@ namespace Quiet::Editor
                 const bool selected =
                     m_State.Selection.SelectedActorID.has_value() &&
                     m_State.Selection.SelectedActorID.value() == actor.ID;
+
+                if (actor.Camera.has_value())
+                {
+                    DrawCameraFrustumOverlay(
+                        drawList,
+                        actor,
+                        actor.Camera.value(),
+                        cameraData,
+                        m_State.Viewport,
+                        selected
+                    );
+                }
+
+                if (actor.DirectionalLight.has_value())
+                {
+                    DrawDirectionalLightDirectionOverlay(
+                        drawList,
+                        actor,
+                        actor.DirectionalLight.value(),
+                        cameraData,
+                        m_State.Viewport,
+                        selected
+                    );
+                }
 
                 float verticalOffset = 0.0f;
 
