@@ -1,6 +1,7 @@
 #include "Quiet/Editor/EditorController.h"
 
 #include <limits>
+#include <optional>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -44,6 +45,19 @@ namespace
             case Quiet::Editor::GizmoMode::World:   return ImGuizmo::WORLD;
             default:                                return ImGuizmo::WORLD;
         }
+    }
+
+    float DistanceSquared(const ImVec2& a, const ImVec2& b)
+    {
+        const float dx = a.x - b.x;
+        const float dy = a.y - b.y;
+        return dx * dx + dy * dy;
+    }
+
+    bool IsPointInsideDebugIcon(const ImVec2& point, const ImVec2& iconPosition)
+    {
+        constexpr float pickRadius = 22.0f;
+        return DistanceSquared(point, iconPosition) <= pickRadius * pickRadius;
     }
 
     bool ProjectWorldToViewport(const glm::vec3& worldPosition,
@@ -150,6 +164,81 @@ namespace
             label
         );
     }
+
+    void TrySetBestDebugIconHit(const Quiet::Core::UUID actorID,
+                                const ImVec2& mousePosition,
+                                const ImVec2& iconPosition,
+                                std::optional<Quiet::Core::UUID>& bestActorID,
+                                float& bestDistanceSquared)
+    {
+        if (!IsPointInsideDebugIcon(mousePosition, iconPosition)) return;
+
+        const float distanceSquared = DistanceSquared(mousePosition, iconPosition);
+        if (distanceSquared < bestDistanceSquared)
+        {
+            bestDistanceSquared = distanceSquared;
+            bestActorID = actorID;
+        }
+    }
+
+    std::optional<Quiet::Core::UUID> PickViewportDebugIcon(const Quiet::Scene::Scene& scene,
+                                                           const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                                           const Quiet::Editor::EditorViewportState& viewportState,
+                                                           const ImVec2& mousePosition)
+    {
+        std::optional<Quiet::Core::UUID> bestActorID;
+        float bestDistanceSquared = std::numeric_limits<float>::max();
+
+        for (const Quiet::Scene::Actor& actor : scene.GetActors())
+        {
+            if (!actor.Camera.has_value() && !actor.DirectionalLight.has_value()) continue;
+
+            ImVec2 screenPosition{};
+            if (!ProjectWorldToViewport(
+                    actor.Transform.WorldTransform.Position,
+                    cameraData,
+                    viewportState,
+                    screenPosition))
+            {
+                continue;
+            }
+
+            float verticalOffset = 0.0f;
+            if (actor.Camera.has_value())
+            {
+                const ImVec2 iconPosition(
+                    screenPosition.x,
+                    screenPosition.y + verticalOffset
+                );
+
+                TrySetBestDebugIconHit(
+                    actor.ID,
+                    mousePosition,
+                    iconPosition,
+                    bestActorID,
+                    bestDistanceSquared
+                );
+                verticalOffset += 22.0f;
+            }
+
+            if (actor.DirectionalLight.has_value())
+            {
+                const ImVec2 iconPosition(
+                    screenPosition.x,
+                    screenPosition.y + verticalOffset
+                );
+
+                TrySetBestDebugIconHit(
+                    actor.ID,
+                    mousePosition,
+                    iconPosition,
+                    bestActorID,
+                    bestDistanceSquared
+                );
+            }
+        }
+        return bestActorID;
+    }
 }
 
 namespace Quiet::Editor
@@ -166,11 +255,34 @@ namespace Quiet::Editor
         if (!input.IsMouseButtonPressed(Input::MouseCode::ButtonLeft)) return;
         if (ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
 
-        Math::Ray ray{};
-        if (!BuildViewportPickRay(input, camera, renderer, ray))
+        const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
+        if (sceneExtent.width == 0 || sceneExtent.height == 0) return;
+
+        const float aspect =
+            static_cast<float>(sceneExtent.width) /
+            static_cast<float>(sceneExtent.height);
+
+        const auto cameraData =
+            camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+
+        const ImVec2 mousePosition = ImGui::GetMousePos();
+        const std::optional<Core::UUID> debugIconHit =
+            PickViewportDebugIcon(
+                scene,
+                cameraData,
+                m_State.Viewport,
+                mousePosition
+            );
+
+        if (debugIconHit.has_value())
         {
+            m_State.Selection.SelectedActorID = debugIconHit;
+            QUIET_CORE_TRACE("Viewport debug icon selected actor.");
             return;
         }
+
+        Math::Ray ray{};
+        if (!BuildViewportPickRay(input, camera, renderer, ray)) return;
 
         auto& actors = scene.GetActors();
         float closestHit = std::numeric_limits<float>::max();
