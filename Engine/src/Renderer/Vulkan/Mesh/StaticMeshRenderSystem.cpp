@@ -1,11 +1,11 @@
-#include "StaticMeshRenderSystem.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include <stdexcept>
 
 #include "Quiet/Core/Log.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/CameraResources.h"
-#include "StaticMesh.h"
-#include "StaticMeshPipeline.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"

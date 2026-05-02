@@ -1,6 +1,9 @@
 #include "Quiet/Project/ProjectAssetLoader.h"
 
+#include <cstdint>
+#include <exception>
 #include <filesystem>
+#include <string>
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
@@ -180,15 +183,22 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "{} mesh asset '{}' from '{}'. meshes={} vertices={} indices={} boundsValid={}",
+            "{} mesh asset '{}' from '{}'. importer={} meshes={} vertices={} indices={} boundsValid={} warnings={}",
             alreadyLoaded ? "Reloaded" : "Loaded",
             record.ID,
             assetPath.string(),
+            importResult.ImporterName,
             importResult.ImportedMeshCount,
             importResult.Vertices.size(),
             importResult.Indices.size(),
-            importResult.Bounds.Valid
+            importResult.Bounds.Valid,
+            importResult.Warnings.size()
         );
+
+        for (const std::string& warning : importResult.Warnings)
+        {
+            QUIET_CORE_WARN("Mesh asset '{}': {}", record.ID, warning);
+        }
 
         return true;
     }

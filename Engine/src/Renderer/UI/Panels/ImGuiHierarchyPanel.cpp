@@ -4,30 +4,90 @@
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Editor/EditorState.h"
+#include "Quiet/Project/AssetRecord.h"
+#include "Quiet/Project/AssetType.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Scene/Scene.h"
 
 namespace
 {
-    bool DrawToolbarAction(Quiet::Editor::EditorActions& actions,
-                           Quiet::Editor::EditorActionID actionID,
-                           const char* buttonLabel = nullptr)
+    void DrawPrimitiveCreateMenu(Quiet::Scene::Scene& scene,
+                                 Quiet::Editor::EditorCommands& editorCommands,
+                                 const Quiet::Project::ProjectContext& projectContext,
+                                 const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        const bool enabled = actions.CanExecute(actionID);
-        if (!enabled) ImGui::BeginDisabled();
+        if (!ImGui::BeginMenu("Primitive Mesh")) return;
 
-        const bool pressed = ImGui::Button(buttonLabel ? buttonLabel : actions.GetLabel(actionID));
-
-        if (!enabled) ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        for (const std::string& primitiveID : Quiet::Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
         {
-            const char* shortcut = actions.GetShortcut(actionID);
-            if (shortcut[0] != '\0')
-                ImGui::SetTooltip("%s", shortcut);
-        }
+            const bool loaded = meshLibrary.Has(primitiveID);
+            const std::string label = primitiveID + " Actor";
 
-        if (pressed) actions.Execute(actionID);
-        return pressed;
+            if (!loaded) ImGui::BeginDisabled();
+            if (ImGui::MenuItem(label.c_str()))
+            {
+                editorCommands.CreateStaticMeshActor(
+                    scene,
+                    label,
+                    primitiveID,
+                    projectContext,
+                    meshLibrary
+                );
+            }
+
+            if (!loaded)
+            {
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                    ImGui::SetTooltip("Primitive mesh '%s' is registered but not loaded.", primitiveID.c_str());
+            }
+        }
+        ImGui::EndMenu();
+    }
+
+    void DrawImportedMeshCreateMenu(Quiet::Scene::Scene& scene,
+                                    Quiet::Editor::EditorCommands& editorCommands,
+                                    const Quiet::Project::ProjectContext& projectContext,
+                                    const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
+    {
+        if (!ImGui::BeginMenu("Imported Mesh")) return;
+
+        bool foundImportedMesh = false;
+        for (const Quiet::Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
+        {
+            if (record.Type != Quiet::Project::AssetType::Mesh || record.BuiltIn) continue;
+
+            foundImportedMesh = true;
+            const bool loaded = meshLibrary.Has(record.ID);
+            const std::string label = record.ID + " Actor";
+
+            if (!loaded) ImGui::BeginDisabled();
+            if (ImGui::MenuItem(label.c_str()))
+            {
+                editorCommands.CreateStaticMeshActor(
+                    scene,
+                    label,
+                    record.ID,
+                    projectContext,
+                    meshLibrary
+                );
+            }
+
+            if (!loaded)
+            {
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                    ImGui::SetTooltip("Mesh asset '%s' is registered but not loaded.", record.ID.c_str());
+            }
+            else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) && !record.Path.empty())
+                ImGui::SetTooltip("%s", record.Path.c_str());
+        }
+        if (!foundImportedMesh)
+            ImGui::TextDisabled("No imported mesh assets.");
+
+        ImGui::EndMenu();
     }
 }
 
@@ -56,24 +116,21 @@ namespace Quiet::Renderer::UI
                     editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
 
                 ImGui::Separator();
-                if (ImGui::BeginMenu("Primitive Mesh"))
-                {
-                    for (const std::string& primitiveID : Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
-                    {
-                        const std::string label = primitiveID + " Actor";
-                        if (ImGui::MenuItem(label.c_str()))
-                        {
-                            editorCommands.CreateStaticMeshActor(
-                                scene,
-                                label,
-                                primitiveID,
-                                projectContext,
-                                meshLibrary
-                            );
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
+
+                DrawPrimitiveCreateMenu(
+                    scene,
+                    editorCommands,
+                    projectContext,
+                    meshLibrary
+                );
+
+                DrawImportedMeshCreateMenu(
+                    scene,
+                    editorCommands,
+                    projectContext,
+                    meshLibrary
+                );
+
                 ImGui::EndPopup();
             }
 
@@ -83,19 +140,19 @@ namespace Quiet::Renderer::UI
             std::optional<Core::UUID> pendingActorSelection;
 
             auto& actors = scene.GetActors();
-            for (std::size_t i = 0; i < actors.size(); ++i)
+            for (auto & actor : actors)
             {
                 const bool isSelected =
                     editorState.Selection.SelectedActorID.has_value() &&
-                    editorState.Selection.SelectedActorID.value() == actors[i].ID;
+                    editorState.Selection.SelectedActorID.value() == actor.ID;
 
-                const std::string displayName = actors[i].Name.empty() ? "Unnamed Actor" : actors[i].Name;
-                const std::string label = displayName + "##" + Core::UUIDToString(actors[i].ID);
+                const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
+                const std::string label = displayName + "##" + Core::UUIDToString(actor.ID);
 
                 if (!isEditMode) ImGui::BeginDisabled();
 
                 if (ImGui::Selectable(label.c_str(), isSelected) && isEditMode)
-                    editorState.Selection.SelectedActorID = actors[i].ID;
+                    editorState.Selection.SelectedActorID = actor.ID;
 
                 if (!isEditMode) ImGui::EndDisabled();
 
@@ -108,7 +165,7 @@ namespace Quiet::Renderer::UI
                                         false,
                                         canEdit))
                     {
-                        pendingActorSelection = actors[i].ID;
+                        pendingActorSelection = actor.ID;
                         pendingAction = Editor::EditorActionID::DuplicateSelected;
                     }
 
@@ -117,7 +174,7 @@ namespace Quiet::Renderer::UI
                                         false,
                                         canEdit))
                     {
-                        pendingActorSelection = actors[i].ID;
+                        pendingActorSelection = actor.ID;
                         pendingAction = Editor::EditorActionID::DeleteSelected;
                     }
 

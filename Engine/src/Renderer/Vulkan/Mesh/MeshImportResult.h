@@ -6,7 +6,7 @@
 
 #include <glm/glm.hpp>
 
-#include "StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
 {

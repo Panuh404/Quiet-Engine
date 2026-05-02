@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "MeshImportResult.h"
+#include "Renderer/Vulkan/Mesh/MeshImportResult.h"
 
 namespace Quiet::Renderer::Vulkan
 {

@@ -1,4 +1,4 @@
-#include "StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 #include <cstring>
 #include <glm/glm.hpp>

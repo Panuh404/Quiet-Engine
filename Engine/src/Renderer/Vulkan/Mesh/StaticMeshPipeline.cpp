@@ -1,4 +1,4 @@
-#include "StaticMeshPipeline.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 
 #include <cstdint>
 #include <fstream>
@@ -8,7 +8,7 @@
 #include "Renderer/Vulkan/LogicalDevice.h"
 #include "Renderer/Vulkan/Swapchain.h"
 #include "Renderer/Vulkan/DepthResources.h"
-#include "StaticMesh.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Renderer/Vulkan/ShaderModule.h"
 
