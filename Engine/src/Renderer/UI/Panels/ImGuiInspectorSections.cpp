@@ -207,6 +207,23 @@ namespace Quiet::Renderer::UI
         tracked.Begin();
         tracked.End();
 
+        ImGui::Spacing();
+        ImGui::TextDisabled("Base Color Texture");
+
+        if (actor.Material->HasBaseColorTexture())
+        {
+            ImGui::TextWrapped("%s", actor.Material->BaseColorTextureAssetID.c_str());
+        }
+        else
+        {
+            ImGui::TextDisabled("None");
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("Texture assets are not implemented yet. This slot is reserved for the future texture pipeline.");
+        }
+
         if (ImGui::Button("Remove Material"))
             commands.RemoveMaterial(scene, actor.ID);
     }

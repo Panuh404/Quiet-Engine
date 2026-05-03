@@ -12,10 +12,12 @@ namespace Quiet::Renderer::Vulkan
         alignas(16) glm::mat4 Projection{1.0f};
     };
 
-    struct TransformPushConstants
+    struct StaticMeshPushConstants
     {
         alignas(16) glm::mat4 Model{ 1.0f };
-        alignas(16) glm::vec4 BaseColor{ 1.0f };
+
+        // rgba = material base color
+        alignas(16) glm::vec4 MaterialBaseColor{ 1.0f };
 
         // xyz = direction from surface toward light, w = intensity
         alignas(16) glm::vec4 LightDirectionIntensity{ -0.35f, 0.85f, -0.35f, 1.0f };

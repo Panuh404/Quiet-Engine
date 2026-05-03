@@ -76,7 +76,8 @@ namespace Quiet::Scene
             if (actor.Material.has_value())
             {
                 actorJson["material"] = {
-                    { "base_color", SerializeVec4(actor.Material->BaseColor) }
+                    { "base_color", SerializeVec4(actor.Material->BaseColor) },
+                    { "base_color_texture_asset_id", actor.Material->BaseColorTextureAssetID }
                 };
             }
 
@@ -205,6 +206,7 @@ namespace Quiet::Scene
                 {
                     material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
                 }
+                material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
 
                 actor.Material = material;
             }

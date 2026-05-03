@@ -90,7 +90,7 @@ namespace Quiet::Renderer::Vulkan
             vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-            TransformPushConstants push{};
+            StaticMeshPushConstants  push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
             if (activeLight)
             {
@@ -119,7 +119,7 @@ namespace Quiet::Renderer::Vulkan
 
             if (actor.Material.has_value())
             {
-                push.BaseColor = actor.Material->BaseColor;
+                push.MaterialBaseColor = actor.Material->BaseColor;
             }
 
             vkCmdPushConstants(
@@ -127,7 +127,7 @@ namespace Quiet::Renderer::Vulkan
                 context.Pipeline->GetLayout(),
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
-                sizeof(TransformPushConstants),
+                sizeof(StaticMeshPushConstants),
                 &push
             );
 

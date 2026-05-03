@@ -21,8 +21,8 @@ namespace Quiet::Renderer::Vulkan
                                        VkDescriptorSetLayout cameraSetLayout)
         : m_Device(logicalDevice.GetHandle())
     {
-        ShaderModule vertShader(m_Device, "Resources/Shaders/Triangle.vert.spv");
-        ShaderModule fragShader(m_Device, "Resources/Shaders/Triangle.frag.spv");
+        ShaderModule vertShader(m_Device, "Resources/Shaders/StaticMesh.vert.spv");
+        ShaderModule fragShader(m_Device, "Resources/Shaders/StaticMesh.frag.spv");
 
         VkPipelineShaderStageCreateInfo stages[] = {
             vertShader.MakeStageInfo(VK_SHADER_STAGE_VERTEX_BIT),
@@ -34,7 +34,7 @@ namespace Quiet::Renderer::Vulkan
             VK_SHADER_STAGE_VERTEX_BIT |
             VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset = 0;
-        pushConstantRange.size = sizeof(TransformPushConstants);
+        pushConstantRange.size = sizeof(StaticMeshPushConstants);
 
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -45,7 +45,7 @@ namespace Quiet::Renderer::Vulkan
 
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
         {
-            throw std::runtime_error("Failed to create triangle pipeline layout.");
+            throw std::runtime_error("Failed to create static mesh pipeline layout.");
         }
 
         const auto bindingDescription = Vertex::GetBindingDescription();
@@ -145,7 +145,7 @@ namespace Quiet::Renderer::Vulkan
         {
             vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
             m_PipelineLayout = VK_NULL_HANDLE;
-            throw std::runtime_error("Failed to create triangle graphics pipeline.");
+            throw std::runtime_error("Failed to create static mesh graphics pipeline.");
         }
 
         QUIET_CORE_INFO(
