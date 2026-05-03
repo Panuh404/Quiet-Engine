@@ -55,7 +55,15 @@ target_sources(Quiet_Engine
         src/Editor/EditorRuntimeController.cpp
         src/Editor/EditorSceneHistory.cpp
         src/Editor/EditorSceneWorkflow.cpp
-        src/Editor/EditorViewportInteraction.cpp
+
+        # Editor - Viewport
+        src/Editor/Viewport/EditorViewportInteraction.cpp
+        src/Editor/Viewport/EditorViewportOverlay.cpp
+        src/Editor/Viewport/EditorViewportOverlay.h
+        src/Editor/Viewport/EditorViewportPicking.cpp
+        src/Editor/Viewport/EditorViewportPicking.h
+        src/Editor/Viewport/EditorViewportProjection.cpp
+        src/Editor/Viewport/EditorViewportProjection.h
 
         # Renderer - UI
         src/Renderer/UI/ImGuiFonts.h
@@ -133,8 +141,8 @@ target_sources(Quiet_Engine
         ${imgui_SOURCE_DIR}/imgui_demo.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-        ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
-        ${imguizmo_SOURCE_DIR}/ImGuizmo.h
+        ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
+        ${imguizmo_SOURCE_DIR}/src/ImGuizmo.h
         ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.cpp
 
     PUBLIC
@@ -179,7 +187,7 @@ target_include_directories(Quiet_Engine
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${imgui_SOURCE_DIR}
         ${imgui_SOURCE_DIR}/backends
-        ${imguizmo_SOURCE_DIR}
+        ${imguizmo_SOURCE_DIR}/src
         ${imgui_file_dialog_SOURCE_DIR}
 )
 

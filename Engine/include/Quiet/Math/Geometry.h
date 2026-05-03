@@ -1,8 +1,15 @@
 #pragma once
 
-#include "glm/fwd.hpp"
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 
 namespace Quiet::Math
@@ -19,27 +26,42 @@ namespace Quiet::Math
         glm::vec3 Max{ 0.0f };
     };
 
+    [[nodiscard]] inline glm::vec3 SafeNormalize(const glm::vec3& value, const glm::vec3& fallback)
+    {
+        const float length = glm::length(value);
+        if (length <= 0.00001f) return fallback;
+        return value / length;
+    }
+
+    [[nodiscard]] inline glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point)
+    {
+        return glm::vec3(transform * glm::vec4(point, 1.0f));
+    }
+
+    [[nodiscard]] inline std::array<glm::vec3, 8> BuildAABBCorners(const glm::vec3& boundsMin, const glm::vec3& boundsMax)
+    {
+        return {
+            glm::vec3{ boundsMin.x, boundsMin.y, boundsMin.z },
+            glm::vec3{ boundsMax.x, boundsMin.y, boundsMin.z },
+            glm::vec3{ boundsMin.x, boundsMax.y, boundsMin.z },
+            glm::vec3{ boundsMax.x, boundsMax.y, boundsMin.z },
+            glm::vec3{ boundsMin.x, boundsMin.y, boundsMax.z },
+            glm::vec3{ boundsMax.x, boundsMin.y, boundsMax.z },
+            glm::vec3{ boundsMin.x, boundsMax.y, boundsMax.z },
+            glm::vec3{ boundsMax.x, boundsMax.y, boundsMax.z }
+        };
+    }
+
     [[nodiscard]] inline AABB TransformAABB(const glm::mat4& transform, const glm::vec3& localMin, const glm::vec3& localMax)
     {
-        const glm::vec3 corners[8] =
-        {
-            { localMin.x, localMin.y, localMin.z },
-            { localMax.x, localMin.y, localMin.z },
-            { localMin.x, localMax.y, localMin.z },
-            { localMax.x, localMax.y, localMin.z },
-            { localMin.x, localMin.y, localMax.z },
-            { localMax.x, localMin.y, localMax.z },
-            { localMin.x, localMax.y, localMax.z },
-            { localMax.x, localMax.y, localMax.z }
-        };
+        const auto corners = BuildAABBCorners(localMin, localMax);
 
         glm::vec3 worldMin(std::numeric_limits<float>::max());
         glm::vec3 worldMax(std::numeric_limits<float>::lowest());
 
         for (const glm::vec3& corner : corners)
         {
-            const glm::vec4 transformed = transform * glm::vec4(corner, 1.0f);
-            const glm::vec3 p = glm::vec3(transformed);
+            const glm::vec3 p = TransformPoint(transform, corner);
 
             worldMin = glm::min(worldMin, p);
             worldMax = glm::max(worldMax, p);
@@ -90,4 +112,5 @@ namespace Quiet::Math
         hitDistance = tMin;
         return true;
     }
+
 }

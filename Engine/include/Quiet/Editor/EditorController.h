@@ -1,11 +1,7 @@
 #pragma once
 
-#include <optional>
-
 #include "EditorSceneHistory.h"
 #include "EditorState.h"
-#include "Quiet/Core/UUID.h"
-#include "Quiet/Math/Geometry.h"
 
 namespace Quiet::Input
 {
@@ -16,11 +12,6 @@ namespace Quiet::Scene
 {
     class FreeCamera;
     class Scene;
-}
-
-namespace Quiet::Math
-{
-    struct Ray;
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -66,13 +57,6 @@ namespace Quiet::Editor
         void DrawViewportDebugIcons(const Scene::Scene& scene,
                                     const Scene::FreeCamera& camera,
                                     const Renderer::Vulkan::VulkanRenderer& renderer) const;
-
-    private:
-        [[nodiscard]] bool BuildViewportPickRay(float mouseScreenX,
-                                                float mouseScreenY,
-                                                const Scene::FreeCamera& camera,
-                                                const Renderer::Vulkan::VulkanRenderer& renderer,
-                                                Math::Ray& outRay) const;
 
     private:
         EditorState m_State{};
