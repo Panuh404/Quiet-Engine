@@ -8,7 +8,7 @@
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"
 
-namespace Quiet::Editor
+namespace
 {
     float DistanceSquared(const ImVec2& a, const ImVec2& b)
     {
@@ -23,10 +23,10 @@ namespace Quiet::Editor
         return DistanceSquared(point, iconPosition) <= pickRadius * pickRadius;
     }
 
-    void TrySetBestDebugIconHit(const Core::UUID actorID,
+    void TrySetBestDebugIconHit(const Quiet::Core::UUID actorID,
                                 const ImVec2& mousePosition,
                                 const ImVec2& iconPosition,
-                                std::optional<Core::UUID>& bestActorID,
+                                std::optional<Quiet::Core::UUID>& bestActorID,
                                 float& bestDistanceSquared)
     {
         if (!IsPointInsideDebugIcon(mousePosition, iconPosition)) return;
@@ -38,7 +38,10 @@ namespace Quiet::Editor
             bestActorID = actorID;
         }
     }
+}
 
+namespace Quiet::Editor
+{
     std::optional<Core::UUID> PickViewportDebugIcon(const Scene::Scene& scene,
                                                     const Renderer::Vulkan::CameraUniformData& cameraData,
                                                     const EditorViewportState& viewportState,

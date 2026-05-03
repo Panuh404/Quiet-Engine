@@ -57,6 +57,8 @@ target_sources(Quiet_Engine
         src/Editor/EditorSceneWorkflow.cpp
 
         # Editor - Viewport
+        src/Editor/Viewport/EditorViewportGizmo.cpp
+        src/Editor/Viewport/EditorViewportGizmo.h
         src/Editor/Viewport/EditorViewportInteraction.cpp
         src/Editor/Viewport/EditorViewportOverlay.cpp
         src/Editor/Viewport/EditorViewportOverlay.h

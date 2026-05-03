@@ -19,31 +19,9 @@
 #include "Editor/Viewport/EditorViewportOverlay.h"
 #include "Editor/Viewport/EditorViewportPicking.h"
 #include "Editor/Viewport/EditorViewportProjection.h"
+#include "Editor/Viewport/EditorViewportGizmo.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
-namespace
-{
-    ImGuizmo::OPERATION ToImGuizmoOperation(Quiet::Editor::GizmoOperation operation)
-    {
-        switch (operation)
-        {
-            case Quiet::Editor::GizmoOperation::Translate:  return ImGuizmo::TRANSLATE;
-            case Quiet::Editor::GizmoOperation::Rotate:     return ImGuizmo::ROTATE;
-            case Quiet::Editor::GizmoOperation::Scale:      return ImGuizmo::SCALE;
-            default:                                        return ImGuizmo::TRANSLATE;
-        }
-    }
-
-    ImGuizmo::MODE ToImGuizmoMode(Quiet::Editor::GizmoMode mode)
-    {
-        switch (mode)
-        {
-            case Quiet::Editor::GizmoMode::Local:   return ImGuizmo::LOCAL;
-            case Quiet::Editor::GizmoMode::World:   return ImGuizmo::WORLD;
-            default:                                return ImGuizmo::WORLD;
-        }
-    }
-}
 
 namespace Quiet::Editor
 {
@@ -137,34 +115,9 @@ namespace Quiet::Editor
         }
 
         auto& transform = actor->Transform.WorldTransform;
-        float translation[3] =
-        {
-            transform.Position.x,
-            transform.Position.y,
-            transform.Position.z
-        };
-        float rotation[3] =
-        {
-            transform.RotationDegrees.x,
-            transform.RotationDegrees.y,
-            transform.RotationDegrees.z
-        };
-        float scale[3] =
-        {
-            transform.Scale.x,
-            transform.Scale.y,
-            transform.Scale.z
-        };
+        const GizmoTransformComponents components = MakeGizmoTransformComponents(transform);
+        glm::mat4 model = ComposeGizmoMatrix(components);
 
-        float modelArray[16]{};
-        ImGuizmo::RecomposeMatrixFromComponents(
-            translation,
-            rotation,
-            scale,
-            modelArray
-        );
-
-        glm::mat4 model = glm::make_mat4(modelArray);
         ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(
@@ -177,31 +130,7 @@ namespace Quiet::Editor
         const ImGuizmo::OPERATION operation = ToImGuizmoOperation(m_State.Gizmo.Operation);
         const ImGuizmo::MODE mode = ToImGuizmoMode(m_State.Gizmo.Mode);
 
-        float snapValues[3] = { 0.0f, 0.0f, 0.0f };
-        const float* snapPointer = nullptr;
-
-        if (m_State.Gizmo.SnapEnabled)
-        {
-            switch (m_State.Gizmo.Operation)
-            {
-                case GizmoOperation::Translate:
-                    snapValues[0] = m_State.Gizmo.TranslateSnap[0];
-                    snapValues[1] = m_State.Gizmo.TranslateSnap[1];
-                    snapValues[2] = m_State.Gizmo.TranslateSnap[2];
-                    snapPointer = snapValues;
-                    break;
-
-                case GizmoOperation::Rotate:
-                    snapValues[0] = m_State.Gizmo.RotateSnap;
-                    snapPointer = snapValues;
-                    break;
-
-                case GizmoOperation::Scale:
-                    snapValues[0] = m_State.Gizmo.ScaleSnap;
-                    snapPointer = snapValues;
-                    break;
-            }
-        }
+        const GizmoSnapSettings snapSettings = BuildGizmoSnapSettings(m_State.Gizmo);
 
         const bool changed = ImGuizmo::Manipulate(
             glm::value_ptr(cameraData.View),
@@ -210,37 +139,18 @@ namespace Quiet::Editor
             mode,
             glm::value_ptr(model),
             nullptr,
-            snapPointer
+            snapSettings.GetPointer()
         );
 
         const bool isUsingGizmo = ImGuizmo::IsUsing();
         if ((changed || isUsingGizmo) && !m_WasUsingGizmo)
-        {
             BeginSceneMutation(scene);
-        }
 
         if (changed || isUsingGizmo)
-        {
-            float outTranslation[3]{};
-            float outRotation[3]{};
-            float outScale[3]{};
-
-            ImGuizmo::DecomposeMatrixToComponents(
-                glm::value_ptr(model),
-                outTranslation,
-                outRotation,
-                outScale
-            );
-
-            transform.Position = { outTranslation[0], outTranslation[1], outTranslation[2] };
-            transform.RotationDegrees = { outRotation[0], outRotation[1], outRotation[2] };
-            transform.Scale = { outScale[0], outScale[1], outScale[2] };
-        }
+            ApplyGizmoMatrixToTransform(model, transform);
 
         if (!isUsingGizmo && m_WasUsingGizmo)
-        {
             EndSceneMutation(scene);
-        }
 
         m_WasUsingGizmo = isUsingGizmo;
     }

@@ -27,16 +27,6 @@ namespace Quiet::Math
 
 namespace Quiet::Editor
 {
-    float DistanceSquared(const ImVec2& a, const ImVec2& b);
-
-    bool IsPointInsideDebugIcon(const ImVec2& point, const ImVec2& iconPosition);
-
-    void TrySetBestDebugIconHit(const Core::UUID actorID,
-                                const ImVec2& mousePosition,
-                                const ImVec2& iconPosition,
-                                std::optional<Core::UUID>& bestActorID,
-                                float& bestDistanceSquared);
-
     std::optional<Core::UUID> PickViewportDebugIcon(const Scene::Scene& scene,
                                                     const Renderer::Vulkan::CameraUniformData& cameraData,
                                                     const EditorViewportState& viewportState,
