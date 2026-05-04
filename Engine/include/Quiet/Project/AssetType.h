@@ -7,7 +7,8 @@ namespace Quiet::Project
     enum class AssetType
     {
         Unknown = 0,
-        Mesh
+        Mesh,
+        Texture
     };
 
     [[nodiscard]] constexpr std::string_view ToString(const AssetType type)
@@ -15,6 +16,7 @@ namespace Quiet::Project
         switch (type)
         {
             case AssetType::Mesh: return "Mesh";
+            case AssetType::Texture: return "Texture";
             case AssetType::Unknown:
             default:
                 return "Unknown";
@@ -26,6 +28,12 @@ namespace Quiet::Project
         if (value == "Mesh")
         {
             outType = AssetType::Mesh;
+            return true;
+        }
+
+        if (value == "Texture")
+        {
+            outType = AssetType::Texture;
             return true;
         }
 

@@ -72,6 +72,26 @@ namespace Quiet::Project
         return SaveAssetRegistry();
     }
 
+    bool ProjectContext::RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    {
+        assetID = TrimCopy(std::move(assetID));
+        if (!IsValidAssetID(assetID)) return false;
+
+        assetPath = NormalizeAssetPath(std::move(assetPath));
+
+        AssetRecord record{};
+        record.ID = std::move(assetID);
+        record.Type = AssetType::Texture;
+        record.Path = builtIn ? std::string{} : assetPath.generic_string();
+        record.BuiltIn = builtIn;
+
+        if (!AssetRegistryIO::AddOrUpdate(m_AssetRegistry, std::move(record)))
+            return false;
+
+        AssetRegistryIO::EnsureBuiltInAssets(m_AssetRegistry);
+        return SaveAssetRegistry();
+    }
+
     bool ProjectContext::RemoveAssetByID(std::string_view assetID)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);

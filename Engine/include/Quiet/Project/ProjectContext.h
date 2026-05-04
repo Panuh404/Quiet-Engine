@@ -43,6 +43,10 @@ namespace Quiet::Project
         {
             return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh);
         }
+        [[nodiscard]] std::vector<std::string> EnumerateTextureAssetIDs() const
+        {
+            return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Texture);
+        }
 
         void SetActiveScenePath(std::filesystem::path path)
         {
@@ -112,9 +116,8 @@ namespace Quiet::Project
             return AssetRegistryIO::SaveToFile(GetAssetRegistryPath(), m_AssetRegistry);
         }
 
-        [[nodiscard]] bool RegisterMeshAsset(std::string assetID,
-                                             std::filesystem::path assetPath,
-                                             bool builtIn = false);
+        [[nodiscard]] bool RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
+        [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
 
         [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
 

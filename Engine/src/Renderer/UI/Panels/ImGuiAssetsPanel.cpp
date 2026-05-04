@@ -53,22 +53,26 @@ namespace
     std::string MakeStatusLabel(const Quiet::Project::AssetRecord& record,
                                 const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        if (record.Type != Quiet::Project::AssetType::Mesh)
+        if (record.Type == Quiet::Project::AssetType::Mesh)
         {
-            return "Unknown";
+            if (meshLibrary.TryGet(record.ID))
+                return "Loaded";
+
+            if (record.BuiltIn)
+                return "Missing Built-In";
+
+            return "Registered";
         }
 
-        if (meshLibrary.TryGet(record.ID))
+        if (record.Type == Quiet::Project::AssetType::Texture)
         {
-            return "Loaded";
+            if (record.Path.empty() && !record.BuiltIn)
+                return "Missing Path";
+
+            return "Registered";
         }
 
-        if (record.BuiltIn)
-        {
-            return "Missing Built-In";
-        }
-
-        return "Registered";
+        return "Unknown";
     }
 
     ImVec4 MakeStatusColor(const std::string& status)
@@ -76,6 +80,7 @@ namespace
         if (status == "Loaded") return {0.30f, 0.85f, 0.42f, 1.0f};
         if (status == "Registered") return {0.95f, 0.76f, 0.32f, 1.0f};
         if (status == "Missing Built-In") return {0.95f, 0.30f, 0.30f, 1.0f};
+        if (status == "Missing Path") return {0.95f, 0.30f, 0.30f, 1.0f};
         return {0.70f, 0.72f, 0.76f, 1.0f};
     }
 
@@ -287,46 +292,58 @@ namespace
             else
                 DrawDetailRowWrapped("Path", record->Path, labelWidth);
 
-            DrawDetailsSectionTitle("Runtime Mesh");
-            if (stats.has_value())
+            if (record->Type == Quiet::Project::AssetType::Mesh)
             {
-                DrawDetailRowWrapped("Importer", stats->ImporterName, labelWidth);
-                DrawDetailRowUInt("Meshes", stats->ImportedMeshCount, labelWidth);
-                DrawDetailRowUInt("Vertices", stats->VertexCount, labelWidth);
-                DrawDetailRowUInt("Indices", stats->IndexCount, labelWidth);
-                DrawDetailRowUInt("Warnings", stats->WarningCount, labelWidth);
-
-                DrawDetailsSectionTitle("Bounds");
-                if (stats->BoundsValid)
+                DrawDetailsSectionTitle("Runtime Mesh");
+                if (stats.has_value())
                 {
-                    DrawDetailRowVec3("Min", stats->BoundsMin, labelWidth);
-                    DrawDetailRowVec3("Max", stats->BoundsMax, labelWidth);
+                    DrawDetailRowWrapped("Importer", stats->ImporterName, labelWidth);
+                    DrawDetailRowUInt("Meshes", stats->ImportedMeshCount, labelWidth);
+                    DrawDetailRowUInt("Vertices", stats->VertexCount, labelWidth);
+                    DrawDetailRowUInt("Indices", stats->IndexCount, labelWidth);
+                    DrawDetailRowUInt("Warnings", stats->WarningCount, labelWidth);
 
-                    const glm::vec3 size = stats->BoundsMax - stats->BoundsMin;
-                    DrawDetailRowVec3("Size", size, labelWidth);
-                }
-                else
-                    ImGui::TextDisabled("No bounds available.");
+                    DrawDetailsSectionTitle("Bounds");
 
-                DrawDetailsSectionTitle("Import Warnings");
-                if (stats->Warnings.empty())
-                    ImGui::TextDisabled("No import warnings.");
-                else
-                {
-                    ImGui::BeginChild(
-                        "AssetImportWarnings",
-                        ImVec2(0.0f, 120.0f * uiScale),
-                        true
-                    );
-                    for (const std::string& warning : stats->Warnings)
+                    if (stats->BoundsValid)
                     {
-                        ImGui::BulletText("%s", warning.c_str());
+                        DrawDetailRowVec3("Min", stats->BoundsMin, labelWidth);
+                        DrawDetailRowVec3("Max", stats->BoundsMax, labelWidth);
+
+                        const glm::vec3 size = stats->BoundsMax - stats->BoundsMin;
+                        DrawDetailRowVec3("Size", size, labelWidth);
                     }
-                    ImGui::EndChild();
+                    else
+                    {
+                        ImGui::TextDisabled("No bounds available.");
+                    }
+
+                    DrawDetailsSectionTitle("Import Warnings");
+                    if (stats->Warnings.empty())
+                        ImGui::TextDisabled("No import warnings.");
+                    else
+                    {
+                        ImGui::BeginChild(
+                            "AssetImportWarnings",
+                            ImVec2(0.0f, 120.0f * uiScale),
+                            true
+                        );
+
+                        for (const std::string& warning : stats->Warnings)
+                        {
+                            ImGui::BulletText("%s", warning.c_str());
+                        }
+                        ImGui::EndChild();
+                    }
                 }
+                else
+                    ImGui::TextDisabled("This mesh asset is not currently loaded.");
             }
-            else
-                ImGui::TextDisabled("This asset is not currently loaded.");
+            else if (record->Type == Quiet::Project::AssetType::Texture)
+            {
+                DrawDetailsSectionTitle("Runtime Texture");
+                ImGui::TextDisabled("Texture GPU loading is not implemented yet.");
+            }
 
             ImGui::Spacing();
             ImGui::Separator();
