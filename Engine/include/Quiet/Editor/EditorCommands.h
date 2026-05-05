@@ -73,6 +73,7 @@ namespace Quiet::Editor
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
+        bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
 
         bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);

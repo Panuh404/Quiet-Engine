@@ -188,6 +188,7 @@ namespace Quiet::Renderer::UI
     void DrawMaterialSection(Scene::Scene& scene,
                              Scene::Actor& actor,
                              Editor::EditorCommands& commands,
+                             const Project::ProjectContext& projectContext,
                              const TrackedInspectorInteraction& tracked)
     {
         if (!actor.StaticMesh.has_value()) return;
@@ -208,21 +209,45 @@ namespace Quiet::Renderer::UI
         tracked.End();
 
         ImGui::Spacing();
-        ImGui::TextDisabled("Base Color Texture");
 
-        if (actor.Material->HasBaseColorTexture())
+        const std::vector<std::string> textureAssetIDs =
+            projectContext.EnumerateTextureAssetIDs();
+
+        const char* texturePreview =
+            actor.Material->HasBaseColorTexture()
+                ? actor.Material->BaseColorTextureAssetID.c_str()
+                : "None";
+
+        if (ImGui::BeginCombo("Base Color Texture", texturePreview))
         {
-            ImGui::TextWrapped("%s", actor.Material->BaseColorTextureAssetID.c_str());
+            const bool noneSelected = !actor.Material->HasBaseColorTexture();
+            if (ImGui::Selectable("None", noneSelected))
+                commands.SetMaterialBaseColorTextureAsset(scene, actor.ID, std::string{});
+
+            if (noneSelected) ImGui::SetItemDefaultFocus();
+            if (!textureAssetIDs.empty()) ImGui::Separator();
+
+            for (const std::string& textureAssetID : textureAssetIDs)
+            {
+                const bool selected = actor.Material->BaseColorTextureAssetID == textureAssetID;
+                if (ImGui::Selectable(textureAssetID.c_str(), selected))
+                {
+                    commands.SetMaterialBaseColorTextureAsset(
+                        scene,
+                        actor.ID,
+                        textureAssetID
+                    );
+                }
+
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
         }
+
+        if (textureAssetIDs.empty())
+            ImGui::TextDisabled("No texture assets registered.");
         else
-        {
-            ImGui::TextDisabled("None");
-        }
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-        {
-            ImGui::SetTooltip("Texture assets are not implemented yet. This slot is reserved for the future texture pipeline.");
-        }
+            ImGui::TextDisabled("Texture reference only. GPU texture rendering is not implemented yet.");
 
         if (ImGui::Button("Remove Material"))
             commands.RemoveMaterial(scene, actor.ID);

@@ -347,6 +347,18 @@ namespace Quiet::Editor
         return true;
     }
 
+    bool EditorCommands::SetMaterialBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, const std::string &textureAssetID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->Material.has_value()) return false;
+
+            actor->Material->BaseColorTextureAssetID = textureAssetID;
+            return true;
+        });
+    }
+
     bool EditorCommands::AddDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()

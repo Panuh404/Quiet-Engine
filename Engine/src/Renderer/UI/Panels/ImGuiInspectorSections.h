@@ -49,6 +49,7 @@ namespace Quiet::Renderer::UI
     void DrawMaterialSection(Scene::Scene& scene,
                              Scene::Actor& actor,
                              Editor::EditorCommands& commands,
+                             const Project::ProjectContext& projectContext,
                              const TrackedInspectorInteraction& tracked);
 
     void DrawDirectionalLightSection(Scene::Scene& scene,
