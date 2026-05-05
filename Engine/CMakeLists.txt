@@ -104,6 +104,11 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
+        # Renderer - Vulkan - Texture
+        src/Renderer/Vulkan/Texture/TextureImporter.cpp
+        src/Renderer/Vulkan/Texture/TextureImporter.h
+        src/Renderer/Vulkan/Texture/TextureImportResult.h
+
         # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp
         src/Renderer/Vulkan/CameraResources.h

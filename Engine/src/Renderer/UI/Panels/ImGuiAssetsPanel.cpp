@@ -13,6 +13,7 @@
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Texture/TextureImporter.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -372,8 +373,63 @@ namespace
             }
             else if (record->Type == Quiet::Project::AssetType::Texture)
             {
-                DrawDetailsSectionTitle("Runtime Texture");
-                ImGui::TextDisabled("Texture GPU loading is not implemented yet.");
+                DrawDetailsSectionTitle("Source Texture");
+
+                const std::filesystem::path texturePath =
+                    ResolveDisplayPath(projectContext, record->Path);
+
+                const Quiet::Renderer::Vulkan::TextureImportResult textureInfo =
+                    Quiet::Renderer::Vulkan::TextureImporter::LoadFromFile(texturePath);
+
+                if (!textureInfo.Succeeded())
+                {
+                    ImGui::TextColored(
+                        ImVec4(0.95f, 0.30f, 0.30f, 1.0f),
+                        "Invalid texture source."
+                    );
+
+                    DrawDetailRowWrapped("Error", textureInfo.Error, labelWidth);
+                }
+                else
+                {
+                    DrawDetailRow("Format", textureInfo.Format.c_str(), labelWidth);
+                    if (textureInfo.DimensionsValid)
+                    {
+                        ImGui::TextDisabled("Dimensions");
+                        ImGui::SameLine(labelWidth);
+                        ImGui::Text("%u x %u", textureInfo.Width, textureInfo.Height);
+                    }
+                    else
+                    {
+                        DrawDetailRow("Dimensions", "Unknown", labelWidth);
+                    }
+
+                    DrawDetailRowWrapped(
+                        "File Size",
+                        std::to_string(textureInfo.FileSizeBytes) + " bytes",
+                        labelWidth
+                    );
+
+                    DrawDetailRowUInt(
+                        "Warnings",
+                        static_cast<std::uint32_t>(textureInfo.Warnings.size()),
+                        labelWidth
+                    );
+
+                    DrawDetailsSectionTitle("Texture Warnings");
+                    if (textureInfo.Warnings.empty())
+                        ImGui::TextDisabled("No texture warnings.");
+                    else
+                    {
+                        for (const std::string& warning : textureInfo.Warnings)
+                        {
+                            ImGui::BulletText("%s", warning.c_str());
+                        }
+                    }
+
+                    DrawDetailsSectionTitle("Runtime Texture");
+                    ImGui::TextDisabled("GPU texture loading is not implemented yet.");
+                }
             }
 
             ImGui::Spacing();
