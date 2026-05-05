@@ -14,6 +14,7 @@
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureImporter.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -54,7 +55,8 @@ namespace
     }
 
     std::string MakeStatusLabel(const Quiet::Project::AssetRecord& record,
-                                const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
+                                const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
     {
         if (record.Type == Quiet::Project::AssetType::Mesh)
         {
@@ -69,6 +71,10 @@ namespace
 
         if (record.Type == Quiet::Project::AssetType::Texture)
         {
+            if (textureLibrary.Has(record.ID))
+            {
+                return "Loaded Metadata";
+            }
             if (record.Path.empty() && !record.BuiltIn)
                 return "Missing Path";
 
@@ -81,6 +87,7 @@ namespace
     ImVec4 MakeStatusColor(const std::string& status)
     {
         if (status == "Loaded") return {0.30f, 0.85f, 0.42f, 1.0f};
+        if (status == "Loaded Metadata") return {0.30f, 0.85f, 0.42f, 1.0f};
         if (status == "Registered") return {0.95f, 0.76f, 0.32f, 1.0f};
         if (status == "Missing Built-In") return {0.95f, 0.30f, 0.30f, 1.0f};
         if (status == "Missing Path") return {0.95f, 0.30f, 0.30f, 1.0f};
@@ -281,6 +288,7 @@ namespace
 
     void DrawAssetDetailsPopup(const Quiet::Project::ProjectContext& projectContext,
                                const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                               const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
                                const std::string& assetID,
                                const float uiScale)
     {
@@ -293,7 +301,7 @@ namespace
         if (!record) return;
 
         const auto stats = meshLibrary.GetStats(record->ID);
-        const std::string status = MakeStatusLabel(*record, meshLibrary);
+        const std::string status = MakeStatusLabel(*record, meshLibrary, textureLibrary);
         const ImVec4 statusColor = MakeStatusColor(status);
 
         const float labelWidth = 128.0f * uiScale;
@@ -378,26 +386,22 @@ namespace
                 const std::filesystem::path texturePath =
                     ResolveDisplayPath(projectContext, record->Path);
 
-                const Quiet::Renderer::Vulkan::TextureImportResult textureInfo =
-                    Quiet::Renderer::Vulkan::TextureImporter::LoadFromFile(texturePath);
+                const auto textureStats = textureLibrary.GetStats(record->ID);
 
-                if (!textureInfo.Succeeded())
+                if (!textureStats.has_value())
                 {
-                    ImGui::TextColored(
-                        ImVec4(0.95f, 0.30f, 0.30f, 1.0f),
-                        "Invalid texture source."
-                    );
-
-                    DrawDetailRowWrapped("Error", textureInfo.Error, labelWidth);
+                    ImGui::TextDisabled("Texture metadata is not loaded.");
+                    ImGui::TextDisabled("Use Reload Meshes/Assets after registering the texture.");
                 }
                 else
                 {
-                    DrawDetailRow("Format", textureInfo.Format.c_str(), labelWidth);
-                    if (textureInfo.DimensionsValid)
+                    DrawDetailRow("Format", textureStats->Format.c_str(), labelWidth);
+
+                    if (textureStats->DimensionsValid)
                     {
                         ImGui::TextDisabled("Dimensions");
                         ImGui::SameLine(labelWidth);
-                        ImGui::Text("%u x %u", textureInfo.Width, textureInfo.Height);
+                        ImGui::Text("%u x %u", textureStats->Width, textureStats->Height);
                     }
                     else
                     {
@@ -406,22 +410,25 @@ namespace
 
                     DrawDetailRowWrapped(
                         "File Size",
-                        std::to_string(textureInfo.FileSizeBytes) + " bytes",
+                        std::to_string(textureStats->FileSizeBytes) + " bytes",
                         labelWidth
                     );
 
                     DrawDetailRowUInt(
                         "Warnings",
-                        static_cast<std::uint32_t>(textureInfo.Warnings.size()),
+                        static_cast<std::uint32_t>(textureStats->Warnings.size()),
                         labelWidth
                     );
 
                     DrawDetailsSectionTitle("Texture Warnings");
-                    if (textureInfo.Warnings.empty())
+
+                    if (textureStats->Warnings.empty())
+                    {
                         ImGui::TextDisabled("No texture warnings.");
+                    }
                     else
                     {
-                        for (const std::string& warning : textureInfo.Warnings)
+                        for (const std::string& warning : textureStats->Warnings)
                         {
                             ImGui::BulletText("%s", warning.c_str());
                         }
@@ -455,7 +462,8 @@ namespace Quiet::Renderer::UI
     void ImGuiLayer::BuildAssetsPanel(Project::ProjectContext& projectContext,
                                       Editor::EditorState& editorState,
                                       Scene::Scene& scene,
-                                      const Vulkan::MeshLibrary& meshLibrary)
+                                      const Vulkan::MeshLibrary& meshLibrary,
+                                      const Vulkan::TextureLibrary& textureLibrary)
     {
         ImGui::Begin("Assets");
         {
@@ -533,7 +541,7 @@ namespace Quiet::Renderer::UI
                 {
                     const auto stats = meshLibrary.GetStats(record.ID);
                     const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
-                    const std::string status = MakeStatusLabel(record, meshLibrary);
+                    const std::string status = MakeStatusLabel(record, meshLibrary, textureLibrary);
 
                     ImGui::TableNextRow();
 
@@ -633,7 +641,7 @@ namespace Quiet::Renderer::UI
                     ImGui::OpenPopup("Remove Asset Failed");
                 }
             }
-            DrawAssetDetailsPopup(projectContext, meshLibrary, selectedDetailsAssetID, GetUIScale());
+            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, GetUIScale());
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
         }
         ImGui::End();

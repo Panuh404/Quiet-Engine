@@ -108,6 +108,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Texture/TextureImporter.cpp
         src/Renderer/Vulkan/Texture/TextureImporter.h
         src/Renderer/Vulkan/Texture/TextureImportResult.h
+        src/Renderer/Vulkan/Texture/TextureLibrary.cpp
+        src/Renderer/Vulkan/Texture/TextureLibrary.h
 
         # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp

@@ -109,10 +109,10 @@ namespace Quiet::Project
             QUIET_CORE_WARN("Failed to save project registry.");
         }
 
-        if (!m_ProjectAssetLoader.ReloadMeshAssets())
+        if (!m_ProjectAssetLoader.ReloadAssets())
         {
             QUIET_CORE_WARN(
-                "Project '{}' has mesh assets that are registered but not fully loadable yet.",
+                "Project '{}' has assets that are registered but not fully loadable yet.",
                 m_ProjectContext.GetProjectFilePath().string()
             );
         }

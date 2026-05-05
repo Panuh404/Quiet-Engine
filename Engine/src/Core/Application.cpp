@@ -27,6 +27,7 @@
 #include "Quiet/Project/ProjectWorkflow.h"
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera/CameraController.h"
@@ -169,6 +170,7 @@ namespace Quiet::Core
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
             m_Renderer->GetMeshLibrary(),
+            m_Renderer->GetTextureLibrary(),
             m_Renderer->GetPhysicalDevice(),
             m_Renderer->GetLogicalDevice(),
             m_Renderer->GetGraphicsCommands()
@@ -365,10 +367,10 @@ namespace Quiet::Core
                     }
 
                     m_Renderer->WaitIdle();
-                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadMeshAssets(true);
+                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadAssets(true);
                     if (!allAssetsLoaded)
                     {
-                        QUIET_CORE_WARN("Some registered mesh assets could not be loaded.");
+                        QUIET_CORE_WARN("Some registered assets could not be loaded.");
                     }
 
                     RelinkSceneStaticMeshes(*m_Scene);
@@ -612,6 +614,7 @@ namespace Quiet::Core
             m_ProjectContext,
             m_ProjectRegistry,
             m_Renderer->GetMeshLibrary(),
+            m_Renderer->GetTextureLibrary(),
             m_Renderer->GetSceneViewportTextureID(),
             BuildEditorViewportOverlayCallback());
 

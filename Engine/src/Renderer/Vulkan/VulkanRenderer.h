@@ -45,6 +45,7 @@ namespace Quiet::Renderer::Vulkan
     class SceneViewportTarget;
     class GraphicsCommands;
     class MeshLibrary;
+    class TextureLibrary;
     class CameraResources;
     class StaticMeshPipeline;
     class FrameSync;
@@ -69,6 +70,9 @@ namespace Quiet::Renderer::Vulkan
 
         [[nodiscard]] MeshLibrary& GetMeshLibrary() { return *m_MeshLibrary; }
         [[nodiscard]] const MeshLibrary& GetMeshLibrary() const { return *m_MeshLibrary; }
+
+        [[nodiscard]] TextureLibrary& GetTextureLibrary() { return *m_TextureLibrary; }
+        [[nodiscard]] const TextureLibrary& GetTextureLibrary() const { return *m_TextureLibrary; }
 
         [[nodiscard]] UI::ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
         [[nodiscard]] const UI::ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
@@ -107,6 +111,7 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<GraphicsCommands> m_GraphicsCommands;
         std::unique_ptr<UI::ImGuiLayer> m_ImGuiLayer;
         std::unique_ptr<MeshLibrary> m_MeshLibrary;
+        std::unique_ptr<TextureLibrary> m_TextureLibrary;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<FrameSync> m_FrameSync;

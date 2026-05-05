@@ -10,6 +10,9 @@
 #include "Renderer/Vulkan/Mesh/MeshImporter.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
+#include "Renderer/Vulkan/Texture/TextureImporter.h"
+#include "Renderer/Vulkan/Texture/TextureImportResult.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 namespace
 {
@@ -28,17 +31,35 @@ namespace
         stats.Warnings = importResult.Warnings;
         return stats;
     }
+
+    Quiet::Renderer::Vulkan::TextureStats MakeTextureStatsFromImportResult(
+        const Quiet::Renderer::Vulkan::TextureImportResult& importResult)
+    {
+        Quiet::Renderer::Vulkan::TextureStats stats{};
+
+        stats.Format = importResult.Format;
+        stats.Width = importResult.Width;
+        stats.Height = importResult.Height;
+        stats.DimensionsValid = importResult.DimensionsValid;
+        stats.FileSizeBytes = importResult.FileSizeBytes;
+        stats.WarningCount = static_cast<std::uint32_t>(importResult.Warnings.size());
+        stats.Warnings = importResult.Warnings;
+
+        return stats;
+    }
 }
 
 namespace Quiet::Project
 {
-    ProjectAssetLoader::ProjectAssetLoader(ProjectContext &projectContext,
-                                           Renderer::Vulkan::MeshLibrary &meshLibrary,
-                                           const Renderer::Vulkan::PhysicalDevice &physicalDevice,
-                                           const Renderer::Vulkan::LogicalDevice &logicalDevice,
-                                           const Renderer::Vulkan::GraphicsCommands &graphicsCommands)
+    ProjectAssetLoader::ProjectAssetLoader(ProjectContext& projectContext,
+                                           Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                           Renderer::Vulkan::TextureLibrary& textureLibrary,
+                                           const Renderer::Vulkan::PhysicalDevice& physicalDevice,
+                                           const Renderer::Vulkan::LogicalDevice& logicalDevice,
+                                           const Renderer::Vulkan::GraphicsCommands& graphicsCommands)
                                                : m_ProjectContext(projectContext)
                                                , m_MeshLibrary(meshLibrary)
+                                               , m_TextureLibrary(textureLibrary)
                                                , m_PhysicalDevice(physicalDevice)
                                                , m_LogicalDevice(logicalDevice)
                                                , m_GraphicsCommands(graphicsCommands) {}
@@ -58,11 +79,34 @@ namespace Quiet::Project
                 continue;
             }
             if (!LoadExternalMesh(*record, forceReimport))
-            {
                 allSupportedAssetsLoaded = false;
-            }
         }
         return allSupportedAssetsLoaded;
+    }
+
+    bool ProjectAssetLoader::ReloadTextureAssets(bool forceReimport)
+    {
+        const auto textureAssets =
+            AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Texture);
+
+        bool allSupportedAssetsLoaded = true;
+        for (const AssetRecord* record : textureAssets)
+        {
+            if (!record) continue;
+            if (record->BuiltIn) continue;
+
+            if (!LoadExternalTexture(*record, forceReimport))
+                allSupportedAssetsLoaded = false;
+        }
+
+        return allSupportedAssetsLoaded;
+    }
+
+    bool ProjectAssetLoader::ReloadAssets(bool forceReimport)
+    {
+        const bool meshesLoaded = ReloadMeshAssets(forceReimport);
+        const bool texturesLoaded = ReloadTextureAssets(forceReimport);
+        return meshesLoaded && texturesLoaded;
     }
 
     bool ProjectAssetLoader::LoadBuiltInMesh(const AssetRecord &record)
@@ -104,8 +148,7 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord& record,
-                                          const bool forceReimport)
+    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord& record, const bool forceReimport)
     {
         const bool alreadyLoaded = m_MeshLibrary.Has(record.ID);
         if (alreadyLoaded && !forceReimport) return true;
@@ -198,6 +241,83 @@ namespace Quiet::Project
         for (const std::string& warning : importResult.Warnings)
         {
             QUIET_CORE_WARN("Mesh asset '{}': {}", record.ID, warning);
+        }
+
+        return true;
+    }
+
+    bool ProjectAssetLoader::LoadExternalTexture(const AssetRecord& record, const bool forceReimport)
+    {
+        const bool alreadyLoaded = m_TextureLibrary.Has(record.ID);
+        if (alreadyLoaded && !forceReimport) return true;
+        if (record.Path.empty())
+        {
+            QUIET_CORE_WARN("Texture asset '{}' is registered without a source path.", record.ID);
+            return false;
+        }
+
+        const std::filesystem::path rawAssetPath = record.Path;
+        const std::filesystem::path assetPath =
+            rawAssetPath.is_absolute()
+                ? rawAssetPath.lexically_normal()
+                : (m_ProjectContext.GetRootPath() / rawAssetPath).lexically_normal();
+
+        if (!std::filesystem::exists(assetPath))
+        {
+            QUIET_CORE_WARN(
+                "Texture asset '{}' points to missing file '{}'.",
+                record.ID,
+                assetPath.string()
+            );
+            return false;
+        }
+
+        const Renderer::Vulkan::TextureImportResult importResult = Renderer::Vulkan::TextureImporter::LoadFromFile(assetPath);
+        if (!importResult.Succeeded())
+        {
+            QUIET_CORE_WARN(
+                "Failed to parse texture asset '{}' from '{}': {}",
+                record.ID,
+                assetPath.string(),
+                importResult.Error
+            );
+            return false;
+        }
+
+        const Renderer::Vulkan::TextureStats stats = MakeTextureStatsFromImportResult(importResult);
+        try
+        {
+            if (alreadyLoaded)
+                m_TextureLibrary.ReplaceTexture(record.ID, stats);
+            else
+                m_TextureLibrary.RegisterTexture(record.ID, stats);
+        }
+        catch (const std::exception& e)
+        {
+            QUIET_CORE_ERROR(
+                "Failed to create runtime texture metadata '{}' from '{}': {}",
+                record.ID,
+                assetPath.string(),
+                e.what()
+            );
+            return false;
+        }
+
+        QUIET_CORE_INFO(
+            "{} texture asset '{}' from '{}'. format={} dimensions={}x{} dimensionsValid={} warnings={}",
+            alreadyLoaded ? "Reloaded" : "Loaded",
+            record.ID,
+            assetPath.string(),
+            importResult.Format,
+            importResult.Width,
+            importResult.Height,
+            importResult.DimensionsValid,
+            importResult.Warnings.size()
+        );
+
+        for (const std::string& warning : importResult.Warnings)
+        {
+            QUIET_CORE_WARN("Texture asset '{}': {}", record.ID, warning);
         }
 
         return true;

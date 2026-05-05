@@ -22,6 +22,7 @@
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
+#include "Texture/TextureLibrary.h"
 
 namespace
 {
@@ -193,6 +194,7 @@ namespace Quiet::Renderer::Vulkan
             m_DepthResources->GetFormat());
 
         m_MeshLibrary = std::make_unique<MeshLibrary>();
+        m_TextureLibrary = std::make_unique<TextureLibrary>();
 
         m_CameraResources = std::make_unique<CameraResources>(
             *m_PhysicalDevice,
@@ -228,6 +230,7 @@ namespace Quiet::Renderer::Vulkan
         m_ImGuiLayer.reset();
         m_DepthResources.reset();
         m_MeshLibrary.reset();
+        m_TextureLibrary.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();

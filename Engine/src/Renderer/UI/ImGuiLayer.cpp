@@ -115,6 +115,7 @@ namespace Quiet::Renderer::UI
                                    Project::ProjectContext &projectContext,
                                    const Project::ProjectRegistry &projectRegistry,
                                    const Vulkan::MeshLibrary &meshLibrary,
+                                   const Vulkan::TextureLibrary &textureLibrary,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()> &viewportOverlayCallback)
     {
@@ -126,7 +127,7 @@ namespace Quiet::Renderer::UI
         BuildHierarchy(scene, actions, commands, editorState, projectContext, meshLibrary);
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
 
-        BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary);
+        BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary, textureLibrary);
         BuildMainMenuBar(actions, editorState);
         BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
 

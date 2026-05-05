@@ -10,6 +10,7 @@ namespace Quiet::Project
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
+    class TextureLibrary;
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
@@ -22,19 +23,24 @@ namespace Quiet::Project
     public:
         ProjectAssetLoader(ProjectContext& projectContext,
                            Renderer::Vulkan::MeshLibrary& meshLibrary,
+                           Renderer::Vulkan::TextureLibrary& textureLibrary,
                            const Renderer::Vulkan::PhysicalDevice& physicalDevice,
                            const Renderer::Vulkan::LogicalDevice& logicalDevice,
                            const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
 
         bool ReloadMeshAssets(bool forceReimport = false);
+        bool ReloadTextureAssets(bool forceReimport = false);
+        bool ReloadAssets(bool forceReimport = false);
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
         bool LoadExternalMesh(const Project::AssetRecord& record, bool forceReimport);
+        bool LoadExternalTexture(const AssetRecord& record, bool forceReimport);
 
     private:
         ProjectContext& m_ProjectContext;
         Renderer::Vulkan::MeshLibrary& m_MeshLibrary;
+        Renderer::Vulkan::TextureLibrary& m_TextureLibrary;
         const Renderer::Vulkan::PhysicalDevice& m_PhysicalDevice;
         const Renderer::Vulkan::LogicalDevice& m_LogicalDevice;
         const Renderer::Vulkan::GraphicsCommands& m_GraphicsCommands;

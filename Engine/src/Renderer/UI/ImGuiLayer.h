@@ -40,6 +40,7 @@ namespace Quiet::Renderer::Vulkan
 {
     class LogicalDevice;
     class MeshLibrary;
+    class TextureLibrary;
 }
 
 namespace Quiet::Renderer::UI
@@ -82,6 +83,7 @@ namespace Quiet::Renderer::UI
                            Project::ProjectContext &projectContext,
                            const Project::ProjectRegistry &projectRegistry,
                            const Vulkan::MeshLibrary &meshLibrary,
+                           const Vulkan::TextureLibrary &textureLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()> &viewportOverlayCallback);
         void BuildRuntimeUI(std::uint32_t& outViewportWidth,
@@ -129,7 +131,8 @@ namespace Quiet::Renderer::UI
         void BuildAssetsPanel(Project::ProjectContext& projectContext,
                               Editor::EditorState& editorState,
                               Scene::Scene& scene,
-                              const Vulkan::MeshLibrary& meshLibrary);
+                              const Vulkan::MeshLibrary& meshLibrary,
+                              const Vulkan::TextureLibrary& textureLibrary);
 
         // Viewport Panels
         void BuildViewportToolbar(Editor::EditorState& editorState,
