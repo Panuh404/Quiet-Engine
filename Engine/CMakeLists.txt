@@ -105,11 +105,13 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
         # Renderer - Vulkan - Texture
+        src/Renderer/Vulkan/Texture/StbImage.cpp
         src/Renderer/Vulkan/Texture/TextureImporter.cpp
         src/Renderer/Vulkan/Texture/TextureImporter.h
         src/Renderer/Vulkan/Texture/TextureImportResult.h
         src/Renderer/Vulkan/Texture/TextureLibrary.cpp
         src/Renderer/Vulkan/Texture/TextureLibrary.h
+        src/Renderer/Vulkan/Texture/TexturePixelData.h
 
         # Renderer - Vulkan
         src/Renderer/Vulkan/CameraResources.cpp
@@ -153,6 +155,7 @@ target_sources(Quiet_Engine
         ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
         ${imguizmo_SOURCE_DIR}/src/ImGuizmo.h
         ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+        ${stb_SOURCE_DIR}
 
     PUBLIC
         include/Quiet/Core/Application.h

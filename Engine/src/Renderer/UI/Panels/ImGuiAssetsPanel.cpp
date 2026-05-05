@@ -13,7 +13,6 @@
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
-#include "Renderer/Vulkan/Texture/TextureImporter.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
@@ -184,6 +183,8 @@ namespace
 
                 case Quiet::Project::AssetType::Texture:
                     success = projectContext.RegisterTextureAsset(assetID, assetPath, false);
+                    if (success)
+                        editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
                     break;
 
                 case Quiet::Project::AssetType::Unknown:
@@ -382,10 +383,6 @@ namespace
             else if (record->Type == Quiet::Project::AssetType::Texture)
             {
                 DrawDetailsSectionTitle("Source Texture");
-
-                const std::filesystem::path texturePath =
-                    ResolveDisplayPath(projectContext, record->Path);
-
                 const auto textureStats = textureLibrary.GetStats(record->ID);
 
                 if (!textureStats.has_value())

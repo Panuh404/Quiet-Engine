@@ -110,7 +110,13 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
         GIT_TAG v0.6.7
 )
-FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog)
+FetchContent_Declare(
+        stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog stb)
 
 find_package(Vulkan REQUIRED)
 

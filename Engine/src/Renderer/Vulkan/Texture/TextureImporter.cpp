@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <stb/stb_image.h>
 
 namespace
 {
@@ -239,6 +240,64 @@ namespace Quiet::Renderer::Vulkan
         {
             result.Warnings.emplace_back("Texture file was readable, but dimensions could not be parsed.");
         }
+
+        return result;
+    }
+
+    TexturePixelData TextureImporter::LoadPixelsFromFile(const std::filesystem::path &path)
+    {
+        TexturePixelData result{};
+        result.Metadata = LoadFromFile(path);
+        if (!result.Metadata.Succeeded()) return result;
+
+        int width = 0;
+        int height = 0;
+        int sourceChannels = 0;
+
+        stbi_uc* pixels = stbi_load(
+            path.string().c_str(),
+            &width,
+            &height,
+            &sourceChannels,
+            STBI_rgb_alpha
+        );
+
+        if (!pixels)
+        {
+            result.Metadata.Success = false;
+            result.Metadata.Error = stbi_failure_reason()
+                ? stbi_failure_reason()
+                : "stb_image failed to decode texture.";
+            return result;
+        }
+
+        if (width <= 0 || height <= 0)
+        {
+            stbi_image_free(pixels);
+
+            result.Metadata.Success = false;
+            result.Metadata.Error = "Decoded texture dimensions are invalid.";
+            return result;
+        }
+
+        const std::size_t byteCount =
+            static_cast<std::size_t>(width) *
+            static_cast<std::size_t>(height) *
+            4u;
+
+        result.Width = static_cast<std::uint32_t>(width);
+        result.Height = static_cast<std::uint32_t>(height);
+        result.Channels = 4;
+        result.Pixels.assign(pixels, pixels + byteCount);
+
+        stbi_image_free(pixels);
+
+        if (sourceChannels != 4)
+            result.Metadata.Warnings.emplace_back("Texture was converted to RGBA8 during CPU import.");
+
+        result.Metadata.Width = result.Width;
+        result.Metadata.Height = result.Height;
+        result.Metadata.DimensionsValid = true;
 
         return result;
     }

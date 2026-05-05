@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "Renderer/Vulkan/Texture/TextureImportResult.h"
+#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -10,5 +11,6 @@ namespace Quiet::Renderer::Vulkan
     {
     public:
         [[nodiscard]] static TextureImportResult LoadFromFile(const std::filesystem::path& path);
+        [[nodiscard]] static TexturePixelData LoadPixelsFromFile(const std::filesystem::path& path);
     };
 }
