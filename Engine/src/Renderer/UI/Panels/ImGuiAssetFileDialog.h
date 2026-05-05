@@ -1,7 +1,10 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
+
+#include "Quiet/Project/AssetType.h"
 
 namespace Quiet::Project
 {
@@ -10,15 +13,18 @@ namespace Quiet::Project
 
 namespace Quiet::Renderer::UI
 {
-    struct MeshAssetFileDialogResult
+    struct AssetFileDialogResult
     {
+        Project::AssetType Type = Project::AssetType::Unknown;
         std::string AssetID;
         std::string AssetPath;
     };
 
-    void OpenMeshAssetFileDialog(const Project::ProjectContext& projectContext);
+    [[nodiscard]] Project::AssetType DetectImportAssetType(const std::filesystem::path& path);
 
-    [[nodiscard]] std::optional<MeshAssetFileDialogResult> DrawMeshAssetFileDialog(
+    void OpenAssetFileDialog(const Project::ProjectContext& projectContext);
+
+    [[nodiscard]] std::optional<AssetFileDialogResult> DrawAssetFileDialog(
         const Project::ProjectContext& projectContext
     );
 }

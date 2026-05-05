@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "glm/vec4.hpp"
 
 namespace Quiet::Scene
