@@ -165,7 +165,7 @@ namespace
         if (!canRegister)
             ImGui::BeginDisabled();
 
-        if (ImGui::Button("Register", ImVec2(150.0f, 0.0f)))
+        if (ImGui::Button("Register", ImVec2(125.0f, 0.0f)))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
@@ -210,7 +210,7 @@ namespace
         if (!canRegister) ImGui::EndDisabled();
         ImGui::SameLine();
 
-        if (ImGui::Button("Reload", ImVec2(150.0f, 0.0f)))
+        if (ImGui::Button("Reload", ImVec2(125.0f, 0.0f)))
             editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
 
         ImGui::PopStyleVar(2);
@@ -410,15 +410,23 @@ namespace
                         std::to_string(textureStats->FileSizeBytes) + " bytes",
                         labelWidth
                     );
+                    DrawDetailRowWrapped(
+                        "Pixel Bytes",
+                        std::to_string(textureStats->PixelBytes) + " bytes",
+                        labelWidth
+                    );
+                    DrawDetailRow(
+                        "GPU Ready",
+                        textureStats->GpuReady ? "true" : "false",
+                        labelWidth
+                    );
+                    DrawDetailsSectionTitle("Texture Warnings");
 
                     DrawDetailRowUInt(
                         "Warnings",
                         static_cast<std::uint32_t>(textureStats->Warnings.size()),
                         labelWidth
                     );
-
-                    DrawDetailsSectionTitle("Texture Warnings");
-
                     if (textureStats->Warnings.empty())
                     {
                         ImGui::TextDisabled("No texture warnings.");
@@ -432,7 +440,7 @@ namespace
                     }
 
                     DrawDetailsSectionTitle("Runtime Texture");
-                    ImGui::TextDisabled("GPU texture loading is not implemented yet.");
+                    ImGui::TextDisabled("GPU texture resource is loaded. Shader sampling is not implemented yet.");
                 }
             }
 

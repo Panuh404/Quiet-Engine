@@ -13,6 +13,7 @@
 #include "Renderer/Vulkan/Texture/TextureImporter.h"
 #include "Renderer/Vulkan/Texture/TextureImportResult.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
+#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
 namespace
 {
@@ -272,25 +273,46 @@ namespace Quiet::Project
             return false;
         }
 
-        const Renderer::Vulkan::TextureImportResult importResult = Renderer::Vulkan::TextureImporter::LoadFromFile(assetPath);
-        if (!importResult.Succeeded())
+        const Renderer::Vulkan::TexturePixelData pixelData = Renderer::Vulkan::TextureImporter::LoadPixelsFromFile(assetPath);
+
+        if (!pixelData.Metadata.Succeeded() || !pixelData.IsValid())
         {
             QUIET_CORE_WARN(
-                "Failed to parse texture asset '{}' from '{}': {}",
+                "Failed to load texture asset '{}' from '{}': {}",
                 record.ID,
                 assetPath.string(),
-                importResult.Error
+                pixelData.Metadata.Error
             );
             return false;
         }
 
-        const Renderer::Vulkan::TextureStats stats = MakeTextureStatsFromImportResult(importResult);
+        Renderer::Vulkan::TextureStats stats = MakeTextureStatsFromImportResult(pixelData.Metadata);
+
+        stats.PixelBytes = pixelData.GetByteSize();
         try
         {
             if (alreadyLoaded)
-                m_TextureLibrary.ReplaceTexture(record.ID, stats);
+            {
+                m_TextureLibrary.ReplaceTexture2D(
+                    record.ID,
+                    m_PhysicalDevice,
+                    m_LogicalDevice,
+                    m_GraphicsCommands,
+                    pixelData,
+                    stats
+                );
+            }
             else
-                m_TextureLibrary.RegisterTexture(record.ID, stats);
+            {
+                m_TextureLibrary.CreateTexture2D(
+                    record.ID,
+                    m_PhysicalDevice,
+                    m_LogicalDevice,
+                    m_GraphicsCommands,
+                    pixelData,
+                    stats
+                );
+            }
         }
         catch (const std::exception& e)
         {
@@ -304,18 +326,19 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "{} texture asset '{}' from '{}'. format={} dimensions={}x{} dimensionsValid={} warnings={}",
+            "{} texture asset '{}' from '{}'. format={} dimensions={}x{} dimensionsValid={} pixels={} warnings={}",
             alreadyLoaded ? "Reloaded" : "Loaded",
             record.ID,
             assetPath.string(),
-            importResult.Format,
-            importResult.Width,
-            importResult.Height,
-            importResult.DimensionsValid,
-            importResult.Warnings.size()
+            pixelData.Metadata.Format,
+            pixelData.Width,
+            pixelData.Height,
+            pixelData.Metadata.DimensionsValid,
+            pixelData.GetByteSize(),
+            pixelData.Metadata.Warnings.size()
         );
 
-        for (const std::string& warning : importResult.Warnings)
+        for (const std::string& warning : pixelData.Metadata.Warnings)
         {
             QUIET_CORE_WARN("Texture asset '{}': {}", record.ID, warning);
         }

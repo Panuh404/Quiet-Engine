@@ -4,9 +4,71 @@
 #include <stdexcept>
 
 #include "Quiet/Core/Log.h"
+#include "Renderer/Vulkan/Texture/Texture2D.h"
+#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
 namespace Quiet::Renderer::Vulkan
 {
+    void TextureLibrary::CreateTexture2D(const std::string &name,
+                                         const PhysicalDevice &physicalDevice,
+                                         const LogicalDevice &logicalDevice,
+                                         const GraphicsCommands &graphicsCommands,
+                                         const TexturePixelData &pixelData,
+                                         TextureStats stats)
+    {
+        if (m_Textures.contains(name))
+        {
+            QUIET_CORE_ERROR("Texture '{}' is already registered.", name);
+            throw std::runtime_error("Texture already exists in TextureLibrary: " + name);
+        }
+
+        auto texture = std::make_shared<Texture2D>(
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            pixelData
+        );
+
+        stats.Width = texture->GetWidth();
+        stats.Height = texture->GetHeight();
+        stats.DimensionsValid = true;
+        stats.PixelBytes = pixelData.GetByteSize();
+        stats.GpuReady = true;
+        stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
+
+        m_Textures[name] = std::move(texture);
+        m_Stats[name] = std::move(stats);
+
+        QUIET_CORE_INFO("Registered Texture2D '{}'.", name);
+    }
+
+    void TextureLibrary::ReplaceTexture2D(const std::string &name,
+                                          const PhysicalDevice &physicalDevice,
+                                          const LogicalDevice &logicalDevice,
+                                          const GraphicsCommands &graphicsCommands,
+                                          const TexturePixelData &pixelData,
+                                          TextureStats stats)
+    {
+        auto texture = std::make_shared<Texture2D>(
+                physicalDevice,
+                logicalDevice,
+                graphicsCommands,
+                pixelData
+            );
+
+        stats.Width = texture->GetWidth();
+        stats.Height = texture->GetHeight();
+        stats.DimensionsValid = true;
+        stats.PixelBytes = pixelData.GetByteSize();
+        stats.GpuReady = true;
+        stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
+
+        m_Textures[name] = std::move(texture);
+        m_Stats[name] = std::move(stats);
+
+        QUIET_CORE_INFO("Replaced Texture2D '{}'.", name);
+    }
+
     void TextureLibrary::RegisterTexture(const std::string &name, TextureStats stats)
     {
         if (Has(name))
@@ -25,6 +87,14 @@ namespace Quiet::Renderer::Vulkan
         stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
         m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Replaced texture metadata '{}'.", name);
+    }
+
+    std::shared_ptr<Texture2D> TextureLibrary::TryGet(const std::string &name) const
+    {
+        const auto it = m_Textures.find(name);
+        if (it == m_Textures.end()) return nullptr;
+
+        return it->second;
     }
 
     bool TextureLibrary::Has(const std::string &name) const
@@ -58,6 +128,7 @@ namespace Quiet::Renderer::Vulkan
 
     void TextureLibrary::Clear()
     {
+        m_Textures.clear();
         m_Stats.clear();
     }
 }

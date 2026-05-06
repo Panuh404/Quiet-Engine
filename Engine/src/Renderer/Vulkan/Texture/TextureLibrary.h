@@ -5,9 +5,16 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 namespace Quiet::Renderer::Vulkan
 {
+    class Texture2D;
+    class PhysicalDevice;
+    class LogicalDevice;
+    class GraphicsCommands;
+    struct TexturePixelData;
+
     struct TextureStats
     {
         std::string Format;
@@ -17,6 +24,9 @@ namespace Quiet::Renderer::Vulkan
         bool DimensionsValid = false;
 
         std::uintmax_t FileSizeBytes = 0;
+        std::size_t PixelBytes = 0;
+
+        bool GpuReady = false;
 
         std::uint32_t WarningCount = 0;
         std::vector<std::string> Warnings;
@@ -25,17 +35,33 @@ namespace Quiet::Renderer::Vulkan
     class TextureLibrary
     {
     public:
+        void CreateTexture2D(const std::string& name,
+                             const PhysicalDevice& physicalDevice,
+                             const LogicalDevice& logicalDevice,
+                             const GraphicsCommands& graphicsCommands,
+                             const TexturePixelData& pixelData,
+                             TextureStats stats);
+
+        void ReplaceTexture2D(const std::string& name,
+                              const PhysicalDevice& physicalDevice,
+                              const LogicalDevice& logicalDevice,
+                              const GraphicsCommands& graphicsCommands,
+                              const TexturePixelData& pixelData,
+                              TextureStats stats);
+
         void RegisterTexture(const std::string& name, TextureStats stats);
         void ReplaceTexture(const std::string& name, TextureStats stats);
 
-        [[nodiscard]] bool Has(const std::string& name) const;
+        [[nodiscard]] std::shared_ptr<Texture2D> TryGet(const std::string& name) const;
         [[nodiscard]] std::optional<TextureStats> GetStats(const std::string& name) const;
         [[nodiscard]] std::vector<std::string> GetNames() const;
         [[nodiscard]] std::size_t GetCount() const { return m_Stats.size(); }
+        [[nodiscard]] bool Has(const std::string& name) const;
 
         void Clear();
 
     private:
+        std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_Textures;
         std::unordered_map<std::string, TextureStats> m_Stats;
     };
 }

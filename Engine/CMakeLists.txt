@@ -106,6 +106,8 @@ target_sources(Quiet_Engine
 
         # Renderer - Vulkan - Texture
         src/Renderer/Vulkan/Texture/StbImage.cpp
+        src/Renderer/Vulkan/Texture/Texture2D.cpp
+        src/Renderer/Vulkan/Texture/Texture2D.h
         src/Renderer/Vulkan/Texture/TextureImporter.cpp
         src/Renderer/Vulkan/Texture/TextureImporter.h
         src/Renderer/Vulkan/Texture/TextureImportResult.h
@@ -155,7 +157,6 @@ target_sources(Quiet_Engine
         ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
         ${imguizmo_SOURCE_DIR}/src/ImGuizmo.h
         ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.cpp
-        ${stb_SOURCE_DIR}
 
     PUBLIC
         include/Quiet/Core/Application.h
@@ -201,6 +202,7 @@ target_include_directories(Quiet_Engine
         ${imgui_SOURCE_DIR}/backends
         ${imguizmo_SOURCE_DIR}/src
         ${imgui_file_dialog_SOURCE_DIR}
+        ${stb_SOURCE_DIR}
 )
 
 target_compile_features(Quiet_Engine
