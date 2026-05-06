@@ -22,6 +22,7 @@ layout(location = 3) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 vMaterialColor;
 layout(location = 1) out vec3 vWorldNormal;
+layout(location = 2) out vec2 vTexCoord;
 
 void main()
 {
@@ -31,4 +32,5 @@ void main()
     vWorldNormal = normalize(normalMatrix * inNormal);
 
     vMaterialColor = pc.MaterialBaseColor;
+    vTexCoord = inTexCoord;
 }
