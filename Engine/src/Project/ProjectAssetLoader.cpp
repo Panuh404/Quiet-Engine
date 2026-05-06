@@ -317,7 +317,7 @@ namespace Quiet::Project
         catch (const std::exception& e)
         {
             QUIET_CORE_ERROR(
-                "Failed to create runtime texture metadata '{}' from '{}': {}",
+                "Failed to create runtime texture resource '{}' from '{}': {}",
                 record.ID,
                 assetPath.string(),
                 e.what()

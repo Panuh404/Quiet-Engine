@@ -90,7 +90,7 @@ namespace Quiet::Renderer::Vulkan
             vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-            StaticMeshPushConstants  push{};
+            StaticMeshPushConstants push{};
             push.Model = actor.Transform.WorldTransform.ToMatrix();
             if (activeLight)
             {

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -21,6 +21,7 @@ namespace Quiet::Renderer::Vulkan
 
         ~Texture2D();
 
+
         Texture2D(const Texture2D&) = delete;
         Texture2D& operator=(const Texture2D&) = delete;
         Texture2D(Texture2D&&) = delete;
@@ -35,8 +36,9 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] std::uint32_t GetHeight() const { return m_Height; }
 
     private:
-        VkDevice m_Device = VK_NULL_HANDLE;
+        void Destroy();
 
+        VkDevice m_Device = VK_NULL_HANDLE;
         VkImage m_Image = VK_NULL_HANDLE;
         VkDeviceMemory m_Memory = VK_NULL_HANDLE;
         VkImageView m_ImageView = VK_NULL_HANDLE;

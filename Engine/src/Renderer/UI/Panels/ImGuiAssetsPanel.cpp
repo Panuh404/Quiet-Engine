@@ -70,10 +70,10 @@ namespace
 
         if (record.Type == Quiet::Project::AssetType::Texture)
         {
-            if (textureLibrary.Has(record.ID))
-            {
-                return "Loaded Metadata";
-            }
+            const auto textureStats = textureLibrary.GetStats(record.ID);
+            if (textureStats.has_value())
+                return textureStats->GpuReady ? "GPU Ready" : "Loaded Metadata";
+
             if (record.Path.empty() && !record.BuiltIn)
                 return "Missing Path";
 
@@ -86,6 +86,7 @@ namespace
     ImVec4 MakeStatusColor(const std::string& status)
     {
         if (status == "Loaded") return {0.30f, 0.85f, 0.42f, 1.0f};
+        if (status == "GPU Ready") return {0.30f, 0.85f, 0.42f, 1.0f};
         if (status == "Loaded Metadata") return {0.30f, 0.85f, 0.42f, 1.0f};
         if (status == "Registered") return {0.95f, 0.76f, 0.32f, 1.0f};
         if (status == "Missing Built-In") return {0.95f, 0.30f, 0.30f, 1.0f};
