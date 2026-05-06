@@ -50,6 +50,7 @@ namespace Quiet::Renderer::Vulkan
     class StaticMeshPipeline;
     class FrameSync;
     class StaticMeshRenderSystem;
+    class StaticMeshMaterialResources;
 
     class VulkanRenderer
     {
@@ -84,6 +85,8 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] const LogicalDevice& GetLogicalDevice() const { return *m_LogicalDevice; }
         [[nodiscard]] const GraphicsCommands& GetGraphicsCommands() const { return *m_GraphicsCommands; }
 
+        [[nodiscard]] StaticMeshMaterialResources& GetStaticMeshMaterialResources() { return *m_StaticMeshMaterialResources; }
+
         [[nodiscard]] VkExtent2D GetSwapchainExtent() const;
         [[nodiscard]] VkExtent2D GetSceneViewportExtent() const;
 
@@ -116,6 +119,7 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<FrameSync> m_FrameSync;
         std::unique_ptr<StaticMeshRenderSystem> m_StaticMeshRenderSystem;
+        std::unique_ptr<StaticMeshMaterialResources> m_StaticMeshMaterialResources;
 
         std::uint32_t m_PendingViewportWidth = 0;
         std::uint32_t m_PendingViewportHeight = 0;

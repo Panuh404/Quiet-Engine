@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "GLFW/glfw3.h"
+#include "Mesh/StaticMeshMaterialResources.h"
 #include "Quiet/Core/Application.h"
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/Vulkan/VulkanInstance.h"
@@ -201,11 +202,17 @@ namespace Quiet::Renderer::Vulkan
             *m_LogicalDevice,
             *m_Swapchain);
 
+        m_StaticMeshMaterialResources = std::make_unique<StaticMeshMaterialResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_GraphicsCommands);
+
         m_StaticMeshPipeline = std::make_unique<StaticMeshPipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
             *m_DepthResources,
-            m_CameraResources->GetDescriptorSetLayout());
+            m_CameraResources->GetDescriptorSetLayout(),
+            m_StaticMeshMaterialResources->GetDescriptorSetLayout());
 
         m_FrameSync = std::make_unique<FrameSync>(
             *m_LogicalDevice,
@@ -225,6 +232,7 @@ namespace Quiet::Renderer::Vulkan
         m_StaticMeshRenderSystem.reset();
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
+        m_StaticMeshMaterialResources.reset();
         m_CameraResources.reset();
         m_SceneViewportTarget.reset();
         m_ImGuiLayer.reset();
@@ -343,6 +351,7 @@ namespace Quiet::Renderer::Vulkan
         m_FrameSync.reset();
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
+        m_StaticMeshMaterialResources.reset();
         m_CameraResources.reset();
         m_DepthResources.reset();
 
@@ -353,32 +362,34 @@ namespace Quiet::Renderer::Vulkan
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_VulkanSurface,
-            oldSwapchain ? oldSwapchain->GetHandle() : VK_NULL_HANDLE
-        );
+            oldSwapchain ? oldSwapchain->GetHandle() : VK_NULL_HANDLE);
 
         m_DepthResources = std::make_unique<DepthResources>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
-            *m_Swapchain
-        );
+            *m_Swapchain);
+
+        m_GraphicsCommands = std::make_unique<GraphicsCommands>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_Swapchain);
 
         m_CameraResources = std::make_unique<CameraResources>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
             *m_Swapchain);
 
+        m_StaticMeshMaterialResources = std::make_unique<StaticMeshMaterialResources>(
+            *m_PhysicalDevice,
+            *m_LogicalDevice,
+            *m_GraphicsCommands);
+
         m_StaticMeshPipeline = std::make_unique<StaticMeshPipeline>(
             *m_LogicalDevice,
             *m_Swapchain,
             *m_DepthResources,
-            m_CameraResources->GetDescriptorSetLayout()
-        );
-
-        m_GraphicsCommands = std::make_unique<GraphicsCommands>(
-            *m_PhysicalDevice,
-            *m_LogicalDevice,
-            *m_Swapchain
-        );
+            m_CameraResources->GetDescriptorSetLayout(),
+            m_StaticMeshMaterialResources->GetDescriptorSetLayout());
 
         m_FrameSync = std::make_unique<FrameSync>(
             *m_LogicalDevice,
@@ -555,7 +566,9 @@ namespace Quiet::Renderer::Vulkan
             renderContext.CommandBuffer = commandBuffer;
             renderContext.ImageIndex = imageIndex;
             renderContext.Pipeline = m_StaticMeshPipeline.get();
+            renderContext.Materials = m_StaticMeshMaterialResources.get();
             renderContext.Camera = m_CameraResources.get();
+            renderContext.Textures = m_TextureLibrary.get();
             renderContext.SceneData = &scene;
             renderContext.Extent = m_SceneViewportTarget->GetExtent();
 

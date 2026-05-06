@@ -12,9 +12,10 @@ namespace Quiet::Renderer::Vulkan
     {
     public:
         StaticMeshPipeline(const LogicalDevice& logicalDevice,
-                         const Swapchain& swapchain,
-                         const DepthResources& depthResources,
-                         VkDescriptorSetLayout cameraSetLayout);
+                           const Swapchain& swapchain,
+                           const DepthResources& depthResources,
+                           VkDescriptorSetLayout cameraSetLayout,
+                           VkDescriptorSetLayout materialSetLayout);
         ~StaticMeshPipeline();
 
         StaticMeshPipeline(const StaticMeshPipeline&) = delete;

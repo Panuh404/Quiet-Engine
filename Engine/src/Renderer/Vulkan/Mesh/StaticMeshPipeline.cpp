@@ -16,9 +16,10 @@
 namespace Quiet::Renderer::Vulkan
 {
     StaticMeshPipeline::StaticMeshPipeline(const LogicalDevice& logicalDevice,
-                                       const Swapchain& swapchain,
-                                       const DepthResources& depthResources,
-                                       VkDescriptorSetLayout cameraSetLayout)
+                                           const Swapchain& swapchain,
+                                           const DepthResources& depthResources,
+                                           VkDescriptorSetLayout cameraSetLayout,
+                                           VkDescriptorSetLayout materialSetLayout)
         : m_Device(logicalDevice.GetHandle())
     {
         ShaderModule vertShader(m_Device, "Resources/Shaders/StaticMesh.vert.spv");
@@ -30,23 +31,25 @@ namespace Quiet::Renderer::Vulkan
         };
 
         VkPushConstantRange pushConstantRange{};
-        pushConstantRange.stageFlags =
-            VK_SHADER_STAGE_VERTEX_BIT |
-            VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset = 0;
         pushConstantRange.size = sizeof(StaticMeshPushConstants);
 
+        const VkDescriptorSetLayout setLayouts[] =
+        {
+            cameraSetLayout,
+            materialSetLayout
+        };
+
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutInfo.setLayoutCount = 1;
-        layoutInfo.pSetLayouts = &cameraSetLayout;
+        layoutInfo.setLayoutCount = 2;
+        layoutInfo.pSetLayouts = setLayouts;
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &pushConstantRange;
 
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
-        {
             throw std::runtime_error("Failed to create static mesh pipeline layout.");
-        }
 
         const auto bindingDescription = Vertex::GetBindingDescription();
         const auto attributeDescriptions = Vertex::GetAttributeDescriptions();
@@ -55,8 +58,7 @@ namespace Quiet::Renderer::Vulkan
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInput.vertexBindingDescriptionCount = 1;
         vertexInput.pVertexBindingDescriptions = &bindingDescription;
-        vertexInput.vertexAttributeDescriptionCount =
-            static_cast<std::uint32_t>(attributeDescriptions.size());
+        vertexInput.vertexAttributeDescriptionCount = static_cast<std::uint32_t>(attributeDescriptions.size());
         vertexInput.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};

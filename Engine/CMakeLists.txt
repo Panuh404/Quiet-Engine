@@ -99,6 +99,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/MeshPrimitives.h
         src/Renderer/Vulkan/Mesh/StaticMesh.cpp
         src/Renderer/Vulkan/Mesh/StaticMesh.h
+        src/Renderer/Vulkan/Mesh/StaticMeshMaterialResources.cpp
+        src/Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h
         src/Renderer/Vulkan/Mesh/StaticMeshPipeline.cpp
         src/Renderer/Vulkan/Mesh/StaticMeshPipeline.h
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp

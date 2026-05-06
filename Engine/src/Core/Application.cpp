@@ -29,6 +29,7 @@
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera/CameraController.h"
 #include "Scene/Camera/CameraPilotUtils.h"
@@ -304,61 +305,67 @@ namespace Quiet::Core
                 case Editor::EditorRequestType::FocusSelected:
                     m_EditorController->FocusSelectedActor(GetActiveScene(), *m_FreeCamera);
                     break;
+
                 case Editor::EditorRequestType::NewScene:
                     m_EditorSceneWorkflow->NewScene();
                     break;
+
                 case Editor::EditorRequestType::SaveScene:
                     m_EditorSceneWorkflow->SaveScene();
                     break;
+
                 case Editor::EditorRequestType::LoadScene:
                     m_EditorSceneWorkflow->LoadScene();
                     break;
+
                 case Editor::EditorRequestType::EnterSimulate:
                     m_EditorRuntimeController->EnterSimulateMode();
                     break;
+
                 case Editor::EditorRequestType::StopSimulate:
                     m_EditorRuntimeController->StopSimulateMode();
                     break;
+
                 case Editor::EditorRequestType::EnterPlay:
                     m_EditorRuntimeController->EnterPlayMode();
                     break;
+
                 case Editor::EditorRequestType::StopPlay:
                     m_EditorRuntimeController->StopPlayMode();
                     break;
+
                 case Editor::EditorRequestType::Undo:
                     m_EditorController->Undo(*m_Scene);
                     break;
+
                 case Editor::EditorRequestType::Redo:
                     m_EditorController->Redo(*m_Scene);
                     break;
+
                 case Editor::EditorRequestType::OpenProject:
                     if (!request->Argument.empty() &&
                         m_EditorSceneWorkflow->EnsureEditMode("open project") &&
                         m_ProjectWorkflow->OpenOrCreateProject(request->Argument))
-                    {
                         m_EditorSceneWorkflow->ResetSceneSession();
-                    }
                     break;
+
                 case Editor::EditorRequestType::CreateProject:
                     if (!request->Argument.empty() &&
                         m_EditorSceneWorkflow->EnsureEditMode("create project") &&
                         m_ProjectWorkflow->CreateProject(request->Argument))
-                    {
                         m_EditorSceneWorkflow->ResetSceneSession();
-                    }
                     break;
+
                 case Editor::EditorRequestType::OpenProjectScene:
                     if (!request->Argument.empty())
-                    {
                         m_EditorSceneWorkflow->OpenSceneInProject(request->Argument);
-                    }
                     break;
+
                 case Editor::EditorRequestType::SetStartupScene:
                     if (!request->Argument.empty())
-                    {
                         m_ProjectWorkflow->SetStartupScene(request->Argument);
-                    }
                     break;
+
                 case Editor::EditorRequestType::ReloadAssets:
                     if (!m_ProjectAssetLoader)
                     {
@@ -368,16 +375,11 @@ namespace Quiet::Core
 
                     m_Renderer->WaitIdle();
                     const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadAssets(true);
-                    if (!allAssetsLoaded)
-                    {
-                        QUIET_CORE_WARN("Some registered assets could not be loaded.");
-                    }
+                    m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
+                    if (!allAssetsLoaded) QUIET_CORE_WARN("Some registered assets could not be loaded.");
 
                     RelinkSceneStaticMeshes(*m_Scene);
-                    if (m_RuntimeScene)
-                    {
-                        RelinkSceneStaticMeshes(*m_RuntimeScene);
-                    }
+                    if (m_RuntimeScene) RelinkSceneStaticMeshes(*m_RuntimeScene);
                     break;
             }
         }

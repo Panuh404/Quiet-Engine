@@ -12,6 +12,8 @@
 #include "Scene/Components/DirectionalLightComponent.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneRenderSettings.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 namespace
 {
@@ -33,7 +35,11 @@ namespace Quiet::Renderer::Vulkan
         if (context.CommandBuffer == VK_NULL_HANDLE)
             throw std::runtime_error("StaticMeshRenderSystem received null command buffer.");
 
-        if (!context.Pipeline || !context.Camera || !context.SceneData)
+        if (!context.Pipeline ||
+            !context.Camera ||
+            !context.Materials ||
+            !context.Textures ||
+            !context.SceneData)
             throw std::runtime_error("StaticMeshRenderSystem received invalid render context.");
 
         vkCmdBindPipeline(
@@ -75,8 +81,8 @@ namespace Quiet::Renderer::Vulkan
         for (const auto& actor : context.SceneData->GetActors())
         {
             if (!actor.StaticMesh.has_value() ||
-               !actor.StaticMesh->IsValid() ||
-               !actor.StaticMesh->Visible)
+                !actor.StaticMesh->IsValid() ||
+                !actor.StaticMesh->Visible)
             {
                 ++skippedCount;
                 continue;
@@ -117,10 +123,29 @@ namespace Quiet::Renderer::Vulkan
                 renderSettings.AmbientIntensity
             );
 
+            VkDescriptorSet materialDescriptorSet = context.Materials->GetFallbackDescriptorSet();
             if (actor.Material.has_value())
             {
                 push.MaterialBaseColor = actor.Material->BaseColor;
+                if (actor.Material->HasBaseColorTexture())
+                {
+                    materialDescriptorSet =
+                        context.Materials->GetDescriptorSetForTexture(
+                            *context.Textures,
+                            actor.Material->BaseColorTextureAssetID);
+                }
             }
+
+            vkCmdBindDescriptorSets(
+                context.CommandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                context.Pipeline->GetLayout(),
+                1,
+                1,
+                &materialDescriptorSet,
+                0,
+                nullptr
+            );
 
             vkCmdPushConstants(
                 context.CommandBuffer,

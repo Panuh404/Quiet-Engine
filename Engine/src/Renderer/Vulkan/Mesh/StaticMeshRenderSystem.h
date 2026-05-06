@@ -13,14 +13,21 @@ namespace Quiet::Renderer::Vulkan
 {
     class StaticMeshPipeline;
     class CameraResources;
+    class StaticMeshMaterialResources;
+    class TextureLibrary;
 
     struct StaticMeshRenderContext
     {
         VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
         std::uint32_t ImageIndex = 0;
+
         const StaticMeshPipeline* Pipeline = nullptr;
         const CameraResources* Camera = nullptr;
-        const Quiet::Scene::Scene* SceneData = nullptr;
+
+        StaticMeshMaterialResources* Materials = nullptr;
+        const TextureLibrary* Textures = nullptr;
+
+        const Scene::Scene* SceneData = nullptr;
         VkExtent2D Extent{};
     };
 
