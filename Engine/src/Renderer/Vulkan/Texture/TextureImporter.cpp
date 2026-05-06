@@ -254,6 +254,11 @@ namespace Quiet::Renderer::Vulkan
         int height = 0;
         int sourceChannels = 0;
 
+        // Quiet uses bottom-left UV convention for imported/static meshes.
+        // stb_image decodes image rows top-to-bottom by default, so flip here
+        // to make texture V coordinates match mesh UVs.
+        stbi_set_flip_vertically_on_load(1);
+
         stbi_uc* pixels = stbi_load(
             path.string().c_str(),
             &width,
