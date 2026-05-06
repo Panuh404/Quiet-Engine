@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <vulkan/vulkan.h>
+
 namespace Quiet::Renderer::Vulkan
 {
     class Texture2D;
@@ -54,6 +56,7 @@ namespace Quiet::Renderer::Vulkan
         void ReplaceTexture(const std::string& name, TextureStats stats);
 
         [[nodiscard]] std::shared_ptr<Texture2D> TryGet(const std::string& name) const;
+        [[nodiscard]] std::optional<VkDescriptorImageInfo> TryGetDescriptorImageInfo(const std::string& name) const;
         [[nodiscard]] std::optional<TextureStats> GetStats(const std::string& name) const;
         [[nodiscard]] std::vector<std::string> GetNames() const;
         [[nodiscard]] std::size_t GetCount() const { return m_Stats.size(); }

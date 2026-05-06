@@ -309,6 +309,15 @@ namespace Quiet::Renderer::Vulkan
         Destroy();
     }
 
+    VkDescriptorImageInfo Texture2D::GetDescriptorImageInfo() const
+    {
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.sampler = m_Sampler;
+        imageInfo.imageView = m_ImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        return imageInfo;
+    }
+
     void Texture2D::Destroy()
     {
         if (m_Sampler != VK_NULL_HANDLE)

@@ -31,6 +31,7 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkImageView GetImageView() const { return m_ImageView; }
         [[nodiscard]] VkSampler GetSampler() const { return m_Sampler; }
         [[nodiscard]] VkFormat GetFormat() const { return m_Format; }
+        [[nodiscard]] VkDescriptorImageInfo GetDescriptorImageInfo() const;
 
         [[nodiscard]] std::uint32_t GetWidth() const { return m_Width; }
         [[nodiscard]] std::uint32_t GetHeight() const { return m_Height; }

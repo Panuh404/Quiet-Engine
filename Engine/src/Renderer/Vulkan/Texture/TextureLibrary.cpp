@@ -16,7 +16,7 @@ namespace Quiet::Renderer::Vulkan
                                          const TexturePixelData &pixelData,
                                          TextureStats stats)
     {
-        if (m_Textures.contains(name))
+        if (Has(name))
         {
             QUIET_CORE_ERROR("Texture '{}' is already registered.", name);
             throw std::runtime_error("Texture already exists in TextureLibrary: " + name);
@@ -95,6 +95,14 @@ namespace Quiet::Renderer::Vulkan
         if (it == m_Textures.end()) return nullptr;
 
         return it->second;
+    }
+
+    std::optional<VkDescriptorImageInfo> TextureLibrary::TryGetDescriptorImageInfo(const std::string &name) const
+    {
+        const std::shared_ptr<Texture2D> texture = TryGet(name);
+        if (!texture) return std::nullopt;
+
+        return texture->GetDescriptorImageInfo();
     }
 
     bool TextureLibrary::Has(const std::string &name) const
