@@ -1,13 +1,13 @@
-#include "Swapchain.h"
+#include "Renderer/Vulkan/Frame/Swapchain.h"
 
 #include <algorithm>
 #include <array>
 #include <limits>
 #include <stdexcept>
 
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
-#include "Renderer/Vulkan/VulkanSurface.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/PhysicalDevice.h"
+#include "Renderer/Vulkan/Context/VulkanSurface.h"
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"

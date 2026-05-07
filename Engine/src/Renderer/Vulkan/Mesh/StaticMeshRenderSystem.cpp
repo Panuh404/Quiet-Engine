@@ -6,14 +6,15 @@
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
-#include "Renderer/Vulkan/CameraResources.h"
+#include "Renderer/Vulkan/Frame/CameraResources.h"
 #include "Renderer/Vulkan/RenderTypes.h"
-#include "Scene/Actor.h"
-#include "Scene/Components/DirectionalLightComponent.h"
-#include "Scene/Scene.h"
-#include "Scene/SceneRenderSettings.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
+
+#include "Scene/Actor.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneRenderSettings.h"
+#include "Scene/Components/DirectionalLightComponent.h"
 
 namespace
 {

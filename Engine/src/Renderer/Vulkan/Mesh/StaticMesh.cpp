@@ -7,9 +7,9 @@
 #include <glm/glm.hpp>
 
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/GraphicsCommands.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/VulkanBuffer.h"
+#include "Renderer/Vulkan/Context/GraphicsCommands.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/VulkanBuffer.h"
 
 namespace
 {

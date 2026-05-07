@@ -15,7 +15,7 @@ namespace Quiet::Renderer::Vulkan
     class GraphicsCommands;
     class Texture2D;
     class TextureLibrary;
-    class StaticMeshMaterialResources
+    class  StaticMeshMaterialResources
     {
     public:
         StaticMeshMaterialResources(const PhysicalDevice& physicalDevice,
@@ -35,7 +35,11 @@ namespace Quiet::Renderer::Vulkan
         void ClearTextureDescriptorCache();
 
     private:
+        void CreateDescriptorPool();
+        void DestroyDescriptorPool();
+
         [[nodiscard]] VkDescriptorSet AllocateDescriptorSet(const VkDescriptorImageInfo& imageInfo);
+        [[nodiscard]] VkDescriptorSet AllocateDescriptorSetOrThrow(const VkDescriptorImageInfo& imageInfo);
 
         void WriteDescriptorSet(VkDescriptorSet descriptorSet, const VkDescriptorImageInfo& imageInfo) const;
         void Destroy();

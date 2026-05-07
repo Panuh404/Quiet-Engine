@@ -1,12 +1,12 @@
-#include "CameraResources.h"
+#include "Renderer/Vulkan/Frame/CameraResources.h"
 
 #include <cstring>
 
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/Swapchain.h"
+#include "Swapchain.h"
 #include "Renderer/Vulkan/RenderTypes.h"
-#include "Renderer/Vulkan/VulkanBuffer.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/VulkanBuffer.h"
 
 namespace Quiet::Renderer::Vulkan
 {

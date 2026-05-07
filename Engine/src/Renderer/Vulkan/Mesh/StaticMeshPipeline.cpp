@@ -5,12 +5,12 @@
 #include <stdexcept>
 
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/Swapchain.h"
-#include "Renderer/Vulkan/DepthResources.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Frame/Swapchain.h"
+#include "Renderer/Vulkan/Frame/DepthResources.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/RenderTypes.h"
-#include "Renderer/Vulkan/ShaderModule.h"
+#include "Renderer/Vulkan/Shader/ShaderModule.h"
 
 
 namespace Quiet::Renderer::Vulkan

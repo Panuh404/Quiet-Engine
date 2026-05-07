@@ -1,9 +1,9 @@
-#include "FreeCamera.h"
+#include "Scene/Camera/FreeCamera.h"
 
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "CameraController.h"
-#include "CameraPilotState.h"
+#include "Scene/Camera/CameraController.h"
+#include "Scene/Camera/CameraPilotState.h"
 #include "Quiet/Math/Direction.h"
 
 

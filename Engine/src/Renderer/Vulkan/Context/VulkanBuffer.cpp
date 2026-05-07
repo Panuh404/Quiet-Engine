@@ -1,9 +1,9 @@
-#include "VulkanBuffer.h"
+#include "Renderer/Vulkan/Context/VulkanBuffer.h"
 
 #include <stdexcept>
 
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/PhysicalDevice.h"
 
 namespace Quiet::Renderer::Vulkan
 {

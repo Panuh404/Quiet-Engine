@@ -1,6 +1,5 @@
-#include "LogicalDevice.h"
-
-#include "Renderer/Vulkan/PhysicalDevice.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/PhysicalDevice.h"
 #include "Quiet/Core/Log.h"
 
 #include <set>

@@ -1,4 +1,4 @@
-#include "CameraController.h"
+#include "Scene/Camera/CameraController.h"
 
 #include <algorithm>
 #include <cmath>

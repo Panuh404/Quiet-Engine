@@ -5,25 +5,28 @@
 #include "Quiet/Platform/Window.h"
 
 #include <stdexcept>
-
 #include "GLFW/glfw3.h"
-#include "Mesh/StaticMeshMaterialResources.h"
-#include "Quiet/Core/Application.h"
+
 #include "Renderer/UI/ImGuiLayer.h"
-#include "Renderer/Vulkan/VulkanInstance.h"
-#include "Renderer/Vulkan/VulkanSurface.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/Swapchain.h"
-#include "Renderer/Vulkan/DepthResources.h"
-#include "Renderer/Vulkan/SceneViewportTarget.h"
-#include "Renderer/Vulkan/GraphicsCommands.h"
-#include "Renderer/Vulkan/CameraResources.h"
-#include "Renderer/Vulkan/FrameSync.h"
+
+#include "Renderer/Vulkan/Context/GraphicsCommands.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/PhysicalDevice.h"
+#include "Renderer/Vulkan/Context/VulkanInstance.h"
+#include "Renderer/Vulkan/Context/VulkanSurface.h"
+
+#include "Renderer/Vulkan/Frame/CameraResources.h"
+#include "Renderer/Vulkan/Frame/DepthResources.h"
+#include "Renderer/Vulkan/Frame/FrameSync.h"
+#include "Renderer/Vulkan/Frame/SceneViewportTarget.h"
+#include "Renderer/Vulkan/Frame/Swapchain.h"
+
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
-#include "Texture/TextureLibrary.h"
+
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 namespace
 {

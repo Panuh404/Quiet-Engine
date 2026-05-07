@@ -1,10 +1,9 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 
-#include <array>
 #include <stdexcept>
 
 #include "Quiet/Core/Log.h"
-#include "Renderer/Vulkan/LogicalDevice.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Renderer/Vulkan/Texture/TexturePixelData.h"
@@ -52,21 +51,7 @@ namespace Quiet::Renderer::Vulkan
         if (vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
             throw std::runtime_error("Failed to create static mesh material descriptor set layout.");
 
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = kMaxTextureDescriptorSets + 1;
-
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = kMaxTextureDescriptorSets + 1;
-
-        if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
-        {
-            Destroy();
-            throw std::runtime_error("Failed to create static mesh material descriptor pool.");
-        }
+        CreateDescriptorPool();
 
         try
         {
@@ -78,7 +63,7 @@ namespace Quiet::Renderer::Vulkan
                 graphicsCommands,
                 fallbackPixel
             );
-            m_FallbackDescriptorSet = AllocateDescriptorSet(m_FallbackWhiteTexture->GetDescriptorImageInfo());
+            m_FallbackDescriptorSet = AllocateDescriptorSetOrThrow(m_FallbackWhiteTexture->GetDescriptorImageInfo());
         }
         catch (...)
         {
@@ -117,9 +102,62 @@ namespace Quiet::Renderer::Vulkan
     void StaticMeshMaterialResources::ClearTextureDescriptorCache()
     {
         m_TextureDescriptorSets.clear();
-        // Descriptor sets are individually cached only by handle. The descriptor pool
-        // still owns the allocated sets. This is acceptable for this first pass because
-        // the pool has a fixed generous capacity and asset reloads are editor-only.
+        m_FallbackDescriptorSet = VK_NULL_HANDLE;
+
+        DestroyDescriptorPool();
+        CreateDescriptorPool();
+
+        if (m_FallbackWhiteTexture)
+            m_FallbackDescriptorSet = AllocateDescriptorSetOrThrow(m_FallbackWhiteTexture->GetDescriptorImageInfo());
+
+        QUIET_CORE_INFO("Reset static mesh material descriptor cache.");
+    }
+
+    void StaticMeshMaterialResources::CreateDescriptorPool()
+    {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSize.descriptorCount = kMaxTextureDescriptorSets + 1;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = kMaxTextureDescriptorSets + 1;
+
+        if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
+        {
+            Destroy();
+            throw std::runtime_error("Failed to create static mesh material descriptor pool.");
+        }
+    }
+
+    void StaticMeshMaterialResources::DestroyDescriptorPool()
+    {
+        if (m_DescriptorPool != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
+            m_DescriptorPool = VK_NULL_HANDLE;
+        }
+    }
+
+    VkDescriptorSet StaticMeshMaterialResources::AllocateDescriptorSetOrThrow(const VkDescriptorImageInfo &imageInfo)
+    {
+        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_DescriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_DescriptorSetLayout;
+
+        if (vkAllocateDescriptorSets(m_Device, &allocInfo, &descriptorSet) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate material texture descriptor set.");
+        }
+
+        WriteDescriptorSet(descriptorSet, imageInfo);
+        return descriptorSet;
     }
 
     VkDescriptorSet StaticMeshMaterialResources::AllocateDescriptorSet(const VkDescriptorImageInfo &imageInfo)
@@ -164,11 +202,7 @@ namespace Quiet::Renderer::Vulkan
         m_FallbackDescriptorSet = VK_NULL_HANDLE;
         m_FallbackWhiteTexture.reset();
 
-        if (m_DescriptorPool != VK_NULL_HANDLE)
-        {
-            vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
-            m_DescriptorPool = VK_NULL_HANDLE;
-        }
+        DestroyDescriptorPool();
 
         if (m_DescriptorSetLayout != VK_NULL_HANDLE)
         {
@@ -177,4 +211,3 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 }
-

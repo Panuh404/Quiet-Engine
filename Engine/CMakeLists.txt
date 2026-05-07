@@ -117,36 +117,42 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Texture/TextureLibrary.h
         src/Renderer/Vulkan/Texture/TexturePixelData.h
 
+        # Renderer - Vulkan - Context
+        src/Renderer/Vulkan/Context/GraphicsCommands.cpp
+        src/Renderer/Vulkan/Context/GraphicsCommands.h
+        src/Renderer/Vulkan/Context/LogicalDevice.cpp
+        src/Renderer/Vulkan/Context/LogicalDevice.h
+        src/Renderer/Vulkan/Context/PhysicalDevice.cpp
+        src/Renderer/Vulkan/Context/PhysicalDevice.h
+        src/Renderer/Vulkan/Context/VulkanBuffer.cpp
+        src/Renderer/Vulkan/Context/VulkanBuffer.h
+        src/Renderer/Vulkan/Context/VulkanInstance.cpp
+        src/Renderer/Vulkan/Context/VulkanInstance.h
+        src/Renderer/Vulkan/Context/VulkanSurface.cpp
+        src/Renderer/Vulkan/Context/VulkanSurface.h
+
+        # Renderer - Vulkan - Frame
+        src/Renderer/Vulkan/Frame/CameraResources.cpp
+        src/Renderer/Vulkan/Frame/CameraResources.h
+        src/Renderer/Vulkan/Frame/DepthResources.cpp
+        src/Renderer/Vulkan/Frame/DepthResources.h
+        src/Renderer/Vulkan/Frame/FrameSync.cpp
+        src/Renderer/Vulkan/Frame/FrameSync.h
+        src/Renderer/Vulkan/Frame/SceneViewportTarget.cpp
+        src/Renderer/Vulkan/Frame/SceneViewportTarget.h
+        src/Renderer/Vulkan/Frame/Swapchain.cpp
+        src/Renderer/Vulkan/Frame/Swapchain.h
+
+        # Renderer - Vulkan - Shader
+        src/Renderer/Vulkan/Shader/ShaderCompiler.cpp
+        src/Renderer/Vulkan/Shader/ShaderCompiler.h
+        src/Renderer/Vulkan/Shader/ShaderModule.cpp
+        src/Renderer/Vulkan/Shader/ShaderModule.h
+
         # Renderer - Vulkan
-        src/Renderer/Vulkan/CameraResources.cpp
-        src/Renderer/Vulkan/CameraResources.h
-        src/Renderer/Vulkan/DepthResources.cpp
-        src/Renderer/Vulkan/DepthResources.h
-        src/Renderer/Vulkan/FrameSync.cpp
-        src/Renderer/Vulkan/FrameSync.h
-        src/Renderer/Vulkan/GraphicsCommands.cpp
-        src/Renderer/Vulkan/GraphicsCommands.h
-        src/Renderer/Vulkan/LogicalDevice.cpp
-        src/Renderer/Vulkan/LogicalDevice.h
-        src/Renderer/Vulkan/PhysicalDevice.cpp
-        src/Renderer/Vulkan/PhysicalDevice.h
         src/Renderer/Vulkan/RenderTypes.h
-        src/Renderer/Vulkan/SceneViewportTarget.cpp
-        src/Renderer/Vulkan/SceneViewportTarget.h
-        src/Renderer/Vulkan/ShaderCompiler.cpp
-        src/Renderer/Vulkan/ShaderCompiler.h
-        src/Renderer/Vulkan/ShaderModule.cpp
-        src/Renderer/Vulkan/ShaderModule.h
-        src/Renderer/Vulkan/Swapchain.cpp
-        src/Renderer/Vulkan/Swapchain.h
-        src/Renderer/Vulkan/VulkanBuffer.cpp
-        src/Renderer/Vulkan/VulkanBuffer.h
-        src/Renderer/Vulkan/VulkanInstance.cpp
-        src/Renderer/Vulkan/VulkanInstance.h
         src/Renderer/Vulkan/VulkanRenderer.cpp
         src/Renderer/Vulkan/VulkanRenderer.h
-        src/Renderer/Vulkan/VulkanSurface.cpp
-        src/Renderer/Vulkan/VulkanSurface.h
 
         # ImGui
         ${imgui_SOURCE_DIR}/imgui.cpp

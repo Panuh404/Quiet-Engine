@@ -1,11 +1,11 @@
-#include "DepthResources.h"
+#include "Renderer/Vulkan/Frame/DepthResources.h"
 
 #include <array>
 #include <stdexcept>
 
-#include "Renderer/Vulkan/LogicalDevice.h"
-#include "Renderer/Vulkan/PhysicalDevice.h"
-#include "Renderer/Vulkan/Swapchain.h"
+#include "Renderer/Vulkan/Context/LogicalDevice.h"
+#include "Renderer/Vulkan/Frame/Swapchain.h"
+#include "Renderer/Vulkan/Context/PhysicalDevice.h"
 
 #include "Quiet/Core/Log.h"
 
