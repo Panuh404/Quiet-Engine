@@ -71,6 +71,8 @@ target_sources(Quiet_Engine
         src/Renderer/UI/ImGuiFonts.h
         src/Renderer/UI/ImGuiLayer.cpp
         src/Renderer/UI/ImGuiLayer.h
+        src/Renderer/UI/ImGuiTexturePreview.cpp
+        src/Renderer/UI/ImGuiTexturePreview.h
         src/Renderer/UI/ImGuiTheme.h
         src/Renderer/UI/ImGuiToolbarCommon.cpp
         src/Renderer/UI/ImGuiToolbarCommon.h
