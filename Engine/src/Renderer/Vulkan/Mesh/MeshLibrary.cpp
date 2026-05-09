@@ -13,6 +13,7 @@ namespace Quiet::Renderer::Vulkan
                                        const GraphicsCommands& graphicsCommands,
                                        const std::vector<Vertex>& vertices,
                                        const std::vector<Index>& indices,
+                                       std::vector<StaticSubmesh> submeshes,
                                        MeshStats stats)
     {
         if (Has(name))
@@ -35,7 +36,8 @@ namespace Quiet::Renderer::Vulkan
             logicalDevice,
             graphicsCommands,
             vertices,
-            indices
+            indices,
+            std::move(submeshes)
         );
         m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
@@ -47,6 +49,7 @@ namespace Quiet::Renderer::Vulkan
                                         const GraphicsCommands& graphicsCommands,
                                         const std::vector<Vertex>& vertices,
                                         const std::vector<Index>& indices,
+                                        std::vector<StaticSubmesh> submeshes,
                                         MeshStats stats)
     {
         if (vertices.empty() || indices.empty())
@@ -63,7 +66,8 @@ namespace Quiet::Renderer::Vulkan
             logicalDevice,
             graphicsCommands,
             vertices,
-            indices
+            indices,
+            std::move(submeshes)
         );
         m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Replaced mesh resource '{}'.", name);

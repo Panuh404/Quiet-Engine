@@ -342,6 +342,7 @@ namespace
                 {
                     DrawDetailRowWrapped("Importer", stats->ImporterName, labelWidth);
                     DrawDetailRowUInt("Meshes", stats->ImportedMeshCount, labelWidth);
+                    DrawDetailRowUInt("Submeshes", stats->SubmeshCount, labelWidth);
                     DrawDetailRowUInt("Vertices", stats->VertexCount, labelWidth);
                     DrawDetailRowUInt("Indices", stats->IndexCount, labelWidth);
                     DrawDetailRowUInt("Warnings", stats->WarningCount, labelWidth);

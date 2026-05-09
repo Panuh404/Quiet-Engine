@@ -17,10 +17,24 @@ namespace Quiet::Renderer::Vulkan
         bool Valid = false;
     };
 
+    struct ImportedSubmesh
+    {
+        std::string Name;
+
+        std::uint32_t BaseVertex = 0;
+        std::uint32_t VertexCount = 0;
+
+        std::uint32_t BaseIndex = 0;
+        std::uint32_t IndexCount = 0;
+
+        std::uint32_t MaterialIndex = 0;
+    };
+
     struct MeshImportResult
     {
         std::vector<Vertex> Vertices;
         std::vector<Index> Indices;
+        std::vector<ImportedSubmesh> Submeshes;
 
         MeshBounds Bounds{};
 

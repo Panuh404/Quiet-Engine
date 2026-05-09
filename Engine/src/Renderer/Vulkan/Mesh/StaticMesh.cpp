@@ -1,6 +1,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 #include <cstring>
+#include <utility>
 #include <stdexcept>
 
 #include <glm/common.hpp>
@@ -113,7 +114,8 @@ namespace Quiet::Renderer::Vulkan
                            const LogicalDevice& logicalDevice,
                            const GraphicsCommands& graphicsCommands,
                            const std::vector<Vertex>& vertices,
-                           const std::vector<Index>& indices)
+                           const std::vector<Index>& indices,
+                           std::vector<StaticSubmesh> submeshes)
     {
         const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(Vertex);
         const VkDeviceSize indexBufferSize = indices.size() * sizeof(Index);
@@ -188,6 +190,8 @@ namespace Quiet::Renderer::Vulkan
                 indexBufferSize);
         }
         m_IndexCount = static_cast<std::uint32_t>(indices.size());
+
+        m_Submeshes = std::move(submeshes);
 
         QUIET_CORE_INFO(
             "Created static mesh. vertices={} indices={}",

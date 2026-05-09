@@ -98,6 +98,7 @@ namespace
         if (!mesh.HasPositions()) return true;
 
         const std::size_t baseVertex = result.Vertices.size();
+        const std::size_t baseIndex = result.Indices.size();
         if (baseVertex + mesh.mNumVertices > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
         {
             result.Error = "Imported mesh exceeds uint32 index limit.";
@@ -139,6 +140,24 @@ namespace
                 result.Indices.push_back(static_cast<Quiet::Renderer::Vulkan::Index>(resolvedIndex));
             }
         }
+
+        const std::size_t vertexCount = result.Vertices.size() - baseVertex;
+        const std::size_t indexCount = result.Indices.size() - baseIndex;
+
+        Quiet::Renderer::Vulkan::ImportedSubmesh submesh{};
+        submesh.Name = mesh.mName.C_Str();
+        submesh.BaseVertex = static_cast<std::uint32_t>(baseVertex);
+        submesh.VertexCount = static_cast<std::uint32_t>(vertexCount);
+        submesh.BaseIndex = static_cast<std::uint32_t>(baseIndex);
+        submesh.IndexCount = static_cast<std::uint32_t>(indexCount);
+        submesh.MaterialIndex = mesh.mMaterialIndex;
+
+        if (submesh.Name.empty())
+        {
+            submesh.Name = "Submesh_" + std::to_string(result.Submeshes.size());
+        }
+
+        result.Submeshes.push_back(std::move(submesh));
 
         return true;
     }

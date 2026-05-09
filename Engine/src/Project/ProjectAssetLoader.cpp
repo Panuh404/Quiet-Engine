@@ -4,6 +4,7 @@
 #include <exception>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
@@ -23,6 +24,7 @@ namespace
         Quiet::Renderer::Vulkan::MeshStats stats{};
         stats.VertexCount = static_cast<std::uint32_t>(importResult.Vertices.size());
         stats.IndexCount = static_cast<std::uint32_t>(importResult.Indices.size());
+        stats.SubmeshCount = static_cast<std::uint32_t>(importResult.Submeshes.size());
         stats.ImportedMeshCount = importResult.ImportedMeshCount;
         stats.BoundsValid = importResult.Bounds.Valid;
         stats.BoundsMin = importResult.Bounds.Min;
@@ -47,6 +49,28 @@ namespace
         stats.Warnings = importResult.Warnings;
 
         return stats;
+    }
+
+    std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> MakeStaticSubmeshesFromImportResult(
+        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    {
+        std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> submeshes;
+        submeshes.reserve(importResult.Submeshes.size());
+
+        for (const Quiet::Renderer::Vulkan::ImportedSubmesh& imported : importResult.Submeshes)
+        {
+            Quiet::Renderer::Vulkan::StaticSubmesh submesh{};
+            submesh.Name = imported.Name;
+            submesh.BaseVertex = imported.BaseVertex;
+            submesh.VertexCount = imported.VertexCount;
+            submesh.BaseIndex = imported.BaseIndex;
+            submesh.IndexCount = imported.IndexCount;
+            submesh.MaterialSlot = imported.MaterialIndex;
+
+            submeshes.push_back(std::move(submesh));
+        }
+
+        return submeshes;
     }
 }
 
@@ -133,6 +157,7 @@ namespace Quiet::Project
                 m_GraphicsCommands,
                 primitive->Vertices,
                 primitive->Indices,
+                std::vector<Renderer::Vulkan::StaticSubmesh>{},
                 primitive->Stats
             );
         }
@@ -188,6 +213,7 @@ namespace Quiet::Project
         }
 
         const Renderer::Vulkan::MeshStats stats = MakeMeshStatsFromImportResult(importResult);
+        std::vector<Renderer::Vulkan::StaticSubmesh> submeshes = MakeStaticSubmeshesFromImportResult(importResult);
         try
         {
             if (alreadyLoaded)
@@ -199,6 +225,7 @@ namespace Quiet::Project
                     m_GraphicsCommands,
                     importResult.Vertices,
                     importResult.Indices,
+                    submeshes,
                     stats
                 );
             }
@@ -211,6 +238,7 @@ namespace Quiet::Project
                     m_GraphicsCommands,
                     importResult.Vertices,
                     importResult.Indices,
+                    std::move(submeshes),
                     stats
                 );
             }

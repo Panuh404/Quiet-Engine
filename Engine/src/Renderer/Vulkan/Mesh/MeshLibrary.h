@@ -21,6 +21,7 @@ namespace Quiet::Renderer::Vulkan
     {
         std::uint32_t VertexCount = 0;
         std::uint32_t IndexCount = 0;
+        std::uint32_t SubmeshCount = 0;
         std::uint32_t ImportedMeshCount = 0;
 
         glm::vec3 BoundsMin{ 0.0f };
@@ -43,6 +44,7 @@ namespace Quiet::Renderer::Vulkan
                               const GraphicsCommands& graphicsCommands,
                               const std::vector<Vertex>& vertices,
                               const std::vector<Index>& indices,
+                              std::vector<StaticSubmesh> submeshes,
                               MeshStats stats);
 
         void ReplaceStaticMesh(const std::string& name,
@@ -51,6 +53,7 @@ namespace Quiet::Renderer::Vulkan
                                const GraphicsCommands& graphicsCommands,
                                const std::vector<Vertex>& vertices,
                                const std::vector<Index>& indices,
+                               std::vector<StaticSubmesh> submeshes,
                                MeshStats stats);
 
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;
