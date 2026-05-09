@@ -65,56 +65,56 @@ set(ASSIMP_BUILD_COLLADA_IMPORTER ON CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
         glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG        3.4
-        GIT_SHALLOW    TRUE
+        GIT_REPOSITORY  https://github.com/glfw/glfw.git
+        GIT_TAG         3.4
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         spdlog
-        GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG        v1.17.0
-        GIT_SHALLOW    TRUE
+        GIT_REPOSITORY  https://github.com/gabime/spdlog.git
+        GIT_TAG         v1.17.0
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         glm
-        GIT_REPOSITORY https://github.com/g-truc/glm.git
-        GIT_TAG        1.0.3
-        GIT_SHALLOW    TRUE
+        GIT_REPOSITORY  https://github.com/g-truc/glm.git
+        GIT_TAG         1.0.3
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         imgui
-        GIT_REPOSITORY https://github.com/ocornut/imgui.git
-        GIT_TAG docking
-        GIT_SHALLOW TRUE
+        GIT_REPOSITORY  https://github.com/ocornut/imgui.git
+        GIT_TAG         v1.91.9b-docking
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         imguizmo
-        GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
-        GIT_TAG master
-        GIT_SHALLOW TRUE
+        GIT_REPOSITORY  https://github.com/CedricGuillemet/ImGuizmo.git
+        GIT_TAG         22a6c900a33dcd7a72576bddc7bd21651a2deed4
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         json
-        GIT_REPOSITORY https://github.com/nlohmann/json
-        GIT_TAG v3.12.0
-        GIT_SHALLOW TRUE
+        GIT_REPOSITORY  https://github.com/nlohmann/json
+        GIT_TAG         v3.12.0
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         assimp
-        GIT_REPOSITORY https://github.com/assimp/assimp.git
-        GIT_TAG v6.0.4
-        GIT_SHALLOW TRUE
+        GIT_REPOSITORY  https://github.com/assimp/assimp.git
+        GIT_TAG         v6.0.4
+        GIT_SHALLOW     TRUE
 )
 FetchContent_Declare(
         imgui_file_dialog
-        GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
-        GIT_TAG v0.6.7
+        GIT_REPOSITORY  https://github.com/aiekick/ImGuiFileDialog.git
+        GIT_TAG         v0.6.7
 )
 FetchContent_Declare(
         stb
-        GIT_REPOSITORY https://github.com/nothings/stb.git
-        GIT_TAG master
-        GIT_SHALLOW TRUE
+        GIT_REPOSITORY  https://github.com/nothings/stb.git
+        GIT_TAG         master
+        GIT_SHALLOW     TRUE
 )
 FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog stb)
 

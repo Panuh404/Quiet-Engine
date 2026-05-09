@@ -25,6 +25,27 @@ namespace
         static std::unordered_map<std::string, TexturePreviewCacheEntry> cache;
         return cache;
     }
+
+    void DrawPreviewFrameOutline(ImDrawList* drawList,
+                                 const ImVec2& min,
+                                 const ImVec2& max,
+                                 const ImU32 color,
+                                 const float thickness)
+    {
+        drawList->AddLine(min, ImVec2(max.x, min.y), color, thickness);
+        drawList->AddLine(ImVec2(max.x, min.y), max, color, thickness);
+
+        drawList->AddLine(max, ImVec2(min.x, max.y), color, thickness);
+        drawList->AddLine(ImVec2(min.x, max.y), min, color, thickness);
+    }
+
+    void DrawPreviewFrameFilled(ImDrawList* drawList,
+                                const ImVec2& min,
+                                const ImVec2& max,
+                                const ImU32 color)
+    {
+        drawList->AddQuadFilled(min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y), color);
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -91,16 +112,18 @@ namespace Quiet::Renderer::UI
     void DrawTexturePreview(const std::string_view textureAssetID,
                             const Vulkan::TextureLibrary& textureLibrary,
                             const Vulkan::TextureStats& textureStats,
-                            const float uiScale)
+                            const float uiScale,
+                            const float maxPreviewSideBase)
     {
         const ImTextureID previewID = GetOrCreateTexturePreviewID(textureAssetID, textureLibrary);
+
         if (!previewID)
         {
             ImGui::TextDisabled("Texture preview is unavailable.");
             return;
         }
 
-        const float maxPreviewSide = 240.0f * uiScale;
+        const float maxPreviewSide = maxPreviewSideBase * uiScale;
         const float framePadding = 10.0f * uiScale;
 
         const ImVec2 previewSize = CalculateTexturePreviewSize(
@@ -117,30 +140,56 @@ namespace Quiet::Renderer::UI
         const float availableWidth = ImGui::GetContentRegionAvail().x;
         if (availableWidth > frameSize.x)
         {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availableWidth - frameSize.x) * 0.5f);
-        }
-
-        const std::string childID = "TexturePreviewFrame##" + std::string(textureAssetID);
-
-        if (ImGui::BeginChild(
-                childID.c_str(),
-                frameSize,
-                true,
-                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
-        {
-            ImGui::SetCursorPos(ImVec2(framePadding, framePadding));
-
-            // Texture pixels are flipped during import to match mesh UVs.
-            // Flip preview UVs so the user sees the source texture upright.
-            ImGui::Image(
-                previewID,
-                previewSize,
-                ImVec2(0.0f, 1.0f),
-                ImVec2(1.0f, 0.0f)
+            ImGui::SetCursorPosX(
+                ImGui::GetCursorPosX() + (availableWidth - frameSize.x) * 0.5f
             );
         }
 
-        ImGui::EndChild();
+        const ImVec2 frameMin = ImGui::GetCursorScreenPos();
+        const ImVec2 frameMax(
+            frameMin.x + frameSize.x,
+            frameMin.y + frameSize.y
+        );
+
+        const ImVec2 imageMin(
+            frameMin.x + framePadding,
+            frameMin.y + framePadding
+        );
+
+        const ImVec2 imageMax(
+            imageMin.x + previewSize.x,
+            imageMin.y + previewSize.y
+        );
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        DrawPreviewFrameFilled(
+            drawList,
+            frameMin,
+            frameMax,
+            IM_COL32(24, 27, 33, 255)
+        );
+
+        DrawPreviewFrameOutline(
+            drawList,
+            frameMin,
+            frameMax,
+            IM_COL32(72, 82, 96, 255),
+            1.0f
+        );
+
+        // Texture pixels are flipped during import to match mesh UVs.
+        // Flip preview UVs so the user sees the source texture upright.
+        drawList->AddImage(
+            previewID,
+            imageMin,
+            imageMax,
+            ImVec2(0.0f, 1.0f),
+            ImVec2(1.0f, 0.0f),
+            IM_COL32_WHITE
+        );
+
+        ImGui::Dummy(frameSize);
         ImGui::TextDisabled("Preview uses the imported GPU texture.");
     }
 }

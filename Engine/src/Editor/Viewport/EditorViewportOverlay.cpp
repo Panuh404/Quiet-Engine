@@ -71,6 +71,91 @@ namespace
         outRect = rect;
         return true;
     }
+
+    void DrawFilledScreenRect(ImDrawList* drawList,
+                          const ImVec2& min,
+                          const ImVec2& max,
+                          const ImU32 color)
+    {
+        drawList->AddQuadFilled(min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y), color);
+    }
+
+    void DrawScreenRectOutline(ImDrawList* drawList,
+                               const ImVec2& min,
+                               const ImVec2& max,
+                               const ImU32 color,
+                               const float thickness)
+    {
+        drawList->AddLine(min, ImVec2(max.x, min.y), color, thickness);
+        drawList->AddLine(ImVec2(max.x, min.y), max, color, thickness);
+
+        drawList->AddLine(max, ImVec2(min.x, max.y), color, thickness);
+        drawList->AddLine(ImVec2(min.x, max.y), min, color, thickness);
+    }
+
+    void DrawScreenDiamondFilled(ImDrawList* drawList,
+                                 const ImVec2& center,
+                                 const float radius,
+                                 const ImU32 color)
+    {
+        drawList->AddQuadFilled(
+            ImVec2(center.x, center.y - radius),
+            ImVec2(center.x + radius, center.y),
+            ImVec2(center.x, center.y + radius),
+            ImVec2(center.x - radius, center.y),
+            color
+        );
+    }
+
+    void DrawScreenDiamondOutline(ImDrawList* drawList,
+                                  const ImVec2& center,
+                                  const float radius,
+                                  const ImU32 color,
+                                  const float thickness)
+    {
+        const ImVec2 top(center.x, center.y - radius);
+        const ImVec2 right(center.x + radius, center.y);
+        const ImVec2 bottom(center.x, center.y + radius);
+        const ImVec2 left(center.x - radius, center.y);
+
+        drawList->AddLine(top, right, color, thickness);
+        drawList->AddLine(right, bottom, color, thickness);
+        drawList->AddLine(bottom, left, color, thickness);
+        drawList->AddLine(left, top, color, thickness);
+    }
+
+    void DrawScreenTriangleOutline(ImDrawList* drawList,
+                                   const ImVec2& a,
+                                   const ImVec2& b,
+                                   const ImVec2& c,
+                                   const ImU32 color,
+                                   const float thickness)
+    {
+        drawList->AddLine(a, b, color, thickness);
+        drawList->AddLine(b, c, color, thickness);
+        drawList->AddLine(c, a, color, thickness);
+    }
+
+    void DrawScreenCross(ImDrawList* drawList,
+                         const ImVec2& center,
+                         const float radius,
+                         const ImU32 color,
+                         const float thickness)
+    {
+        drawList->AddLine(
+            ImVec2(center.x - radius, center.y),
+            ImVec2(center.x + radius, center.y),
+            color,
+            thickness
+        );
+
+        drawList->AddLine(
+            ImVec2(center.x, center.y - radius),
+            ImVec2(center.x, center.y + radius),
+            color,
+            thickness
+        );
+    }
 }
 
 namespace Quiet::Editor
@@ -104,10 +189,10 @@ namespace Quiet::Editor
         const ImVec2 min(position.x - halfWidth, position.y - halfHeight);
         const ImVec2 max(position.x + halfWidth, position.y + halfHeight);
 
-        drawList->AddRectFilled(min, max, fill, 2.0f);
-        drawList->AddRect(min, max, color, 2.0f, 0, 2.0f);
-
-        drawList->AddTriangle(
+        DrawFilledScreenRect(drawList, min, max, fill);
+        DrawScreenRectOutline(drawList, min, max, color, 2.0f);
+        DrawScreenTriangleOutline(
+            drawList,
             ImVec2(max.x, position.y - 4.0f),
             ImVec2(max.x + 8.0f, position.y - 8.0f),
             ImVec2(max.x + 8.0f, position.y + 8.0f),
@@ -126,8 +211,8 @@ namespace Quiet::Editor
             ? IM_COL32(255, 220, 80, 100)
             : IM_COL32(255, 220, 80, 55);
 
-        drawList->AddCircleFilled(position, 7.0f, fill, 20);
-        drawList->AddCircle(position, 7.0f, color, 20, 2.0f);
+        DrawScreenDiamondFilled(drawList, position, 8.0f, fill);
+        DrawScreenDiamondOutline(drawList, position, 8.0f, color, 2.0f);
 
         drawList->AddLine(
             ImVec2(position.x - 14.0f, position.y - 14.0f),
@@ -168,21 +253,19 @@ namespace Quiet::Editor
         const ImVec2 min(rect.Min.x - padding, rect.Min.y - padding);
         const ImVec2 max(rect.Max.x + padding, rect.Max.y + padding);
 
-        drawList->AddRect(
+        DrawScreenRectOutline(
+            drawList,
             ImVec2(min.x + 1.0f, min.y + 1.0f),
             ImVec2(max.x + 1.0f, max.y + 1.0f),
             shadow,
-            2.0f,
-            0,
             3.0f
         );
 
-        drawList->AddRect(
+        DrawScreenRectOutline(
+            drawList,
             min,
             max,
             color,
-            2.0f,
-            0,
             2.0f
         );
     }
@@ -192,26 +275,34 @@ namespace Quiet::Editor
         constexpr ImU32 color = IM_COL32(255, 210, 70, 255);
         constexpr ImU32 shadow = IM_COL32(0, 0, 0, 170);
 
-        drawList->AddCircleFilled(
+        DrawScreenDiamondFilled(
+            drawList,
             ImVec2(position.x + 1.0f, position.y + 1.0f),
-            5.0f,
-            shadow,
-            16
+            6.0f,
+            shadow
         );
 
-        drawList->AddCircleFilled(
+        DrawScreenDiamondFilled(
+            drawList,
             position,
             5.0f,
-            color,
-            16
+            color
         );
 
-        drawList->AddCircle(
+        DrawScreenDiamondOutline(
+            drawList,
             position,
-            9.0f,
+            10.0f,
             color,
-            20,
             2.0f
+        );
+
+        DrawScreenCross(
+            drawList,
+            position,
+            13.0f,
+            color,
+            1.5f
         );
     }
 
@@ -385,7 +476,12 @@ namespace Quiet::Editor
         ImVec2 originScreen{};
         if (ProjectWorldToViewport(worldOrigin, cameraData, viewportState, originScreen))
         {
-            drawList->AddCircleFilled(originScreen, selected ? 4.0f : 3.0f, centerColor, 16);
+            DrawScreenDiamondFilled(
+                drawList,
+                originScreen,
+                selected ? 4.0f : 3.0f,
+                centerColor
+            );
         }
     }
 

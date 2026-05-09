@@ -121,7 +121,8 @@ namespace Quiet::Renderer::UI
                             Editor::EditorCommands& editorCommands,
                             Editor::EditorState& editorState,
                             const Project::ProjectContext& projectContext,
-                            const Vulkan::MeshLibrary& meshLibrary);
+                            const Vulkan::MeshLibrary& meshLibrary,
+                            const Vulkan::TextureLibrary& textureLibrary);
         void BuildHierarchy(Scene::Scene& scene,
                             Editor::EditorActions& editorActions,
                             Editor::EditorCommands& editorCommands,

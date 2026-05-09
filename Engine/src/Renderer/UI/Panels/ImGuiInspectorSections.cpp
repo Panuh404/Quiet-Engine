@@ -4,7 +4,9 @@
 #include <imgui.h>
 
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -189,7 +191,9 @@ namespace Quiet::Renderer::UI
                              Scene::Actor& actor,
                              Editor::EditorCommands& commands,
                              const Project::ProjectContext& projectContext,
-                             const TrackedInspectorInteraction& tracked)
+                             const Vulkan::TextureLibrary& textureLibrary,
+                             const TrackedInspectorInteraction& tracked,
+                             const float uiScale)
     {
         if (!actor.StaticMesh.has_value()) return;
         if (!actor.Material.has_value())
@@ -246,8 +250,30 @@ namespace Quiet::Renderer::UI
 
         if (textureAssetIDs.empty())
             ImGui::TextDisabled("No texture assets registered.");
+        else if (!actor.Material->HasBaseColorTexture())
+            ImGui::TextDisabled("No base color texture assigned.");
         else
-            ImGui::TextDisabled("Texture reference only. GPU texture rendering is not implemented yet.");
+        {
+            const std::string& textureAssetID = actor.Material->BaseColorTextureAssetID;
+            const auto textureStats = textureLibrary.GetStats(textureAssetID);
+
+            if (!textureStats.has_value())
+                ImGui::TextDisabled("Assigned texture is not loaded. Press Reload in the Assets panel.");
+            else if (!textureStats->GpuReady)
+                ImGui::TextDisabled("Assigned texture metadata is loaded, but the GPU texture is not ready.");
+            else
+            {
+                ImGui::TextDisabled("Texture is sampled by the static mesh material.");
+
+                DrawTexturePreview(
+                    textureAssetID,
+                    textureLibrary,
+                    textureStats.value(),
+                    uiScale,
+                    128.0f
+                );
+            }
+        }
 
         if (ImGui::Button("Remove Material"))
             commands.RemoveMaterial(scene, actor.ID);

@@ -17,6 +17,7 @@ namespace Quiet::Project
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
+    class TextureLibrary;
 }
 
 namespace Quiet::Renderer::UI
@@ -50,7 +51,9 @@ namespace Quiet::Renderer::UI
                              Scene::Actor& actor,
                              Editor::EditorCommands& commands,
                              const Project::ProjectContext& projectContext,
-                             const TrackedInspectorInteraction& tracked);
+                             const Vulkan::TextureLibrary& textureLibrary,
+                             const TrackedInspectorInteraction& tracked,
+                             float uiScale);
 
     void DrawDirectionalLightSection(Scene::Scene& scene,
                                      Scene::Actor& actor,

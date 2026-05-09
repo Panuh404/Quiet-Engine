@@ -28,6 +28,7 @@ namespace Quiet::Renderer::UI
         std::string_view textureAssetID,
         const Vulkan::TextureLibrary& textureLibrary,
         const Vulkan::TextureStats& textureStats,
-        float uiScale
+        float uiScale,
+        float maxPreviewSize = 240.0f
     );
 }

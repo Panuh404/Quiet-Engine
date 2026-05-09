@@ -80,8 +80,8 @@ namespace Quiet::Renderer::UI
         pipelineRenderingInfo.depthAttachmentFormat = depthFormat;
         pipelineRenderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
-        initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        initInfo.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineRenderingInfo;
+        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        initInfo.PipelineRenderingCreateInfo = pipelineRenderingInfo;
 
         if (!ImGui_ImplVulkan_Init(&initInfo))
         {
@@ -125,7 +125,7 @@ namespace Quiet::Renderer::UI
         BuildDockspace();
         BuildTopbar(actions, editorState);
         BuildHierarchy(scene, actions, commands, editorState, projectContext, meshLibrary);
-        BuildInspector(scene, commands, editorState, projectContext, meshLibrary);
+        BuildInspector(scene, commands, editorState, projectContext, meshLibrary, textureLibrary);
 
         BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary, textureLibrary);
         BuildMainMenuBar(actions, editorState);
