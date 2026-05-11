@@ -1,5 +1,8 @@
 #include "Quiet/Editor/EditorCommands.h"
 
+#include <algorithm>
+#include <vector>
+
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/ProjectContext.h"
@@ -44,6 +47,28 @@ namespace
     {
         if (!FindMeshAssetRecord(projectContext, meshResourceID)) return nullptr;
         return meshLibrary.TryGet(meshResourceID);
+    }
+
+    std::vector<Quiet::Scene::MaterialComponent> CreateDefaultMaterialSlots(
+    const std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh>& mesh)
+    {
+        std::vector<Quiet::Scene::MaterialComponent> slots;
+        if (!mesh) return slots;
+
+        std::uint32_t highestMaterialSlot = 0;
+        bool hasMaterialSlot = false;
+
+        for (const Quiet::Renderer::Vulkan::StaticSubmesh& submesh : mesh->GetSubmeshes())
+        {
+            highestMaterialSlot = std::max(highestMaterialSlot, submesh.MaterialSlot);
+            hasMaterialSlot = true;
+        }
+
+        if (!hasMaterialSlot)
+            return slots;
+
+        slots.resize(static_cast<std::size_t>(highestMaterialSlot) + 1u);
+        return slots;
     }
 }
 
@@ -102,6 +127,7 @@ namespace Quiet::Editor
             actor.StaticMesh = Scene::StaticMeshComponent{};
             actor.StaticMesh->MeshResourceID = meshResourceID;
             actor.StaticMesh->Mesh = mesh;
+            actor.StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
             actor.StaticMesh->Visible = true;
             actor.Material = Scene::MaterialComponent{};
 
@@ -247,6 +273,7 @@ namespace Quiet::Editor
             actor->StaticMesh = Scene::StaticMeshComponent{};
             actor->StaticMesh->MeshResourceID = defaultMeshID;
             actor->StaticMesh->Mesh = mesh;
+            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
             actor->StaticMesh->Visible= true;
             if (!actor->Material.has_value())
             {
@@ -293,6 +320,7 @@ namespace Quiet::Editor
 
             actor->StaticMesh->MeshResourceID = meshResourceID;
             actor->StaticMesh->Mesh = mesh;
+            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
             return true;
         });
     }

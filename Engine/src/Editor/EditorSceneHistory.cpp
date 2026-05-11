@@ -27,22 +27,20 @@ namespace
                AreFloatsEqual(lhs.z, rhs.z);
     }
 
+    bool AreVec4Equal(const glm::vec4& lhs, const glm::vec4& rhs)
+    {
+        return AreFloatsEqual(lhs.x, rhs.x) &&
+               AreFloatsEqual(lhs.y, rhs.y) &&
+               AreFloatsEqual(lhs.z, rhs.z) &&
+               AreFloatsEqual(lhs.w, rhs.w);
+    }
+
     bool AreTransformsEqual(const Quiet::Scene::Transform& lhs,
                             const Quiet::Scene::Transform& rhs)
     {
         return AreVec3Equal(lhs.Position, rhs.Position) &&
                AreVec3Equal(lhs.RotationDegrees, rhs.RotationDegrees) &&
                AreVec3Equal(lhs.Scale, rhs.Scale);
-    }
-
-    bool AreStaticMeshesEqual(const std::optional<Quiet::Scene::StaticMeshComponent>& lhs,
-                              const std::optional<Quiet::Scene::StaticMeshComponent>& rhs)
-    {
-        if (lhs.has_value() != rhs.has_value()) return false;
-        if (!lhs.has_value()) return true;
-
-        return lhs->MeshResourceID == rhs->MeshResourceID &&
-               lhs->Visible == rhs->Visible;
     }
 
     bool AreRotatorsEqual(const std::optional<Quiet::Scene::RotatorComponent>& lhs,
@@ -66,6 +64,46 @@ namespace
                AreFloatsEqual(lhs->FarClip, rhs->FarClip);
     }
 
+    bool AreMaterialsEqual(const Quiet::Scene::MaterialComponent& lhs,
+                           const Quiet::Scene::MaterialComponent& rhs)
+    {
+        return AreVec4Equal(lhs.BaseColor, rhs.BaseColor) &&
+               lhs.BaseColorTextureAssetID == rhs.BaseColorTextureAssetID;
+    }
+
+    bool AreOptionalMaterialsEqual(const std::optional<Quiet::Scene::MaterialComponent>& lhs,
+                                   const std::optional<Quiet::Scene::MaterialComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+        return AreMaterialsEqual(lhs.value(), rhs.value());
+    }
+
+    bool AreMaterialSlotsEqual(const std::vector<Quiet::Scene::MaterialComponent>& lhs,
+                               const std::vector<Quiet::Scene::MaterialComponent>& rhs)
+    {
+        if (lhs.size() != rhs.size()) return false;
+
+        for (std::size_t i = 0; i < lhs.size(); ++i)
+        {
+            if (!AreMaterialsEqual(lhs[i], rhs[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool AreStaticMeshesEqual(const std::optional<Quiet::Scene::StaticMeshComponent>& lhs,
+                          const std::optional<Quiet::Scene::StaticMeshComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->MeshResourceID == rhs->MeshResourceID &&
+               lhs->Visible == rhs->Visible &&
+               AreMaterialSlotsEqual(lhs->MaterialSlots, rhs->MaterialSlots);
+    }
+
     bool AreActorsEqual(const Quiet::Scene::Actor& lhs,
                         const Quiet::Scene::Actor& rhs)
     {
@@ -73,6 +111,7 @@ namespace
                lhs.Name == rhs.Name &&
                AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
                AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
+               AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
                AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
                AreCamerasEqual(lhs.Camera, rhs.Camera);
     }

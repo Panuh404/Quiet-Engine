@@ -6,6 +6,8 @@
 namespace Quiet::Scene
 {
     struct CameraComponent;
+    struct MaterialComponent;
+
     class Actor;
     class Scene;
 }
@@ -30,5 +32,8 @@ namespace Quiet::Scene
     private:
         static nlohmann::json SerializeCamera(const CameraComponent& camera);
         static void DeserializeCamera(const nlohmann::json& json, Actor& actor);
+
+        static nlohmann::json SerializeMaterial(const MaterialComponent& material);
+        static MaterialComponent DeserializeMaterial(const nlohmann::json& materialJson);
     };
 }

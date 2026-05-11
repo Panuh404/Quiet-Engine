@@ -31,7 +31,8 @@ namespace
         return nullptr;
     }
 
-    bool IsValidSubmeshDrawRange(const Quiet::Renderer::Vulkan::StaticSubmesh& submesh,
+    bool IsValidSubmeshDrawRange(
+        const Quiet::Renderer::Vulkan::StaticSubmesh& submesh,
         const Quiet::Renderer::Vulkan::StaticMesh& mesh)
     {
         if (submesh.IndexCount == 0) return false;
@@ -44,22 +45,31 @@ namespace
         return endIndex <= mesh.GetIndexCount();
     }
 
-    const Quiet::Scene::MaterialComponent* ResolveSubmeshMaterial(const Quiet::Scene::Actor& actor,
+    const Quiet::Scene::MaterialComponent* ResolveSubmeshMaterial(
+        const Quiet::Scene::Actor& actor,
         const Quiet::Renderer::Vulkan::StaticSubmesh& submesh)
     {
-        (void)submesh;
-        if (!actor.Material.has_value()) return nullptr;
+        if (actor.StaticMesh.has_value())
+        {
+            if (const Quiet::Scene::MaterialComponent* slot = actor.StaticMesh->TryGetMaterialSlot(submesh.MaterialSlot))
+                return slot;
+        }
+
+        if (!actor.Material.has_value())
+            return nullptr;
+
         return &actor.Material.value();
     }
-
-    void ApplyMaterialToPushConstants(const Quiet::Scene::MaterialComponent* material,
+    void ApplyMaterialToPushConstants(
+        const Quiet::Scene::MaterialComponent* material,
         Quiet::Renderer::Vulkan::StaticMeshPushConstants& push)
     {
         if (!material) return;
         push.MaterialBaseColor = material->BaseColor;
     }
 
-    VkDescriptorSet ResolveMaterialDescriptorSet(const Quiet::Scene::MaterialComponent* material,
+    VkDescriptorSet ResolveMaterialDescriptorSet(
+        const Quiet::Scene::MaterialComponent* material,
         Quiet::Renderer::Vulkan::StaticMeshMaterialResources& materialResources,
         const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
     {
@@ -72,11 +82,12 @@ namespace
         );
     }
 
-    void DrawSubmesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext &context,
-                     const Quiet::Scene::Actor &actor,
-                     const Quiet::Renderer::Vulkan::StaticSubmesh &submesh,
-                     Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
-                     uint32_t &drawCount)
+    void DrawSubmesh(
+        const Quiet::Renderer::Vulkan::StaticMeshRenderContext &context,
+        const Quiet::Scene::Actor &actor,
+        const Quiet::Renderer::Vulkan::StaticSubmesh &submesh,
+        Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
+        uint32_t &drawCount)
     {
         const Quiet::Scene::MaterialComponent* material = ResolveSubmeshMaterial(actor, submesh);
         ApplyMaterialToPushConstants(material, push);
@@ -119,7 +130,8 @@ namespace
         ++drawCount;
     }
 
-    void DrawWholeMesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext& context,
+    void DrawWholeMesh(
+        const Quiet::Renderer::Vulkan::StaticMeshRenderContext& context,
         const Quiet::Scene::Actor& actor,
         const Quiet::Renderer::Vulkan::StaticMesh& mesh,
         Quiet::Renderer::Vulkan::StaticMeshPushConstants push,

@@ -67,18 +67,25 @@ namespace Quiet::Scene
 
             if (actor.StaticMesh.has_value() && actor.StaticMesh->IsValid())
             {
-                actorJson["static_mesh"] = {
+                json staticMeshJson = {
                     { "resource_id", actor.StaticMesh->MeshResourceID },
                     { "visible", actor.StaticMesh->Visible }
                 };
+
+                if (!actor.StaticMesh->MaterialSlots.empty())
+                {
+                    staticMeshJson["material_slots"] = json::array();
+                    for (const MaterialComponent& materialSlot : actor.StaticMesh->MaterialSlots)
+                    {
+                        staticMeshJson["material_slots"].push_back(SerializeMaterial(materialSlot));
+                    }
+                }
+                actorJson["static_mesh"] = std::move(staticMeshJson);
             }
 
             if (actor.Material.has_value())
             {
-                actorJson["material"] = {
-                    { "base_color", SerializeVec4(actor.Material->BaseColor) },
-                    { "base_color_texture_asset_id", actor.Material->BaseColorTextureAssetID }
-                };
+                actorJson["material"] = SerializeMaterial(actor.Material.value());
             }
 
             if (actor.DirectionalLight.has_value())
@@ -190,6 +197,17 @@ namespace Quiet::Scene
                     actor.StaticMesh->MeshResourceID = resourceId;
                     actor.StaticMesh->Mesh = mesh;
                     actor.StaticMesh->Visible = staticMeshJson.value("visible", true);
+
+                    if (staticMeshJson.contains("material_slots") && staticMeshJson["material_slots"].is_array())
+                    {
+                        actor.StaticMesh->MaterialSlots.clear();
+                        for (const auto& materialSlotJson : staticMeshJson["material_slots"])
+                        {
+                            actor.StaticMesh->MaterialSlots.push_back(
+                                DeserializeMaterial(materialSlotJson)
+                            );
+                        }
+                    }
                 }
                 else
                 {
@@ -200,15 +218,7 @@ namespace Quiet::Scene
             if (actorJson.contains("material"))
             {
                 const auto& materialJson = actorJson["material"];
-
-                MaterialComponent material{};
-                if (materialJson.contains("base_color"))
-                {
-                    material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
-                }
-                material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
-
-                actor.Material = material;
+                actor.Material = DeserializeMaterial(materialJson);
             }
 
             if (actorJson.contains("directional_light"))
@@ -278,5 +288,24 @@ namespace Quiet::Scene
             camera.FarClip = json["FarClip"].get<float>();
 
         actor.Camera = camera;
+    }
+
+    nlohmann::json SceneSerializer::SerializeMaterial(const MaterialComponent &material)
+    {
+        return {
+            { "base_color", SerializeVec4(material.BaseColor) },
+            { "base_color_texture_asset_id", material.BaseColorTextureAssetID }
+        };
+    }
+
+    MaterialComponent SceneSerializer::DeserializeMaterial(const nlohmann::json &materialJson)
+    {
+        MaterialComponent material{};
+
+        if (materialJson.contains("base_color"))
+            material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
+
+        material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
+        return material;
     }
 }
