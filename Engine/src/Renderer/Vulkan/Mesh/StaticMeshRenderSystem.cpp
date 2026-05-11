@@ -17,6 +17,7 @@
 #include "Scene/Scene.h"
 #include "Scene/SceneRenderSettings.h"
 #include "Scene/Components/DirectionalLightComponent.h"
+#include "Scene/Components/MaterialComponent.h"
 
 namespace
 {
@@ -31,7 +32,7 @@ namespace
     }
 
     bool IsValidSubmeshDrawRange(const Quiet::Renderer::Vulkan::StaticSubmesh& submesh,
-                                 const Quiet::Renderer::Vulkan::StaticMesh& mesh)
+        const Quiet::Renderer::Vulkan::StaticMesh& mesh)
     {
         if (submesh.IndexCount == 0) return false;
         if (submesh.BaseIndex >= mesh.GetIndexCount()) return false;
@@ -41,6 +42,132 @@ namespace
             static_cast<std::uint64_t>(submesh.IndexCount);
 
         return endIndex <= mesh.GetIndexCount();
+    }
+
+    const Quiet::Scene::MaterialComponent* ResolveSubmeshMaterial(const Quiet::Scene::Actor& actor,
+        const Quiet::Renderer::Vulkan::StaticSubmesh& submesh)
+    {
+        (void)submesh;
+        if (!actor.Material.has_value()) return nullptr;
+        return &actor.Material.value();
+    }
+
+    void ApplyMaterialToPushConstants(const Quiet::Scene::MaterialComponent* material,
+        Quiet::Renderer::Vulkan::StaticMeshPushConstants& push)
+    {
+        if (!material) return;
+        push.MaterialBaseColor = material->BaseColor;
+    }
+
+    VkDescriptorSet ResolveMaterialDescriptorSet(const Quiet::Scene::MaterialComponent* material,
+        Quiet::Renderer::Vulkan::StaticMeshMaterialResources& materialResources,
+        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
+    {
+        if (!material || !material->HasBaseColorTexture())
+            return materialResources.GetFallbackDescriptorSet();
+
+        return materialResources.GetDescriptorSetForTexture(
+            textureLibrary,
+            material->BaseColorTextureAssetID
+        );
+    }
+
+    void DrawSubmesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext &context,
+                     const Quiet::Scene::Actor &actor,
+                     const Quiet::Renderer::Vulkan::StaticSubmesh &submesh,
+                     Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
+                     uint32_t &drawCount)
+    {
+        const Quiet::Scene::MaterialComponent* material = ResolveSubmeshMaterial(actor, submesh);
+        ApplyMaterialToPushConstants(material, push);
+
+        const VkDescriptorSet materialDescriptorSet =
+            ResolveMaterialDescriptorSet(
+                material,
+                *context.Materials,
+                *context.Textures
+            );
+
+        vkCmdBindDescriptorSets(
+            context.CommandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            context.Pipeline->GetLayout(),
+            1,
+            1,
+            &materialDescriptorSet,
+            0,
+            nullptr
+        );
+
+        vkCmdPushConstants(
+            context.CommandBuffer,
+            context.Pipeline->GetLayout(),
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(Quiet::Renderer::Vulkan::StaticMeshPushConstants),
+            &push
+        );
+
+        vkCmdDrawIndexed(
+            context.CommandBuffer,
+            submesh.IndexCount,
+            1,
+            submesh.BaseIndex,
+            0,
+            0
+        );
+        ++drawCount;
+    }
+
+    void DrawWholeMesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext& context,
+        const Quiet::Scene::Actor& actor,
+        const Quiet::Renderer::Vulkan::StaticMesh& mesh,
+        Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
+        std::uint32_t& drawCount)
+    {
+        const Quiet::Scene::MaterialComponent* material =
+            actor.Material.has_value()
+                ? &actor.Material.value()
+                : nullptr;
+
+        ApplyMaterialToPushConstants(material, push);
+
+        const VkDescriptorSet materialDescriptorSet =
+            ResolveMaterialDescriptorSet(
+                material,
+                *context.Materials,
+                *context.Textures
+            );
+
+        vkCmdBindDescriptorSets(
+            context.CommandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            context.Pipeline->GetLayout(),
+            1,
+            1,
+            &materialDescriptorSet,
+            0,
+            nullptr
+        );
+
+        vkCmdPushConstants(
+            context.CommandBuffer,
+            context.Pipeline->GetLayout(),
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(Quiet::Renderer::Vulkan::StaticMeshPushConstants),
+            &push
+        );
+
+        vkCmdDrawIndexed(
+            context.CommandBuffer,
+            mesh.GetIndexCount(),
+            1,
+            0,
+            0,
+            0
+        );
+        ++drawCount;
     }
 }
 
@@ -139,39 +266,6 @@ namespace Quiet::Renderer::Vulkan
                 renderSettings.AmbientIntensity
             );
 
-            VkDescriptorSet materialDescriptorSet = context.Materials->GetFallbackDescriptorSet();
-            if (actor.Material.has_value())
-            {
-                push.MaterialBaseColor = actor.Material->BaseColor;
-                if (actor.Material->HasBaseColorTexture())
-                {
-                    materialDescriptorSet =
-                        context.Materials->GetDescriptorSetForTexture(
-                            *context.Textures,
-                            actor.Material->BaseColorTextureAssetID);
-                }
-            }
-
-            vkCmdBindDescriptorSets(
-                context.CommandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                context.Pipeline->GetLayout(),
-                1,
-                1,
-                &materialDescriptorSet,
-                0,
-                nullptr
-            );
-
-            vkCmdPushConstants(
-                context.CommandBuffer,
-                context.Pipeline->GetLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(StaticMeshPushConstants),
-                &push
-            );
-
             const std::vector<StaticSubmesh>& submeshes = mesh->GetSubmeshes();
 
             if (!submeshes.empty())
@@ -191,28 +285,12 @@ namespace Quiet::Renderer::Vulkan
                         continue;
                     }
 
-                    vkCmdDrawIndexed(
-                        context.CommandBuffer,
-                        submesh.IndexCount,
-                        1,
-                        submesh.BaseIndex,
-                        0,
-                        0
-                    );
-                    ++drawCount;
+                    DrawSubmesh(context, actor, submesh, push, drawCount);
                 }
             }
             else
             {
-                vkCmdDrawIndexed(
-                    context.CommandBuffer,
-                    mesh->GetIndexCount(),
-                    1,
-                    0,
-                    0,
-                    0
-                );
-                ++drawCount;
+                DrawWholeMesh(context, actor, *mesh, push, drawCount);
             }
         }
     }
