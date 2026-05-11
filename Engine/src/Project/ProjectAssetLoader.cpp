@@ -255,17 +255,18 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "{} mesh asset '{}' from '{}'. importer={} meshes={} vertices={} indices={} boundsValid={} warnings={}",
-            alreadyLoaded ? "Reloaded" : "Loaded",
-            record.ID,
-            assetPath.string(),
-            importResult.ImporterName,
-            importResult.ImportedMeshCount,
-            importResult.Vertices.size(),
-            importResult.Indices.size(),
-            importResult.Bounds.Valid,
-            importResult.Warnings.size()
-        );
+        "{} mesh asset '{}' from '{}'. importer={} meshes={} submeshes={} vertices={} indices={} boundsValid={} warnings={}",
+             alreadyLoaded ? "Reloaded" : "Loaded",
+             record.ID,
+             assetPath.string(),
+             importResult.ImporterName,
+             importResult.ImportedMeshCount,
+             importResult.Submeshes.size(),
+             importResult.Vertices.size(),
+             importResult.Indices.size(),
+             importResult.Bounds.Valid,
+             importResult.Warnings.size()
+         );
 
         for (const std::string& warning : importResult.Warnings)
         {

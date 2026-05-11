@@ -370,7 +370,8 @@ namespace
                         ImGui::BeginChild(
                             "AssetImportWarnings",
                             ImVec2(0.0f, 120.0f * uiScale),
-                            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+                            ImGuiWindowFlags_None
                         );
 
                         for (const std::string& warning : stats->Warnings)
@@ -503,8 +504,10 @@ namespace Quiet::Renderer::UI
             ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
 
-            if (ImGui::BeginChild("RegisterAssetCard",
-                Scale(ImVec2(0.0f, 190.0f)),
+            if (ImGui::BeginChild(
+                "RegisterAssetCard",
+                Scale(ImVec2(0.0f, 210.0f)),
+                ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
             {
                 DrawRegisterAssetForm(

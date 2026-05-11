@@ -1,5 +1,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
+#include <cstdint>
+#include <vector>
 #include <stdexcept>
 #include "glm/vec4.hpp"
 
@@ -26,6 +28,19 @@ namespace
                 return &actor.DirectionalLight.value();
         }
         return nullptr;
+    }
+
+    bool IsValidSubmeshDrawRange(const Quiet::Renderer::Vulkan::StaticSubmesh& submesh,
+                                 const Quiet::Renderer::Vulkan::StaticMesh& mesh)
+    {
+        if (submesh.IndexCount == 0) return false;
+        if (submesh.BaseIndex >= mesh.GetIndexCount()) return false;
+
+        const std::uint64_t endIndex =
+            static_cast<std::uint64_t>(submesh.BaseIndex) +
+            static_cast<std::uint64_t>(submesh.IndexCount);
+
+        return endIndex <= mesh.GetIndexCount();
     }
 }
 
@@ -157,10 +172,48 @@ namespace Quiet::Renderer::Vulkan
                 &push
             );
 
-            vkCmdDrawIndexed(
-                context.CommandBuffer, mesh->GetIndexCount(),
-                1, 0, 0, 0);
-            ++drawCount;
+            const std::vector<StaticSubmesh>& submeshes = mesh->GetSubmeshes();
+
+            if (!submeshes.empty())
+            {
+                for (const StaticSubmesh& submesh : submeshes)
+                {
+                    if (!IsValidSubmeshDrawRange(submesh, *mesh))
+                    {
+                        QUIET_CORE_WARN(
+                            "Skipped invalid submesh draw range. mesh='{}' submesh='{}' baseIndex={} indexCount={} meshIndexCount={}",
+                            actor.StaticMesh->MeshResourceID,
+                            submesh.Name,
+                            submesh.BaseIndex,
+                            submesh.IndexCount,
+                            mesh->GetIndexCount()
+                        );
+                        continue;
+                    }
+
+                    vkCmdDrawIndexed(
+                        context.CommandBuffer,
+                        submesh.IndexCount,
+                        1,
+                        submesh.BaseIndex,
+                        0,
+                        0
+                    );
+                    ++drawCount;
+                }
+            }
+            else
+            {
+                vkCmdDrawIndexed(
+                    context.CommandBuffer,
+                    mesh->GetIndexCount(),
+                    1,
+                    0,
+                    0,
+                    0
+                );
+                ++drawCount;
+            }
         }
     }
 }
