@@ -3,7 +3,9 @@
 #include <limits>
 #include <string>
 #include <algorithm>
-#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cctype>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -83,6 +85,60 @@ namespace
     std::string ToString(const aiString& value)
     {
         return std::string(value.C_Str());
+    }
+
+    std::string ToLowerCopy(std::string value)
+    {
+        std::transform(
+            value.begin(),
+            value.end(),
+            value.begin(),
+            [](const unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            }
+        );
+        return value;
+    }
+
+    std::string NormalizeEmbeddedTextureExtension(const std::string& hint)
+    {
+        const std::string lower = ToLowerCopy(hint);
+
+        if (lower == "png") return ".png";
+        if (lower == "jpg" || lower == "jpeg") return ".jpg";
+        if (lower == "bmp") return ".bmp";
+        if (lower == "tga") return ".tga";
+
+        return {};
+    }
+
+    std::string DetectCompressedImageExtension(const std::uint8_t* data,
+                                               const std::size_t size,
+                                               const std::string& hint)
+    {
+        if (const std::string ext = NormalizeEmbeddedTextureExtension(hint); !ext.empty())
+            return ext;
+
+        if (size >= 8 &&
+            data[0] == 0x89 &&
+            data[1] == 'P' &&
+            data[2] == 'N' &&
+            data[3] == 'G')
+            return ".png";
+
+        if (size >= 3 &&
+            data[0] == 0xFF &&
+            data[1] == 0xD8 &&
+            data[2] == 0xFF)
+            return ".jpg";
+
+        if (size >= 2 &&
+            data[0] == 'B' &&
+            data[1] == 'M')
+            return ".bmp";
+
+        return {};
     }
 
 
@@ -292,6 +348,53 @@ namespace
             result.Materials.push_back(std::move(material));
         }
     }
+
+    void ImportEmbeddedTextures(const aiScene& scene,
+                                Quiet::Renderer::Vulkan::MeshImportResult& result)
+    {
+        result.EmbeddedTextures.clear();
+        if (!scene.HasTextures()) return;
+        result.EmbeddedTextures.reserve(scene.mNumTextures);
+
+        for (unsigned int textureIndex = 0; textureIndex < scene.mNumTextures; ++textureIndex)
+        {
+            const aiTexture* sourceTexture = scene.mTextures[textureIndex];
+            if (!sourceTexture || !sourceTexture->pcData)
+                continue;
+
+            if (sourceTexture->mHeight == 0)
+            {
+                const auto* bytes = reinterpret_cast<const std::uint8_t*>(sourceTexture->pcData);
+                const std::size_t byteCount = static_cast<std::size_t>(sourceTexture->mWidth);
+
+                const std::string formatHint = sourceTexture->achFormatHint;
+                const std::string extension = DetectCompressedImageExtension(bytes, byteCount, formatHint);
+
+                if (extension.empty())
+                {
+                    result.Warnings.push_back(
+                        "Skipped embedded texture " + std::to_string(textureIndex) +
+                        " because its image format could not be detected."
+                    );
+                    continue;
+                }
+
+                Quiet::Renderer::Vulkan::ImportedEmbeddedTexture embedded{};
+                embedded.Index = static_cast<int>(textureIndex);
+                embedded.Name = "EmbeddedTexture_" + std::to_string(textureIndex);
+                embedded.Extension = extension;
+                embedded.Bytes.assign(bytes, bytes + byteCount);
+
+                result.EmbeddedTextures.push_back(std::move(embedded));
+                continue;
+            }
+
+            result.Warnings.push_back(
+                "Skipped embedded texture " + std::to_string(textureIndex) +
+                " because uncompressed Assimp embedded textures are not exported yet."
+            );
+        }
+    }
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -337,6 +440,7 @@ namespace Quiet::Renderer::Vulkan
 
         const aiMatrix4x4 identity{};
 
+        ImportEmbeddedTextures(*scene, result);
         ImportMaterials(*scene, result);
 
         if (!TraverseNode(*scene, *scene->mRootNode, identity, result))

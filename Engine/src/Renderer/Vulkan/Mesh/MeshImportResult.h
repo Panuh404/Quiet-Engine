@@ -36,13 +36,28 @@ namespace Quiet::Renderer::Vulkan
 
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
-        // Raw source texture reference reported by Assimp.
-        // For external textures this is usually a relative path.
-        // For embedded GLB textures this is often something like "*0".
         std::string BaseColorTexturePath;
+        std::string BaseColorTextureAssetID;
 
         bool BaseColorTextureEmbedded = false;
         int EmbeddedTextureIndex = -1;
+    };
+
+    struct ImportedEmbeddedTexture
+    {
+        int Index = -1;
+
+        std::string Name;
+        std::string Extension;
+
+        std::vector<std::uint8_t> Bytes;
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return Index >= 0 &&
+                   !Extension.empty() &&
+                   !Bytes.empty();
+        }
     };
 
     struct MeshImportResult
@@ -51,6 +66,7 @@ namespace Quiet::Renderer::Vulkan
         std::vector<Index> Indices;
         std::vector<ImportedSubmesh> Submeshes;
         std::vector<ImportedMaterial> Materials;
+        std::vector<ImportedEmbeddedTexture> EmbeddedTextures;
 
         MeshBounds Bounds{};
 

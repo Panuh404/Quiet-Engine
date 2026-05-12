@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <string>
 #include <utility>
+#include <cctype>
+#include <fstream>
+#include <unordered_map>
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
@@ -86,12 +89,213 @@ namespace
             slot.Name = imported.Name;
             slot.BaseColor = imported.BaseColor;
             slot.BaseColorTexturePath = imported.BaseColorTexturePath;
+            slot.BaseColorTextureAssetID = imported.BaseColorTextureAssetID;
             slot.BaseColorTextureEmbedded = imported.BaseColorTextureEmbedded;
             slot.EmbeddedTextureIndex = imported.EmbeddedTextureIndex;
 
             slots.push_back(std::move(slot));
         }
         return slots;
+    }
+
+    std::string SanitizeAssetIDPart(std::string value)
+    {
+        for (char& c : value)
+        {
+            const auto uc = static_cast<unsigned char>(c);
+            if (!std::isalnum(uc) && c != '_' && c != '-') c = '_';
+        }
+
+        while (!value.empty() && value.front() == '_')
+        {
+            value.erase(value.begin());
+        }
+        while (!value.empty() && value.back() == '_')
+        {
+            value.pop_back();
+        }
+
+        if (value.empty()) return "Texture";
+        return value;
+    }
+
+    std::string MakeImportedMaterialTextureAssetID(const std::string& meshAssetID,
+                                                   const std::string& materialName,
+                                                   const std::size_t materialIndex)
+    {
+        return SanitizeAssetIDPart(meshAssetID) +
+               "_" +
+               SanitizeAssetIDPart(materialName.empty()
+                   ? "Material_" + std::to_string(materialIndex)
+                   : materialName) +
+               "_BaseColor";
+    }
+
+    bool IsSupportedTextureExtension(const std::filesystem::path& path)
+    {
+        std::string ext = path.extension().string();
+        std::transform(
+            ext.begin(),
+            ext.end(),
+            ext.begin(),
+            [](const unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            }
+        );
+
+        return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp";
+    }
+
+    std::filesystem::path ResolveExternalMaterialTexturePath(
+        const std::filesystem::path& meshAssetPath,
+        const std::string& texturePath)
+    {
+        if (texturePath.empty()) return {};
+        std::filesystem::path path(texturePath);
+
+        if (path.is_absolute())
+            return path.lexically_normal();
+
+        return (meshAssetPath.parent_path() / path).lexically_normal();
+    }
+
+    const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture* FindEmbeddedTextureByIndex(
+        const Quiet::Renderer::Vulkan::MeshImportResult& importResult,
+        const int embeddedTextureIndex)
+    {
+        for (const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture& texture : importResult.EmbeddedTextures)
+        {
+            if (texture.Index == embeddedTextureIndex)
+                return &texture;
+        }
+        return nullptr;
+    }
+
+    bool WriteBinaryFileIfDifferent(const std::filesystem::path& path,
+                                    const std::vector<std::uint8_t>& bytes)
+    {
+        if (path.empty() || bytes.empty()) return false;
+
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+
+        if (ec) return false;
+        if (std::filesystem::exists(path, ec) && std::filesystem::file_size(path, ec) == bytes.size())
+            return true;
+
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        if (!output.is_open()) return false;
+
+        output.write(
+            reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size())
+        );
+
+        return output.good();
+    }
+
+    void RegisterImportedMaterialTextures(
+        Quiet::Project::ProjectContext& projectContext,
+        const std::string& meshAssetID,
+        const std::filesystem::path& meshAssetPath,
+        Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    {
+        for (std::size_t materialIndex = 0;
+             materialIndex < importResult.Materials.size();
+             ++materialIndex)
+        {
+            Quiet::Renderer::Vulkan::ImportedMaterial& material = importResult.Materials[materialIndex];
+            if (material.BaseColorTexturePath.empty()) continue;
+
+            const std::string textureAssetID =
+                MakeImportedMaterialTextureAssetID(
+                    meshAssetID,
+                    material.Name,
+                    materialIndex
+                );
+
+            if (material.BaseColorTextureEmbedded)
+            {
+                const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture* embeddedTexture =
+                    FindEmbeddedTextureByIndex(importResult, material.EmbeddedTextureIndex);
+
+                if (!embeddedTexture || !embeddedTexture->IsValid())
+                {
+                    importResult.Warnings.push_back(
+                        "Material '" + material.Name +
+                        "' references missing embedded base color texture '" +
+                        material.BaseColorTexturePath + "'."
+                    );
+                    continue;
+                }
+
+                const std::filesystem::path outputPath =
+                    projectContext.GetAssetsPath() /
+                    "Textures" /
+                    meshAssetID /
+                    (textureAssetID + embeddedTexture->Extension);
+
+                if (!WriteBinaryFileIfDifferent(outputPath, embeddedTexture->Bytes))
+                {
+                    importResult.Warnings.push_back(
+                        "Failed to extract embedded base color texture for material '" +
+                        material.Name + "'."
+                    );
+                    continue;
+                }
+
+                if (projectContext.RegisterTextureAsset(textureAssetID, outputPath, false))
+                {
+                    material.BaseColorTextureAssetID = textureAssetID;
+                    continue;
+                }
+
+                importResult.Warnings.push_back(
+                    "Failed to register extracted texture asset '" +
+                    textureAssetID + "'."
+                );
+
+                continue;
+            }
+
+            const std::filesystem::path externalTexturePath =
+                ResolveExternalMaterialTexturePath(
+                    meshAssetPath,
+                    material.BaseColorTexturePath
+                );
+
+            if (!std::filesystem::exists(externalTexturePath))
+            {
+                importResult.Warnings.push_back(
+                    "Material '" + material.Name +
+                    "' references missing base color texture '" +
+                    externalTexturePath.string() + "'."
+                );
+                continue;
+            }
+
+            if (!IsSupportedTextureExtension(externalTexturePath))
+            {
+                importResult.Warnings.push_back(
+                    "Material '" + material.Name +
+                    "' references unsupported base color texture '" +
+                    externalTexturePath.string() + "'."
+                );
+                continue;
+            }
+
+            if (projectContext.RegisterTextureAsset(textureAssetID, externalTexturePath, false))
+            {
+                material.BaseColorTextureAssetID = textureAssetID;
+                continue;
+            }
+
+            importResult.Warnings.push_back(
+                "Failed to register material texture asset '" +
+                textureAssetID + "'."
+            );
+        }
     }
 }
 
@@ -112,39 +316,58 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::ReloadMeshAssets(const bool forceReimport)
     {
-        const auto meshAssets =
-            AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Mesh);
+        const auto meshAssetPointers =
+            AssetRegistryIO::GetAssetsByType(
+                m_ProjectContext.GetAssetRegistry(),
+                AssetType::Mesh
+            );
+
+        std::vector<AssetRecord> meshAssets;
+        meshAssets.reserve(meshAssetPointers.size());
+
+        for (const AssetRecord* record : meshAssetPointers)
+        {
+            if (record) meshAssets.push_back(*record);
+        }
 
         bool allSupportedAssetsLoaded = true;
-        for (const AssetRecord* record : meshAssets)
+        for (const AssetRecord& record : meshAssets)
         {
-            if (!record) continue;
-            if (record->BuiltIn)
+            if (record.BuiltIn)
             {
-                if (!LoadBuiltInMesh(*record)) allSupportedAssetsLoaded = false;
+                if (!LoadBuiltInMesh(record)) allSupportedAssetsLoaded = false;
                 continue;
             }
-            if (!LoadExternalMesh(*record, forceReimport))
+
+            if (!LoadExternalMesh(record, forceReimport))
                 allSupportedAssetsLoaded = false;
         }
         return allSupportedAssetsLoaded;
     }
 
-    bool ProjectAssetLoader::ReloadTextureAssets(bool forceReimport)
+    bool ProjectAssetLoader::ReloadTextureAssets(const bool forceReimport)
     {
-        const auto textureAssets =
-            AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Texture);
+        const auto textureAssetPointers =
+            AssetRegistryIO::GetAssetsByType(
+                m_ProjectContext.GetAssetRegistry(),
+                AssetType::Texture
+            );
 
-        bool allSupportedAssetsLoaded = true;
-        for (const AssetRecord* record : textureAssets)
+        std::vector<AssetRecord> textureAssets;
+        textureAssets.reserve(textureAssetPointers.size());
+
+        for (const AssetRecord* record : textureAssetPointers)
         {
-            if (!record) continue;
-            if (record->BuiltIn) continue;
-
-            if (!LoadExternalTexture(*record, forceReimport))
-                allSupportedAssetsLoaded = false;
+            if (record) textureAssets.push_back(*record);
         }
 
+        bool allSupportedAssetsLoaded = true;
+        for (const AssetRecord& record : textureAssets)
+        {
+            if (record.BuiltIn) continue;
+            if (!LoadExternalTexture(record, forceReimport))
+                allSupportedAssetsLoaded = false;
+        }
         return allSupportedAssetsLoaded;
     }
 
@@ -234,6 +457,13 @@ namespace Quiet::Project
             return false;
         }
 
+        RegisterImportedMaterialTextures(
+            m_ProjectContext,
+            record.ID,
+            assetPath,
+            importResult
+        );
+
         const Renderer::Vulkan::MeshStats stats = MakeMeshStatsFromImportResult(importResult);
         std::vector<Renderer::Vulkan::StaticSubmesh> submeshes = MakeStaticSubmeshesFromImportResult(importResult);
         std::vector<Renderer::Vulkan::StaticMeshMaterialSlot> materialSlots = MakeStaticMaterialSlotsFromImportResult(importResult);
@@ -280,7 +510,7 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-            "{} mesh asset '{}' from '{}'. importer={} meshes={} submeshes={} materials={} vertices={} indices={} boundsValid={} warnings={}",
+            "{} mesh asset '{}' from '{}'. importer={} meshes={} submeshes={} materials={} embeddedTextures={} vertices={} indices={} boundsValid={} warnings={}",
             alreadyLoaded ? "Reloaded" : "Loaded",
             record.ID,
             assetPath.string(),
@@ -288,6 +518,7 @@ namespace Quiet::Project
             importResult.ImportedMeshCount,
             importResult.Submeshes.size(),
             importResult.Materials.size(),
+            importResult.EmbeddedTextures.size(),
             importResult.Vertices.size(),
             importResult.Indices.size(),
             importResult.Bounds.Valid,

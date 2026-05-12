@@ -50,8 +50,8 @@ namespace Quiet::Renderer::Vulkan
         std::string Name;
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
-        // Source texture reference only. This is not an asset ID yet.
         std::string BaseColorTexturePath;
+        std::string BaseColorTextureAssetID;
 
         bool BaseColorTextureEmbedded = false;
         int EmbeddedTextureIndex = -1;

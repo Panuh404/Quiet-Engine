@@ -64,9 +64,7 @@ namespace
             {
                 Quiet::Scene::MaterialComponent material{};
                 material.BaseColor = importedSlot.BaseColor;
-
-                // Do not assign BaseColorTextureAssetID yet.
-                // Imported texture paths are source references, not registered project asset IDs.
+                material.BaseColorTextureAssetID = importedSlot.BaseColorTextureAssetID;
                 slots.push_back(std::move(material));
             }
             return slots;
