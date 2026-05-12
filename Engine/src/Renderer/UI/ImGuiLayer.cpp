@@ -12,6 +12,7 @@
 
 #include "ImGuiToolbarCommon.h"
 #include "Renderer/UI/ImGuiTheme.h"
+#include "Renderer/UI/ImGuiTexturePreview.h"
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Editor/EditorActions.h"
@@ -93,6 +94,7 @@ namespace Quiet::Renderer::UI
 
     ImGuiLayer::~ImGuiLayer()
     {
+        ClearTexturePreviewCache(true);
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();

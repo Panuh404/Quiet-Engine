@@ -385,6 +385,41 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColor(Scene::Scene &scene, Core::UUID actorID,
+        std::uint32_t slotIndex, const glm::vec4 &baseColor)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->StaticMesh.has_value())
+            return false;
+
+        Scene::MaterialComponent* materialSlot = actor->StaticMesh->TryGetMaterialSlot(slotIndex);
+
+        if (!materialSlot)
+            return false;
+
+        materialSlot->BaseColor = baseColor;
+        return true;
+    }
+
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID,
+        std::uint32_t slotIndex, const std::string &textureAssetID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->StaticMesh.has_value())
+                return false;
+
+            Scene::MaterialComponent* materialSlot = actor->StaticMesh->TryGetMaterialSlot(slotIndex);
+
+            if (!materialSlot)
+                return false;
+
+            materialSlot->BaseColorTextureAssetID = textureAssetID;
+            return true;
+        });
+    }
+
     bool EditorCommands::AddDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()

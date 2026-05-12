@@ -31,4 +31,6 @@ namespace Quiet::Renderer::UI
         float uiScale,
         float maxPreviewSize = 240.0f
     );
+
+    void ClearTexturePreviewCache(bool releaseDescriptors = true);
 }

@@ -192,4 +192,20 @@ namespace Quiet::Renderer::UI
         ImGui::Dummy(frameSize);
         ImGui::TextDisabled("Preview uses the imported GPU texture.");
     }
+
+    void ClearTexturePreviewCache(bool releaseDescriptors)
+    {
+        auto& cache = GetTexturePreviewCache();
+
+        if (releaseDescriptors)
+        {
+            for (const auto& [textureID, entry] : cache)
+            {
+                (void)textureID;
+                if (entry.DescriptorSet != VK_NULL_HANDLE)
+                    ImGui_ImplVulkan_RemoveTexture(entry.DescriptorSet);
+            }
+        }
+        cache.clear();
+    }
 }

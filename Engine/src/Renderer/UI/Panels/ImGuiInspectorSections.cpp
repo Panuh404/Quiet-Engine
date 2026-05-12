@@ -1,6 +1,10 @@
 #include "ImGuiInspectorSections.h"
 
 #include <cstdio>
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include <imgui.h>
 
 #include "Quiet/Project/ProjectContext.h"
@@ -19,6 +23,131 @@ namespace
                 return true;
         }
         return false;
+    }
+
+    void DrawMaterialTexturePreviewIfAvailable(
+        const std::string& textureAssetID,
+        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
+        const float uiScale,
+        const float previewSize)
+    {
+        if (textureAssetID.empty())
+            return;
+
+        const auto textureStats = textureLibrary.GetStats(textureAssetID);
+        if (!textureStats.has_value())
+        {
+            ImGui::TextDisabled("Texture is not loaded. Press Reload in the Assets panel.");
+            return;
+        }
+
+        if (!textureStats->GpuReady)
+        {
+            ImGui::TextDisabled("Texture metadata is loaded, but GPU texture is not ready.");
+            return;
+        }
+
+        Quiet::Renderer::UI::DrawTexturePreview(
+            textureAssetID,
+            textureLibrary,
+            textureStats.value(),
+            uiScale,
+            previewSize
+        );
+    }
+
+    void DrawMaterialSlotEditor(
+        Quiet::Scene::Scene& scene,
+        Quiet::Scene::Actor& actor,
+        Quiet::Editor::EditorCommands& commands,
+        Quiet::Scene::MaterialComponent& materialSlot,
+        const std::uint32_t slotIndex,
+        const std::vector<std::string>& textureAssetIDs,
+        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
+        const Quiet::Renderer::UI::TrackedInspectorInteraction& tracked,
+        const float uiScale)
+    {
+        ImGui::PushID(static_cast<int>(slotIndex));
+
+        const std::string slotLabel = "Slot " + std::to_string(slotIndex);
+
+        if (ImGui::TreeNodeEx(slotLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            glm::vec4 baseColor = materialSlot.BaseColor;
+
+            if (ImGui::ColorEdit4("Base Color", &baseColor.x))
+            {
+                commands.SetStaticMeshMaterialSlotBaseColor(
+                    scene,
+                    actor.ID,
+                    slotIndex,
+                    baseColor
+                );
+            }
+
+            tracked.Begin();
+            tracked.End();
+
+            const char* texturePreview =
+                materialSlot.HasBaseColorTexture()
+                    ? materialSlot.BaseColorTextureAssetID.c_str()
+                    : "None";
+
+            if (ImGui::BeginCombo("Base Color Texture", texturePreview))
+            {
+                const bool noneSelected = !materialSlot.HasBaseColorTexture();
+
+                if (ImGui::Selectable("None", noneSelected))
+                {
+                    commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
+                        scene,
+                        actor.ID,
+                        slotIndex,
+                        std::string{}
+                    );
+                }
+
+                if (noneSelected)
+                    ImGui::SetItemDefaultFocus();
+
+                if (!textureAssetIDs.empty())
+                    ImGui::Separator();
+
+                for (const std::string& textureAssetID : textureAssetIDs)
+                {
+                    const bool selected = materialSlot.BaseColorTextureAssetID == textureAssetID;
+                    if (ImGui::Selectable(textureAssetID.c_str(), selected))
+                    {
+                        commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
+                            scene,
+                            actor.ID,
+                            slotIndex,
+                            textureAssetID
+                        );
+                    }
+
+                    if (selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+
+            if (!materialSlot.HasBaseColorTexture())
+            {
+                ImGui::TextDisabled("No texture assigned to this slot.");
+            }
+            else
+            {
+                DrawMaterialTexturePreviewIfAvailable(
+                    materialSlot.BaseColorTextureAssetID,
+                    textureLibrary,
+                    uiScale,
+                    96.0f
+                );
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
     }
 }
 
@@ -272,6 +401,35 @@ namespace Quiet::Renderer::UI
                     uiScale,
                     128.0f
                 );
+            }
+        }
+
+        if (actor.StaticMesh.has_value() &&  !actor.StaticMesh->MaterialSlots.empty())
+        {
+            ImGui::Spacing();
+
+            if (ImGui::CollapsingHeader("Material Slots", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::TextDisabled(
+                    "Imported submeshes use these slots by their source material index."
+                );
+
+                for (std::size_t slotIndex = 0;
+                     slotIndex < actor.StaticMesh->MaterialSlots.size();
+                     ++slotIndex)
+                {
+                    DrawMaterialSlotEditor(
+                        scene,
+                        actor,
+                        commands,
+                        actor.StaticMesh->MaterialSlots[slotIndex],
+                        static_cast<std::uint32_t>(slotIndex),
+                        textureAssetIDs,
+                        textureLibrary,
+                        tracked,
+                        uiScale
+                    );
+                }
             }
         }
 
