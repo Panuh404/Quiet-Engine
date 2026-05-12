@@ -3,10 +3,14 @@
 #include <limits>
 #include <string>
 #include <algorithm>
+#include <cstdlib>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <assimp/material.h>
+
+#include "glm/vec4.hpp"
 #include <glm/geometric.hpp>
 
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
@@ -70,6 +74,17 @@ namespace
 
         return { 0.0f, 0.0f };
     }
+
+    glm::vec4 ToGlmColor(const aiColor4D& color)
+    {
+        return { color.r, color.g, color.b, color.a };
+    }
+
+    std::string ToString(const aiString& value)
+    {
+        return std::string(value.C_Str());
+    }
+
 
     void IncludePointInBounds(Quiet::Renderer::Vulkan::MeshBounds& bounds,
                               const glm::vec3& point)
@@ -193,6 +208,90 @@ namespace
         }
         return true;
     }
+
+    bool TryReadMaterialColor(const aiMaterial& material, glm::vec4& outColor)
+    {
+        aiColor4D color{};
+        if (aiGetMaterialColor(&material, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS)
+        {
+            outColor = ToGlmColor(color);
+            return true;
+        }
+        if (aiGetMaterialColor(&material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
+        {
+            outColor = ToGlmColor(color);
+            return true;
+        }
+        return false;
+    }
+
+    bool TryReadBaseColorTexturePath(const aiMaterial& material, std::string& outPath)
+    {
+        aiString path{};
+        if (material.GetTexture(aiTextureType_BASE_COLOR, 0, &path) == AI_SUCCESS && path.length > 0)
+        {
+            outPath = ToString(path);
+            return true;
+        }
+        if (material.GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS && path.length > 0)
+        {
+            outPath = ToString(path);
+            return true;
+        }
+        return false;
+    }
+
+    int ParseEmbeddedTextureIndex(const std::string& texturePath)
+    {
+        if (texturePath.size() < 2 || texturePath[0] != '*')
+            return -1;
+
+        char* end = nullptr;
+        const long value = std::strtol(texturePath.c_str() + 1, &end, 10);
+
+        if (!end || *end != '\0' || value < 0)
+            return -1;
+
+        return static_cast<int>(value);
+    }
+
+    void ImportMaterials(const aiScene& scene, Quiet::Renderer::Vulkan::MeshImportResult& result)
+    {
+        result.Materials.clear();
+        result.Materials.reserve(scene.mNumMaterials);
+
+        for (unsigned int materialIndex = 0; materialIndex < scene.mNumMaterials; ++materialIndex)
+        {
+            const aiMaterial* sourceMaterial = scene.mMaterials[materialIndex];
+            if (!sourceMaterial) continue;
+
+            Quiet::Renderer::Vulkan::ImportedMaterial material{};
+
+            aiString materialName{};
+            if (sourceMaterial->Get(AI_MATKEY_NAME, materialName) == AI_SUCCESS && materialName.length > 0)
+                material.Name = ToString(materialName);
+
+            if (material.Name.empty())
+                material.Name = "Material_" + std::to_string(materialIndex);
+
+            glm::vec4 baseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+            if (TryReadMaterialColor(*sourceMaterial, baseColor))
+                material.BaseColor = baseColor;
+
+            std::string baseColorTexturePath;
+            if (TryReadBaseColorTexturePath(*sourceMaterial, baseColorTexturePath))
+            {
+                material.BaseColorTexturePath = baseColorTexturePath;
+                const int embeddedIndex = ParseEmbeddedTextureIndex(baseColorTexturePath);
+                if (embeddedIndex >= 0)
+                {
+                    material.BaseColorTextureEmbedded = true;
+                    material.EmbeddedTextureIndex = embeddedIndex;
+                }
+            }
+            result.Materials.push_back(std::move(material));
+        }
+    }
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -238,10 +337,10 @@ namespace Quiet::Renderer::Vulkan
 
         const aiMatrix4x4 identity{};
 
+        ImportMaterials(*scene, result);
+
         if (!TraverseNode(*scene, *scene->mRootNode, identity, result))
-        {
             return result;
-        }
 
         if (result.ImportedMeshCount == 0 || !result.HasGeometry())
         {

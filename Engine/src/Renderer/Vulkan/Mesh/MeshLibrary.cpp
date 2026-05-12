@@ -14,6 +14,7 @@ namespace Quiet::Renderer::Vulkan
                                        const std::vector<Vertex>& vertices,
                                        const std::vector<Index>& indices,
                                        std::vector<StaticSubmesh> submeshes,
+                                       std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                                        MeshStats stats)
     {
         if (Has(name))
@@ -37,7 +38,8 @@ namespace Quiet::Renderer::Vulkan
             graphicsCommands,
             vertices,
             indices,
-            std::move(submeshes)
+            std::move(submeshes),
+            std::move(importedMaterialSlots)
         );
         m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Registered mesh resource '{}'.", name);
@@ -50,6 +52,7 @@ namespace Quiet::Renderer::Vulkan
                                         const std::vector<Vertex>& vertices,
                                         const std::vector<Index>& indices,
                                         std::vector<StaticSubmesh> submeshes,
+                                        std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                                         MeshStats stats)
     {
         if (vertices.empty() || indices.empty())
@@ -67,7 +70,8 @@ namespace Quiet::Renderer::Vulkan
             graphicsCommands,
             vertices,
             indices,
-            std::move(submeshes)
+            std::move(submeshes),
+            std::move(importedMaterialSlots)
         );
         m_Stats[name] = std::move(stats);
         QUIET_CORE_INFO("Replaced mesh resource '{}'.", name);

@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <utility>
 
 #include <glm/glm.hpp>
 
@@ -22,6 +23,7 @@ namespace Quiet::Renderer::Vulkan
         std::uint32_t VertexCount = 0;
         std::uint32_t IndexCount = 0;
         std::uint32_t SubmeshCount = 0;
+        std::uint32_t MaterialCount = 0;
         std::uint32_t ImportedMeshCount = 0;
 
         glm::vec3 BoundsMin{ 0.0f };
@@ -45,6 +47,7 @@ namespace Quiet::Renderer::Vulkan
                               const std::vector<Vertex>& vertices,
                               const std::vector<Index>& indices,
                               std::vector<StaticSubmesh> submeshes,
+                              std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                               MeshStats stats);
 
         void ReplaceStaticMesh(const std::string& name,
@@ -54,6 +57,7 @@ namespace Quiet::Renderer::Vulkan
                                const std::vector<Vertex>& vertices,
                                const std::vector<Index>& indices,
                                std::vector<StaticSubmesh> submeshes,
+                               std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                                MeshStats stats);
 
         std::shared_ptr<StaticMesh> Get(const std::string& name) const;

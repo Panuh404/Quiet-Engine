@@ -50,10 +50,27 @@ namespace
     }
 
     std::vector<Quiet::Scene::MaterialComponent> CreateDefaultMaterialSlots(
-    const std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh>& mesh)
+        const std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh>& mesh)
     {
         std::vector<Quiet::Scene::MaterialComponent> slots;
         if (!mesh) return slots;
+
+        const std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot>& importedSlots = mesh->GetImportedMaterialSlots();
+
+        if (!importedSlots.empty())
+        {
+            slots.reserve(importedSlots.size());
+            for (const Quiet::Renderer::Vulkan::StaticMeshMaterialSlot& importedSlot : importedSlots)
+            {
+                Quiet::Scene::MaterialComponent material{};
+                material.BaseColor = importedSlot.BaseColor;
+
+                // Do not assign BaseColorTextureAssetID yet.
+                // Imported texture paths are source references, not registered project asset IDs.
+                slots.push_back(std::move(material));
+            }
+            return slots;
+        }
 
         std::uint32_t highestMaterialSlot = 0;
         bool hasMaterialSlot = false;
@@ -64,8 +81,7 @@ namespace
             hasMaterialSlot = true;
         }
 
-        if (!hasMaterialSlot)
-            return slots;
+        if (!hasMaterialSlot) return slots;
 
         slots.resize(static_cast<std::size_t>(highestMaterialSlot) + 1u);
         return slots;

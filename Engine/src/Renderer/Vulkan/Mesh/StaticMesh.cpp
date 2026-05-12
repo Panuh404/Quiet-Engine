@@ -115,7 +115,8 @@ namespace Quiet::Renderer::Vulkan
                            const GraphicsCommands& graphicsCommands,
                            const std::vector<Vertex>& vertices,
                            const std::vector<Index>& indices,
-                           std::vector<StaticSubmesh> submeshes)
+                           std::vector<StaticSubmesh> submeshes,
+                           std::vector<StaticMeshMaterialSlot> importedMaterialSlots)
     {
         const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(Vertex);
         const VkDeviceSize indexBufferSize = indices.size() * sizeof(Index);
@@ -192,6 +193,7 @@ namespace Quiet::Renderer::Vulkan
         m_IndexCount = static_cast<std::uint32_t>(indices.size());
 
         m_Submeshes = std::move(submeshes);
+        m_ImportedMaterialSlots = std::move(importedMaterialSlots);
 
         QUIET_CORE_INFO(
             "Created static mesh. vertices={} indices={}",

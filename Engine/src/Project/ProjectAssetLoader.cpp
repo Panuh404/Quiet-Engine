@@ -25,6 +25,7 @@ namespace
         stats.VertexCount = static_cast<std::uint32_t>(importResult.Vertices.size());
         stats.IndexCount = static_cast<std::uint32_t>(importResult.Indices.size());
         stats.SubmeshCount = static_cast<std::uint32_t>(importResult.Submeshes.size());
+        stats.MaterialCount = static_cast<std::uint32_t>(importResult.Materials.size());
         stats.ImportedMeshCount = importResult.ImportedMeshCount;
         stats.BoundsValid = importResult.Bounds.Valid;
         stats.BoundsMin = importResult.Bounds.Min;
@@ -71,6 +72,26 @@ namespace
         }
 
         return submeshes;
+    }
+
+    std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> MakeStaticMaterialSlotsFromImportResult(
+        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    {
+        std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> slots;
+        slots.reserve(importResult.Materials.size());
+
+        for (const Quiet::Renderer::Vulkan::ImportedMaterial& imported : importResult.Materials)
+        {
+            Quiet::Renderer::Vulkan::StaticMeshMaterialSlot slot{};
+            slot.Name = imported.Name;
+            slot.BaseColor = imported.BaseColor;
+            slot.BaseColorTexturePath = imported.BaseColorTexturePath;
+            slot.BaseColorTextureEmbedded = imported.BaseColorTextureEmbedded;
+            slot.EmbeddedTextureIndex = imported.EmbeddedTextureIndex;
+
+            slots.push_back(std::move(slot));
+        }
+        return slots;
     }
 }
 
@@ -158,6 +179,7 @@ namespace Quiet::Project
                 primitive->Vertices,
                 primitive->Indices,
                 std::vector<Renderer::Vulkan::StaticSubmesh>{},
+                std::vector<Renderer::Vulkan::StaticMeshMaterialSlot>{},
                 primitive->Stats
             );
         }
@@ -214,6 +236,7 @@ namespace Quiet::Project
 
         const Renderer::Vulkan::MeshStats stats = MakeMeshStatsFromImportResult(importResult);
         std::vector<Renderer::Vulkan::StaticSubmesh> submeshes = MakeStaticSubmeshesFromImportResult(importResult);
+        std::vector<Renderer::Vulkan::StaticMeshMaterialSlot> materialSlots = MakeStaticMaterialSlotsFromImportResult(importResult);
         try
         {
             if (alreadyLoaded)
@@ -226,6 +249,7 @@ namespace Quiet::Project
                     importResult.Vertices,
                     importResult.Indices,
                     submeshes,
+                    materialSlots,
                     stats
                 );
             }
@@ -239,6 +263,7 @@ namespace Quiet::Project
                     importResult.Vertices,
                     importResult.Indices,
                     std::move(submeshes),
+                    std::move(materialSlots),
                     stats
                 );
             }
@@ -255,18 +280,19 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO(
-        "{} mesh asset '{}' from '{}'. importer={} meshes={} submeshes={} vertices={} indices={} boundsValid={} warnings={}",
-             alreadyLoaded ? "Reloaded" : "Loaded",
-             record.ID,
-             assetPath.string(),
-             importResult.ImporterName,
-             importResult.ImportedMeshCount,
-             importResult.Submeshes.size(),
-             importResult.Vertices.size(),
-             importResult.Indices.size(),
-             importResult.Bounds.Valid,
-             importResult.Warnings.size()
-         );
+            "{} mesh asset '{}' from '{}'. importer={} meshes={} submeshes={} materials={} vertices={} indices={} boundsValid={} warnings={}",
+            alreadyLoaded ? "Reloaded" : "Loaded",
+            record.ID,
+            assetPath.string(),
+            importResult.ImporterName,
+            importResult.ImportedMeshCount,
+            importResult.Submeshes.size(),
+            importResult.Materials.size(),
+            importResult.Vertices.size(),
+            importResult.Indices.size(),
+            importResult.Bounds.Valid,
+            importResult.Warnings.size()
+        );
 
         for (const std::string& warning : importResult.Warnings)
         {
