@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include "imgui.h"
 #include <vulkan/vulkan.h>
 
 namespace Quiet::Renderer::Vulkan
@@ -30,6 +29,7 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
 
         [[nodiscard]] VkImage GetColorImage() const { return m_ColorImage; }
+        [[nodiscard]] VkSampler GetSampler() const { return m_Sampler; }
         [[nodiscard]] VkImageView GetColorImageView() const { return m_ColorImageView; }
         [[nodiscard]] VkImageLayout GetColorLayout() const { return m_ColorLayout; }
         void SetColorLayout(VkImageLayout layout) { m_ColorLayout = layout; }
@@ -39,18 +39,12 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkImageLayout GetDepthLayout() const { return m_DepthLayout; }
         void SetDepthLayout(VkImageLayout layout) { m_DepthLayout = layout; }
 
-        [[nodiscard]] ImTextureID GetImGuiTextureID() const
-        {
-            return reinterpret_cast<ImTextureID>(m_ImGuiDescriptorSet);
-        }
-
     private:
         void CreateColorResources(std::uint32_t width, std::uint32_t height);
         void CreateDepthResources(std::uint32_t width, std::uint32_t height);
         void CreateSampler();
-        void RegisterImGuiTexture();
 
-        std::uint32_t FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        [[nodiscard]] std::uint32_t FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
     private:
         VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -64,7 +58,6 @@ namespace Quiet::Renderer::Vulkan
         VkDeviceMemory m_ColorMemory = VK_NULL_HANDLE;
         VkImageView m_ColorImageView = VK_NULL_HANDLE;
         VkSampler m_Sampler = VK_NULL_HANDLE;
-        VkDescriptorSet m_ImGuiDescriptorSet = VK_NULL_HANDLE;
         VkImageLayout m_ColorLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
         VkImage m_DepthImage = VK_NULL_HANDLE;

@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 
-#include <backends/imgui_impl_vulkan.h>
 #include "Quiet/Core/Log.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -33,18 +32,12 @@ namespace Quiet::Renderer::Vulkan
         CreateColorResources(width, height);
         CreateDepthResources(width, height);
         CreateSampler();
-        RegisterImGuiTexture();
+
         QUIET_CORE_INFO("Created scene viewport target. extent={}x{}", width, height);
     }
 
     void SceneViewportTarget::Destroy()
     {
-        if (m_ImGuiDescriptorSet != VK_NULL_HANDLE)
-        {
-            ImGui_ImplVulkan_RemoveTexture(m_ImGuiDescriptorSet);
-            m_ImGuiDescriptorSet = VK_NULL_HANDLE;
-        }
-
         if (m_Sampler != VK_NULL_HANDLE)
         {
             vkDestroySampler(m_Device, m_Sampler, nullptr);
@@ -238,20 +231,6 @@ namespace Quiet::Renderer::Vulkan
         if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_Sampler) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create scene viewport sampler.");
-        }
-    }
-
-    void SceneViewportTarget::RegisterImGuiTexture()
-    {
-        m_ImGuiDescriptorSet = ImGui_ImplVulkan_AddTexture(
-            m_Sampler,
-            m_ColorImageView,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        );
-
-        if (m_ImGuiDescriptorSet == VK_NULL_HANDLE)
-        {
-            throw std::runtime_error("Failed to register scene viewport texture with ImGui.");
         }
     }
 

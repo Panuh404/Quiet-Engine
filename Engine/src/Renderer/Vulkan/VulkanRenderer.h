@@ -78,7 +78,7 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] UI::ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
         [[nodiscard]] const UI::ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
 
-        [[nodiscard]] ImTextureID GetSceneViewportTextureID() const;
+        [[nodiscard]] ImTextureID GetSceneViewportTextureID();
         [[nodiscard]] bool IsSceneViewportReady() const { return m_SceneViewportReady; }
 
         [[nodiscard]] const PhysicalDevice& GetPhysicalDevice() const { return *m_PhysicalDevice; }

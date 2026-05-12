@@ -94,7 +94,9 @@ namespace Quiet::Renderer::UI
 
     ImGuiLayer::~ImGuiLayer()
     {
+        ClearSceneViewportTexture();
         ClearTexturePreviewCache(true);
+
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
@@ -159,6 +161,44 @@ namespace Quiet::Renderer::UI
     bool ImGuiLayer::WantsKeyboardCapture() const
     {
         return ImGui::GetIO().WantCaptureKeyboard;
+    }
+
+    ImTextureID ImGuiLayer::GetOrCreateSceneViewportTextureID(VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
+    {
+        if (sampler == VK_NULL_HANDLE || imageView == VK_NULL_HANDLE)
+            return ImTextureID{};
+
+        if (m_SceneViewportDescriptorSet != VK_NULL_HANDLE &&
+            m_SceneViewportSampler == sampler &&
+            m_SceneViewportImageView == imageView)
+            return reinterpret_cast<ImTextureID>(m_SceneViewportDescriptorSet);
+
+        ClearSceneViewportTexture();
+
+        m_SceneViewportDescriptorSet = ImGui_ImplVulkan_AddTexture(
+            sampler,
+            imageView,
+            imageLayout
+        );
+
+        if (m_SceneViewportDescriptorSet == VK_NULL_HANDLE)
+            return ImTextureID{};
+
+        m_SceneViewportSampler = sampler;
+        m_SceneViewportImageView = imageView;
+        return reinterpret_cast<ImTextureID>(m_SceneViewportDescriptorSet);
+    }
+
+    void ImGuiLayer::ClearSceneViewportTexture()
+    {
+        if (m_SceneViewportDescriptorSet != VK_NULL_HANDLE)
+        {
+            ImGui_ImplVulkan_RemoveTexture(m_SceneViewportDescriptorSet);
+            m_SceneViewportDescriptorSet = VK_NULL_HANDLE;
+        }
+
+        m_SceneViewportSampler = VK_NULL_HANDLE;
+        m_SceneViewportImageView = VK_NULL_HANDLE;
     }
 
     float ImGuiLayer::GetToolbarHeight() const

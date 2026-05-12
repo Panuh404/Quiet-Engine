@@ -349,6 +349,8 @@ namespace Quiet::Renderer::Vulkan
         if (vkDeviceWaitIdle(m_LogicalDevice->GetHandle()) != VK_SUCCESS)
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
+        if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
+
         m_SceneViewportTarget.reset();
         m_ImGuiLayer.reset();
         m_FrameSync.reset();
@@ -434,12 +436,19 @@ namespace Quiet::Renderer::Vulkan
         EnsureSceneViewportSize();
     }
 
-    ImTextureID VulkanRenderer::GetSceneViewportTextureID() const
+    ImTextureID VulkanRenderer::GetSceneViewportTextureID()
     {
-        if (!m_SceneViewportTarget ||
-            !m_SceneViewportTarget->IsValid() ||
-            !m_SceneViewportReady) return 0;
-        return m_SceneViewportTarget->GetImGuiTextureID();
+        if (!m_ImGuiLayer ||
+        !m_SceneViewportTarget ||
+        !m_SceneViewportTarget->IsValid() ||
+        !m_SceneViewportReady)
+            return ImTextureID{};
+
+        return m_ImGuiLayer->GetOrCreateSceneViewportTextureID(
+            m_SceneViewportTarget->GetSampler(),
+            m_SceneViewportTarget->GetColorImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        );
     }
 
     VkExtent2D VulkanRenderer::GetSwapchainExtent() const
@@ -484,6 +493,7 @@ namespace Quiet::Renderer::Vulkan
         if (m_ViewportResizeStableFrames < 3) return;
 
         vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+        m_ImGuiLayer->ClearSceneViewportTexture();
 
         m_SceneViewportTarget->Resize(
             m_PendingViewportWidth,
