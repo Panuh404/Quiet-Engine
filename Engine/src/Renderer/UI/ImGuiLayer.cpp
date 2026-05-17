@@ -45,7 +45,20 @@ namespace Quiet::Renderer::UI
         float contentScaleY = 1.0f;
         glfwGetWindowContentScale(window, &contentScaleX, &contentScaleY);
 
+#if defined(_WIN32)
         m_UIScale = std::clamp(std::max(contentScaleX, contentScaleY), 1.0f, 2.0f);
+#else
+        // On Linux/Wayland/KDE, desktop scaling is already applied by the compositor.
+        // Scaling ImGui again causes oversized/double-scaled UI.
+        m_UIScale = 1.0f;
+#endif
+
+        QUIET_CORE_INFO(
+            "ImGui scale: contentScale={:.2f},{:.2f} uiScale={:.2f}",
+            contentScaleX,
+            contentScaleY,
+            m_UIScale
+        );
 
         constexpr float kBaseUIFontSize = 16.0f;
         constexpr float kBaseBoldFontSize = 16.0f;
@@ -58,7 +71,7 @@ namespace Quiet::Renderer::UI
             kBaseMonoFontSize * m_UIScale
         );
 
-        ApplyDarkEditorTheme(io, m_UIScale);
+        ApplyTheme(io, m_UIScale);
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};

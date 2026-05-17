@@ -2,6 +2,7 @@
 
 #include <imgui_internal.h>
 
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
@@ -27,7 +28,7 @@ namespace
         if (shortcut[0] == '\0') shortcut = nullptr;
 
         const bool enabled = actions.CanExecute(actionID);
-        const bool pressed = ImGui::MenuItem(
+        const bool pressed = Quiet::Renderer::UI::EditorMenuItem(
             actions.GetLabel(actionID),
             shortcut,
             false,
@@ -45,20 +46,20 @@ namespace Quiet::Renderer::UI
     {
         if (!ImGui::BeginMainMenuBar()) return;
 
-        if (ImGui::BeginMenu("File"))
+        if (EditorBeginMenu("File"))
         {
             DrawMenuAction(editorActions, Editor::EditorActionID::NewScene);
             DrawMenuAction(editorActions, Editor::EditorActionID::SaveScene);
             DrawMenuAction(editorActions, Editor::EditorActionID::LoadScene);
             ImGui::Separator();
-            if (ImGui::MenuItem("Project Manager..."))
+            if (EditorMenuItem("Project Manager..."))
             {
                 editorState.ProjectManager.RequestOpenPopup = true;
             }
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Edit"))
+        if (EditorBeginMenu("Edit"))
         {
             DrawMenuAction(editorActions, Editor::EditorActionID::Undo);
             DrawMenuAction(editorActions, Editor::EditorActionID::Redo);
@@ -68,7 +69,7 @@ namespace Quiet::Renderer::UI
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Scene"))
+        if (EditorBeginMenu("Scene"))
         {
             DrawMenuAction(editorActions, Editor::EditorActionID::CreateEmptyActor);
             DrawMenuAction(editorActions, Editor::EditorActionID::FocusSelected);
@@ -78,9 +79,9 @@ namespace Quiet::Renderer::UI
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("View"))
+        if (EditorBeginMenu("View"))
         {
-            if (ImGui::MenuItem("Reset Layout"))
+            if (EditorMenuItem("Reset Layout"))
             {
                 m_RequestResetLayout = true;
             }
@@ -111,13 +112,16 @@ namespace Quiet::Renderer::UI
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(12.0f, 8.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 8.0f)));
+        PushToolbarStyle();
 
         ImGui::Begin("##MainTopbar", nullptr, windowFlags);
         ImGui::PopStyleVar(3);
 
         if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.98f, 1.0f, 1.0f));
         ImGui::TextUnformatted("QUIET");
+        ImGui::PopStyleColor();
         if (m_Fonts.Bold) ImGui::PopFont();
 
         ImGui::SameLine();
@@ -245,20 +249,22 @@ namespace Quiet::Renderer::UI
 
         if (editorState.Scene.Mode == Editor::SceneMode::Play)
         {
-            ImGui::TextColored(ImVec4(0.25f, 0.80f, 1.0f, 1.0f), "%s", statusText.c_str());
+            ImGui::TextColored(EditorColor::AccentHover, "%s", statusText.c_str());
         }
         else if (editorState.Scene.Mode == Editor::SceneMode::Simulate)
         {
-            ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.35f, 1.0f), "%s", statusText.c_str());
+            ImGui::TextColored(EditorColor::Success, "%s", statusText.c_str());
         }
         else if (editorState.Scene.Dirty)
         {
-            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.20f, 1.0f), "%s", statusText.c_str());
+            ImGui::TextColored(EditorColor::Warning, "%s", statusText.c_str());
         }
         else
         {
-            ImGui::TextUnformatted(statusText.c_str());
+            ImGui::TextColored(EditorColor::TextMuted, "%s", statusText.c_str());
         }
+
+        PopToolbarStyle();
         ImGui::End();
     }
 }

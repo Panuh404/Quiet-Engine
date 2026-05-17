@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "Quiet/Core/Log.h"
+#include "Renderer/UI/ImGuiTheme.h"
 
 namespace Quiet::Renderer::UI
 {
@@ -69,27 +70,27 @@ namespace Quiet::Renderer::UI
                 return result;
             };
 
-            if (ImGui::Button("Clear"))
+            if (EditorButton("Clear"))
             {
                 consoleSink->Clear();
             }
 
             ImGui::SameLine();
-            if (ImGui::Button("Copy All"))
+            if (EditorButton("Copy All"))
             {
                 const std::string clipboardText = BuildClipboardText(false);
                 ImGui::SetClipboardText(clipboardText.c_str());
             }
 
             ImGui::SameLine();
-            if (ImGui::Button("Copy Visible"))
+            if (EditorButton("Copy Visible"))
             {
                 const std::string clipboardText = BuildClipboardText(true);
                 ImGui::SetClipboardText(clipboardText.c_str());
             }
 
             ImGui::SameLine();
-            ImGui::Checkbox("Auto-scroll", &autoScroll);
+            EditorCheckbox("Auto-scroll", &autoScroll);
 
             ImGui::SameLine();
             filter.Draw("Filter", 260.0f);
@@ -104,18 +105,18 @@ namespace Quiet::Renderer::UI
 
                 if (ImGui::BeginPopupContextWindow())
                 {
-                    if (ImGui::Selectable("Clear"))
+                    if (EditorSelectable("Clear"))
                     {
                         consoleSink->Clear();
                     }
 
-                    if (ImGui::Selectable("Copy All"))
+                    if (EditorSelectable("Copy All"))
                     {
                         const std::string clipboardText = BuildClipboardText(false);
                         ImGui::SetClipboardText(clipboardText.c_str());
                     }
 
-                    if (ImGui::Selectable("Copy Visible"))
+                    if (EditorSelectable("Copy Visible"))
                     {
                         const std::string clipboardText = BuildClipboardText(true);
                         ImGui::SetClipboardText(clipboardText.c_str());
@@ -135,27 +136,27 @@ namespace Quiet::Renderer::UI
                     switch (entry.Level)
                     {
                         case spdlog::level::trace:
-                            color = ImVec4(0.60f, 0.60f, 0.60f, 1.0f);
+                            color = EditorColor::TextDim;
                             break;
 
                         case spdlog::level::info:
-                            color = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+                            color = EditorColor::Text;
                             break;
 
                         case spdlog::level::warn:
-                            color = ImVec4(1.00f, 0.78f, 0.20f, 1.0f);
+                            color = EditorColor::Warning;
                             break;
 
                         case spdlog::level::err:
-                            color = ImVec4(1.00f, 0.35f, 0.35f, 1.0f);
+                            color = EditorColor::Error;
                             break;
 
                         case spdlog::level::critical:
-                            color = ImVec4(1.00f, 0.25f, 0.85f, 1.0f);
+                            color = EditorColor::Critical;
                             break;
 
                         default:
-                            color = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+                            color = EditorColor::Text;
                             break;
                     }
 

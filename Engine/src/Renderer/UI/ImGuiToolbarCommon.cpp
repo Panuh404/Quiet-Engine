@@ -1,4 +1,5 @@
 #include "Renderer/UI/ImGuiToolbarCommon.h"
+#include "Renderer/UI/ImGuiTheme.h"
 
 namespace Quiet::Renderer::UI
 {
@@ -39,15 +40,17 @@ namespace Quiet::Renderer::UI
 
         if (active)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.34f, 0.56f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.40f, 0.64f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.29f, 0.50f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorColor::Accent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorColor::AccentHover);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.98f, 1.00f, 1.0f));
         }
 
         const std::string label = MakeToolbarLabel(fonts, id, iconUtf8, fallbackText);
         const bool pressed = ImGui::Button(label.c_str(), size);
+        SetPointerCursorOnHover();
 
-        if (active) ImGui::PopStyleColor(3);
+        if (active) ImGui::PopStyleColor(4);
         if (iconButton) ImGui::PopStyleVar();
         ImGui::PopStyleVar();
         if (pushFont) ImGui::PopFont();

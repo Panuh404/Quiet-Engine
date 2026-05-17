@@ -10,6 +10,9 @@
 
 #include "ImGuiFileDialog.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/ImGuiTheme.h"
+
+namespace Theme = Quiet::Renderer::UI::EditorColor;
 
 namespace
 {
@@ -57,10 +60,12 @@ namespace
         auto* dialog = ImGuiFileDialog::Instance();
 
         dialog->ClearFilesStyle();
-        dialog->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(0.45f, 0.78f, 1.00f, 1.0f), "");
 
-        const ImVec4 meshColor{ 0.42f, 0.88f, 0.58f, 1.0f };
-        const ImVec4 textureColor{ 0.90f, 0.72f, 1.00f, 1.0f };
+        const ImVec4 folderColor  = ImVec4(0.34f, 0.58f, 0.92f, 1.0f);
+        const ImVec4 meshColor    = ImVec4(0.35f, 0.78f, 0.50f, 1.0f);
+        const ImVec4 textureColor = ImVec4(0.72f, 0.58f, 0.96f, 1.0f);
+
+        dialog->SetFileStyle(IGFD_FileStyleByTypeDir, "", folderColor, "");
 
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".obj",  meshColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".fbx",  meshColor, "");
@@ -81,28 +86,28 @@ namespace
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 15.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 14.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(9.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(9.0f, 8.0f));
 
-        ImGui::PushStyleColor(ImGuiCol_WindowBg,        ImVec4(0.075f, 0.082f, 0.100f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg,         ImVec4(0.075f, 0.082f, 0.100f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg,         ImVec4(0.095f, 0.105f, 0.125f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border,          ImVec4(0.22f, 0.25f, 0.30f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg,         ImVec4(0.13f, 0.145f, 0.17f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,  ImVec4(0.18f, 0.20f, 0.24f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,   ImVec4(0.22f, 0.25f, 0.30f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Header,          ImVec4(0.18f, 0.24f, 0.33f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,   ImVec4(0.24f, 0.32f, 0.44f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive,    ImVec4(0.30f, 0.40f, 0.55f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Button,          ImVec4(0.16f, 0.20f, 0.27f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,   ImVec4(0.24f, 0.31f, 0.42f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,    ImVec4(0.30f, 0.40f, 0.55f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,     ImVec4(0.055f, 0.060f, 0.075f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,   ImVec4(0.32f, 0.38f, 0.48f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, ImVec4(0.42f, 0.50f, 0.62f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,  ImVec4(0.52f, 0.62f, 0.76f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,               Theme::Background1);
+        ImGui::PushStyleColor(ImGuiCol_PopupBg,                Theme::Background1);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg,                Theme::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border,                 Theme::Border);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,                Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,         Theme::Background4);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,          Theme::AccentDim);
+        ImGui::PushStyleColor(ImGuiCol_Header,                 Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,          Theme::AccentDim);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive,           Theme::AccentSoft);
+        ImGui::PushStyleColor(ImGuiCol_Button,                 Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,          Theme::Background4);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,           Theme::AccentSoft);
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,            Theme::Background0);
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,          ImVec4(0.090f, 0.105f, 0.135f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered,   ImVec4(0.140f, 0.170f, 0.220f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,    Theme::AccentSoft);
     }
 
     void PopAssetDialogStyle()

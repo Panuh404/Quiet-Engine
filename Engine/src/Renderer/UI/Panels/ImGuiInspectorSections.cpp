@@ -9,6 +9,7 @@
 
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
@@ -93,11 +94,11 @@ namespace
                     ? materialSlot.BaseColorTextureAssetID.c_str()
                     : "None";
 
-            if (ImGui::BeginCombo("Base Color Texture", texturePreview))
+            if (Quiet::Renderer::UI::EditorBeginCombo("Base Color Texture", texturePreview))
             {
                 const bool noneSelected = !materialSlot.HasBaseColorTexture();
 
-                if (ImGui::Selectable("None", noneSelected))
+                if (Quiet::Renderer::UI::EditorSelectable("None", noneSelected))
                 {
                     commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
                         scene,
@@ -116,7 +117,7 @@ namespace
                 for (const std::string& textureAssetID : textureAssetIDs)
                 {
                     const bool selected = materialSlot.BaseColorTextureAssetID == textureAssetID;
-                    if (ImGui::Selectable(textureAssetID.c_str(), selected))
+                    if (Quiet::Renderer::UI::EditorSelectable(textureAssetID.c_str(), selected))
                     {
                         commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
                             scene,
@@ -260,7 +261,7 @@ namespace Quiet::Renderer::UI
 
         if (!actor.StaticMesh.has_value())
         {
-            if (ImGui::Button("Add Static Mesh"))
+            if (EditorButton("Add Static Mesh"))
                 commands.AddStaticMesh(scene, actor.ID, projectContext, meshLibrary);
 
             if (meshAssetIDs.empty())
@@ -294,12 +295,12 @@ namespace Quiet::Renderer::UI
                     ? meshAssetIDs[currentIndex].c_str()
                     : actor.StaticMesh->MeshResourceID.c_str();
 
-            if (ImGui::BeginCombo("Mesh Resource", currentPreview))
+            if (EditorBeginCombo("Mesh Resource", currentPreview))
             {
                 for (const auto & meshAssetID : meshAssetIDs)
                 {
                     const bool isSelected = (meshAssetID == actor.StaticMesh->MeshResourceID);
-                    if (ImGui::Selectable(meshAssetID.c_str(), isSelected))
+                    if (EditorSelectable(meshAssetID.c_str(), isSelected))
                         commands.SetStaticMeshResource(scene, actor.ID, meshAssetID, projectContext, meshLibrary);
                     if (isSelected)
                         ImGui::SetItemDefaultFocus();
@@ -309,10 +310,10 @@ namespace Quiet::Renderer::UI
         }
 
         bool visible = actor.StaticMesh->Visible;
-        if (ImGui::Checkbox("Visible", &visible))
+        if (EditorCheckbox("Visible", &visible))
             commands.SetStaticMeshVisible(scene, actor.ID, visible);
 
-        if (ImGui::Button("Remove Static Mesh"))
+        if (EditorButton("Remove Static Mesh"))
             commands.RemoveStaticMesh(scene, actor.ID);
     }
 
@@ -327,7 +328,7 @@ namespace Quiet::Renderer::UI
         if (!actor.StaticMesh.has_value()) return;
         if (!actor.Material.has_value())
         {
-            if (ImGui::Button("Add Material"))
+            if (EditorButton("Add Material"))
                 commands.AddMaterial(scene, actor.ID);
             return;
         }
@@ -351,10 +352,10 @@ namespace Quiet::Renderer::UI
                 ? actor.Material->BaseColorTextureAssetID.c_str()
                 : "None";
 
-        if (ImGui::BeginCombo("Base Color Texture", texturePreview))
+        if (EditorBeginCombo("Base Color Texture", texturePreview))
         {
             const bool noneSelected = !actor.Material->HasBaseColorTexture();
-            if (ImGui::Selectable("None", noneSelected))
+            if (EditorSelectable("None", noneSelected))
                 commands.SetMaterialBaseColorTextureAsset(scene, actor.ID, std::string{});
 
             if (noneSelected) ImGui::SetItemDefaultFocus();
@@ -363,7 +364,7 @@ namespace Quiet::Renderer::UI
             for (const std::string& textureAssetID : textureAssetIDs)
             {
                 const bool selected = actor.Material->BaseColorTextureAssetID == textureAssetID;
-                if (ImGui::Selectable(textureAssetID.c_str(), selected))
+                if (EditorSelectable(textureAssetID.c_str(), selected))
                 {
                     commands.SetMaterialBaseColorTextureAsset(
                         scene,
@@ -433,7 +434,7 @@ namespace Quiet::Renderer::UI
             }
         }
 
-        if (ImGui::Button("Remove Material"))
+        if (EditorButton("Remove Material"))
             commands.RemoveMaterial(scene, actor.ID);
     }
 
@@ -444,7 +445,7 @@ namespace Quiet::Renderer::UI
     {
         if (!actor.DirectionalLight.has_value())
         {
-            if (ImGui::Button("Add Directional Light"))
+            if (EditorButton("Add Directional Light"))
                 commands.AddDirectionalLight(scene, actor.ID);
             return;
         }
@@ -453,7 +454,7 @@ namespace Quiet::Renderer::UI
             return;
 
         bool enabled = actor.DirectionalLight->Enabled;
-        if (ImGui::Checkbox("Enabled", &enabled))
+        if (EditorCheckbox("Enabled", &enabled))
             commands.SetDirectionalLightEnabled(scene, actor.ID, enabled);
 
         tracked.Begin();
@@ -480,7 +481,7 @@ namespace Quiet::Renderer::UI
         tracked.Begin();
         tracked.End();
 
-        if (ImGui::Button("Remove Directional Light"))
+        if (EditorButton("Remove Directional Light"))
             commands.RemoveDirectionalLight(scene, actor.ID);
     }
 
@@ -491,7 +492,7 @@ namespace Quiet::Renderer::UI
     {
         if (!actor.Rotator.has_value())
         {
-            if (ImGui::Button("Add Rotator"))
+            if (EditorButton("Add Rotator"))
                 commands.AddRotator(scene, actor.ID);
             return;
         }
@@ -512,7 +513,7 @@ namespace Quiet::Renderer::UI
         tracked.Begin();
         tracked.End();
 
-        if (ImGui::Button("Remove Rotator"))
+        if (EditorButton("Remove Rotator"))
             commands.RemoveRotator(scene, actor.ID);
     }
 
@@ -525,7 +526,7 @@ namespace Quiet::Renderer::UI
     {
         if (!actor.Camera.has_value())
         {
-            if (ImGui::Button("Add Camera"))
+            if (EditorButton("Add Camera"))
                 commands.AddCamera(scene, actor.ID);
             return;
         }
@@ -541,18 +542,18 @@ namespace Quiet::Renderer::UI
         {
             if (!isPilotingThisCamera)
             {
-                if (ImGui::Button("Pilot Camera"))
+                if (EditorButton("Pilot Camera"))
                     editorState.Selection.PilotedCameraActorID = actor.ID;
             }
             else
             {
-                if (ImGui::Button("Stop Piloting"))
+                if (EditorButton("Stop Piloting"))
                     editorState.Selection.PilotedCameraActorID.reset();
             }
         }
 
         bool primary = actor.Camera->Primary;
-        if (ImGui::Checkbox("Primary", &primary))
+        if (EditorCheckbox("Primary", &primary))
             commands.SetCameraPrimary(scene, actor.ID, primary);
 
         float fov = actor.Camera->FieldOfViewDegrees;
@@ -576,7 +577,7 @@ namespace Quiet::Renderer::UI
         tracked.Begin();
         tracked.End();
 
-        if (ImGui::Button("Remove Camera"))
+        if (EditorButton("Remove Camera"))
             commands.RemoveCamera(scene, actor.ID);
     }
 }

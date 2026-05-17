@@ -14,6 +14,7 @@
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
@@ -146,7 +147,7 @@ namespace
         );
 
         ImGui::SameLine();
-        if (ImGui::Button("Browse", ImVec2(browseWidth, 0.0f)))
+        if (Quiet::Renderer::UI::EditorButton("Browse", ImVec2(browseWidth, 0.0f)))
             Quiet::Renderer::UI::OpenAssetFileDialog(projectContext);
 
         if (!hasPath)
@@ -167,7 +168,7 @@ namespace
         if (!canRegister)
             ImGui::BeginDisabled();
 
-        if (ImGui::Button("Register", ImVec2(125.0f, 0.0f)))
+        if (Quiet::Renderer::UI::EditorButton("Register", ImVec2(125.0f, 0.0f)))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
@@ -212,7 +213,7 @@ namespace
         if (!canRegister) ImGui::EndDisabled();
         ImGui::SameLine();
 
-        if (ImGui::Button("Reload", ImVec2(125.0f, 0.0f)))
+        if (Quiet::Renderer::UI::EditorButton("Reload", ImVec2(125.0f, 0.0f)))
             editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
 
         ImGui::PopStyleVar(2);
@@ -224,7 +225,7 @@ namespace
         if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::TextWrapped("%s", message.c_str());
-            if (ImGui::Button("OK", ImVec2(120.0f, 0.0f)))
+            if (Quiet::Renderer::UI::EditorButton("OK", ImVec2(120.0f, 0.0f)))
                 ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
@@ -470,7 +471,7 @@ namespace
             if (availableWidth > closeButtonWidth)
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - closeButtonWidth);
 
-            if (ImGui::Button("Close", ImVec2(closeButtonWidth, 0.0f)))
+            if (Quiet::Renderer::UI::EditorButton("Close", ImVec2(closeButtonWidth, 0.0f)))
                 ImGui::CloseCurrentPopup();
 
             ImGui::PopStyleVar(2);
@@ -622,7 +623,7 @@ namespace Quiet::Renderer::UI
                     // Details
                     ImGui::TableSetColumnIndex(8);
                     const std::string detailsLabel = "Details##" + record.ID;
-                    if (ImGui::Button(detailsLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+                    if (EditorButton(detailsLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
                     {
                         pendingDetailsAssetID = record.ID;
                     }
@@ -646,7 +647,7 @@ namespace Quiet::Renderer::UI
                     else
                     {
                         const std::string buttonLabel = "Remove##" + record.ID;
-                        if (ImGui::Button(buttonLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+                        if (EditorButton(buttonLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
                             pendingRemoveAssetID = record.ID;
                     }
                 }

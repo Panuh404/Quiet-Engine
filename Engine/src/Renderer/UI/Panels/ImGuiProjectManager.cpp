@@ -12,6 +12,7 @@
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Project/ProjectRegistry.h"
+#include "Renderer/UI/ImGuiTheme.h"
 
 namespace
 {
@@ -54,7 +55,7 @@ namespace
     void DrawStatChip(const char* label, const std::string& value)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.13f, 0.14f, 0.17f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, Quiet::Renderer::UI::EditorColor::Background2);
         ImGui::BeginChild(label, ImVec2(0.0f, 86.0f), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
@@ -80,18 +81,18 @@ namespace
     {
         if (selected)
         {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.33f, 0.56f, 0.85f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.37f, 0.62f, 0.95f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.18f, 0.29f, 0.50f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Header, Quiet::Renderer::UI::EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Quiet::Renderer::UI::EditorColor::Accent);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, Quiet::Renderer::UI::EditorColor::AccentHover);
         }
         else if (emphasize)
         {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.19f, 0.22f, 0.16f, 0.55f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.24f, 0.28f, 0.18f, 0.70f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.26f, 0.30f, 0.19f, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.095f, 0.085f, 0.035f, 0.70f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.140f, 0.120f, 0.045f, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.180f, 0.150f, 0.055f, 1.00f));
         }
 
-        const bool clicked = ImGui::Selectable(title.c_str(), selected, ImGuiSelectableFlags_AllowOverlap);
+        const bool clicked = Quiet::Renderer::UI::EditorSelectable(title.c_str(), selected, ImGuiSelectableFlags_AllowOverlap);
 
         if (selected || emphasize)
         {
@@ -100,7 +101,7 @@ namespace
 
         if (!subtitle.empty())
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, Quiet::Renderer::UI::EditorColor::TextMuted);
             ImGui::TextWrapped("%s", subtitle.c_str());
             ImGui::PopStyleColor();
         }
@@ -122,7 +123,7 @@ namespace Quiet::Renderer::UI
         if (editorState.ProjectManager.RequestOpenPopup)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowSize(Scale(ImVec2(1040.0f, 900.0f)), ImGuiCond_Appearing);
+            ImGui::SetNextWindowSize(Scale(ImVec2(1040.0f, 1000.0f)), ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(
                 viewport->GetCenter(),
                 ImGuiCond_Appearing,
@@ -223,7 +224,7 @@ namespace Quiet::Renderer::UI
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::Button("Create Project", ImVec2(-1.0f, 0.0f)))
+                    if (EditorButton("Create Project", ImVec2(-1.0f, 0.0f)))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::CreateProject,
@@ -374,14 +375,14 @@ namespace Quiet::Renderer::UI
 
                             ImGui::Spacing();
 
-                            if (ImGui::Button("Copy Path", Scale(ImVec2(120.0f, 0.0f))))
+                            if (EditorButton("Copy Path", Scale(ImVec2(120.0f, 0.0f))))
                             {
                                 ImGui::SetClipboardText(editorState.ProjectManager.ProjectScenePathBuffer.data());
                             }
 
                             ImGui::SameLine();
 
-                            if (ImGui::Button("Clear Selection", Scale(ImVec2(140.0f, 0.0f))))
+                            if (EditorButton("Clear Selection", Scale(ImVec2(140.0f, 0.0f))))
                             {
                                 editorState.ProjectManager.ProjectScenePathBuffer[0] = '\0';
                             }
@@ -405,7 +406,7 @@ namespace Quiet::Renderer::UI
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::Button("Open Scene", Scale(ImVec2(150.0f, 0.0f))))
+                    if (EditorButton("Open Scene", Scale(ImVec2(150.0f, 0.0f))))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::OpenProjectScene,
@@ -416,7 +417,7 @@ namespace Quiet::Renderer::UI
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("Set As Startup", Scale(ImVec2(170.0f, 0.0f))))
+                    if (EditorButton("Set As Startup", Scale(ImVec2(170.0f, 0.0f))))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::SetStartupScene,
@@ -440,7 +441,7 @@ namespace Quiet::Renderer::UI
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::Button("Close", Scale(ImVec2(140.0f, 0.0f))))
+        if (EditorButton("Close", Scale(ImVec2(140.0f, 0.0f))))
         {
             ImGui::CloseCurrentPopup();
         }

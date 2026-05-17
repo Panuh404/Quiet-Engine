@@ -7,9 +7,12 @@
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Scene/Scene.h"
+
+namespace QUI = Quiet::Renderer::UI;
 
 namespace
 {
@@ -18,15 +21,14 @@ namespace
                                  const Quiet::Project::ProjectContext& projectContext,
                                  const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        if (!ImGui::BeginMenu("Primitive Mesh")) return;
+        if (!QUI::EditorBeginMenu("Primitive Mesh")) return;
 
         for (const std::string& primitiveID : Quiet::Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
         {
             const bool loaded = meshLibrary.Has(primitiveID);
             const std::string label = primitiveID + " Actor";
 
-            if (!loaded) ImGui::BeginDisabled();
-            if (ImGui::MenuItem(label.c_str()))
+            if (QUI::EditorMenuItem(label.c_str(), nullptr, false, loaded))
             {
                 editorCommands.CreateStaticMeshActor(
                     scene,
@@ -37,11 +39,9 @@ namespace
                 );
             }
 
-            if (!loaded)
+            if (!loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
             {
-                ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                    ImGui::SetTooltip("Primitive mesh '%s' is registered but not loaded.", primitiveID.c_str());
+                ImGui::SetTooltip("Primitive mesh '%s' is registered but not loaded.", primitiveID.c_str());
             }
         }
         ImGui::EndMenu();
@@ -52,7 +52,7 @@ namespace
                                     const Quiet::Project::ProjectContext& projectContext,
                                     const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
-        if (!ImGui::BeginMenu("Imported Mesh")) return;
+        if (!QUI::EditorBeginMenu("Imported Mesh")) return;
 
         bool foundImportedMesh = false;
         for (const Quiet::Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
@@ -63,8 +63,7 @@ namespace
             const bool loaded = meshLibrary.Has(record.ID);
             const std::string label = record.ID + " Actor";
 
-            if (!loaded) ImGui::BeginDisabled();
-            if (ImGui::MenuItem(label.c_str()))
+            if (QUI::EditorMenuItem(label.c_str(), nullptr, false, loaded))
             {
                 editorCommands.CreateStaticMeshActor(
                     scene,
@@ -75,13 +74,10 @@ namespace
                 );
             }
 
-            if (!loaded)
-            {
-                ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                    ImGui::SetTooltip("Mesh asset '%s' is registered but not loaded.", record.ID.c_str());
-            }
-            else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) && !record.Path.empty())
+            if (!loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                ImGui::SetTooltip("Mesh asset '%s' is registered but not loaded.", record.ID.c_str());
+
+            else if (loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) && !record.Path.empty())
                 ImGui::SetTooltip("%s", record.Path.c_str());
         }
         if (!foundImportedMesh)
@@ -105,17 +101,17 @@ namespace Quiet::Renderer::UI
             const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
             if (!isEditMode) ImGui::BeginDisabled();
 
-            if (ImGui::Button("Create"))
+            if (EditorButton("Create"))
                 ImGui::OpenPopup("CreateActorPopup");
 
             if (!isEditMode) ImGui::EndDisabled();
 
             if (ImGui::BeginPopup("CreateActorPopup"))
             {
-                if (ImGui::MenuItem("Empty Actor"))
+                if (QUI::EditorMenuItem("Empty Actor"))
                     editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
 
-                if (ImGui::MenuItem("Directional Light"))
+                if (QUI::EditorMenuItem("Directional Light"))
                 {
                     editorCommands.CreateDirectionalLightActor(scene);
                 }
@@ -152,18 +148,16 @@ namespace Quiet::Renderer::UI
                 const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
                 const std::string label = displayName + "##" + Core::UUIDToString(actor.ID);
 
-                if (!isEditMode) ImGui::BeginDisabled();
-
-                if (ImGui::Selectable(label.c_str(), isSelected) && isEditMode)
+                if (EditorSelectable(label.c_str(), isSelected, 0, ImVec2(0.0f, 0.0f), isEditMode))
+                {
                     editorState.Selection.SelectedActorID = actor.ID;
-
-                if (!isEditMode) ImGui::EndDisabled();
+                }
 
                 if (ImGui::BeginPopupContextItem(label.c_str()))
                 {
                     const bool canEdit = (editorState.Scene.Mode == Editor::SceneMode::Edit);
 
-                    if (ImGui::MenuItem("Duplicate",
+                    if (QUI::EditorMenuItem("Duplicate",
                                         editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
                                         false,
                                         canEdit))
@@ -172,7 +166,7 @@ namespace Quiet::Renderer::UI
                         pendingAction = Editor::EditorActionID::DuplicateSelected;
                     }
 
-                    if (ImGui::MenuItem("Delete",
+                    if (QUI::EditorMenuItem("Delete",
                                         editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
                                         false,
                                         canEdit))
