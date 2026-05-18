@@ -14,6 +14,8 @@
 #include "Quiet/Project/ProjectRegistry.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
+namespace QUI = Quiet::Renderer::UI;
+
 namespace
 {
     void CopyPathToBuffer(char* buffer, std::size_t bufferSize, const std::filesystem::path& path)
@@ -33,40 +35,61 @@ namespace
 
     void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
     {
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextUnformatted(title);
+        ImGui::PopStyleColor();
+
         if (subtitle && subtitle[0] != '\0')
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::TextWrapped("%s", subtitle);
             ImGui::PopStyleColor();
         }
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+        ImGui::Separator();
+        ImGui::PopStyleColor();
+
         ImGui::Spacing();
     }
 
     void DrawMetaRow(const char* label, const std::string& value, const float valueColumnX)
     {
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
         ImGui::Text("%s", label);
+        ImGui::PopStyleColor();
+
         ImGui::SameLine(valueColumnX);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.86f, 0.88f, 0.91f, 1.0f));
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextWrapped("%s", value.c_str());
         ImGui::PopStyleColor();
     }
 
     void DrawStatChip(const char* label, const std::string& value)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, Quiet::Renderer::UI::EditorColor::Background2);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 9.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
         ImGui::BeginChild(label, ImVec2(0.0f, 86.0f), ImGuiChildFlags_Borders);
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::TextUnformatted(label);
             ImGui::PopStyleColor();
 
-            ImGui::TextUnformatted(value.c_str());
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextWrapped("%s", value.c_str());
+            ImGui::PopStyleColor();
         }
         ImGui::EndChild();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
     }
 
     bool PassFilter(const ImGuiTextFilter& filter, const std::filesystem::path& path)
@@ -74,25 +97,26 @@ namespace
         return filter.PassFilter(path.generic_string().c_str());
     }
 
-    bool DrawListRow(const std::string& title,
-                     const std::string& subtitle,
-                     bool selected,
-                     bool emphasize = false)
+    bool DrawListRow(const std::string& title, const std::string& subtitle, bool selected, bool emphasize = false)
     {
         if (selected)
         {
-            ImGui::PushStyleColor(ImGuiCol_Header, Quiet::Renderer::UI::EditorColor::AccentSoft);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Quiet::Renderer::UI::EditorColor::Accent);
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, Quiet::Renderer::UI::EditorColor::AccentHover);
+            ImGui::PushStyleColor(ImGuiCol_Header, QUI::EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, QUI::EditorColor::Accent);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, QUI::EditorColor::AccentHover);
         }
         else if (emphasize)
         {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.095f, 0.085f, 0.035f, 0.70f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.140f, 0.120f, 0.045f, 0.85f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.180f, 0.150f, 0.055f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.110f, 0.090f, 0.030f, 0.75f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.155f, 0.125f, 0.040f, 0.90f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.190f, 0.155f, 0.050f, 1.00f));
         }
 
-        const bool clicked = Quiet::Renderer::UI::EditorSelectable(title.c_str(), selected, ImGuiSelectableFlags_AllowOverlap);
+        const bool clicked = QUI::EditorSelectable(
+            title.c_str(),
+            selected,
+            ImGuiSelectableFlags_AllowOverlap
+        );
 
         if (selected || emphasize)
         {
@@ -101,7 +125,7 @@ namespace
 
         if (!subtitle.empty())
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, Quiet::Renderer::UI::EditorColor::TextMuted);
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::TextWrapped("%s", subtitle.c_str());
             ImGui::PopStyleColor();
         }
@@ -123,7 +147,18 @@ namespace Quiet::Renderer::UI
         if (editorState.ProjectManager.RequestOpenPopup)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowSize(Scale(ImVec2(1040.0f, 1000.0f)), ImGuiCond_Appearing);
+            const ImVec2 targetSize = Scale(ImVec2(1040.0f, 860.0f));
+            const ImVec2 maxSize = ImVec2(
+                viewport->WorkSize.x * 0.92f,
+                viewport->WorkSize.y * 0.88f
+            );
+
+            const ImVec2 popupSize = ImVec2(
+                std::min(targetSize.x, maxSize.x),
+                std::min(targetSize.y, maxSize.y)
+            );
+
+            ImGui::SetNextWindowSize(popupSize, ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(
                 viewport->GetCenter(),
                 ImGuiCond_Appearing,
@@ -138,8 +173,12 @@ namespace Quiet::Renderer::UI
             ImGuiWindowFlags_NoCollapse |
             ImGuiWindowFlags_NoSavedSettings;
 
-        if (!ImGui::BeginPopupModal("Project Manager", nullptr, windowFlags))
+        bool projectManagerOpen = true;
+        if (!ImGui::BeginPopupModal("Project Manager", &projectManagerOpen, windowFlags)) return;
+        if (!projectManagerOpen)
         {
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
             return;
         }
 
@@ -160,11 +199,12 @@ namespace Quiet::Renderer::UI
         );
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
         ImGui::BeginChild("##ProjectSummaryCard", Scale(ImVec2(0.0f, 280.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::TextUnformatted(projectContext.GetProjectName().c_str());
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::TextWrapped("%s", projectContext.GetProjectFilePath().string().c_str());
             ImGui::PopStyleColor();
 
@@ -190,7 +230,7 @@ namespace Quiet::Renderer::UI
             DrawMetaRow("Last Updated", descriptor.UpdatedAtUtc, Scale(165.0f));
         }
         ImGui::EndChild();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar();
 
         ImGui::Spacing();
@@ -214,28 +254,18 @@ namespace Quiet::Renderer::UI
                         editorState.ProjectManager.NewProjectNameBuffer.data(),
                         editorState.ProjectManager.NewProjectNameBuffer.size()
                     );
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
                     ImGui::TextUnformatted("A new folder and .quiet file will be created under the projects root.");
                     ImGui::PopStyleColor();
 
                     const bool canCreateProject = BufferHasText(editorState.ProjectManager.NewProjectNameBuffer.data());
-                    if (!canCreateProject)
-                    {
-                        ImGui::BeginDisabled();
-                    }
-
-                    if (EditorButton("Create Project", ImVec2(-1.0f, 0.0f)))
+                    if (EditorButton("Create Project", ImVec2(-1.0f, 0.0f), canCreateProject))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::CreateProject,
                             editorState.ProjectManager.NewProjectNameBuffer.data()
                         );
                         ImGui::CloseCurrentPopup();
-                    }
-
-                    if (!canCreateProject)
-                    {
-                        ImGui::EndDisabled();
                     }
 
                     ImGui::Spacing();
@@ -363,13 +393,14 @@ namespace Quiet::Renderer::UI
                     ImGui::Spacing();
 
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, Scale(8.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+                    ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
                     ImGui::BeginChild("##SelectedSceneCard", Scale(ImVec2(0.0f, 112.0f)), ImGuiChildFlags_Borders);
                     {
                         if (hasSelectedScene)
                         {
                             ImGui::TextUnformatted("Selected Scene");
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.86f, 0.88f, 0.91f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
                             ImGui::TextWrapped("%s", editorState.ProjectManager.ProjectScenePathBuffer.data());
                             ImGui::PopStyleColor();
 
@@ -390,23 +421,18 @@ namespace Quiet::Renderer::UI
                         else
                         {
                             ImGui::TextDisabled("No scene selected.");
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.62f, 0.66f, 0.72f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
                             ImGui::TextWrapped("Select a scene from the list to enable scene actions.");
                             ImGui::PopStyleColor();
                         }
                     }
                     ImGui::EndChild();
-                    ImGui::PopStyleColor();
+                    ImGui::PopStyleColor(2);
                     ImGui::PopStyleVar();
 
                     ImGui::Spacing();
 
-                    if (!hasSelectedScene)
-                    {
-                        ImGui::BeginDisabled();
-                    }
-
-                    if (EditorButton("Open Scene", Scale(ImVec2(150.0f, 0.0f))))
+                    if (EditorButton("Open Scene", Scale(ImVec2(150.0f, 0.0f)), hasSelectedScene))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::OpenProjectScene,
@@ -417,7 +443,7 @@ namespace Quiet::Renderer::UI
 
                     ImGui::SameLine();
 
-                    if (EditorButton("Set As Startup", Scale(ImVec2(170.0f, 0.0f))))
+                    if (EditorButton("Set As Startup", Scale(ImVec2(170.0f, 0.0f)), hasSelectedScene))
                     {
                         editorState.QueueRequest(
                             Editor::EditorRequestType::SetStartupScene,
@@ -425,25 +451,11 @@ namespace Quiet::Renderer::UI
                         );
                         ImGui::CloseCurrentPopup();
                     }
-
-                    if (!hasSelectedScene)
-                    {
-                        ImGui::EndDisabled();
-                    }
                 }
                 ImGui::EndChild();
             }
 
             ImGui::EndTable();
-        }
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        if (EditorButton("Close", Scale(ImVec2(140.0f, 0.0f))))
-        {
-            ImGui::CloseCurrentPopup();
         }
 
         ImGui::PopStyleVar(2);
