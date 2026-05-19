@@ -138,6 +138,21 @@ namespace Quiet::Renderer::UI
         return enabled && opened;
     }
 
+    inline bool EditorBeginPopupModal(const char* title, bool& open, ImGuiWindowFlags flags = 0)
+    {
+        open = true;
+        if (!ImGui::BeginPopupModal(title, &open, flags))
+            return false;
+
+        if (!open)
+        {
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            return false;
+        }
+        return true;
+    }
+
     inline void ApplyTheme(ImGuiIO& io, float uiScale = 1.15f)
     {
         ImGui::StyleColorsDark();

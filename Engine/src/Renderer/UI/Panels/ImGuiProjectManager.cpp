@@ -174,13 +174,8 @@ namespace Quiet::Renderer::UI
             ImGuiWindowFlags_NoSavedSettings;
 
         bool projectManagerOpen = true;
-        if (!ImGui::BeginPopupModal("Project Manager", &projectManagerOpen, windowFlags)) return;
-        if (!projectManagerOpen)
-        {
-            ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
+        if (!QUI::EditorBeginPopupModal("Project Manager", projectManagerOpen, windowFlags))
             return;
-        }
 
         const auto& descriptor = projectContext.GetProjectDescriptor();
         const std::vector<std::filesystem::path> scenes = projectContext.EnumerateSceneFiles();

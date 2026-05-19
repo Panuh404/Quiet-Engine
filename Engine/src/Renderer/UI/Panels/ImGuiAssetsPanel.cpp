@@ -20,6 +20,8 @@
 
 namespace
 {
+    namespace QUI = Quiet::Renderer::UI;
+
     template <std::size_t Size>
     void CopyToBuffer(std::array<char, Size>& buffer, const std::string& value)
     {
@@ -87,21 +89,31 @@ namespace
 
     ImVec4 MakeStatusColor(const std::string& status)
     {
-        if (status == "Loaded") return {0.30f, 0.85f, 0.42f, 1.0f};
-        if (status == "GPU Ready") return {0.30f, 0.85f, 0.42f, 1.0f};
-        if (status == "Loaded Metadata") return {0.30f, 0.85f, 0.42f, 1.0f};
-        if (status == "Registered") return {0.95f, 0.76f, 0.32f, 1.0f};
-        if (status == "Missing Built-In") return {0.95f, 0.30f, 0.30f, 1.0f};
-        if (status == "Missing Path") return {0.95f, 0.30f, 0.30f, 1.0f};
-        return {0.70f, 0.72f, 0.76f, 1.0f};
+        if (status == "Loaded") return QUI::EditorColor::Success;
+        if (status == "GPU Ready") return QUI::EditorColor::Success;
+        if (status == "Loaded Metadata") return QUI::EditorColor::Success;
+        if (status == "Registered") return QUI::EditorColor::Warning;
+        if (status == "Missing Built-In") return QUI::EditorColor::Error;
+        if (status == "Missing Path") return QUI::EditorColor::Error;
+        return QUI::EditorColor::TextMuted;
     }
 
     void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
     {
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextUnformatted(title);
+        ImGui::PopStyleColor();
+
         if (subtitle && subtitle[0] != '\0')
-            ImGui::TextDisabled("%s", subtitle);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("%s", subtitle);
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
         ImGui::Separator();
+        ImGui::PopStyleColor();
     }
 
     bool DrawRegisterAssetForm(Quiet::Project::ProjectContext& projectContext,
@@ -151,24 +163,29 @@ namespace
             Quiet::Renderer::UI::OpenAssetFileDialog(projectContext);
 
         if (!hasPath)
-            ImGui::TextDisabled("Select or paste a supported asset file.");
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextUnformatted("Select or paste a supported asset file.");
+            ImGui::PopStyleColor();
+        }
         else if (!supportedType)
-            ImGui::TextColored(ImVec4(0.95f, 0.30f, 0.30f, 1.0f), "Unsupported asset type");
+        {
+            ImGui::TextColored(QUI::EditorColor::Error, "Unsupported asset type");
+        }
         else if (fileExists)
         {
             const std::string typeLabel = std::string(Quiet::Project::ToString(detectedType));
-            ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.42f, 1.0f), "%s file found", typeLabel.c_str());
+            ImGui::TextColored(QUI::EditorColor::Success, "%s file found", typeLabel.c_str());
         }
         else
-            ImGui::TextColored(ImVec4(0.95f, 0.30f, 0.30f, 1.0f), "File not found");
+        {
+            ImGui::TextColored(QUI::EditorColor::Error, "File not found");
+        }
 
         ImGui::Spacing();
         const bool canRegister = hasPath && supportedType && fileExists;
 
-        if (!canRegister)
-            ImGui::BeginDisabled();
-
-        if (Quiet::Renderer::UI::EditorButton("Register", ImVec2(125.0f, 0.0f)))
+        if (QUI::EditorButton("Register", ImVec2(125.0f, 0.0f), canRegister))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
@@ -209,8 +226,6 @@ namespace
                 ImGui::OpenPopup("Register Asset Failed");
             }
         }
-
-        if (!canRegister) ImGui::EndDisabled();
         ImGui::SameLine();
 
         if (Quiet::Renderer::UI::EditorButton("Reload", ImVec2(125.0f, 0.0f)))
@@ -222,11 +237,15 @@ namespace
 
     void DrawFailurePopup(const char* title, const std::string& message)
     {
-        if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        bool popupOpen = true;
+        if (QUI::EditorBeginPopupModal(title, popupOpen, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::TextWrapped("%s", message.c_str());
-            if (Quiet::Renderer::UI::EditorButton("OK", ImVec2(120.0f, 0.0f)))
+            ImGui::Spacing();
+
+            if (QUI::EditorButton("OK", ImVec2(120.0f, 0.0f)))
                 ImGui::CloseCurrentPopup();
+
             ImGui::EndPopup();
         }
     }
@@ -245,49 +264,88 @@ namespace
 
     void DrawDetailRow(const char* label, const char* value, const float labelWidth)
     {
-        ImGui::TextDisabled("%s", label);
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::Text("%s", label);
+        ImGui::PopStyleColor();
+
         ImGui::SameLine(labelWidth);
 
         if (value && value[0] != '\0')
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted(value);
+            ImGui::PopStyleColor();
+        }
         else
-            ImGui::TextDisabled("-");
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("-");
+            ImGui::PopStyleColor();
+        }
     }
 
     void DrawDetailRowWrapped(const char* label, const std::string& value, const float labelWidth)
     {
-        ImGui::TextDisabled("%s", label);
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::Text("%s", label);
+        ImGui::PopStyleColor();
+
         ImGui::SameLine(labelWidth);
 
         if (value.empty())
         {
-            ImGui::TextDisabled("-");
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("-");
+            ImGui::PopStyleColor();
             return;
         }
 
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextWrapped("%s", value.c_str());
+        ImGui::PopStyleColor();
     }
 
     void DrawDetailRowUInt(const char* label, const std::uint32_t value, const float labelWidth)
     {
-        ImGui::TextDisabled("%s", label);
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::Text("%s", label);
+        ImGui::PopStyleColor();
+
         ImGui::SameLine(labelWidth);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::Text("%u", value);
+        ImGui::PopStyleColor();
     }
 
     void DrawDetailRowVec3(const char* label, const glm::vec3& value, const float labelWidth)
     {
-        ImGui::TextDisabled("%s", label);
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::Text("%s", label);
+        ImGui::PopStyleColor();
+
         ImGui::SameLine(labelWidth);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::Text("%.3f, %.3f, %.3f", value.x, value.y, value.z);
+        ImGui::PopStyleColor();
     }
 
     void DrawDetailsSectionTitle(const char* title)
     {
         ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
         ImGui::Separator();
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextUnformatted(title);
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
         ImGui::Separator();
+        ImGui::PopStyleColor();
     }
 
     void DrawAssetDetailsPopup(const Quiet::Project::ProjectContext& projectContext,
@@ -313,7 +371,8 @@ namespace
 
         ImGui::SetNextWindowSize(ImVec2(modalWidth, 0.0f), ImGuiCond_Appearing);
 
-        if (ImGui::BeginPopupModal("Asset Details", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        bool assetDetailsOpen = true;
+        if (QUI::EditorBeginPopupModal("Asset Details", assetDetailsOpen, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f * uiScale, 7.0f * uiScale));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f * uiScale, 8.0f * uiScale));
@@ -462,18 +521,6 @@ namespace
                 }
             }
 
-            ImGui::Spacing();
-            ImGui::Separator();
-
-            const float closeButtonWidth = 120.0f * uiScale;
-            const float availableWidth = ImGui::GetContentRegionAvail().x;
-
-            if (availableWidth > closeButtonWidth)
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - closeButtonWidth);
-
-            if (Quiet::Renderer::UI::EditorButton("Close", ImVec2(closeButtonWidth, 0.0f)))
-                ImGui::CloseCurrentPopup();
-
             ImGui::PopStyleVar(2);
             ImGui::EndPopup();
         }
@@ -506,6 +553,9 @@ namespace Quiet::Renderer::UI
             ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
 
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+            ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
             if (ImGui::BeginChild(
                 "RegisterAssetCard",
                 Scale(ImVec2(0.0f, 210.0f)),
@@ -522,6 +572,7 @@ namespace Quiet::Renderer::UI
             }
             ImGui::EndChild();
 
+            ImGui::PopStyleColor(2);
             ImGui::PopStyleVar(3);
 
             if (const auto selectedAsset = DrawAssetFileDialog(projectContext))
@@ -616,14 +667,14 @@ namespace Quiet::Renderer::UI
                     // Reference Count
                     ImGui::TableSetColumnIndex(7);
                     if (referenceCount > 0)
-                        ImGui::TextColored(ImVec4(0.95f, 0.76f, 0.32f, 1.0f), "%u", referenceCount);
+                        ImGui::TextColored(QUI::EditorColor::Warning, "%u", referenceCount);
                     else
                         ImGui::TextDisabled("0");
 
                     // Details
                     ImGui::TableSetColumnIndex(8);
                     const std::string detailsLabel = "Details##" + record.ID;
-                    if (EditorButton(detailsLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+                    if (QUI::EditorButton(detailsLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
                     {
                         pendingDetailsAssetID = record.ID;
                     }
@@ -647,7 +698,7 @@ namespace Quiet::Renderer::UI
                     else
                     {
                         const std::string buttonLabel = "Remove##" + record.ID;
-                        if (EditorButton(buttonLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+                        if (QUI::EditorButton(buttonLabel.c_str(), ImVec2(-FLT_MIN, 0.0f)))
                             pendingRemoveAssetID = record.ID;
                     }
                 }
