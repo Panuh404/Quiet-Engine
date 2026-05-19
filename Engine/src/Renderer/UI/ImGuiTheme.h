@@ -196,9 +196,9 @@ namespace Quiet::Renderer::UI
         C[ImGuiCol_Border]               = EditorColor::Border;
         C[ImGuiCol_BorderShadow]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
-        C[ImGuiCol_Header]               = EditorColor::Background3;
-        C[ImGuiCol_HeaderHovered]        = EditorColor::AccentDim;
-        C[ImGuiCol_HeaderActive]         = EditorColor::AccentSoft;
+        C[ImGuiCol_Header]               = EditorColor::Background2;
+        C[ImGuiCol_HeaderHovered]        = EditorColor::Background4;
+        C[ImGuiCol_HeaderActive]         = EditorColor::AccentDim;
 
         C[ImGuiCol_Button]               = EditorColor::Background3;
         C[ImGuiCol_ButtonHovered]        = EditorColor::Background4;

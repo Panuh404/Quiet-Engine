@@ -16,8 +16,8 @@
 namespace Quiet::Renderer::Vulkan
 {
     StaticMeshPipeline::StaticMeshPipeline(const LogicalDevice& logicalDevice,
-                                           const Swapchain& swapchain,
-                                           const DepthResources& depthResources,
+                                           VkFormat colorAttachmentFormat,
+                                           VkFormat depthAttachmentFormat,
                                            VkDescriptorSetLayout cameraSetLayout,
                                            VkDescriptorSetLayout materialSetLayout)
         : m_Device(logicalDevice.GetHandle())
@@ -117,13 +117,21 @@ namespace Quiet::Renderer::Vulkan
         dynamicState.dynamicStateCount = 2;
         dynamicState.pDynamicStates = dynamicStates;
 
-        const VkFormat colorFormat = swapchain.GetImageFormat();
+        if (colorAttachmentFormat == VK_FORMAT_UNDEFINED)
+        {
+            throw std::runtime_error("Static mesh pipeline color attachment format is undefined.");
+        }
+
+        if (depthAttachmentFormat == VK_FORMAT_UNDEFINED)
+        {
+            throw std::runtime_error("Static mesh pipeline depth attachment format is undefined.");
+        }
 
         VkPipelineRenderingCreateInfo renderingInfo{};
         renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachmentFormats = &colorFormat;
-        renderingInfo.depthAttachmentFormat = depthResources.GetFormat();
+        renderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+        renderingInfo.depthAttachmentFormat = depthAttachmentFormat;
         renderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -152,8 +160,8 @@ namespace Quiet::Renderer::Vulkan
 
         QUIET_CORE_INFO(
             "Created static mesh pipeline. colorFormat={} depthFormat={}",
-            static_cast<int>(swapchain.GetImageFormat()),
-            static_cast<int>(depthResources.GetFormat())
+            static_cast<int>(colorAttachmentFormat),
+            static_cast<int>(depthAttachmentFormat)
         );
     }
 

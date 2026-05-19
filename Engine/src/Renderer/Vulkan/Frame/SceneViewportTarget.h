@@ -28,6 +28,9 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] bool IsValid() const { return m_ColorImage != VK_NULL_HANDLE; }
         [[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
 
+        [[nodiscard]] VkFormat GetColorFormat() const { return m_ColorFormat; }
+        [[nodiscard]] VkFormat GetDepthFormat() const { return m_DepthFormat; }
+
         [[nodiscard]] VkImage GetColorImage() const { return m_ColorImage; }
         [[nodiscard]] VkSampler GetSampler() const { return m_Sampler; }
         [[nodiscard]] VkImageView GetColorImageView() const { return m_ColorImageView; }

@@ -212,8 +212,8 @@ namespace Quiet::Renderer::Vulkan
 
         m_StaticMeshPipeline = std::make_unique<StaticMeshPipeline>(
             *m_LogicalDevice,
-            *m_Swapchain,
-            *m_DepthResources,
+            m_SceneViewportTarget->GetColorFormat(),
+            m_SceneViewportTarget->GetDepthFormat(),
             m_CameraResources->GetDescriptorSetLayout(),
             m_StaticMeshMaterialResources->GetDescriptorSetLayout());
 
@@ -389,10 +389,16 @@ namespace Quiet::Renderer::Vulkan
             *m_LogicalDevice,
             *m_GraphicsCommands);
 
+        m_SceneViewportTarget = std::make_unique<SceneViewportTarget>(
+            m_PhysicalDevice->GetHandle(),
+            m_LogicalDevice->GetHandle(),
+            m_Swapchain->GetImageFormat(),
+            m_DepthResources->GetFormat());
+
         m_StaticMeshPipeline = std::make_unique<StaticMeshPipeline>(
             *m_LogicalDevice,
-            *m_Swapchain,
-            *m_DepthResources,
+            m_SceneViewportTarget->GetColorFormat(),
+            m_SceneViewportTarget->GetDepthFormat(),
             m_CameraResources->GetDescriptorSetLayout(),
             m_StaticMeshMaterialResources->GetDescriptorSetLayout());
 
@@ -413,12 +419,6 @@ namespace Quiet::Renderer::Vulkan
             m_Swapchain->GetImageFormat(),
             m_DepthResources->GetFormat()
         );
-
-        m_SceneViewportTarget = std::make_unique<SceneViewportTarget>(
-            m_PhysicalDevice->GetHandle(),
-            m_LogicalDevice->GetHandle(),
-            m_Swapchain->GetImageFormat(),
-            m_DepthResources->GetFormat());
 
         m_SceneViewportReady = false;
         m_ViewportResizePending = false;

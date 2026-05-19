@@ -5,15 +5,13 @@
 namespace Quiet::Renderer::Vulkan
 {
     class LogicalDevice;
-    class Swapchain;
-    class DepthResources;
 
     class StaticMeshPipeline
     {
     public:
         StaticMeshPipeline(const LogicalDevice& logicalDevice,
-                           const Swapchain& swapchain,
-                           const DepthResources& depthResources,
+                           VkFormat colorAttachmentFormat,
+                           VkFormat depthAttachmentFormat,
                            VkDescriptorSetLayout cameraSetLayout,
                            VkDescriptorSetLayout materialSetLayout);
         ~StaticMeshPipeline();

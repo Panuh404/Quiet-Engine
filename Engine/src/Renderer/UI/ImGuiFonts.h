@@ -67,9 +67,10 @@ namespace Quiet::Renderer::UI
         static const ImWchar iconRanges[] = { 0xf000, 0xf8ff, 0 };
 
         ImFontConfig iconConfig{};
+        iconConfig.MergeMode = true;
         iconConfig.PixelSnapH = true;
-        iconConfig.GlyphMinAdvanceX = sizePixels;
-        iconConfig.GlyphOffset = ImVec2(0.0f, 0.0f);
+        iconConfig.GlyphMinAdvanceX = sizePixels * 0.85f;
+        iconConfig.GlyphOffset = ImVec2(0.0f, 1.0f);
 
         return io.Fonts->AddFontFromFileTTF(
             path.string().c_str(),
@@ -123,6 +124,9 @@ namespace Quiet::Renderer::UI
             fonts.UI = io.Fonts->AddFontDefault();
         }
 
+        fonts.Icons = AddIconFontSafe(io, iconFontPath, uiSize);
+        fonts.HasIcons = (fonts.Icons != nullptr);
+
         fonts.Bold = AddFontSafe(io, boldFontPath, boldSize, boldConfig);
         if (!fonts.Bold)
         {
@@ -134,9 +138,6 @@ namespace Quiet::Renderer::UI
         {
             fonts.Mono = fonts.UI;
         }
-
-        fonts.Icons = AddIconFontSafe(io, iconFontPath, uiSize);
-        fonts.HasIcons = (fonts.Icons != nullptr);
 
         io.FontDefault = fonts.UI;
         io.FontGlobalScale = 1.0f;
