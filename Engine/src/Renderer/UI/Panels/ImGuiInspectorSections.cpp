@@ -287,6 +287,173 @@ namespace
         );
     }
 
+    float GetInspectorPropertyLabelWidth()
+    {
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        return std::clamp(availableWidth * 0.28f, 92.0f, 128.0f);
+    }
+
+    void BeginInspectorPropertyRow(const char* label)
+    {
+        const float rowStartX = ImGui::GetCursorPosX();
+        const float labelWidth = GetInspectorPropertyLabelWidth();
+
+        ImGui::AlignTextToFramePadding();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextUnformatted(label);
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine(rowStartX + labelWidth);
+    }
+
+    bool DrawFloatPropertyRow(const char* label,
+                              float& value,
+                              const float speed,
+                              const float minValue,
+                              const float maxValue,
+                              const QUI::TrackedInspectorInteraction& tracked)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool changed = ImGui::DragFloat(
+            "##Value",
+            &value,
+            speed,
+            minValue,
+            maxValue,
+            "%.3f"
+        );
+
+        tracked.Begin();
+        tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool DrawVec3PropertyRow(const char* label,
+                             glm::vec3& value,
+                             const float speed,
+                             const float minValue,
+                             const float maxValue,
+                             const QUI::TrackedInspectorInteraction& tracked)
+    {
+        ImGui::PushID(label);
+
+        BeginInspectorPropertyRow(label);
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const float axisLabelWidth = 14.0f;
+        const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+
+        const float fieldWidth = std::max(
+            54.0f,
+            (availableWidth - axisLabelWidth * 3.0f - spacing * 5.0f) / 3.0f
+        );
+
+        bool changed = false;
+
+        auto drawAxis = [&](const char* axisLabel, float& axisValue)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(axisLabel);
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::SetNextItemWidth(fieldWidth);
+            changed |= ImGui::DragFloat(
+                "##Axis",
+                &axisValue,
+                speed,
+                minValue,
+                maxValue,
+                "%.3f"
+            );
+
+            tracked.Begin();
+            tracked.End();
+        };
+
+        ImGui::PushID("X");
+        drawAxis("X", value.x);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("Y");
+        drawAxis("Y", value.y);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("Z");
+        drawAxis("Z", value.z);
+        ImGui::PopID();
+
+        ImGui::PopID();
+
+        return changed;
+    }
+
+    bool DrawCheckboxPropertyRow(const char* label, bool& value)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        const bool changed = QUI::EditorCheckbox("##Value", &value);
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool BeginComboPropertyRow(const char* label, const char* previewValue)
+    {
+        BeginInspectorPropertyRow(label);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const std::string comboID = std::string("##") + label;
+        return QUI::EditorBeginCombo(comboID.c_str(), previewValue);
+    }
+
+    bool DrawColor3PropertyRow(const char* label,
+                               glm::vec3& value,
+                               const QUI::TrackedInspectorInteraction& tracked)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool changed = ImGui::ColorEdit3("##Value", &value.x);
+
+        tracked.Begin();
+        tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool DrawColor4PropertyRow(const char* label,
+                               glm::vec4& value,
+                               const QUI::TrackedInspectorInteraction& tracked)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool changed = ImGui::ColorEdit4("##Value", &value.x);
+
+        tracked.Begin();
+        tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
     void DrawMaterialSlotEditor(
         Quiet::Scene::Scene& scene,
         Quiet::Scene::Actor& actor,
@@ -449,29 +616,23 @@ namespace Quiet::Renderer::UI
 
         if (transformHeader.Open)
         {
-            if (ImGui::DragFloat3("Position", &transform.Position.x, 0.1f))
+            glm::vec3 position = transform.Position;
+            if (DrawVec3PropertyRow("Position", position, 0.1f, 0.0f, 0.0f, tracked))
             {
-                commands.SetActorPosition(scene, actor.ID, transform.Position);
+                commands.SetActorPosition(scene, actor.ID, position);
             }
 
-            tracked.Begin();
-            tracked.End();
-
-            if (ImGui::DragFloat3("Rotation", &transform.RotationDegrees.x, 0.5f))
+            glm::vec3 rotation = transform.RotationDegrees;
+            if (DrawVec3PropertyRow("Rotation", rotation, 0.5f, 0.0f, 0.0f, tracked))
             {
-                commands.SetActorRotation(scene, actor.ID, transform.RotationDegrees);
+                commands.SetActorRotation(scene, actor.ID, rotation);
             }
 
-            tracked.Begin();
-            tracked.End();
-
-            if (ImGui::DragFloat3("Scale", &transform.Scale.x, 0.05f, 0.01f, 100.0f))
+            glm::vec3 scale = transform.Scale;
+            if (DrawVec3PropertyRow("Scale", scale, 0.05f, 0.01f, 100.0f, tracked))
             {
-                commands.SetActorScale(scene, actor.ID, transform.Scale);
+                commands.SetActorScale(scene, actor.ID, scale);
             }
-
-            tracked.Begin();
-            tracked.End();
         }
     }
 
@@ -596,7 +757,7 @@ namespace Quiet::Renderer::UI
                     ? meshAssetIDs[currentIndex].c_str()
                     : actor.StaticMesh->MeshResourceID.c_str();
 
-            if (EditorBeginCombo("Mesh Resource", currentPreview))
+            if (BeginComboPropertyRow("Mesh Resource", currentPreview))
             {
                 for (const auto & meshAssetID : meshAssetIDs)
                 {
@@ -611,7 +772,7 @@ namespace Quiet::Renderer::UI
         }
 
         bool visible = actor.StaticMesh->Visible;
-        if (EditorCheckbox("Visible", &visible))
+        if (DrawCheckboxPropertyRow("Visible", visible))
             commands.SetStaticMeshVisible(scene, actor.ID, visible);
     }
 
@@ -635,12 +796,8 @@ namespace Quiet::Renderer::UI
         if (!header.Open) return;
 
         glm::vec4 baseColor = actor.Material->BaseColor;
-
-        if (ImGui::ColorEdit4("Base Color", &baseColor.x))
+        if (DrawColor4PropertyRow("Base Color", baseColor, tracked))
             commands.SetMaterialBaseColor(scene, actor.ID, baseColor);
-
-        tracked.Begin();
-        tracked.End();
 
         ImGui::Spacing();
 
@@ -652,7 +809,7 @@ namespace Quiet::Renderer::UI
                 ? actor.Material->BaseColorTextureAssetID.c_str()
                 : "None";
 
-        if (EditorBeginCombo("Base Color Texture", texturePreview))
+        if (BeginComboPropertyRow("Base Color Texture", texturePreview))
         {
             const bool noneSelected = !actor.Material->HasBaseColorTexture();
             if (EditorSelectable("None", noneSelected))
@@ -749,32 +906,20 @@ namespace Quiet::Renderer::UI
         if (!header.Open) return;
 
         bool enabled = actor.DirectionalLight->Enabled;
-        if (EditorCheckbox("Enabled", &enabled))
+        if (DrawCheckboxPropertyRow("Enabled", enabled))
             commands.SetDirectionalLightEnabled(scene, actor.ID, enabled);
 
-        tracked.Begin();
-        tracked.End();
-
         glm::vec3 direction = actor.DirectionalLight->Direction;
-        if (ImGui::DragFloat3("Direction", &direction.x, 0.01f, -1.0f, 1.0f))
+        if (DrawVec3PropertyRow("Direction", direction, 0.01f, -1.0f, 1.0f, tracked))
             commands.SetDirectionalLightDirection(scene, actor.ID, direction);
 
-        tracked.Begin();
-        tracked.End();
-
         glm::vec3 color = actor.DirectionalLight->Color;
-        if (ImGui::ColorEdit3("Color", &color.x))
+        if (DrawColor3PropertyRow("Color", color, tracked))
             commands.SetDirectionalLightColor(scene, actor.ID, color);
 
-        tracked.Begin();
-        tracked.End();
-
         float intensity = actor.DirectionalLight->Intensity;
-        if (ImGui::DragFloat("Intensity", &intensity, 0.01f, 0.0f, 10.0f))
+        if (DrawFloatPropertyRow("Intensity", intensity, 0.01f, 0.0f, 10.0f, tracked))
             commands.SetDirectionalLightIntensity(scene, actor.ID, intensity);
-
-        tracked.Begin();
-        tracked.End();
     }
 
     void DrawRotatorSection(Scene::Scene& scene,
@@ -792,18 +937,9 @@ namespace Quiet::Renderer::UI
         }
         if (!header.Open) return;
 
-        if (ImGui::DragFloat("Rotation Speed",
-                             &actor.Rotator->RotationSpeedDegreesPerSecond,
-                             1.0f))
-        {
-            commands.SetRotatorSpeed(
-                scene,
-                actor.ID,
-                actor.Rotator->RotationSpeedDegreesPerSecond
-            );
-        }
-        tracked.Begin();
-        tracked.End();
+        float rotationSpeed = actor.Rotator->RotationSpeedDegreesPerSecond;
+        if (DrawFloatPropertyRow("Rotation Speed", rotationSpeed, 1.0f, 0.0f, 0.0f, tracked))
+            commands.SetRotatorSpeed(scene, actor.ID, rotationSpeed);
     }
 
     void DrawCameraSection(Scene::Scene& scene,
@@ -842,28 +978,19 @@ namespace Quiet::Renderer::UI
         }
 
         bool primary = actor.Camera->Primary;
-        if (EditorCheckbox("Primary", &primary))
+        if (DrawCheckboxPropertyRow("Primary", primary))
             commands.SetCameraPrimary(scene, actor.ID, primary);
 
         float fov = actor.Camera->FieldOfViewDegrees;
-        if (ImGui::DragFloat("Field Of View", &fov, 0.25f, 1.0f, 179.0f))
+        if (DrawFloatPropertyRow("Field Of View", fov, 0.25f, 1.0f, 179.0f, tracked))
             commands.SetCameraFieldOfView(scene, actor.ID, fov);
 
-        tracked.Begin();
-        tracked.End();
-
         float nearClip = actor.Camera->NearClip;
-        if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 100.0f))
+        if (DrawFloatPropertyRow("Near Clip", nearClip, 0.01f, 0.001f, 100.0f, tracked))
             commands.SetCameraNearClip(scene, actor.ID, nearClip);
 
-        tracked.Begin();
-        tracked.End();
-
         float farClip = actor.Camera->FarClip;
-        if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 1.0f, 100000.0f))
+        if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, 1.0f, 100000.0f, tracked))
             commands.SetCameraFarClip(scene, actor.ID, farClip);
-
-        tracked.Begin();
-        tracked.End();
     }
 }
