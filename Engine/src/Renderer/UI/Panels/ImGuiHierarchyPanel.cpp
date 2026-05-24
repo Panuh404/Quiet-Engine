@@ -1,5 +1,7 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <string>
+
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
@@ -8,6 +10,7 @@
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/UI/ImGuiTheme.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Scene/Scene.h"
@@ -16,6 +19,273 @@ namespace QUI = Quiet::Renderer::UI;
 
 namespace
 {
+    bool DrawHierarchyHeader(const bool canCreate)
+    {
+        bool createPressed = false;
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const float createButtonWidth = 76.0f;
+        const bool hasInlineButtonSpace = availableWidth >= 280.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Scene Hierarchy");
+        ImGui::PopStyleColor();
+
+        if (hasInlineButtonSpace)
+        {
+            ImGui::SameLine();
+
+            const float buttonX =
+                ImGui::GetCursorPosX() +
+                ImGui::GetContentRegionAvail().x -
+                createButtonWidth;
+
+            ImGui::SetCursorPosX(buttonX);
+
+            createPressed = QUI::EditorButton(
+                "+ Create",
+                ImVec2(createButtonWidth, 0.0f),
+                canCreate
+            );
+        }
+
+        ImGui::PopStyleVar();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextWrapped("Actors in the active scene.");
+        ImGui::PopStyleColor();
+
+        if (!hasInlineButtonSpace)
+        {
+            ImGui::Spacing();
+
+            createPressed = QUI::EditorButton(
+                "+ Create",
+                ImVec2(-1.0f, 0.0f),
+                canCreate
+            );
+        }
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+        ImGui::Separator();
+        ImGui::PopStyleColor();
+
+        return createPressed;
+    }
+
+    void DrawHierarchyEmptyState()
+    {
+        ImGui::Spacing();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##HierarchyEmptyState", ImVec2(0.0f, 92.0f), ImGuiChildFlags_Borders);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextUnformatted("No actors in scene");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("Use + Create to add an Empty Actor, Light, or Mesh Actor.");
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    const char* GetActorTypeLabel(const Quiet::Scene::Actor& actor)
+    {
+        if (actor.Camera.has_value()) return "Camera";
+        if (actor.DirectionalLight.has_value()) return "Light";
+        if (actor.StaticMesh.has_value()) return "Mesh";
+        if (actor.Rotator.has_value()) return "Rotator";
+
+        return "Actor";
+    }
+
+    const char* GetActorTypeIcon(const Quiet::Scene::Actor& actor)
+    {
+        if (actor.Camera.has_value()) return QUI::Icons::Focus;
+        if (actor.DirectionalLight.has_value()) return QUI::Icons::World;
+        if (actor.StaticMesh.has_value()) return QUI::Icons::Local;
+        if (actor.Rotator.has_value()) return QUI::Icons::Rotate;
+
+        return QUI::Icons::Local;
+    }
+
+    bool DrawActorRow(const Quiet::Scene::Actor& actor, const bool selected, const bool enabled)
+    {
+        const std::string actorID = Quiet::Core::UUIDToString(actor.ID);
+        const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
+
+        constexpr float rowHeight = 38.0f;
+        constexpr float rowRounding = 7.0f;
+        constexpr float iconAreaWidth = 34.0f;
+        constexpr float leftPadding = 9.0f;
+        constexpr float rightPadding = 8.0f;
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+        const ImVec2 rowMax = ImVec2(rowMin.x + availableWidth, rowMin.y + rowHeight);
+
+        ImGui::PushID(actorID.c_str());
+        if (!enabled) ImGui::BeginDisabled();
+
+        ImGui::InvisibleButton("##ActorRow", ImVec2(availableWidth, rowHeight));
+
+        const bool hovered = enabled && ImGui::IsItemHovered();
+        const bool clicked = enabled && ImGui::IsItemClicked(ImGuiMouseButton_Left);
+
+        if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        if (!enabled) ImGui::EndDisabled();
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec4 backgroundColor = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        ImVec4 borderColor = QUI::EditorColor::BorderSoft;
+
+        if (selected)
+        {
+            backgroundColor = QUI::EditorColor::AccentDim;
+            borderColor = QUI::EditorColor::AccentSoft;
+        }
+        else if (hovered)
+        {
+            backgroundColor = QUI::EditorColor::Background3;
+            borderColor = QUI::EditorColor::Border;
+        }
+        else
+        {
+            backgroundColor = ImVec4(
+                QUI::EditorColor::Background2.x,
+                QUI::EditorColor::Background2.y,
+                QUI::EditorColor::Background2.z,
+                0.42f
+            );
+        }
+
+        drawList->AddRectFilled(
+            rowMin,
+            rowMax,
+            ImGui::ColorConvertFloat4ToU32(backgroundColor),
+            rowRounding
+        );
+        drawList->AddRect(
+            rowMin,
+            rowMax,
+            ImGui::ColorConvertFloat4ToU32(borderColor),
+            rowRounding
+        );
+
+        if (selected)
+        {
+            const ImVec2 accentMin = ImVec2(rowMin.x, rowMin.y + 5.0f);
+            const ImVec2 accentMax = ImVec2(rowMin.x + 3.0f, rowMax.y - 5.0f);
+
+            drawList->AddRectFilled(
+                accentMin,
+                accentMax,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover),
+                3.0f
+            );
+        }
+
+        const char* icon = GetActorTypeIcon(actor);
+        const char* typeLabel = GetActorTypeLabel(actor);
+
+        const ImVec2 iconSize = ImGui::CalcTextSize(icon);
+        const ImVec2 nameSize = ImGui::CalcTextSize(displayName.c_str());
+        const ImVec2 typeSize = ImGui::CalcTextSize(typeLabel);
+
+        const float centerY = rowMin.y + (rowHeight * 0.5f);
+
+        const ImVec2 iconPos = ImVec2(
+            rowMin.x + leftPadding,
+            centerY - iconSize.y * 0.5f
+        );
+
+        const ImVec2 namePos = ImVec2(
+            rowMin.x + iconAreaWidth,
+            centerY - nameSize.y * 0.5f
+        );
+
+        drawList->PushClipRect(rowMin, rowMax, true);
+        drawList->AddText(
+            iconPos,
+            ImGui::ColorConvertFloat4ToU32(
+                selected ? QUI::EditorColor::AccentHover : QUI::EditorColor::TextMuted
+            ),
+            icon
+        );
+        drawList->AddText(
+            namePos,
+            ImGui::ColorConvertFloat4ToU32(
+                enabled ? QUI::EditorColor::Text : QUI::EditorColor::TextDim
+            ),
+            displayName.c_str()
+        );
+
+        if (availableWidth >= 230.0f)
+        {
+            const float badgeHeight = 20.0f;
+            const float badgePaddingX = 8.0f;
+            const float badgeWidth = typeSize.x + badgePaddingX * 2.0f;
+
+            const ImVec2 badgeMin = ImVec2(
+                rowMax.x - badgeWidth - rightPadding,
+                centerY - badgeHeight * 0.5f
+            );
+
+            const ImVec2 badgeMax = ImVec2(
+                badgeMin.x + badgeWidth,
+                badgeMin.y + badgeHeight
+            );
+
+            drawList->AddRectFilled(
+                badgeMin,
+                badgeMax,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background3),
+                6.0f
+            );
+
+            drawList->AddRect(
+                badgeMin,
+                badgeMax,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+                6.0f
+            );
+
+            drawList->AddText(
+                ImVec2(
+                    badgeMin.x + badgePaddingX,
+                    centerY - typeSize.y * 0.5f
+                ),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                typeLabel
+            );
+        }
+        drawList->PopClipRect();
+
+        ImGui::PopID();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            ImGui::SetTooltip("%s", actorID.c_str());
+
+
+        return clicked;
+    }
+
     void DrawPrimitiveCreateMenu(Quiet::Scene::Scene& scene,
                                  Quiet::Editor::EditorCommands& editorCommands,
                                  const Quiet::Project::ProjectContext& projectContext,
@@ -81,7 +351,7 @@ namespace
                 ImGui::SetTooltip("%s", record.Path.c_str());
         }
         if (!foundImportedMesh)
-            ImGui::TextDisabled("No imported mesh assets.");
+            QUI::DrawMutedText("No imported mesh assets.");
 
         ImGui::EndMenu();
     }
@@ -99,12 +369,9 @@ namespace Quiet::Renderer::UI
         ImGui::Begin("Scene");
         {
             const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
-            if (!isEditMode) ImGui::BeginDisabled();
 
-            if (EditorButton("Create"))
+            if (DrawHierarchyHeader(isEditMode))
                 ImGui::OpenPopup("CreateActorPopup");
-
-            if (!isEditMode) ImGui::EndDisabled();
 
             if (ImGui::BeginPopup("CreateActorPopup"))
             {
@@ -112,9 +379,7 @@ namespace Quiet::Renderer::UI
                     editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
 
                 if (QUI::EditorMenuItem("Directional Light"))
-                {
                     editorCommands.CreateDirectionalLightActor(scene);
-                }
 
                 DrawPrimitiveCreateMenu(
                     scene,
@@ -133,49 +398,55 @@ namespace Quiet::Renderer::UI
                 ImGui::EndPopup();
             }
 
-            ImGui::Separator();
+            ImGui::Spacing();
+            DrawSectionTitle("Actors");
 
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
 
             auto& actors = scene.GetActors();
-            for (auto & actor : actors)
+
+            if (actors.empty())
+                DrawHierarchyEmptyState();
+            else
             {
-                const bool isSelected =
-                    editorState.Selection.SelectedActorID.has_value() &&
-                    editorState.Selection.SelectedActorID.value() == actor.ID;
-
-                const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
-                const std::string label = displayName + "##" + Core::UUIDToString(actor.ID);
-
-                if (EditorSelectable(label.c_str(), isSelected, 0, ImVec2(0.0f, 0.0f), isEditMode))
+                for (auto& actor : actors)
                 {
-                    editorState.Selection.SelectedActorID = actor.ID;
-                }
+                    const bool isSelected =
+                        editorState.Selection.SelectedActorID.has_value() &&
+                        editorState.Selection.SelectedActorID.value() == actor.ID;
 
-                if (ImGui::BeginPopupContextItem(label.c_str()))
-                {
-                    const bool canEdit = (editorState.Scene.Mode == Editor::SceneMode::Edit);
+                    if (DrawActorRow(actor, isSelected, isEditMode))
+                        editorState.Selection.SelectedActorID = actor.ID;
 
-                    if (QUI::EditorMenuItem("Duplicate",
-                                        editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
-                                        false,
-                                        canEdit))
+                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor.ID);
+
+                    if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
-                        pendingActorSelection = actor.ID;
-                        pendingAction = Editor::EditorActionID::DuplicateSelected;
-                    }
+                        const bool canEdit = (editorState.Scene.Mode == Editor::SceneMode::Edit);
 
-                    if (QUI::EditorMenuItem("Delete",
-                                        editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
-                                        false,
-                                        canEdit))
-                    {
-                        pendingActorSelection = actor.ID;
-                        pendingAction = Editor::EditorActionID::DeleteSelected;
-                    }
+                        if (QUI::EditorMenuItem(
+                                "Duplicate",
+                                editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
+                                false,
+                                canEdit))
+                        {
+                            pendingActorSelection = actor.ID;
+                            pendingAction = Editor::EditorActionID::DuplicateSelected;
+                        }
 
-                    ImGui::EndPopup();
+                        if (QUI::EditorMenuItem(
+                                "Delete",
+                                editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
+                                false,
+                                canEdit))
+                        {
+                            pendingActorSelection = actor.ID;
+                            pendingAction = Editor::EditorActionID::DeleteSelected;
+                        }
+
+                        ImGui::EndPopup();
+                    }
                 }
             }
 
