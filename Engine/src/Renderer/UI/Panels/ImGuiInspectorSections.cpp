@@ -24,6 +24,7 @@ namespace
     {
         bool Open = false;
         bool RemoveRequested = false;
+        bool ResetRequested = false;
     };
 
     std::string g_OpenInspectorComponentMenuID;
@@ -48,6 +49,7 @@ namespace
 
     void DrawFloatingComponentOptionsMenu(const char* popupID,
                                           const bool removable,
+                                          const bool resettable,
                                           InspectorComponentHeaderResult& result)
     {
         if (g_OpenInspectorComponentMenuID != popupID)
@@ -100,6 +102,22 @@ namespace
         if (ImGui::Begin(windowID.c_str(), nullptr, flags))
         {
             hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+            const ImVec2 itemSize(ImGui::GetContentRegionAvail().x, 0.0f);
+
+            if (resettable)
+            {
+                if (QUI::EditorSelectable(
+                        "Reset Transform",
+                        false,
+                        0,
+                        itemSize))
+                {
+                    result.ResetRequested = true;
+                    g_OpenInspectorComponentMenuID.clear();
+                }
+
+                ImGui::Separator();
+            }
 
             if (removable)
             {
@@ -109,7 +127,7 @@ namespace
                         "Remove Component",
                         false,
                         0,
-                        ImVec2(0.0f, 0.0f)))
+                        itemSize))
                 {
                     result.RemoveRequested = true;
                     g_OpenInspectorComponentMenuID.clear();
@@ -120,10 +138,10 @@ namespace
             else
             {
                 QUI::EditorSelectable(
-                    "Transform is required",
+                    "Transform cannot be removed",
                     false,
                     0,
-                    ImVec2(0.0f, 0.0f),
+                    itemSize,
                     false
                 );
             }
@@ -146,10 +164,10 @@ namespace
         }
     }
 
-    InspectorComponentHeaderResult BeginInspectorComponent(
-        const char* title,
-        const char* popupID,
-        const bool removable = true)
+    InspectorComponentHeaderResult BeginInspectorComponent(const char* title,
+                                                           const char* popupID,
+                                                           const bool removable = true,
+                                                           const bool resettable = false)
     {
         InspectorComponentHeaderResult result{};
 
@@ -182,10 +200,7 @@ namespace
         const bool gearHovered = ImGui::IsItemHovered();
         const bool gearPressed = ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
-        if (gearHovered)
-        {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-        }
+        if (gearHovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         const ImVec2 gearMin = ImGui::GetItemRectMin();
         const ImVec2 gearMax = ImGui::GetItemRectMax();
@@ -216,7 +231,6 @@ namespace
             else
             {
                 constexpr float menuWidth = 230.0f;
-
                 g_OpenInspectorComponentMenuID = popupID;
                 g_OpenInspectorComponentMenuFrame = ImGui::GetFrameCount();
                 g_OpenInspectorComponentMenuPosition = ImVec2(
@@ -228,7 +242,6 @@ namespace
         else if (g_OpenInspectorComponentMenuID == popupID)
         {
             constexpr float menuWidth = 230.0f;
-
             g_OpenInspectorComponentMenuPosition = ImVec2(
                 gearMax.x - menuWidth,
                 gearMax.y + 4.0f
@@ -236,9 +249,7 @@ namespace
         }
 
         ImGui::PopID();
-
-        DrawFloatingComponentOptionsMenu(popupID, removable, result);
-
+        DrawFloatingComponentOptionsMenu(popupID, removable, resettable, result);
         return result;
     }
 
@@ -611,8 +622,16 @@ namespace Quiet::Renderer::UI
         const auto transformHeader = BeginInspectorComponent(
             "Transform",
             "TransformComponentOptions",
-            false
+            false,
+            true
         );
+
+        if (transformHeader.ResetRequested)
+        {
+            commands.SetActorPosition(scene, actor.ID, glm::vec3(0.0f));
+            commands.SetActorRotation(scene, actor.ID, glm::vec3(0.0f));
+            commands.SetActorScale(scene, actor.ID, glm::vec3(1.0f));
+        }
 
         if (transformHeader.Open)
         {
