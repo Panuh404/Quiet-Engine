@@ -1,5 +1,6 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <string>
 #include <imgui_internal.h>
 
 #include "Renderer/UI/ImGuiTheme.h"
@@ -10,6 +11,8 @@
 
 namespace
 {
+    namespace QUI = Quiet::Renderer::UI;
+
     const char* GetSceneModeLabel(Quiet::Editor::SceneMode mode)
     {
         switch (mode)
@@ -21,6 +24,107 @@ namespace
         }
     }
 
+    ImVec4 GetSceneModeColor(Quiet::Editor::SceneMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Editor::SceneMode::Edit:        return QUI::EditorColor::TextMuted;
+            case Quiet::Editor::SceneMode::Simulate:    return QUI::EditorColor::Success;
+            case Quiet::Editor::SceneMode::Play:        return QUI::EditorColor::AccentHover;
+            default:                                    return QUI::EditorColor::TextDim;
+        }
+    }
+
+    void DrawTopbarSeparator()
+    {
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        ImGui::PopStyleColor();
+    }
+
+    void DrawTopbarBrand(float uiScale)
+    {
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        const float markerWidth = 3.0f * uiScale;
+        const float markerHeight = ImGui::GetTextLineHeight() + 2.0f * uiScale;
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->AddRectFilled(
+            ImVec2(cursor.x, cursor.y + 1.0f * uiScale),
+            ImVec2(cursor.x + markerWidth, cursor.y + markerHeight),
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover),
+            2.0f * uiScale
+        );
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f * uiScale);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.98f, 1.0f, 1.0f));
+        ImGui::TextUnformatted("QUIET");
+        ImGui::PopStyleColor();
+    }
+
+    void DrawTopbarStatusPill(const Quiet::Editor::EditorState& editorState,
+                              float uiScale)
+    {
+        std::string sceneName = editorState.Scene.DisplayName.empty()
+            ? "Untitled Scene"
+            : editorState.Scene.DisplayName;
+
+        std::string statusText = GetSceneModeLabel(editorState.Scene.Mode);
+        statusText += "  ";
+        statusText += sceneName;
+
+        if (editorState.Scene.Dirty && editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit)
+        {
+            statusText += "  *";
+        }
+
+        const ImVec2 padding = ImVec2(10.0f * uiScale, 4.0f * uiScale);
+        const ImVec2 textSize = ImGui::CalcTextSize(statusText.c_str());
+
+        const ImVec2 pillSize(
+            textSize.x + padding.x * 2.0f,
+            textSize.y + padding.y * 2.0f
+        );
+
+        const float contentMaxX = ImGui::GetWindowContentRegionMax().x;
+        const float currentX = ImGui::GetCursorPosX();
+        const float targetX = contentMaxX - pillSize.x;
+
+        if (targetX > currentX + 12.0f * uiScale)
+            ImGui::SameLine(targetX);
+        else
+            ImGui::SameLine();
+
+        const ImVec2 pillMin = ImGui::GetCursorScreenPos();
+        const ImVec2 pillMax(
+            pillMin.x + pillSize.x,
+            pillMin.y + pillSize.y
+        );
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddRectFilled(
+            pillMin,
+            pillMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background2),
+            8.0f * uiScale
+        );
+        drawList->AddRect(
+            pillMin,
+            pillMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+            8.0f * uiScale
+        );
+        drawList->AddText(
+            ImVec2(pillMin.x + padding.x, pillMin.y + padding.y),
+            ImGui::ColorConvertFloat4ToU32(GetSceneModeColor(editorState.Scene.Mode)),
+            statusText.c_str()
+        );
+
+        ImGui::Dummy(pillSize);
+    }
+
     bool DrawMenuAction(Quiet::Editor::EditorActions& actions,
                         Quiet::Editor::EditorActionID actionID)
     {
@@ -28,7 +132,7 @@ namespace
         if (shortcut[0] == '\0') shortcut = nullptr;
 
         const bool enabled = actions.CanExecute(actionID);
-        const bool pressed = Quiet::Renderer::UI::EditorMenuItem(
+        const bool pressed = QUI::EditorMenuItem(
             actions.GetLabel(actionID),
             shortcut,
             false,
@@ -119,13 +223,11 @@ namespace Quiet::Renderer::UI
         ImGui::PopStyleVar(3);
 
         if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.98f, 1.0f, 1.0f));
-        ImGui::TextUnformatted("QUIET");
-        ImGui::PopStyleColor();
+        DrawTopbarBrand(m_UIScale);
         if (m_Fonts.Bold) ImGui::PopFont();
 
         ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        DrawTopbarSeparator();
 
         ImGui::SameLine();
         if (DrawToolbarButton(
@@ -165,7 +267,7 @@ namespace Quiet::Renderer::UI
         }
 
         ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        DrawTopbarSeparator();
         ImGui::SameLine();
 
         if (editorState.Scene.Mode == Editor::SceneMode::Edit)
@@ -231,38 +333,7 @@ namespace Quiet::Renderer::UI
             }
         }
 
-        std::string statusText = GetSceneModeLabel(editorState.Scene.Mode);
-        statusText += " ";
-        statusText += editorState.Scene.DisplayName;
-
-        if (editorState.Scene.Dirty && editorState.Scene.Mode == Editor::SceneMode::Edit)
-        {
-            statusText += " *";
-        }
-
-        const float rightTextWidth = ImGui::CalcTextSize(statusText.c_str()).x;
-        const float availableX = ImGui::GetWindowContentRegionMax().x;
-        const float cursorX = availableX - rightTextWidth;
-
-        if (cursorX > ImGui::GetCursorPosX()) ImGui::SameLine(cursorX);
-        else ImGui::SameLine();
-
-        if (editorState.Scene.Mode == Editor::SceneMode::Play)
-        {
-            ImGui::TextColored(EditorColor::AccentHover, "%s", statusText.c_str());
-        }
-        else if (editorState.Scene.Mode == Editor::SceneMode::Simulate)
-        {
-            ImGui::TextColored(EditorColor::Success, "%s", statusText.c_str());
-        }
-        else if (editorState.Scene.Dirty)
-        {
-            ImGui::TextColored(EditorColor::Warning, "%s", statusText.c_str());
-        }
-        else
-        {
-            ImGui::TextColored(EditorColor::TextMuted, "%s", statusText.c_str());
-        }
+        DrawTopbarStatusPill(editorState, m_UIScale);
 
         PopToolbarStyle();
         ImGui::End();

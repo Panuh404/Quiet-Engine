@@ -87,10 +87,15 @@ namespace Quiet::Renderer::UI
         initInfo.UseDynamicRendering = true;
         initInfo.CheckVkResultFn = nullptr;
 
+        if (colorFormat == VK_FORMAT_UNDEFINED)
+            throw std::runtime_error("ImGuiLayer received undefined color attachment format.");
+
+        m_ImGuiColorAttachmentFormat = colorFormat;
+
         VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{};
         pipelineRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
         pipelineRenderingInfo.colorAttachmentCount = 1;
-        pipelineRenderingInfo.pColorAttachmentFormats = &colorFormat;
+        pipelineRenderingInfo.pColorAttachmentFormats = &m_ImGuiColorAttachmentFormat;
         pipelineRenderingInfo.depthAttachmentFormat = depthFormat;
         pipelineRenderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 

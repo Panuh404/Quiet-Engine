@@ -165,6 +165,7 @@ namespace Quiet::Renderer::UI
         EditorFonts m_Fonts{};
         VkDevice m_Device = VK_NULL_HANDLE;
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+        VkFormat m_ImGuiColorAttachmentFormat = VK_FORMAT_UNDEFINED;
         VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
         VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
         VkDescriptorSet m_SceneViewportDescriptorSet = VK_NULL_HANDLE;
