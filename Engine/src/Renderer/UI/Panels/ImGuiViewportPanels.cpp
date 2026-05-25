@@ -1,11 +1,162 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <cstdio>
 #include <string>
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Quiet/Editor/EditorState.h"
+#include "Renderer/UI/ImGuiTheme.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
+
+namespace
+{
+    namespace QUI = Quiet::Renderer::UI;
+
+    const char* GetViewportModeLabel(const Quiet::Editor::SceneMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Editor::SceneMode::Edit:     return "Edit";
+            case Quiet::Editor::SceneMode::Simulate: return "Simulate";
+            case Quiet::Editor::SceneMode::Play:     return "Play";
+            default:                                 return "Unknown";
+        }
+    }
+
+    ImVec4 GetViewportModeColor(const Quiet::Editor::SceneMode mode)
+    {
+        switch (mode)
+        {
+            case Quiet::Editor::SceneMode::Edit:
+                return QUI::EditorColor::TextMuted;
+
+            case Quiet::Editor::SceneMode::Simulate:
+                return QUI::EditorColor::Success;
+
+            case Quiet::Editor::SceneMode::Play:
+                return QUI::EditorColor::AccentHover;
+
+            default:
+                return QUI::EditorColor::TextDim;
+        }
+    }
+
+    void DrawViewportUnavailableState(const float uiScale)
+    {
+        const ImVec2 available = ImGui::GetContentRegionAvail();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f * uiScale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_WindowPadding,
+            ImVec2(18.0f * uiScale, 16.0f * uiScale)
+        );
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        const ImVec2 cardSize(
+            available.x > 420.0f * uiScale ? 420.0f * uiScale : available.x,
+            104.0f * uiScale
+        );
+
+        ImGui::SetCursorPos(ImVec2(
+            (available.x - cardSize.x) * 0.5f,
+            (available.y - cardSize.y) * 0.5f
+        ));
+
+        ImGui::BeginChild("##ViewportUnavailableCard", cardSize, ImGuiChildFlags_Borders);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextUnformatted("Scene viewport unavailable");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("The scene render target is not ready yet. Resize the viewport or reload the renderer if this persists.");
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    void DrawViewportStatusOverlay(const Quiet::Editor::EditorState& editorState,
+                                   const ImVec2& imageMin,
+                                   const ImVec2& imageSize,
+                                   const float uiScale)
+    {
+        if (imageSize.x < 220.0f || imageSize.y < 120.0f)
+            return;
+
+        char resolutionText[64]{};
+        std::snprintf(
+            resolutionText,
+            sizeof(resolutionText),
+            "%u x %u",
+            editorState.Viewport.Width,
+            editorState.Viewport.Height
+        );
+
+        std::string statusText = GetViewportModeLabel(editorState.Scene.Mode);
+        statusText += "  |  ";
+        statusText += resolutionText;
+
+        if (editorState.Gizmo.SnapEnabled)
+            statusText += "  |  Snap";
+
+        if (editorState.Viewport.ShowDebugIcons)
+            statusText += "  |  Icons";
+
+        const ImVec2 padding = ImVec2(9.0f * uiScale, 6.0f * uiScale);
+        const ImVec2 textSize = ImGui::CalcTextSize(statusText.c_str());
+
+        const ImVec2 panelSize(
+            textSize.x + padding.x * 2.0f,
+            textSize.y + padding.y * 2.0f
+        );
+
+        const ImVec2 panelMin(
+            imageMin.x + 12.0f * uiScale,
+            imageMin.y + imageSize.y - panelSize.y - 12.0f * uiScale
+        );
+
+        const ImVec2 panelMax(
+            panelMin.x + panelSize.x,
+            panelMin.y + panelSize.y
+        );
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->AddRectFilled(
+            panelMin,
+            panelMax,
+            ImGui::ColorConvertFloat4ToU32(ImVec4(
+                QUI::EditorColor::Background0.x,
+                QUI::EditorColor::Background0.y,
+                QUI::EditorColor::Background0.z,
+                0.86f
+            )),
+            8.0f * uiScale
+        );
+
+        drawList->AddRect(
+            panelMin,
+            panelMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+            8.0f * uiScale
+        );
+
+        drawList->AddText(
+            ImVec2(panelMin.x + padding.x, panelMin.y + padding.y),
+            ImGui::ColorConvertFloat4ToU32(GetViewportModeColor(editorState.Scene.Mode)),
+            statusText.c_str()
+        );
+    }
+}
 
 namespace Quiet::Renderer::UI
 {
@@ -60,12 +211,15 @@ namespace Quiet::Renderer::UI
         ImGui::End();
     }
 
-    void ImGuiLayer::BuildViewportToolbar(Editor::EditorState& editorState,
-                                          const ImVec2& imageMin)
+    void ImGuiLayer::BuildViewportToolbar(Editor::EditorState& editorState, const ImVec2& imageMin)
     {
         if (editorState.Scene.Mode != Editor::SceneMode::Edit) return;
+
         const float toolbarOffset = Scale(10.0f);
-        const ImVec2 toolbarPos(imageMin.x + toolbarOffset, imageMin.y + toolbarOffset);
+        const ImVec2 toolbarPos(
+            imageMin.x + toolbarOffset,
+            imageMin.y + toolbarOffset
+        );
 
         ImGuiWindowFlags flags =
             ImGuiWindowFlags_NoDecoration |
@@ -77,11 +231,14 @@ namespace Quiet::Renderer::UI
             ImGuiWindowFlags_AlwaysAutoResize;
 
         ImGui::SetNextWindowPos(toolbarPos);
-        ImGui::SetNextWindowBgAlpha(0.90f);
+        ImGui::SetNextWindowBgAlpha(0.92f);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Scale(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(10.0f, 10.0f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Scale(ImVec2(8.0f, 8.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(8.0f, 8.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Scale(ImVec2(6.0f, 6.0f)));
+
+        PushToolbarStyle();
 
         ImGui::Begin("##ViewportToolbar", nullptr, flags);
         {
@@ -123,11 +280,18 @@ namespace Quiet::Renderer::UI
             }
 
             ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
             ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::PopStyleColor();
+
             ImGui::SameLine();
 
-            const bool canToggleGizmoMode = editorState.Gizmo.Operation != Editor::GizmoOperation::Scale;
-            const bool isLocalMode = editorState.Gizmo.Mode == Editor::GizmoMode::Local;
+            const bool canToggleGizmoMode =
+                editorState.Gizmo.Operation != Editor::GizmoOperation::Scale;
+
+            const bool isLocalMode =
+                editorState.Gizmo.Mode == Editor::GizmoMode::Local;
 
             if (DrawToolbarButton(
                     m_Fonts,
@@ -139,9 +303,16 @@ namespace Quiet::Renderer::UI
                         : "World/Local mode is not used for Scale",
                     isLocalMode,
                     canToggleGizmoMode,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight()))                        )
+                    ImVec2(
+                        m_Fonts.HasIcons
+                            ? ToolbarStyle::ButtonSize()
+                            : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
             {
-                editorState.Gizmo.Mode = isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
+                editorState.Gizmo.Mode =
+                    isLocalMode
+                        ? Editor::GizmoMode::World
+                        : Editor::GizmoMode::Local;
             }
 
             ImGui::SameLine();
@@ -154,7 +325,11 @@ namespace Quiet::Renderer::UI
                     "Toggle Snap (G)",
                     editorState.Gizmo.SnapEnabled,
                     true,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
+                    ImVec2(
+                        m_Fonts.HasIcons
+                            ? ToolbarStyle::ButtonSize()
+                            : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
             {
                 editorState.Gizmo.SnapEnabled = !editorState.Gizmo.SnapEnabled;
             }
@@ -169,7 +344,11 @@ namespace Quiet::Renderer::UI
                     "Focus Selected (F)",
                     false,
                     true,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
+                    ImVec2(
+                        m_Fonts.HasIcons
+                            ? ToolbarStyle::ButtonSize()
+                            : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight())))
             {
                 editorState.QueueRequest(Editor::EditorRequestType::FocusSelected);
             }
@@ -192,13 +371,15 @@ namespace Quiet::Renderer::UI
                             : ToolbarStyle::WideButtonWidth(),
                         ToolbarStyle::ButtonHeight())))
             {
-                editorState.Viewport.ShowDebugIcons = !editorState.Viewport.ShowDebugIcons;
+                editorState.Viewport.ShowDebugIcons =
+                    !editorState.Viewport.ShowDebugIcons;
             }
-
         }
         ImGui::End();
 
-        ImGui::PopStyleVar(3);
+        PopToolbarStyle();
+
+        ImGui::PopStyleVar(4);
     }
 
     void ImGuiLayer::BuildViewport(Editor::EditorState& editorState,
@@ -230,16 +411,20 @@ namespace Quiet::Renderer::UI
                 editorState.Viewport.ScreenY = imageMin.y;
 
                 BuildViewportToolbar(editorState, imageMin);
-
                 if (viewportOverlayCallback)
-                {
                     viewportOverlayCallback();
-                }
+
+                DrawViewportStatusOverlay(
+                    editorState,
+                    imageMin,
+                    imageSize,
+                    m_UIScale
+                );
             }
             else
             {
                 editorState.Viewport.ImageHovered = false;
-                ImGui::TextUnformatted("Scene viewport unavailable.");
+                DrawViewportUnavailableState(m_UIScale);
             }
         }
         ImGui::End();
