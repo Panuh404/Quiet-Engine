@@ -16,6 +16,7 @@ namespace Theme = Quiet::Renderer::UI::EditorColor;
 
 namespace
 {
+    namespace SZ = Quiet::Renderer::UI::EditorSizing;
     constexpr const char* kAssetFileDialogKey = "Quiet_SelectAssetFile";
     constexpr const char* kSupportedAssetFilters =
         "All Supported" "{.obj,.fbx,.gltf,.glb,.dae,.png,.jpg,.jpeg,.tga,.bmp},"
@@ -41,16 +42,24 @@ namespace
         return value;
     }
 
-     ImVec2 CalculateAssetDialogSize()
+    ImVec2 CalculateAssetDialogSize()
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
         const ImVec2 workSize = viewport
             ? viewport->WorkSize
             : ImGui::GetIO().DisplaySize;
 
-        const float width = std::clamp(workSize.x * 0.78f, 820.0f, 1500.0f);
-        const float height = std::clamp(workSize.y * 0.78f, 560.0f, 960.0f);
+        const float width = std::clamp(
+            workSize.x * 0.78f,
+            SZ::Px(820.0f),
+            SZ::Px(1500.0f)
+        );
+
+        const float height = std::clamp(
+            workSize.y * 0.78f,
+            SZ::Px(560.0f),
+            SZ::Px(960.0f)
+        );
 
         return { width, height };
     }
@@ -82,14 +91,14 @@ namespace
 
     void PushAssetDialogStyle()
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 14.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 14.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(9.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   SZ::Px(14.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding,    SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,    SZ::Px(7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding,SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,    SZ::Px(14.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    SZ::Px(ImVec2(14.0f, 12.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,     SZ::Px(ImVec2(10.0f, 7.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      SZ::Px(ImVec2(9.0f, 8.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg,               Theme::Background1);
         ImGui::PushStyleColor(ImGuiCol_PopupBg,                Theme::Background1);
@@ -154,8 +163,8 @@ namespace Quiet::Renderer::UI
     {
         const ImVec2 dialogSize = CalculateAssetDialogSize();
         const ImVec2 minSize{
-            std::min(760.0f, dialogSize.x),
-            std::min(500.0f, dialogSize.y)
+            std::min(SZ::Px(760.0f), dialogSize.x),
+            std::min(SZ::Px(500.0f), dialogSize.y)
         };
 
         ImGui::SetNextWindowSize(dialogSize, ImGuiCond_Appearing);

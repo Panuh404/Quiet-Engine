@@ -21,6 +21,7 @@
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
     template <std::size_t Size>
     void CopyToBuffer(std::array<char, Size>& buffer, const std::string& value)
@@ -101,7 +102,8 @@ namespace
     void DrawPillLabel(const char* text, const ImVec4& textColor, const ImVec4& backgroundColor)
     {
         const ImVec2 textSize = ImGui::CalcTextSize(text);
-        const ImVec2 padding = ImVec2(8.0f, 3.0f);
+        const ImVec2 padding = SZ::Px(ImVec2(8.0f, 3.0f));
+        const float rounding = SZ::Px(6.0f);
 
         const ImVec2 min = ImGui::GetCursorScreenPos();
         const ImVec2 max = ImVec2(
@@ -110,18 +112,19 @@ namespace
         );
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
+
         drawList->AddRectFilled(
             min,
             max,
             ImGui::ColorConvertFloat4ToU32(backgroundColor),
-            6.0f
+            rounding
         );
 
         drawList->AddRect(
             min,
             max,
             ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
-            6.0f
+            rounding
         );
 
         drawList->AddText(
@@ -129,6 +132,7 @@ namespace
             ImGui::ColorConvertFloat4ToU32(textColor),
             text
         );
+
         ImGui::Dummy(ImVec2(max.x - min.x, max.y - min.y));
     }
 
@@ -218,8 +222,8 @@ namespace
 
         const bool supportedType = detectedType != Quiet::Project::AssetType::Unknown;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(10.0f, 8.0f)));
 
         ImGui::TextUnformatted("Asset ID");
         ImGui::SetNextItemWidth(-FLT_MIN);
@@ -232,7 +236,7 @@ namespace
 
         ImGui::TextUnformatted("Source Path");
 
-        constexpr float browseWidth = 96.0f;
+        const float browseWidth = SZ::Px(96.0f);
         ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
         ImGui::InputTextWithHint(
             "##AssetPath",
@@ -242,7 +246,7 @@ namespace
         );
 
         ImGui::SameLine();
-        if (Quiet::Renderer::UI::EditorButton("Browse", ImVec2(browseWidth, 0.0f)))
+        if (QUI::EditorButton("Browse", ImVec2(browseWidth, 0.0f)))
             Quiet::Renderer::UI::OpenAssetFileDialog(projectContext);
 
         if (!hasPath)
@@ -268,7 +272,7 @@ namespace
         ImGui::Spacing();
         const bool canRegister = hasPath && supportedType && fileExists;
 
-        if (QUI::EditorButton("Register", ImVec2(125.0f, 0.0f), canRegister))
+        if (QUI::EditorButton("Register", SZ::Px(ImVec2(125.0f, 0.0f)), canRegister))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
@@ -311,7 +315,7 @@ namespace
         }
         ImGui::SameLine();
 
-        if (Quiet::Renderer::UI::EditorButton("Reload", ImVec2(125.0f, 0.0f)))
+        if (QUI::EditorButton("Reload", SZ::Px(ImVec2(125.0f, 0.0f))))
             editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
 
         ImGui::PopStyleVar(2);
@@ -326,15 +330,14 @@ namespace
             ImGui::TextWrapped("%s", message.c_str());
             ImGui::Spacing();
 
-            if (QUI::EditorButton("OK", ImVec2(120.0f, 0.0f)))
+            if (QUI::EditorButton("OK", SZ::Px(ImVec2(120.0f, 0.0f))))
                 ImGui::CloseCurrentPopup();
 
             ImGui::EndPopup();
         }
     }
 
-    std::uint32_t CountMeshReferences(const Quiet::Scene::Scene& scene,
-                                      const std::string& meshID)
+    std::uint32_t CountMeshReferences(const Quiet::Scene::Scene& scene, const std::string& meshID)
     {
         std::uint32_t count = 0;
         for (const auto& actor : scene.GetActors())

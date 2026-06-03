@@ -176,7 +176,7 @@ namespace Quiet::Renderer::UI
         return true;
     }
 
-    inline void ApplyTheme(ImGuiIO& io, float uiScale = 1.15f)
+    inline void ApplyTheme(ImGuiIO& io, float uiScale = 1.0f)
     {
         EditorSizing::Configure(uiScale);
         ImGui::StyleColorsDark();
