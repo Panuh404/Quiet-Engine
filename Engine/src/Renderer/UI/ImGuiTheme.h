@@ -39,6 +39,29 @@ namespace Quiet::Renderer::UI
         inline constexpr float TabRounding    = 8.0f;
     }
 
+    namespace EditorSizing
+    {
+        inline float ScaleFactor = 1.0f;
+
+        inline void Configure(const float scale)
+        {
+            ScaleFactor = scale > 0.0f ? scale : 1.0f;
+        }
+
+        [[nodiscard]] inline float Px(const float value)
+        {
+            return value * ScaleFactor;
+        }
+
+        [[nodiscard]] inline ImVec2 Px(const ImVec2& value)
+        {
+            return ImVec2(
+                value.x * ScaleFactor,
+                value.y * ScaleFactor
+            );
+        }
+    }
+
     inline void PushToolbarStyle()
     {
         ImGui::PushStyleColor(ImGuiCol_WindowBg, EditorColor::Background0);
@@ -155,6 +178,7 @@ namespace Quiet::Renderer::UI
 
     inline void ApplyTheme(ImGuiIO& io, float uiScale = 1.15f)
     {
+        EditorSizing::Configure(uiScale);
         ImGui::StyleColorsDark();
 
         ImGuiStyle& style = ImGui::GetStyle();

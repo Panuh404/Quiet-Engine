@@ -13,6 +13,7 @@
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
     const char* GetLevelLabel(const spdlog::level::level_enum level)
     {
@@ -133,7 +134,7 @@ namespace
         ImGui::TextUnformatted(label);
         ImGui::PopStyleColor();
 
-        ImGui::SameLine(150.0f);
+        ImGui::SameLine(SZ::Px(150.0f));
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextUnformatted(value);
@@ -148,16 +149,16 @@ namespace
         const ImVec4 levelColor = GetLevelColor(entry.Level);
         const char* levelLabel = GetLevelLabel(entry.Level);
 
-        const float rowHeight = ImGui::GetTextLineHeight() + 5.0f;
-        const float labelWidth = 58.0f;
-        const float leftPadding = 6.0f;
-        const float textPadding = 6.0f;
+        const float rowHeight = ImGui::GetTextLineHeight() + SZ::Px(5.0f);
+        const float labelWidth = SZ::Px(58.0f);
+        const float leftPadding = SZ::Px(6.0f);
+        const float textPadding = SZ::Px(6.0f);
 
         const ImVec2 textSize = ImGui::CalcTextSize(entry.Text.c_str());
         const float visibleWidth = ImGui::GetContentRegionAvail().x;
         const float rowWidth = std::max(
             visibleWidth,
-            labelWidth + leftPadding + textPadding + textSize.x + 24.0f
+            labelWidth + leftPadding + textPadding + textSize.x + SZ::Px(24.0f)
         );
 
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
@@ -176,20 +177,20 @@ namespace
                 rowMin,
                 rowMax,
                 ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background3),
-                5.0f
+                SZ::Px(5.0f)
             );
         }
 
         drawList->AddRectFilled(
-     ImVec2(rowMin.x, rowMin.y + 3.0f),
-     ImVec2(rowMin.x + 2.0f, rowMax.y - 3.0f),
-     ImGui::ColorConvertFloat4ToU32(levelColor),
-     2.0f
- );
+            ImVec2(rowMin.x, rowMin.y + SZ::Px(3.0f)),
+            ImVec2(rowMin.x + SZ::Px(2.0f), rowMax.y - SZ::Px(3.0f)),
+            ImGui::ColorConvertFloat4ToU32(levelColor),
+            SZ::Px(2.0f)
+        );
 
         const ImVec2 labelPos = ImVec2(
             rowMin.x + leftPadding,
-            rowMin.y + 2.0f
+            rowMin.y + SZ::Px(2.0f)
         );
 
         drawList->AddText(
@@ -200,7 +201,7 @@ namespace
 
         const ImVec2 textPos = ImVec2(
             rowMin.x + labelWidth + textPadding,
-            rowMin.y + 2.0f
+            rowMin.y + SZ::Px(2.0f)
         );
 
         if (monoFont)
@@ -234,8 +235,8 @@ namespace Quiet::Renderer::UI
     {
         ImGui::Begin("Debug");
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
             ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
@@ -325,16 +326,24 @@ namespace Quiet::Renderer::UI
                 return result;
             };
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+            const ImVec2 toolbarPadding = SZ::Px(ImVec2(12.0f, 10.0f));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, toolbarPadding);
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
             ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
 
-            ImGui::BeginChild("##ConsoleToolbar", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+            const float toolbarHeight =
+                toolbarPadding.y * 2.0f +
+                ImGui::GetFrameHeight() * 2.0f +
+                ImGui::GetStyle().ItemSpacing.y +
+                SZ::Px(6.0f);
+
+            ImGui::BeginChild("##ConsoleToolbar", ImVec2(0.0f, toolbarHeight), ImGuiChildFlags_Borders);
             {
                 const float availableWidth = ImGui::GetContentRegionAvail().x;
-                const bool wideToolbar = availableWidth >= 900.0f;
+                const bool wideToolbar = availableWidth >= SZ::Px(900.0f);
 
                 ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
                 ImGui::AlignTextToFramePadding();
@@ -359,14 +368,14 @@ namespace Quiet::Renderer::UI
                 ImGui::SameLine();
                 DrawConsoleStat("Critical", counts.Critical, EditorColor::Critical);
 
-                if (EditorButton("Clear", ImVec2(70.0f, 0.0f)))
+                if (EditorButton("Clear", SZ::Px(ImVec2(70.0f, 0.0f))))
                 {
                     consoleSink->Clear();
                 }
 
                 ImGui::SameLine();
 
-                if (EditorButton("Copy All", ImVec2(84.0f, 0.0f)))
+                if (EditorButton("Copy All", SZ::Px(ImVec2(84.0f, 0.0f))))
                 {
                     const std::string clipboardText = BuildClipboardText(false);
                     ImGui::SetClipboardText(clipboardText.c_str());
@@ -374,7 +383,7 @@ namespace Quiet::Renderer::UI
 
                 ImGui::SameLine();
 
-                if (EditorButton("Copy Visible", ImVec2(104.0f, 0.0f)))
+                if (EditorButton("Copy Visible", SZ::Px(ImVec2(104.0f, 0.0f))))
                 {
                     const std::string clipboardText = BuildClipboardText(true);
                     ImGui::SetClipboardText(clipboardText.c_str());
@@ -388,13 +397,13 @@ namespace Quiet::Renderer::UI
                 {
                     ImGui::SameLine();
 
-                    const float searchWidth = 300.0f;
+                    const float searchWidth = SZ::Px(300.0f);
                     const float searchX =
                         ImGui::GetCursorPosX() +
                         ImGui::GetContentRegionAvail().x -
                         searchWidth;
 
-                    if (searchX > ImGui::GetCursorPosX() + 16.0f)
+                    if (searchX > ImGui::GetCursorPosX() + SZ::Px(16.0f))
                     {
                         ImGui::SetCursorPosX(searchX);
                     }
@@ -427,7 +436,7 @@ namespace Quiet::Renderer::UI
 
             ImGuiWindowFlags childFlags = ImGuiWindowFlags_HorizontalScrollbar;
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
             ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background1);
             ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
 

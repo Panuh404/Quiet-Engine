@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "ImGuiFonts.h"
+#include "ImGuiTheme.h"
 
 namespace Quiet::Renderer::UI
 {
@@ -32,9 +33,11 @@ namespace Quiet::Renderer::UI
     {
         inline float ButtonHeight()
         {
-            return (ImGui::GetFrameHeight() > 36.0f)
+            const float minimumHeight = EditorSizing::Px(36.0f);
+
+            return (ImGui::GetFrameHeight() > minimumHeight)
                 ? ImGui::GetFrameHeight()
-                : 36.0f;
+                : minimumHeight;
         }
 
         inline float ButtonSize() { return ButtonHeight(); }

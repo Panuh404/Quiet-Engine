@@ -10,16 +10,17 @@
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
     void DrawInspectorBanner(const char* message)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::AccentDim);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::AccentSoft);
 
-        ImGui::BeginChild("##InspectorBanner", ImVec2(0.0f, 44.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##InspectorBanner", ImVec2(0.0f, SZ::Px(44.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextWrapped("%s", message);
@@ -35,13 +36,13 @@ namespace
     {
         ImGui::Spacing();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##InspectorEmptyState", ImVec2(0.0f, 92.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##InspectorEmptyState", ImVec2(0.0f, SZ::Px(92.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted("No actor selected");

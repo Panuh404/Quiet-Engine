@@ -16,6 +16,7 @@
 #include "Scene/Scene.h"
 
 namespace QUI = Quiet::Renderer::UI;
+namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
 namespace
 {
@@ -24,10 +25,10 @@ namespace
         bool createPressed = false;
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
-        const float createButtonWidth = 76.0f;
-        const bool hasInlineButtonSpace = availableWidth >= 280.0f;
+        const float createButtonWidth = SZ::Px(76.0f);
+        const bool hasInlineButtonSpace = availableWidth >= SZ::Px(280.0f);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 6.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::AlignTextToFramePadding();
@@ -85,10 +86,9 @@ namespace
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
 
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
-        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
-
-        ImGui::BeginChild("##HierarchyEmptyState", ImVec2(0.0f, 92.0f), ImGuiChildFlags_Borders);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+        ImGui::BeginChild("##HierarchyEmptyState", ImVec2(0.0f, SZ::Px(92.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted("No actors in scene");
@@ -131,11 +131,11 @@ namespace
         const std::string actorID = Quiet::Core::UUIDToString(actor.ID);
         const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
 
-        constexpr float rowHeight = 38.0f;
-        constexpr float rowRounding = 7.0f;
-        constexpr float iconAreaWidth = 34.0f;
-        constexpr float leftPadding = 9.0f;
-        constexpr float rightPadding = 8.0f;
+        const float rowHeight = SZ::Px(38.0f);
+        const float rowRounding = SZ::Px(7.0f);
+        const float iconAreaWidth = SZ::Px(34.0f);
+        const float leftPadding = SZ::Px(9.0f);
+        const float rightPadding = SZ::Px(8.0f);
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
@@ -191,14 +191,14 @@ namespace
 
         if (selected)
         {
-            const ImVec2 accentMin = ImVec2(rowMin.x, rowMin.y + 5.0f);
-            const ImVec2 accentMax = ImVec2(rowMin.x + 3.0f, rowMax.y - 5.0f);
+            const ImVec2 accentMin = ImVec2(rowMin.x, rowMin.y + SZ::Px(5.0f));
+            const ImVec2 accentMax = ImVec2(rowMin.x + SZ::Px(3.0f), rowMax.y - SZ::Px(5.0f));
 
             drawList->AddRectFilled(
                 accentMin,
                 accentMax,
                 ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover),
-                3.0f
+                SZ::Px(3.0f)
             );
         }
 
@@ -237,10 +237,10 @@ namespace
             displayName.c_str()
         );
 
-        if (availableWidth >= 230.0f)
+        if (availableWidth >= SZ::Px(230.0f))
         {
-            const float badgeHeight = 20.0f;
-            const float badgePaddingX = 8.0f;
+            const float badgeHeight = SZ::Px(20.0f);
+            const float badgePaddingX = SZ::Px(8.0f);
             const float badgeWidth = typeSize.x + badgePaddingX * 2.0f;
 
             const ImVec2 badgeMin = ImVec2(
@@ -257,14 +257,14 @@ namespace
                 badgeMin,
                 badgeMax,
                 ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background3),
-                6.0f
+                SZ::Px(6.0f)
             );
 
             drawList->AddRect(
                 badgeMin,
                 badgeMax,
                 ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
-                6.0f
+                SZ::Px(6.0f)
             );
 
             drawList->AddText(

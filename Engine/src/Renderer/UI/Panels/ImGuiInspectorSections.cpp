@@ -19,6 +19,7 @@
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
     struct InspectorComponentHeaderResult
     {
@@ -61,8 +62,8 @@ namespace
             return;
         }
 
-        constexpr float menuWidth = 230.0f;
-        constexpr float estimatedMenuHeight = 48.0f;
+        const float menuWidth = SZ::Px(230.0f);
+        const float estimatedMenuHeight = SZ::Px(48.0f);
 
         const ImVec2 menuSize(menuWidth, estimatedMenuHeight);
         const ImVec2 menuPosition = ClampMenuPositionToViewport(
@@ -85,11 +86,11 @@ namespace
             ImGuiWindowFlags_NoScrollWithMouse |
             ImGuiWindowFlags_AlwaysAutoResize;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(9.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, SZ::Px(1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(6.0f, 6.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, SZ::Px(6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(9.0f, 6.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg, QUI::EditorColor::Background1);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::Border);
@@ -230,21 +231,21 @@ namespace
             }
             else
             {
-                constexpr float menuWidth = 230.0f;
+                const float menuWidth = SZ::Px(230.0f);
                 g_OpenInspectorComponentMenuID = popupID;
                 g_OpenInspectorComponentMenuFrame = ImGui::GetFrameCount();
                 g_OpenInspectorComponentMenuPosition = ImVec2(
                     gearMax.x - menuWidth,
-                    gearMax.y + 4.0f
+                    gearMax.y + SZ::Px(4.0f)
                 );
             }
         }
         else if (g_OpenInspectorComponentMenuID == popupID)
         {
-            constexpr float menuWidth = 230.0f;
+            const float menuWidth = SZ::Px(230.0f);
             g_OpenInspectorComponentMenuPosition = ImVec2(
                 gearMax.x - menuWidth,
-                gearMax.y + 4.0f
+                gearMax.y + SZ::Px(4.0f)
             );
         }
 
@@ -301,7 +302,7 @@ namespace
     float GetInspectorPropertyLabelWidth()
     {
         const float availableWidth = ImGui::GetContentRegionAvail().x;
-        return std::clamp(availableWidth * 0.28f, 92.0f, 128.0f);
+        return std::clamp(availableWidth * 0.28f, SZ::Px(92.0f), SZ::Px(128.0f));
     }
 
     void BeginInspectorPropertyRow(const char* label)
@@ -357,11 +358,11 @@ namespace
         BeginInspectorPropertyRow(label);
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
-        const float axisLabelWidth = 14.0f;
+        const float axisLabelWidth = SZ::Px(14.0f);
         const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
         const float fieldWidth = std::max(
-            54.0f,
+            SZ::Px(54.0f),
             (availableWidth - axisLabelWidth * 3.0f - spacing * 5.0f) / 3.0f
         );
 
@@ -578,12 +579,12 @@ namespace Quiet::Renderer::UI
                                  Editor::EditorCommands& commands,
                                  const TrackedInspectorInteraction& tracked)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 9.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(9.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##ActorHeaderCard", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ActorHeaderCard", ImVec2(0.0f, SZ::Px(100.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::TextUnformatted("Actor");
             ImGui::SameLine();
