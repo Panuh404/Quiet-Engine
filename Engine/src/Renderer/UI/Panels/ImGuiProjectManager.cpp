@@ -15,6 +15,7 @@
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace QUI = Quiet::Renderer::UI;
+namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
 namespace
 {
@@ -68,13 +69,13 @@ namespace
 
     void DrawStatChip(const char* label, const std::string& value)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background3);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild(label, ImVec2(0.0f, 58.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild(label, ImVec2(0.0f, SZ::Px(58.0f)), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::TextUnformatted(label);
@@ -200,7 +201,9 @@ namespace Quiet::Renderer::UI
 
         ImGuiWindowFlags windowFlags =
             ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoSavedSettings;
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse;
 
         bool projectManagerOpen = true;
         if (!QUI::EditorBeginPopupModal("Project Manager", projectManagerOpen, windowFlags))
@@ -223,7 +226,7 @@ namespace Quiet::Renderer::UI
             "Manage Quiet projects, switch scenes, and control the project startup scene."
         );
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
