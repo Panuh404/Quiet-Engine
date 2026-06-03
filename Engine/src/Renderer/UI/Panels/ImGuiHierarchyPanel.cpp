@@ -83,12 +83,17 @@ namespace
     {
         ImGui::Spacing();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
-
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
-        ImGui::BeginChild("##HierarchyEmptyState", ImVec2(0.0f, SZ::Px(92.0f)), ImGuiChildFlags_Borders);
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild(
+            "##HierarchyEmptyState",
+            ImVec2(0.0f, SZ::Px(92.0f)),
+            ImGuiChildFlags_Borders
+        );
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted("No actors in scene");

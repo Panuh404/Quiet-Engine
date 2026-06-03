@@ -36,11 +36,12 @@ namespace
                                        const ImVec2 menuSize)
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const float viewportMargin = SZ::Px(8.0f);
 
-        const float minX = viewport->WorkPos.x + 8.0f;
-        const float minY = viewport->WorkPos.y + 8.0f;
-        const float maxX = viewport->WorkPos.x + viewport->WorkSize.x - menuSize.x - 8.0f;
-        const float maxY = viewport->WorkPos.y + viewport->WorkSize.y - menuSize.y - 8.0f;
+        const float minX = viewport->WorkPos.x + viewportMargin;
+        const float minY = viewport->WorkPos.y + viewportMargin;
+        const float maxX = viewport->WorkPos.x + viewport->WorkSize.x - menuSize.x - viewportMargin;
+        const float maxY = viewport->WorkPos.y + viewport->WorkSize.y - menuSize.y - viewportMargin;
 
         return ImVec2(
             std::clamp(desiredPosition.x, minX, maxX),
@@ -174,7 +175,7 @@ namespace
 
         ImGui::PushID(popupID);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 6.0f)));
         ImGui::PushStyleColor(ImGuiCol_Header, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, QUI::EditorColor::Background4);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, QUI::EditorColor::AccentDim);

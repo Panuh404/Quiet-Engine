@@ -234,7 +234,7 @@ namespace Quiet::Renderer::UI
         ImGui::SetNextWindowBgAlpha(0.92f);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Scale(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, Scale(1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(8.0f, 8.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Scale(ImVec2(6.0f, 6.0f)));
 

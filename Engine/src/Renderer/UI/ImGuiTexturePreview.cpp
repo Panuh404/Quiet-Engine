@@ -175,7 +175,7 @@ namespace Quiet::Renderer::UI
             frameMin,
             frameMax,
             IM_COL32(72, 82, 96, 255),
-            1.0f
+            1.0f * uiScale
         );
 
         // Texture pixels are flipped during import to match mesh UVs.

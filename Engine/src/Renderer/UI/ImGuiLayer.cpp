@@ -228,7 +228,7 @@ namespace Quiet::Renderer::UI
         const float contentHeight =
             (frameHeight > ToolbarStyle::ButtonHeight()) ? frameHeight : ToolbarStyle::ButtonHeight();
 
-        return contentHeight + style.WindowPadding.y * 2.0f + 6.0f;
+        return contentHeight + style.WindowPadding.y * 2.0f + Scale(6.0f);
     }
 
     void ImGuiLayer::CreateDescriptorPool()

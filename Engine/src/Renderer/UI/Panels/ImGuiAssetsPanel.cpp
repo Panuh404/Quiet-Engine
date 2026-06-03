@@ -636,7 +636,7 @@ namespace Quiet::Renderer::UI
             ImGui::Spacing();
 
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, Scale(10.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, Scale(1.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
