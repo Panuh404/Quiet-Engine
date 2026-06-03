@@ -52,6 +52,18 @@ namespace
         return AreFloatsEqual(lhs->RotationSpeedDegreesPerSecond, rhs->RotationSpeedDegreesPerSecond);
     }
 
+    bool AreDirectionalLightsEqual(const std::optional<Quiet::Scene::DirectionalLightComponent>& lhs,
+                                   const std::optional<Quiet::Scene::DirectionalLightComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->Enabled == rhs->Enabled &&
+               AreVec3Equal(lhs->Direction, rhs->Direction) &&
+               AreVec3Equal(lhs->Color, rhs->Color) &&
+               AreFloatsEqual(lhs->Intensity, rhs->Intensity);
+    }
+
     bool AreCamerasEqual(const std::optional<Quiet::Scene::CameraComponent>& lhs,
                          const std::optional<Quiet::Scene::CameraComponent>& rhs)
     {
@@ -112,6 +124,7 @@ namespace
                AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
                AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
                AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
+               AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
                AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
                AreCamerasEqual(lhs.Camera, rhs.Camera);
     }
