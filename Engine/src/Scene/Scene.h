@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include "Scene/Actor.h"
@@ -32,6 +33,7 @@ namespace Quiet::Scene
         Actor* TryDuplicateActor(Core::UUID sourceID);
 
         bool DestroyActorByID(Core::UUID id);
+        bool MoveActor(Core::UUID actorID, std::size_t destinationIndex);
 
         void Clear();
 

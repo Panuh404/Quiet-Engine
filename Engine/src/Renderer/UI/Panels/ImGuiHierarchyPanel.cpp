@@ -1,6 +1,9 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <cstddef>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
@@ -408,6 +411,7 @@ namespace Quiet::Renderer::UI
 
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
+            std::optional<std::pair<Core::UUID, std::size_t>> pendingActorMove;
 
             auto& actors = scene.GetActors();
 
@@ -415,20 +419,35 @@ namespace Quiet::Renderer::UI
                 DrawHierarchyEmptyState();
             else
             {
-                for (auto& actor : actors)
+                for (std::size_t actorIndex = 0; actorIndex < actors.size(); ++actorIndex)
                 {
+                    auto& actor = actors[actorIndex];
+
                     const bool isSelected =
                         editorState.Selection.SelectedActorID.has_value() &&
                         editorState.Selection.SelectedActorID.value() == actor.ID;
 
                     if (DrawActorRow(actor, isSelected, isEditMode))
+                    {
                         editorState.Selection.SelectedActorID = actor.ID;
+                    }
 
-                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor.ID);
+                    const std::string actorContextID =
+                        "ActorContextMenu_" + Core::UUIDToString(actor.ID);
 
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
-                        const bool canEdit = (editorState.Scene.Mode == Editor::SceneMode::Edit);
+                        const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                        const bool canMoveUp = canEdit && actorIndex > 0;
+                        const bool canMoveDown = canEdit && actorIndex + 1 < actors.size();
+
+                        if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
+                            pendingActorMove = std::make_pair(actor.ID, actorIndex - 1);
+
+                        if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
+                            pendingActorMove = std::make_pair(actor.ID, actorIndex + 1);
+
+                        ImGui::Separator();
 
                         if (QUI::EditorMenuItem(
                                 "Duplicate",
@@ -455,7 +474,14 @@ namespace Quiet::Renderer::UI
                 }
             }
 
-            if (pendingAction.has_value() && pendingActorSelection.has_value())
+            if (pendingActorMove.has_value())
+            {
+                editorCommands.MoveActor(scene,
+                    pendingActorMove->first,
+                    pendingActorMove->second
+                );
+            }
+            else if (pendingAction.has_value() && pendingActorSelection.has_value())
             {
                 editorState.Selection.SelectedActorID = pendingActorSelection.value();
                 editorActions.Execute(pendingAction.value());

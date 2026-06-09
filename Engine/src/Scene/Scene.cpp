@@ -82,6 +82,35 @@ namespace Quiet::Scene
         return true;
     }
 
+    bool Scene::MoveActor(Core::UUID actorID, std::size_t destinationIndex)
+    {
+        if (destinationIndex >= m_Actors.size()) return false;
+
+        const auto sourceIt = std::find_if(
+            m_Actors.begin(),
+            m_Actors.end(),
+            [actorID](const Actor& actor)
+            {
+                return actor.ID == actorID;
+            }
+        );
+        if (sourceIt == m_Actors.end()) return false;
+
+        const std::size_t sourceIndex = static_cast<std::size_t>(std::distance(m_Actors.begin(), sourceIt));
+        if (sourceIndex == destinationIndex) return false;
+
+        Actor movedActor = std::move(*sourceIt);
+        m_Actors.erase(sourceIt);
+        using DifferenceType = std::vector<Actor>::difference_type;
+
+        m_Actors.insert(
+            m_Actors.begin() + static_cast<DifferenceType>(destinationIndex),
+            std::move(movedActor)
+        );
+
+        return true;
+    }
+
     void Scene::Clear()
     {
         m_RenderSettings = SceneRenderSettings{};
