@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
@@ -23,6 +24,43 @@ namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
 namespace
 {
+    constexpr const char* kActorDragDropPayload = "QUIET_ACTOR_ROW";
+
+    std::optional<Quiet::Core::UUID> g_DraggedActorID;
+
+    std::optional<std::size_t> FindActorIndex(const std::vector<Quiet::Scene::Actor>& actors, const Quiet::Core::UUID actorID)
+    {
+        for (std::size_t index = 0; index < actors.size(); ++index)
+        {
+            if (actors[index].ID == actorID) return index;
+        }
+        return std::nullopt;
+    }
+
+    std::size_t CalculateDropDestinationIndex(const std::size_t sourceIndex, const std::size_t targetIndex, const bool dropAfterTarget)
+    {
+        const std::size_t insertionSlot = targetIndex + (dropAfterTarget ? 1u : 0u);
+        if (sourceIndex < insertionSlot) return insertionSlot - 1u;
+        return insertionSlot;
+    }
+
+    void DrawActorDropMarker(const ImVec2& rowMin, const ImVec2& rowMax, const bool after)
+    {
+        const float y = after ? rowMax.y : rowMin.y;
+        const float thickness = SZ::Px(2.0f);
+        const float radius = SZ::Px(3.0f);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        const ImVec2 lineStart(rowMin.x + SZ::Px(6.0f), y);
+        const ImVec2 lineEnd(rowMax.x - SZ::Px(6.0f), y);
+
+        const ImU32 color = ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover);
+
+        drawList->AddLine(lineStart, lineEnd, color, thickness);
+        drawList->AddCircleFilled(lineStart, radius, color);
+    }
+
     bool DrawHierarchyHeader(const bool canCreate)
     {
         bool createPressed = false;
@@ -428,12 +466,70 @@ namespace Quiet::Renderer::UI
                         editorState.Selection.SelectedActorID.value() == actor.ID;
 
                     if (DrawActorRow(actor, isSelected, isEditMode))
-                    {
                         editorState.Selection.SelectedActorID = actor.ID;
+
+                    const ImVec2 rowMin = ImGui::GetItemRectMin();
+                    const ImVec2 rowMax = ImGui::GetItemRectMax();
+
+                    if (isEditMode)
+                    {
+                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+                        {
+                            g_DraggedActorID = actor.ID;
+
+                            const int payloadValue = 1;
+                            ImGui::SetDragDropPayload(kActorDragDropPayload, &payloadValue, sizeof(payloadValue));
+
+                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                            ImGui::TextUnformatted(actor.Name.empty() ? "Unnamed Actor" : actor.Name.c_str());
+                            ImGui::PopStyleColor();
+
+                            ImGui::EndDragDropSource();
+                        }
+
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            const float mouseY = ImGui::GetMousePos().y;
+                            const float rowMidY = rowMin.y + (rowMax.y - rowMin.y) * 0.5f;
+                            const bool dropAfterTarget = mouseY > rowMidY;
+
+                            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
+                                kActorDragDropPayload,
+                                ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                ImGuiDragDropFlags_AcceptNoDrawDefaultRect
+                            );
+
+                            if (payload && g_DraggedActorID.has_value() && g_DraggedActorID.value() != actor.ID)
+                            {
+                                DrawActorDropMarker(rowMin, rowMax, dropAfterTarget);
+                                if (payload->IsDelivery())
+                                {
+                                    const auto sourceIndex = FindActorIndex(actors, g_DraggedActorID.value());
+                                    if (sourceIndex.has_value())
+                                    {
+                                        const std::size_t destinationIndex =
+                                            CalculateDropDestinationIndex(
+                                                sourceIndex.value(),
+                                                actorIndex,
+                                                dropAfterTarget
+                                            );
+
+                                        if (destinationIndex != sourceIndex.value())
+                                        {
+                                            pendingActorMove = std::make_pair(
+                                                g_DraggedActorID.value(),
+                                                destinationIndex
+                                            );
+                                        }
+                                    }
+                                    g_DraggedActorID.reset();
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
                     }
 
-                    const std::string actorContextID =
-                        "ActorContextMenu_" + Core::UUIDToString(actor.ID);
+                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor.ID);
 
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
