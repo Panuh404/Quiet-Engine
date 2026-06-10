@@ -164,6 +164,15 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::CreateHierarchyFolder(Scene::Scene &scene, const std::string &name)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            const Core::UUID folderID = scene.CreateHierarchyFolder(name.empty() ? "Folder" : name);
+            return folderID.IsValid();
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;

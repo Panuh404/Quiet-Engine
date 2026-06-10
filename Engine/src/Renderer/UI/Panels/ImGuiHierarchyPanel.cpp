@@ -332,6 +332,146 @@ namespace
         return clicked;
     }
 
+    bool DrawFolderRow(const Quiet::Scene::SceneHierarchyFolder& folder, const bool enabled)
+    {
+        const std::string folderID = Quiet::Core::UUIDToString(folder.ID);
+        const std::string displayName = folder.Name.empty() ? "Folder" : folder.Name;
+
+        const float rowHeight = SZ::Px(38.0f);
+        const float rowRounding = SZ::Px(7.0f);
+        const float iconAreaWidth = SZ::Px(34.0f);
+        const float leftPadding = SZ::Px(9.0f);
+        const float rightPadding = SZ::Px(8.0f);
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+        const ImVec2 rowMax = ImVec2(rowMin.x + availableWidth, rowMin.y + rowHeight);
+
+        ImGui::PushID(folderID.c_str());
+        if (!enabled)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::InvisibleButton("##FolderRow", ImVec2(availableWidth, rowHeight));
+
+         const bool hovered = enabled && ImGui::IsItemHovered();
+        const bool clicked = enabled && ImGui::IsItemClicked(ImGuiMouseButton_Left);
+
+        if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        if (!enabled) ImGui::EndDisabled();
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        const ImVec4 backgroundColor = hovered
+            ? QUI::EditorColor::Background3
+            : ImVec4(
+                QUI::EditorColor::Background2.x,
+                QUI::EditorColor::Background2.y,
+                QUI::EditorColor::Background2.z,
+                0.46f
+            );
+
+        drawList->AddRectFilled(
+            rowMin,
+            rowMax,
+            ImGui::ColorConvertFloat4ToU32(backgroundColor),
+            rowRounding
+        );
+
+        drawList->AddRect(
+            rowMin,
+            rowMax,
+            ImGui::ColorConvertFloat4ToU32(
+                hovered ? QUI::EditorColor::Border : QUI::EditorColor::BorderSoft
+            ),
+            rowRounding
+        );
+
+        const char* icon = QUI::Icons::Load;
+        const char* typeLabel = "Folder";
+
+        const ImVec2 iconSize = ImGui::CalcTextSize(icon);
+        const ImVec2 nameSize = ImGui::CalcTextSize(displayName.c_str());
+        const ImVec2 typeSize = ImGui::CalcTextSize(typeLabel);
+
+        const float centerY = rowMin.y + rowHeight * 0.5f;
+
+        const ImVec2 iconPos = ImVec2(
+            rowMin.x + leftPadding,
+            centerY - iconSize.y * 0.5f
+        );
+
+        const ImVec2 namePos = ImVec2(
+            rowMin.x + iconAreaWidth,
+            centerY - nameSize.y * 0.5f
+        );
+
+        drawList->PushClipRect(rowMin, rowMax, true);
+
+        drawList->AddText(
+            iconPos,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentSoft),
+            icon
+        );
+
+        drawList->AddText(
+            namePos,
+            ImGui::ColorConvertFloat4ToU32(
+                enabled ? QUI::EditorColor::Text : QUI::EditorColor::TextDim
+            ),
+            displayName.c_str()
+        );
+
+        if (availableWidth >= SZ::Px(230.0f))
+        {
+            const float badgeHeight = SZ::Px(20.0f);
+            const float badgePaddingX = SZ::Px(8.0f);
+            const float badgeWidth = typeSize.x + badgePaddingX * 2.0f;
+
+            const ImVec2 badgeMin = ImVec2(
+                rowMax.x - badgeWidth - rightPadding,
+                centerY - badgeHeight * 0.5f
+            );
+
+            const ImVec2 badgeMax = ImVec2(
+                badgeMin.x + badgeWidth,
+                badgeMin.y + badgeHeight
+            );
+
+            drawList->AddRectFilled(
+                badgeMin,
+                badgeMax,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background3),
+                SZ::Px(6.0f)
+            );
+
+            drawList->AddRect(
+                badgeMin,
+                badgeMax,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+                SZ::Px(6.0f)
+            );
+
+            drawList->AddText(
+                ImVec2(
+                    badgeMin.x + badgePaddingX,
+                    centerY - typeSize.y * 0.5f
+                ),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                typeLabel
+            );
+        }
+
+        drawList->PopClipRect();
+        ImGui::PopID();
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            ImGui::SetTooltip("%s", folderID.c_str());
+
+        return clicked;
+    }
+
     void DrawPrimitiveCreateMenu(Quiet::Scene::Scene& scene,
                                  Quiet::Editor::EditorCommands& editorCommands,
                                  const Quiet::Project::ProjectContext& projectContext,
@@ -427,6 +567,9 @@ namespace Quiet::Renderer::UI
                 if (QUI::EditorMenuItem("Directional Light"))
                     editorCommands.CreateDirectionalLightActor(scene);
 
+                if (QUI::EditorMenuItem("Folder"))
+                    editorCommands.CreateHierarchyFolder(scene);
+
                 DrawPrimitiveCreateMenu(
                     scene,
                     editorCommands,
@@ -445,28 +588,46 @@ namespace Quiet::Renderer::UI
             }
 
             ImGui::Spacing();
-            DrawSectionTitle("Actors");
+            DrawSectionTitle("Hierarchy");
 
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
             std::optional<std::pair<Core::UUID, std::size_t>> pendingActorMove;
 
             auto& actors = scene.GetActors();
+            Scene::SceneHierarchyState& hierarchy = scene.GetHierarchy();
 
             if (actors.empty())
                 DrawHierarchyEmptyState();
             else
             {
-                for (std::size_t actorIndex = 0; actorIndex < actors.size(); ++actorIndex)
+                for (std::size_t rootNodeIndex = 0; rootNodeIndex < hierarchy.RootNodes.size(); ++rootNodeIndex)
                 {
-                    auto& actor = actors[actorIndex];
+                    const Scene::SceneHierarchyNode& rootNode = hierarchy.RootNodes[rootNodeIndex];
+
+                    if (rootNode.Type == Scene::SceneHierarchyNodeType::Folder)
+                    {
+                        Scene::SceneHierarchyFolder* folder = scene.FindHierarchyFolder(rootNode.ID);
+                        if (!folder) continue;
+
+                        DrawFolderRow(*folder, isEditMode);
+                        continue;
+                    }
+
+                    Scene::Actor* actor = scene.FindActorByID(rootNode.ID);
+                    if (!actor) continue;
+
+                    const auto actorIndexOpt = FindActorIndex(actors, actor->ID);
+                    if (!actorIndexOpt.has_value()) continue;
+
+                    const std::size_t actorIndex = actorIndexOpt.value();
 
                     const bool isSelected =
                         editorState.Selection.SelectedActorID.has_value() &&
-                        editorState.Selection.SelectedActorID.value() == actor.ID;
+                        editorState.Selection.SelectedActorID.value() == actor->ID;
 
-                    if (DrawActorRow(actor, isSelected, isEditMode))
-                        editorState.Selection.SelectedActorID = actor.ID;
+                    if (DrawActorRow(*actor, isSelected, isEditMode))
+                        editorState.Selection.SelectedActorID = actor->ID;
 
                     const ImVec2 rowMin = ImGui::GetItemRectMin();
                     const ImVec2 rowMax = ImGui::GetItemRectMax();
@@ -475,13 +636,13 @@ namespace Quiet::Renderer::UI
                     {
                         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
                         {
-                            g_DraggedActorID = actor.ID;
+                            g_DraggedActorID = actor->ID;
 
                             const int payloadValue = 1;
                             ImGui::SetDragDropPayload(kActorDragDropPayload, &payloadValue, sizeof(payloadValue));
 
                             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-                            ImGui::TextUnformatted(actor.Name.empty() ? "Unnamed Actor" : actor.Name.c_str());
+                            ImGui::TextUnformatted(actor->Name.empty() ? "Unnamed Actor" : actor->Name.c_str());
                             ImGui::PopStyleColor();
 
                             ImGui::EndDragDropSource();
@@ -499,7 +660,7 @@ namespace Quiet::Renderer::UI
                                 ImGuiDragDropFlags_AcceptNoDrawDefaultRect
                             );
 
-                            if (payload && g_DraggedActorID.has_value() && g_DraggedActorID.value() != actor.ID)
+                            if (payload && g_DraggedActorID.has_value() && g_DraggedActorID.value() != actor->ID)
                             {
                                 DrawActorDropMarker(rowMin, rowMax, dropAfterTarget);
                                 if (payload->IsDelivery())
@@ -529,7 +690,7 @@ namespace Quiet::Renderer::UI
                         }
                     }
 
-                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor.ID);
+                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor->ID);
 
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
@@ -538,10 +699,10 @@ namespace Quiet::Renderer::UI
                         const bool canMoveDown = canEdit && actorIndex + 1 < actors.size();
 
                         if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
-                            pendingActorMove = std::make_pair(actor.ID, actorIndex - 1);
+                            pendingActorMove = std::make_pair(actor->ID, actorIndex - 1);
 
                         if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
-                            pendingActorMove = std::make_pair(actor.ID, actorIndex + 1);
+                            pendingActorMove = std::make_pair(actor->ID, actorIndex + 1);
 
                         ImGui::Separator();
 
@@ -551,7 +712,7 @@ namespace Quiet::Renderer::UI
                                 false,
                                 canEdit))
                         {
-                            pendingActorSelection = actor.ID;
+                            pendingActorSelection = actor->ID;
                             pendingAction = Editor::EditorActionID::DuplicateSelected;
                         }
 
@@ -561,7 +722,7 @@ namespace Quiet::Renderer::UI
                                 false,
                                 canEdit))
                         {
-                            pendingActorSelection = actor.ID;
+                            pendingActorSelection = actor->ID;
                             pendingAction = Editor::EditorActionID::DeleteSelected;
                         }
 

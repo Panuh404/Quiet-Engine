@@ -142,6 +142,52 @@ namespace Quiet::Scene
         m_Hierarchy = std::move(hierarchy);
     }
 
+    Core::UUID Scene::CreateHierarchyFolder(const std::string &name)
+    {
+        SceneHierarchyFolder folder{};
+        folder.ID = Core::UUIDGenerator::New();
+        folder.Name = name.empty() ? "Folder" : name;
+        folder.Expanded = true;
+
+        const Core::UUID folderID = folder.ID;
+
+        m_Hierarchy.Folders.push_back(std::move(folder));
+        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{
+            SceneHierarchyNodeType::Folder,
+            folderID
+        });
+
+        return folderID;
+    }
+
+    SceneHierarchyFolder * Scene::FindHierarchyFolder(Core::UUID folderID)
+    {
+        const auto it = std::find_if(
+                m_Hierarchy.Folders.begin(),
+                m_Hierarchy.Folders.end(),
+                [folderID](const SceneHierarchyFolder& folder)
+                {
+                    return folder.ID == folderID;
+                }
+            );
+
+        return it != m_Hierarchy.Folders.end() ? &(*it) : nullptr;
+    }
+
+    const SceneHierarchyFolder * Scene::FindHierarchyFolder(Core::UUID folderID) const
+    {
+        const auto it = std::find_if(
+                m_Hierarchy.Folders.begin(),
+                m_Hierarchy.Folders.end(),
+                [folderID](const SceneHierarchyFolder& folder)
+                {
+                    return folder.ID == folderID;
+                }
+            );
+
+        return it != m_Hierarchy.Folders.end() ? &(*it) : nullptr;
+    }
+
     void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
     {
         m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{

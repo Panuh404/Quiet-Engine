@@ -44,6 +44,8 @@ namespace Quiet::Editor
                                    const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool CreateDirectionalLightActor(Scene::Scene& scene,
                                          const std::string& actorName = "Directional Light");
+        bool CreateHierarchyFolder(Scene::Scene& scene, const std::string& name = "Folder");
+
         bool DuplicateSelectedActor(Scene::Scene& scene);
         bool DeleteSelectedActor(Scene::Scene& scene);
 

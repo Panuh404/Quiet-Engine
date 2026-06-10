@@ -42,6 +42,11 @@ namespace Quiet::Scene
         void ResetHierarchyFromActors();
         void SetHierarchy(SceneHierarchyState hierarchy);
 
+        Core::UUID CreateHierarchyFolder(const std::string& name = "Folder");
+
+        [[nodiscard]] SceneHierarchyFolder* FindHierarchyFolder(Core::UUID folderID);
+        [[nodiscard]] const SceneHierarchyFolder* FindHierarchyFolder(Core::UUID folderID) const;
+
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
