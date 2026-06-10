@@ -50,6 +50,9 @@ namespace Quiet::Scene
         bool RenameHierarchyFolder(Core::UUID folderID, const std::string& newName);
         bool DeleteEmptyHierarchyFolder(Core::UUID folderID);
 
+        bool MoveActorToHierarchyFolder(Core::UUID actorID, Core::UUID folderID);
+        bool MoveActorToHierarchyRoot(Core::UUID actorID);
+
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 

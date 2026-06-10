@@ -189,6 +189,22 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::MoveActorToHierarchyFolder(Scene::Scene &scene, Core::UUID actorID, Core::UUID folderID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveActorToHierarchyFolder(actorID, folderID);
+        });
+    }
+
+    bool EditorCommands::MoveActorToHierarchyRoot(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveActorToHierarchyRoot(actorID);
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;

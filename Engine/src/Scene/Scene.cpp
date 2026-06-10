@@ -237,6 +237,59 @@ namespace Quiet::Scene
         return true;
     }
 
+    bool Scene::MoveActorToHierarchyFolder(Core::UUID actorID, Core::UUID folderID)
+    {
+        if (!FindActorByID(actorID)) return false;
+
+        SceneHierarchyFolder* targetFolder = FindHierarchyFolder(folderID);
+        if (!targetFolder) return false;
+
+        const bool alreadyInTargetFolder = std::any_of(
+            targetFolder->Children.begin(),
+            targetFolder->Children.end(),
+            [actorID](const SceneHierarchyNode& node)
+            {
+                return node.Type == SceneHierarchyNodeType::Actor &&
+                       node.ID == actorID;
+            }
+        );
+
+        if (alreadyInTargetFolder) return false;
+        RemoveActorFromHierarchy(actorID);
+
+        targetFolder = FindHierarchyFolder(folderID);
+        if (!targetFolder) return false;
+
+        targetFolder->Children.push_back(SceneHierarchyNode{
+            SceneHierarchyNodeType::Actor,
+            actorID
+        });
+
+        return true;
+    }
+
+    bool Scene::MoveActorToHierarchyRoot(Core::UUID actorID)
+    {
+        if (!FindActorByID(actorID)) return false;
+
+        const bool alreadyInRoot = std::any_of(
+            m_Hierarchy.RootNodes.begin(),
+            m_Hierarchy.RootNodes.end(),
+            [actorID](const SceneHierarchyNode& node)
+            {
+                return node.Type == SceneHierarchyNodeType::Actor &&
+                       node.ID == actorID;
+            }
+        );
+
+        if (alreadyInRoot) return false;
+
+        RemoveActorFromHierarchy(actorID);
+        AddActorToHierarchyRoot(actorID);
+
+        return true;
+    }
+
     void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
     {
         m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{

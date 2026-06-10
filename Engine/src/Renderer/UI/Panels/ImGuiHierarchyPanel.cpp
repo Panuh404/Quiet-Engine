@@ -69,6 +69,42 @@ namespace
         drawList->AddCircleFilled(lineStart, radius, color);
     }
 
+    void DrawFolderDropHighlight(const ImVec2& rowMin, const ImVec2& rowMax)
+    {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImU32 color = ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover);
+
+        drawList->AddRect(
+            rowMin,
+            rowMax,
+            color,
+            SZ::Px(7.0f),
+            0,
+            SZ::Px(2.0f)
+        );
+    }
+
+    void BeginActorDragSource(const Quiet::Scene::Actor& actor)
+    {
+        if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) return;
+        g_DraggedActorID = actor.ID;
+
+        const int payloadValue = 1;
+        ImGui::SetDragDropPayload(
+            kActorDragDropPayload,
+            &payloadValue,
+            sizeof(payloadValue)
+        );
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::TextUnformatted(
+            actor.Name.empty() ? "Unnamed Actor" : actor.Name.c_str()
+        );
+        ImGui::PopStyleColor();
+
+        ImGui::EndDragDropSource();
+    }
+
     bool DrawHierarchyHeader(const bool canCreate)
     {
         bool createPressed = false;
@@ -363,7 +399,7 @@ namespace
 
         ImGui::InvisibleButton("##FolderRow", ImVec2(availableWidth, rowHeight));
 
-         const bool hovered = enabled && ImGui::IsItemHovered();
+        const bool hovered = enabled && ImGui::IsItemHovered();
         const bool clicked = enabled && ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
         if (hovered) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -396,26 +432,39 @@ namespace
             rowRounding
         );
 
+        const char* disclosureIcon = folder.Expanded ? "v" : ">";
         const char* icon = QUI::Icons::Load;
         const char* typeLabel = "Folder";
 
+        const ImVec2 disclosureSize = ImGui::CalcTextSize(disclosureIcon);
         const ImVec2 iconSize = ImGui::CalcTextSize(icon);
         const ImVec2 nameSize = ImGui::CalcTextSize(displayName.c_str());
         const ImVec2 typeSize = ImGui::CalcTextSize(typeLabel);
 
         const float centerY = rowMin.y + rowHeight * 0.5f;
 
-        const ImVec2 iconPos = ImVec2(
+        const ImVec2 disclosurePos = ImVec2(
             rowMin.x + leftPadding,
+            centerY - disclosureSize.y * 0.5f
+        );
+
+        const ImVec2 iconPos = ImVec2(
+            rowMin.x + leftPadding + SZ::Px(15.0f),
             centerY - iconSize.y * 0.5f
         );
 
         const ImVec2 namePos = ImVec2(
-            rowMin.x + iconAreaWidth,
+            rowMin.x + iconAreaWidth + SZ::Px(15.0f),
             centerY - nameSize.y * 0.5f
         );
 
         drawList->PushClipRect(rowMin, rowMax, true);
+
+        drawList->AddText(
+            disclosurePos,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+            disclosureIcon
+        );
 
         drawList->AddText(
             iconPos,
@@ -695,6 +744,8 @@ namespace Quiet::Renderer::UI
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
             std::optional<std::pair<Core::UUID, std::size_t>> pendingActorMove;
+            std::optional<std::pair<Core::UUID, Core::UUID>> pendingActorMoveToFolder;
+            std::optional<Core::UUID> pendingActorMoveToRoot;
             std::optional<Core::UUID> pendingFolderDelete;
 
             auto& actors = scene.GetActors();
@@ -715,11 +766,40 @@ namespace Quiet::Renderer::UI
 
                         if (DrawFolderRow(*folder, isEditMode))
                         {
+                            folder->Expanded = !folder->Expanded;
                             editorState.Selection.SelectedActorID.reset();
                         }
 
-                        const std::string folderContextID = "FolderContextMenu_" + Core::UUIDToString(folder->ID);
+                        const ImVec2 folderRowMin = ImGui::GetItemRectMin();
+                        const ImVec2 folderRowMax = ImGui::GetItemRectMax();
 
+                        if (isEditMode && ImGui::BeginDragDropTarget())
+                        {
+                            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
+                                kActorDragDropPayload,
+                                ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                ImGuiDragDropFlags_AcceptNoDrawDefaultRect
+                            );
+
+                            if (payload && g_DraggedActorID.has_value())
+                            {
+                                DrawFolderDropHighlight(folderRowMin, folderRowMax);
+                                if (payload->IsDelivery())
+                                {
+                                    pendingActorMoveToFolder = std::make_pair(
+                                        g_DraggedActorID.value(),
+                                        folder->ID
+                                    );
+
+                                    folder->Expanded = true;
+                                    g_DraggedActorID.reset();
+                                }
+                            }
+
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        const std::string folderContextID = "FolderContextMenu_" + Core::UUIDToString(folder->ID);
                         if (ImGui::BeginPopupContextItem(folderContextID.c_str()))
                         {
                             const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
@@ -735,6 +815,64 @@ namespace Quiet::Renderer::UI
                                 ImGui::SetTooltip("Only empty folders can be deleted.");
 
                             ImGui::EndPopup();
+                        }
+
+                        if (folder->Expanded && !folder->Children.empty())
+                        {
+                            ImGui::Indent(SZ::Px(18.0f));
+
+                            for (const Scene::SceneHierarchyNode& childNode : folder->Children)
+                            {
+                                if (childNode.Type != Scene::SceneHierarchyNodeType::Actor) continue;
+
+                                Scene::Actor* childActor = scene.FindActorByID(childNode.ID);
+                                if (!childActor) continue;
+
+                                const bool isSelected =
+                                    editorState.Selection.SelectedActorID.has_value() &&
+                                    editorState.Selection.SelectedActorID.value() == childActor->ID;
+
+                                if (DrawActorRow(*childActor, isSelected, isEditMode))
+                                    editorState.Selection.SelectedActorID = childActor->ID;
+
+                                if (isEditMode) BeginActorDragSource(*childActor);
+
+                                const std::string childActorContextID =
+                                    "FolderChildActorContextMenu_" + Core::UUIDToString(childActor->ID);
+
+                                if (ImGui::BeginPopupContextItem(childActorContextID.c_str()))
+                                {
+                                    const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
+
+                                    if (QUI::EditorMenuItem("Move To Root", nullptr, false, canEdit))
+                                        pendingActorMoveToRoot = childActor->ID;
+
+                                    ImGui::Separator();
+
+                                    if (QUI::EditorMenuItem(
+                                            "Duplicate",
+                                            editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
+                                            false,
+                                            canEdit))
+                                    {
+                                        pendingActorSelection = childActor->ID;
+                                        pendingAction = Editor::EditorActionID::DuplicateSelected;
+                                    }
+
+                                    if (QUI::EditorMenuItem(
+                                            "Delete",
+                                            editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
+                                            false,
+                                            canEdit))
+                                    {
+                                        pendingActorSelection = childActor->ID;
+                                        pendingAction = Editor::EditorActionID::DeleteSelected;
+                                    }
+
+                                    ImGui::EndPopup();
+                                }
+                            }
+                            ImGui::Unindent(SZ::Px(18.0f));
                         }
                         continue;
                     }
@@ -759,19 +897,7 @@ namespace Quiet::Renderer::UI
 
                     if (isEditMode)
                     {
-                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
-                        {
-                            g_DraggedActorID = actor->ID;
-
-                            const int payloadValue = 1;
-                            ImGui::SetDragDropPayload(kActorDragDropPayload, &payloadValue, sizeof(payloadValue));
-
-                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-                            ImGui::TextUnformatted(actor->Name.empty() ? "Unnamed Actor" : actor->Name.c_str());
-                            ImGui::PopStyleColor();
-
-                            ImGui::EndDragDropSource();
-                        }
+                        BeginActorDragSource(*actor);
 
                         if (ImGui::BeginDragDropTarget())
                         {
@@ -863,6 +989,21 @@ namespace Quiet::Renderer::UI
                 editorCommands.DeleteEmptyHierarchyFolder(
                     scene,
                     pendingFolderDelete.value()
+                );
+            }
+            else if (pendingActorMoveToFolder.has_value())
+            {
+                editorCommands.MoveActorToHierarchyFolder(
+                    scene,
+                    pendingActorMoveToFolder->first,
+                    pendingActorMoveToFolder->second
+                );
+            }
+            else if (pendingActorMoveToRoot.has_value())
+            {
+                editorCommands.MoveActorToHierarchyRoot(
+                    scene,
+                    pendingActorMoveToRoot.value()
                 );
             }
             else if (pendingActorMove.has_value())
