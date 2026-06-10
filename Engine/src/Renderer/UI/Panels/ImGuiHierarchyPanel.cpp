@@ -1,6 +1,8 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <array>
 #include <cstddef>
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <utility>
@@ -9,6 +11,7 @@
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
+#include "Quiet/Editor/EditorController.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/AssetType.h"
@@ -25,6 +28,11 @@ namespace SZ = Quiet::Renderer::UI::EditorSizing;
 namespace
 {
     constexpr const char* kActorDragDropPayload = "QUIET_ACTOR_ROW";
+    constexpr const char* kRenameFolderPopup = "Rename Folder";
+
+    std::optional<Quiet::Core::UUID> g_RenameFolderID;
+    std::array<char, 128> g_RenameFolderNameBuffer{};
+    bool g_RequestOpenRenameFolderPopup = false;
 
     std::optional<Quiet::Core::UUID> g_DraggedActorID;
 
@@ -472,6 +480,100 @@ namespace
         return clicked;
     }
 
+    void BeginFolderRename(const Quiet::Scene::SceneHierarchyFolder& folder)
+    {
+        g_RenameFolderID = folder.ID;
+
+        std::snprintf(
+            g_RenameFolderNameBuffer.data(),
+            g_RenameFolderNameBuffer.size(),
+            "%s",
+            folder.Name.empty() ? "Folder" : folder.Name.c_str()
+        );
+
+        g_RequestOpenRenameFolderPopup = true;
+        ImGui::CloseCurrentPopup();
+    }
+
+    void DrawRenameFolderPopup(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& editorCommands)
+    {
+        if (g_RequestOpenRenameFolderPopup)
+        {
+            ImGui::OpenPopup(kRenameFolderPopup);
+            g_RequestOpenRenameFolderPopup = false;
+        }
+
+        if (!g_RenameFolderID.has_value()) return;
+
+        ImGui::SetNextWindowSize(SZ::Px(ImVec2(380.0f, 0.0f)), ImGuiCond_Appearing );
+
+        bool open = true;
+        if (ImGui::BeginPopupModal(kRenameFolderPopup, &open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextUnformatted("Folder Name");
+            ImGui::PopStyleColor();
+
+            ImGui::PushItemWidth(SZ::Px(340.0f));
+
+            if (ImGui::IsWindowAppearing())
+                ImGui::SetKeyboardFocusHere();
+
+            const bool submittedByEnter = ImGui::InputText(
+                "##FolderName",
+                g_RenameFolderNameBuffer.data(),
+                g_RenameFolderNameBuffer.size(),
+                ImGuiInputTextFlags_EnterReturnsTrue |
+                ImGuiInputTextFlags_AutoSelectAll
+            );
+
+            ImGui::PopItemWidth();
+            ImGui::Spacing();
+
+            const std::string newName = g_RenameFolderNameBuffer.data();
+            const bool canRename = g_RenameFolderID.has_value();
+
+            const float buttonWidth = SZ::Px(110.0f);
+            const float totalButtonWidth =
+                buttonWidth * 2.0f + ImGui::GetStyle().ItemSpacing.x;
+
+            ImGui::SetCursorPosX(
+                ImGui::GetCursorPosX() +
+                ImGui::GetContentRegionAvail().x -
+                totalButtonWidth
+            );
+
+            if (QUI::EditorButton("Cancel", ImVec2(buttonWidth, 0.0f)))
+            {
+                g_RenameFolderID.reset();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::SameLine();
+
+            if (QUI::EditorButton("Rename", ImVec2(buttonWidth, 0.0f), canRename) ||
+                (submittedByEnter && canRename))
+            {
+                editorCommands.RenameHierarchyFolder(
+                    scene,
+                    g_RenameFolderID.value(),
+                    newName
+                );
+
+                g_RenameFolderID.reset();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (!open)
+        {
+            g_RenameFolderID.reset();
+            g_RequestOpenRenameFolderPopup = false;
+        }
+    }
+
     void DrawPrimitiveCreateMenu(Quiet::Scene::Scene& scene,
                                  Quiet::Editor::EditorCommands& editorCommands,
                                  const Quiet::Project::ProjectContext& projectContext,
@@ -593,24 +695,47 @@ namespace Quiet::Renderer::UI
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
             std::optional<std::pair<Core::UUID, std::size_t>> pendingActorMove;
+            std::optional<Core::UUID> pendingFolderDelete;
 
             auto& actors = scene.GetActors();
             Scene::SceneHierarchyState& hierarchy = scene.GetHierarchy();
 
-            if (actors.empty())
+            if (hierarchy.RootNodes.empty())
+            {
                 DrawHierarchyEmptyState();
+            }
             else
             {
-                for (std::size_t rootNodeIndex = 0; rootNodeIndex < hierarchy.RootNodes.size(); ++rootNodeIndex)
+                for (const auto & rootNode : hierarchy.RootNodes)
                 {
-                    const Scene::SceneHierarchyNode& rootNode = hierarchy.RootNodes[rootNodeIndex];
-
                     if (rootNode.Type == Scene::SceneHierarchyNodeType::Folder)
                     {
                         Scene::SceneHierarchyFolder* folder = scene.FindHierarchyFolder(rootNode.ID);
                         if (!folder) continue;
 
-                        DrawFolderRow(*folder, isEditMode);
+                        if (DrawFolderRow(*folder, isEditMode))
+                        {
+                            editorState.Selection.SelectedActorID.reset();
+                        }
+
+                        const std::string folderContextID = "FolderContextMenu_" + Core::UUIDToString(folder->ID);
+
+                        if (ImGui::BeginPopupContextItem(folderContextID.c_str()))
+                        {
+                            const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                            const bool canDelete = canEdit && folder->Children.empty();
+
+                            if (QUI::EditorMenuItem("Rename", nullptr, false, canEdit))
+                                BeginFolderRename(*folder);
+
+                            if (QUI::EditorMenuItem("Delete Empty Folder", nullptr, false, canDelete))
+                                pendingFolderDelete = folder->ID;
+
+                            if (!folder->Children.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                                ImGui::SetTooltip("Only empty folders can be deleted.");
+
+                            ImGui::EndPopup();
+                        }
                         continue;
                     }
 
@@ -731,9 +856,19 @@ namespace Quiet::Renderer::UI
                 }
             }
 
-            if (pendingActorMove.has_value())
+            DrawRenameFolderPopup(scene, editorCommands);
+
+            if (pendingFolderDelete.has_value())
             {
-                editorCommands.MoveActor(scene,
+                editorCommands.DeleteEmptyHierarchyFolder(
+                    scene,
+                    pendingFolderDelete.value()
+                );
+            }
+            else if (pendingActorMove.has_value())
+            {
+                editorCommands.MoveActor(
+                    scene,
                     pendingActorMove->first,
                     pendingActorMove->second
                 );

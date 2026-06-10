@@ -188,6 +188,55 @@ namespace Quiet::Scene
         return it != m_Hierarchy.Folders.end() ? &(*it) : nullptr;
     }
 
+    bool Scene::RenameHierarchyFolder(Core::UUID folderID, const std::string &newName)
+    {
+        SceneHierarchyFolder* folder = FindHierarchyFolder(folderID);
+        if (!folder) return false;
+
+        folder->Name = newName.empty() ? "Folder" : newName;
+        return true;
+    }
+
+    bool Scene::DeleteEmptyHierarchyFolder(Core::UUID folderID)
+    {
+        const auto folderIt = std::find_if(
+        m_Hierarchy.Folders.begin(),
+        m_Hierarchy.Folders.end(),
+        [folderID](const SceneHierarchyFolder& folder)
+            {
+                return folder.ID == folderID;
+            }
+        );
+
+        if (folderIt == m_Hierarchy.Folders.end()) return false;
+        if (!folderIt->Children.empty()) return false;
+        m_Hierarchy.Folders.erase(folderIt);
+
+        const auto removeFolderNode = [folderID](std::vector<SceneHierarchyNode>& nodes)
+        {
+            nodes.erase(
+                std::remove_if(
+                    nodes.begin(),
+                    nodes.end(),
+                    [folderID](const SceneHierarchyNode& node)
+                    {
+                        return node.Type == SceneHierarchyNodeType::Folder &&
+                               node.ID == folderID;
+                    }
+                ),
+                nodes.end()
+            );
+        };
+
+        removeFolderNode(m_Hierarchy.RootNodes);
+        for (SceneHierarchyFolder& folder : m_Hierarchy.Folders)
+        {
+            removeFolderNode(folder.Children);
+        }
+
+        return true;
+    }
+
     void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
     {
         m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{

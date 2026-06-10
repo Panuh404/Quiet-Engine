@@ -45,6 +45,8 @@ namespace Quiet::Editor
         bool CreateDirectionalLightActor(Scene::Scene& scene,
                                          const std::string& actorName = "Directional Light");
         bool CreateHierarchyFolder(Scene::Scene& scene, const std::string& name = "Folder");
+        bool RenameHierarchyFolder(Scene::Scene& scene, Core::UUID folderID, const std::string& newName);
+        bool DeleteEmptyHierarchyFolder(Scene::Scene& scene, Core::UUID folderID);
 
         bool DuplicateSelectedActor(Scene::Scene& scene);
         bool DeleteSelectedActor(Scene::Scene& scene);

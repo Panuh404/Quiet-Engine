@@ -47,6 +47,9 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyFolder* FindHierarchyFolder(Core::UUID folderID);
         [[nodiscard]] const SceneHierarchyFolder* FindHierarchyFolder(Core::UUID folderID) const;
 
+        bool RenameHierarchyFolder(Core::UUID folderID, const std::string& newName);
+        bool DeleteEmptyHierarchyFolder(Core::UUID folderID);
+
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 

@@ -173,6 +173,22 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::RenameHierarchyFolder(Scene::Scene &scene, Core::UUID folderID, const std::string &newName)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.RenameHierarchyFolder(folderID, newName.empty() ? "Folder" : newName);
+        });
+    }
+
+    bool EditorCommands::DeleteEmptyHierarchyFolder(Scene::Scene &scene, Core::UUID folderID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.DeleteEmptyHierarchyFolder(folderID);
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;
