@@ -239,6 +239,7 @@ namespace Quiet::Editor
     {
         SceneSnapshot snapshot{};
         snapshot.Actors = scene.GetActors();
+        snapshot.Hierarchy = scene.GetHierarchy();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
         return snapshot;
     }
@@ -248,13 +249,15 @@ namespace Quiet::Editor
                                              const SceneSnapshot& snapshot)
     {
         scene.GetActors() = snapshot.Actors;
+        scene.SetHierarchy(snapshot.Hierarchy);
         state.Selection.SelectedActorID = snapshot.SelectedActorID;
     }
 
     bool EditorSceneHistory::AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs)
     {
         return lhs.SelectedActorID == rhs.SelectedActorID &&
-               AreActorListsEqual(lhs.Actors, rhs.Actors);
+               AreActorListsEqual(lhs.Actors, rhs.Actors) &&
+               lhs.Hierarchy == rhs.Hierarchy;
     }
 
     void EditorSceneHistory::PushUndoSnapshot(SceneSnapshot snapshot)
@@ -263,7 +266,6 @@ namespace Quiet::Editor
         {
             m_UndoStack.erase(m_UndoStack.begin());
         }
-
         m_UndoStack.push_back(std::move(snapshot));
     }
 
@@ -273,7 +275,6 @@ namespace Quiet::Editor
         {
             m_RedoStack.erase(m_RedoStack.begin());
         }
-
         m_RedoStack.push_back(std::move(snapshot));
     }
 
@@ -292,6 +293,8 @@ namespace Quiet::Editor
         }
 
         const SceneSnapshot currentSnapshot = CaptureSnapshot(scene, state);
-        state.Scene.Dirty = !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors);
+        state.Scene.Dirty =
+            !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors) ||
+            m_CleanSnapshot->Hierarchy != currentSnapshot.Hierarchy;
     }
 }

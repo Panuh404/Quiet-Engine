@@ -1,6 +1,9 @@
 #include "SceneSerializer.h"
 
 #include <fstream>
+#include <optional>
+#include <utility>
+
 #include <nlohmann/json.hpp>
 #include "glm/vec4.hpp"
 
@@ -17,6 +20,7 @@ namespace Quiet::Scene
     {
         return json::array({ value.x, value.y, value.z });
     }
+
     static json SerializeVec4(const glm::vec4& value)
     {
         return json::array({ value.x, value.y, value.z, value.w });
@@ -30,6 +34,7 @@ namespace Quiet::Scene
             value.at(2).get<float>()
         };
     }
+
     static glm::vec4 DeserializeVec4(const json& value)
     {
         return {
@@ -38,6 +43,137 @@ namespace Quiet::Scene
             value.at(2).get<float>(),
             value.at(3).get<float>()
         };
+    }
+
+    static const char* SerializeHierarchyNodeType(const SceneHierarchyNodeType type)
+    {
+        switch (type)
+        {
+            case SceneHierarchyNodeType::Actor:
+                return "actor";
+            case SceneHierarchyNodeType::Folder:
+                return "folder";
+            default:
+                return "actor";
+        }
+    }
+
+    static SceneHierarchyNodeType DeserializeHierarchyNodeType(const std::string& type)
+    {
+        if (type == "folder") return SceneHierarchyNodeType::Folder;
+        return SceneHierarchyNodeType::Actor;
+    }
+
+    static json SerializeHierarchyNode(const SceneHierarchyNode& node)
+    {
+        return
+        {
+            { "type", SerializeHierarchyNodeType(node.Type) },
+            { "id", Quiet::Core::UUIDToString(node.ID) }
+        };
+    }
+
+    static std::optional<SceneHierarchyNode> DeserializeHierarchyNode(const json& nodeJson)
+    {
+        SceneHierarchyNode node{};
+        node.Type = DeserializeHierarchyNodeType(nodeJson.value("type", std::string{ "actor" }));
+
+        const std::string idText = nodeJson.value("id", std::string{});
+        if (!Core::UUIDFromString(idText, node.ID) || !node.ID.IsValid())
+        {
+            QUIET_CORE_WARN("Skipping hierarchy node with invalid UUID '{}'.", idText);
+            return std::nullopt;
+        }
+
+        return node;
+    }
+
+    static json SerializeHierarchyFolder(const SceneHierarchyFolder& folder)
+    {
+        json folderJson;
+        folderJson["id"] = Quiet::Core::UUIDToString(folder.ID);
+        folderJson["name"] = folder.Name;
+        folderJson["expanded"] = folder.Expanded;
+        folderJson["children"] = json::array();
+
+        for (const SceneHierarchyNode& child : folder.Children)
+        {
+            folderJson["children"].push_back(SerializeHierarchyNode(child));
+        }
+
+        return folderJson;
+    }
+
+    static std::optional<SceneHierarchyFolder> DeserializeHierarchyFolder(const json& folderJson)
+    {
+        SceneHierarchyFolder folder{};
+
+        const std::string idText = folderJson.value("id", std::string{});
+        if (!Core::UUIDFromString(idText, folder.ID) || !folder.ID.IsValid())
+        {
+            QUIET_CORE_WARN("Skipping hierarchy folder with invalid UUID '{}'.", idText);
+            return std::nullopt;
+        }
+
+        folder.Name = folderJson.value("name", std::string{ "Folder" });
+        folder.Expanded = folderJson.value("expanded", true);
+
+        if (folderJson.contains("children") && folderJson["children"].is_array())
+        {
+            for (const json& childJson : folderJson["children"])
+            {
+                if (auto child = DeserializeHierarchyNode(childJson))
+                {
+                    folder.Children.push_back(*child);
+                }
+            }
+        }
+
+        return folder;
+    }
+
+    static json SerializeHierarchyState(const SceneHierarchyState& hierarchy)
+    {
+        json hierarchyJson;
+        hierarchyJson["root"] = json::array();
+        hierarchyJson["folders"] = json::array();
+
+        for (const SceneHierarchyNode& node : hierarchy.RootNodes)
+        {
+            hierarchyJson["root"].push_back(SerializeHierarchyNode(node));
+        }
+
+        for (const SceneHierarchyFolder& folder : hierarchy.Folders)
+        {
+            hierarchyJson["folders"].push_back(SerializeHierarchyFolder(folder));
+        }
+
+        return hierarchyJson;
+    }
+
+    static SceneHierarchyState DeserializeHierarchyState(const json& hierarchyJson)
+    {
+        SceneHierarchyState hierarchy{};
+
+        if (hierarchyJson.contains("root") && hierarchyJson["root"].is_array())
+        {
+            for (const json& nodeJson : hierarchyJson["root"])
+            {
+                if (auto node = DeserializeHierarchyNode(nodeJson))
+                    hierarchy.RootNodes.push_back(*node);
+            }
+        }
+
+        if (hierarchyJson.contains("folders") && hierarchyJson["folders"].is_array())
+        {
+            for (const json& folderJson : hierarchyJson["folders"])
+            {
+                if (auto folder = DeserializeHierarchyFolder(folderJson))
+                    hierarchy.Folders.push_back(*folder);
+            }
+        }
+
+        return hierarchy;
     }
 
     bool SceneSerializer::SaveToFile(const Scene &scene, const std::filesystem::path &path)
@@ -52,6 +188,8 @@ namespace Quiet::Scene
             { "ambient_color", SerializeVec3(renderSettings.AmbientColor) },
             { "ambient_intensity", renderSettings.AmbientIntensity }
         };
+
+        root["editor_hierarchy"] = SerializeHierarchyState(scene.GetHierarchy());
 
         for (const auto& actor : scene.GetActors())
         {
@@ -125,8 +263,7 @@ namespace Quiet::Scene
         return true;
     }
 
-    bool SceneSerializer::LoadFromFile(Scene &scene, const Renderer::Vulkan::MeshLibrary &meshLibrary,
-        const std::filesystem::path &path)
+    bool SceneSerializer::LoadFromFile(Scene &scene, const Renderer::Vulkan::MeshLibrary &meshLibrary, const std::filesystem::path &path)
     {
         std::ifstream in(path);
         if (!in.is_open())
@@ -153,21 +290,17 @@ namespace Quiet::Scene
 
             if (renderSettingsJson.contains("light_direction"))
             {
-                renderSettings.LightDirection =
-                    DeserializeVec3(renderSettingsJson.at("light_direction"));
+                renderSettings.LightDirection = DeserializeVec3(renderSettingsJson.at("light_direction"));
             }
 
-            renderSettings.LightIntensity =
-                renderSettingsJson.value("light_intensity", renderSettings.LightIntensity);
+            renderSettings.LightIntensity = renderSettingsJson.value("light_intensity", renderSettings.LightIntensity);
 
             if (renderSettingsJson.contains("ambient_color"))
             {
-                renderSettings.AmbientColor =
-                    DeserializeVec3(renderSettingsJson.at("ambient_color"));
+                renderSettings.AmbientColor = DeserializeVec3(renderSettingsJson.at("ambient_color"));
             }
 
-            renderSettings.AmbientIntensity =
-                renderSettingsJson.value("ambient_intensity", renderSettings.AmbientIntensity);
+            renderSettings.AmbientIntensity = renderSettingsJson.value("ambient_intensity", renderSettings.AmbientIntensity);
         }
 
         for (const auto& actorJson : root["actors"])
@@ -203,9 +336,7 @@ namespace Quiet::Scene
                         actor.StaticMesh->MaterialSlots.clear();
                         for (const auto& materialSlotJson : staticMeshJson["material_slots"])
                         {
-                            actor.StaticMesh->MaterialSlots.push_back(
-                                DeserializeMaterial(materialSlotJson)
-                            );
+                            actor.StaticMesh->MaterialSlots.push_back(DeserializeMaterial(materialSlotJson));
                         }
                     }
                 }
@@ -239,7 +370,6 @@ namespace Quiet::Scene
                 }
 
                 light.Intensity = lightJson.value("intensity", light.Intensity);
-
                 actor.DirectionalLight = light;
             }
 
@@ -255,6 +385,25 @@ namespace Quiet::Scene
             {
                 DeserializeCamera(actorJson["camera"], actor);
             }
+        }
+
+        if (root.contains("editor_hierarchy") && root["editor_hierarchy"].is_object())
+        {
+            SceneHierarchyState hierarchy =
+                DeserializeHierarchyState(root["editor_hierarchy"]);
+
+            if (hierarchy.RootNodes.empty() && hierarchy.Folders.empty() && !scene.GetActors().empty())
+            {
+                scene.ResetHierarchyFromActors();
+            }
+            else
+            {
+                scene.SetHierarchy(std::move(hierarchy));
+            }
+        }
+        else
+        {
+            scene.ResetHierarchyFromActors();
         }
 
         QUIET_CORE_INFO("Loaded scene from '{}'.", path.string());

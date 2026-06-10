@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 #include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
@@ -22,6 +23,7 @@ namespace Quiet::Scene
         actor.Name = name;
 
         m_Actors.push_back(std::move(actor));
+        AddActorToHierarchyRoot(m_Actors.back().ID);
         return m_Actors.back();
     }
 
@@ -32,6 +34,7 @@ namespace Quiet::Scene
         actor.Name = name;
         
         m_Actors.push_back(std::move(actor));
+        AddActorToHierarchyRoot(m_Actors.back().ID);
         return m_Actors.back();
     }
 
@@ -61,6 +64,7 @@ namespace Quiet::Scene
         duplicate.Name = source->Name.empty() ? "Actor Copy" : source->Name + " Copy";
 
         m_Actors.push_back(std::move(duplicate));
+        AddActorToHierarchyRoot(m_Actors.back().ID);
         return &m_Actors.back();
     }
 
@@ -79,6 +83,7 @@ namespace Quiet::Scene
             return false;
 
         m_Actors.erase(it);
+        RemoveActorFromHierarchy(id);
         return true;
     }
 
@@ -108,14 +113,121 @@ namespace Quiet::Scene
             std::move(movedActor)
         );
 
+        MoveActorHierarchyRootNode(actorID, destinationIndex);
         return true;
     }
 
     void Scene::Clear()
     {
         m_RenderSettings = SceneRenderSettings{};
+        m_Hierarchy = SceneHierarchyState{};
         m_Actors.clear();
         m_RuntimeMode = RuntimeMode::None;
+    }
+
+    void Scene::ResetHierarchyFromActors()
+    {
+        m_Hierarchy.RootNodes.clear();
+        m_Hierarchy.RootNodes.reserve(m_Actors.size());
+        m_Hierarchy.Folders.clear();
+
+        for (const Actor& actor : m_Actors)
+        {
+            AddActorToHierarchyRoot(actor.ID);
+        }
+    }
+
+    void Scene::SetHierarchy(SceneHierarchyState hierarchy)
+    {
+        m_Hierarchy = std::move(hierarchy);
+    }
+
+    void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
+    {
+        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{
+            SceneHierarchyNodeType::Actor,
+            actorID
+        });
+    }
+
+    void Scene::RemoveActorFromHierarchy(const Core::UUID actorID)
+    {
+        const auto removeActorNode = [actorID](std::vector<SceneHierarchyNode>& nodes)
+        {
+            nodes.erase(
+                std::remove_if(
+                    nodes.begin(),
+                    nodes.end(),
+                    [actorID](const SceneHierarchyNode& node)
+                    {
+                        return node.Type == SceneHierarchyNodeType::Actor &&
+                               node.ID == actorID;
+                    }
+                ),
+                nodes.end()
+            );
+        };
+
+        removeActorNode(m_Hierarchy.RootNodes);
+        for (SceneHierarchyFolder& folder : m_Hierarchy.Folders)
+        {
+            removeActorNode(folder.Children);
+        }
+    }
+
+    bool Scene::MoveActorHierarchyRootNode(const Core::UUID actorID, const std::size_t destinationIndex)
+    {
+        std::vector<std::size_t> rootActorNodeIndices;
+        for (std::size_t nodeIndex = 0; nodeIndex < m_Hierarchy.RootNodes.size(); ++nodeIndex)
+        {
+            const SceneHierarchyNode& node = m_Hierarchy.RootNodes[nodeIndex];
+            if (node.Type == SceneHierarchyNodeType::Actor)
+            {
+                rootActorNodeIndices.push_back(nodeIndex);
+            }
+        }
+
+        if (destinationIndex >= rootActorNodeIndices.size())
+            return false;
+
+        const auto sourceIt = std::find_if(
+            m_Hierarchy.RootNodes.begin(),
+            m_Hierarchy.RootNodes.end(),
+            [actorID](const SceneHierarchyNode& node)
+            {
+                return node.Type == SceneHierarchyNodeType::Actor &&
+                       node.ID == actorID;
+            }
+        );
+
+        if (sourceIt == m_Hierarchy.RootNodes.end())
+            return false;
+
+        const std::size_t sourceNodeIndex =
+            static_cast<std::size_t>(
+                std::distance(m_Hierarchy.RootNodes.begin(), sourceIt)
+            );
+
+        const std::size_t destinationNodeIndex =
+            rootActorNodeIndices[destinationIndex];
+
+        if (sourceNodeIndex == destinationNodeIndex)
+        {
+            return false;
+        }
+
+        SceneHierarchyNode movedNode = *sourceIt;
+        m_Hierarchy.RootNodes.erase(sourceIt);
+
+        using DifferenceType = std::vector<SceneHierarchyNode>::difference_type;
+
+        m_Hierarchy.RootNodes.insert(
+            m_Hierarchy.RootNodes.begin() +
+                static_cast<DifferenceType>(destinationNodeIndex),
+            movedNode
+        );
+
+        return true;
     }
 
     void Scene::BeginRuntime(RuntimeMode mode)

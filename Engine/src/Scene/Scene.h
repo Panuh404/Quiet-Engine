@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include "Scene/Actor.h"
+#include "Scene/SceneHierarchy.h"
 #include "Scene/SceneRenderSettings.h"
 
 namespace Quiet::Input
@@ -37,6 +39,12 @@ namespace Quiet::Scene
 
         void Clear();
 
+        void ResetHierarchyFromActors();
+        void SetHierarchy(SceneHierarchyState hierarchy);
+
+        [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
+        [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
+
         void BeginRuntime(RuntimeMode mode);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
@@ -58,6 +66,10 @@ namespace Quiet::Scene
         [[nodiscard]] const Actor* FindPrimaryCameraActor() const;
 
     private:
+        void AddActorToHierarchyRoot(Core::UUID actorID);
+        void RemoveActorFromHierarchy(Core::UUID actorID);
+        bool MoveActorHierarchyRootNode(Core::UUID actorID, std::size_t destinationIndex);
+
         void OnRuntimeBegin(RuntimeMode mode);
         void OnRuntimeEnd(RuntimeMode mode);
         void OnSimulateBegin();
@@ -73,5 +85,6 @@ namespace Quiet::Scene
         SceneRenderSettings m_RenderSettings{};
         std::vector<Actor> m_Actors;
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
+        SceneHierarchyState m_Hierarchy{};
     };
 }

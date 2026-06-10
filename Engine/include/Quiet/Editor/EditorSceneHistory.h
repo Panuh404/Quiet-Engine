@@ -5,6 +5,7 @@
 
 #include "Quiet/Core/UUID.h"
 #include "Scene/Actor.h"
+#include "Scene/SceneHierarchy.h"
 
 namespace Quiet::Editor
 {
@@ -23,7 +24,8 @@ namespace Quiet::Editor
     public:
         struct SceneSnapshot
         {
-            std::vector<Quiet::Scene::Actor> Actors;
+            std::vector<Scene::Actor> Actors;
+            Scene::SceneHierarchyState Hierarchy;
             std::optional<Core::UUID> SelectedActorID;
         };
 
