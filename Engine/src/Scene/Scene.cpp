@@ -290,6 +290,42 @@ namespace Quiet::Scene
         return true;
     }
 
+    bool Scene::MoveHierarchyRootNode(SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex)
+    {
+        if (destinationIndex >= m_Hierarchy.RootNodes.size()) return false;
+
+        const auto sourceIt = std::find_if(
+        m_Hierarchy.RootNodes.begin(),
+        m_Hierarchy.RootNodes.end(),
+        [nodeType, nodeID](const SceneHierarchyNode& node)
+            {
+                return node.Type == nodeType &&
+                       node.ID == nodeID;
+            }
+        );
+
+        if (sourceIt == m_Hierarchy.RootNodes.end()) return false;
+
+        const std::size_t sourceIndex = static_cast<std::size_t>(
+            std::distance(m_Hierarchy.RootNodes.begin(), sourceIt)
+        );
+
+        if (sourceIndex == destinationIndex) return false;
+
+        SceneHierarchyNode movedNode = *sourceIt;
+        m_Hierarchy.RootNodes.erase(sourceIt);
+
+        using DifferenceType = std::vector<SceneHierarchyNode>::difference_type;
+
+        m_Hierarchy.RootNodes.insert(
+            m_Hierarchy.RootNodes.begin() +
+                static_cast<DifferenceType>(destinationIndex),
+            movedNode
+        );
+
+        return true;
+    }
+
     void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
     {
         m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{

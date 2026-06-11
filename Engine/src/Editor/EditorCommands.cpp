@@ -205,6 +205,16 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::MoveHierarchyRootNode(Scene::Scene &scene,
+                                               Scene::SceneHierarchyNodeType nodeType,
+                                               Core::UUID nodeID, std::size_t destinationIndex)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveHierarchyRootNode(nodeType, nodeID, destinationIndex);
+        });
+    }
+
     bool EditorCommands::DuplicateSelectedActor(Scene::Scene& scene)
     {
         const auto selectedActorID = m_EditorController.GetState().Selection.SelectedActorID;

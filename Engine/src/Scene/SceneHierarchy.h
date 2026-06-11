@@ -48,7 +48,6 @@ namespace Quiet::Scene
     {
         return lhs.ID == rhs.ID &&
                lhs.Name == rhs.Name &&
-               lhs.Expanded == rhs.Expanded &&
                lhs.Children == rhs.Children;
     }
 

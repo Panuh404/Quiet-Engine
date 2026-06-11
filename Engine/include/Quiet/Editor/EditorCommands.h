@@ -6,6 +6,7 @@
 #include "Quiet/Core/UUID.h"
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
+#include "Scene/SceneHierarchy.h"
 
 namespace Quiet::Scene
 {
@@ -49,6 +50,7 @@ namespace Quiet::Editor
         bool DeleteEmptyHierarchyFolder(Scene::Scene& scene, Core::UUID folderID);
         bool MoveActorToHierarchyFolder(Scene::Scene& scene, Core::UUID actorID, Core::UUID folderID);
         bool MoveActorToHierarchyRoot(Scene::Scene& scene, Core::UUID actorID);
+        bool MoveHierarchyRootNode(Scene::Scene& scene, Scene::SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex);
 
         bool DuplicateSelectedActor(Scene::Scene& scene);
         bool DeleteSelectedActor(Scene::Scene& scene);

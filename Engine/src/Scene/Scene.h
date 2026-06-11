@@ -52,6 +52,7 @@ namespace Quiet::Scene
 
         bool MoveActorToHierarchyFolder(Core::UUID actorID, Core::UUID folderID);
         bool MoveActorToHierarchyRoot(Core::UUID actorID);
+        bool MoveHierarchyRootNode(SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex);
 
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }

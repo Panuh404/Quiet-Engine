@@ -5,13 +5,13 @@
 #include <cstdio>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
-#include "Quiet/Editor/EditorController.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/AssetType.h"
@@ -42,6 +42,19 @@ namespace
         {
             if (actors[index].ID == actorID) return index;
         }
+        return std::nullopt;
+    }
+
+    std::optional<std::size_t> FindRootNodeIndex(const Quiet::Scene::SceneHierarchyState& hierarchy,
+                                                 const Quiet::Scene::SceneHierarchyNodeType nodeType,
+                                                 const Quiet::Core::UUID nodeID)
+    {
+        for (std::size_t index = 0; index < hierarchy.RootNodes.size(); ++index)
+        {
+            const Quiet::Scene::SceneHierarchyNode& node = hierarchy.RootNodes[index];
+            if (node.Type == nodeType && node.ID == nodeID) return index;
+        }
+
         return std::nullopt;
     }
 
@@ -743,7 +756,7 @@ namespace Quiet::Renderer::UI
 
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
-            std::optional<std::pair<Core::UUID, std::size_t>> pendingActorMove;
+            std::optional<std::tuple<Scene::SceneHierarchyNodeType, Core::UUID, std::size_t>> pendingRootNodeMove;
             std::optional<std::pair<Core::UUID, Core::UUID>> pendingActorMoveToFolder;
             std::optional<Core::UUID> pendingActorMoveToRoot;
             std::optional<Core::UUID> pendingFolderDelete;
@@ -757,8 +770,10 @@ namespace Quiet::Renderer::UI
             }
             else
             {
-                for (const auto & rootNode : hierarchy.RootNodes)
+                for (std::size_t rootNodeIndex = 0; rootNodeIndex < hierarchy.RootNodes.size(); ++rootNodeIndex)
                 {
+                    const Scene::SceneHierarchyNode& rootNode = hierarchy.RootNodes[rootNodeIndex];
+
                     if (rootNode.Type == Scene::SceneHierarchyNodeType::Folder)
                     {
                         Scene::SceneHierarchyFolder* folder = scene.FindHierarchyFolder(rootNode.ID);
@@ -804,6 +819,29 @@ namespace Quiet::Renderer::UI
                         {
                             const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
                             const bool canDelete = canEdit && folder->Children.empty();
+
+                            const bool canMoveUp = canEdit && rootNodeIndex > 0;
+                            const bool canMoveDown = canEdit && rootNodeIndex + 1 < hierarchy.RootNodes.size();
+
+                            if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
+                            {
+                                pendingRootNodeMove = std::make_tuple(
+                                    Scene::SceneHierarchyNodeType::Folder,
+                                    folder->ID,
+                                    rootNodeIndex - 1
+                                );
+                            }
+
+                            if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
+                            {
+                                pendingRootNodeMove = std::make_tuple(
+                                    Scene::SceneHierarchyNodeType::Folder,
+                                    folder->ID,
+                                    rootNodeIndex + 1
+                                );
+                            }
+
+                            ImGui::Separator();
 
                             if (QUI::EditorMenuItem("Rename", nullptr, false, canEdit))
                                 BeginFolderRename(*folder);
@@ -913,28 +951,35 @@ namespace Quiet::Renderer::UI
 
                             if (payload && g_DraggedActorID.has_value() && g_DraggedActorID.value() != actor->ID)
                             {
-                                DrawActorDropMarker(rowMin, rowMax, dropAfterTarget);
-                                if (payload->IsDelivery())
+                                const auto sourceRootIndex = FindRootNodeIndex(
+                                    hierarchy,
+                                    Scene::SceneHierarchyNodeType::Actor,
+                                    g_DraggedActorID.value()
+                                );
+
+                                if (sourceRootIndex.has_value())
                                 {
-                                    const auto sourceIndex = FindActorIndex(actors, g_DraggedActorID.value());
-                                    if (sourceIndex.has_value())
+                                    DrawActorDropMarker(rowMin, rowMax, dropAfterTarget);
+                                    if (payload->IsDelivery())
                                     {
                                         const std::size_t destinationIndex =
                                             CalculateDropDestinationIndex(
-                                                sourceIndex.value(),
-                                                actorIndex,
+                                                sourceRootIndex.value(),
+                                                rootNodeIndex,
                                                 dropAfterTarget
                                             );
 
-                                        if (destinationIndex != sourceIndex.value())
+                                        if (destinationIndex != sourceRootIndex.value())
                                         {
-                                            pendingActorMove = std::make_pair(
+                                            pendingRootNodeMove = std::make_tuple(
+                                                Scene::SceneHierarchyNodeType::Actor,
                                                 g_DraggedActorID.value(),
                                                 destinationIndex
                                             );
                                         }
+
+                                        g_DraggedActorID.reset();
                                     }
-                                    g_DraggedActorID.reset();
                                 }
                             }
                             ImGui::EndDragDropTarget();
@@ -946,14 +991,14 @@ namespace Quiet::Renderer::UI
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
                         const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
-                        const bool canMoveUp = canEdit && actorIndex > 0;
-                        const bool canMoveDown = canEdit && actorIndex + 1 < actors.size();
+                        const bool canMoveUp = canEdit && rootNodeIndex > 0;
+                        const bool canMoveDown = canEdit && rootNodeIndex + 1 < hierarchy.RootNodes.size();
 
                         if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
-                            pendingActorMove = std::make_pair(actor->ID, actorIndex - 1);
+                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actor->ID, rootNodeIndex - 1);
 
                         if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
-                            pendingActorMove = std::make_pair(actor->ID, actorIndex + 1);
+                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actor->ID, rootNodeIndex + 1);
 
                         ImGui::Separator();
 
@@ -980,6 +1025,62 @@ namespace Quiet::Renderer::UI
                         ImGui::EndPopup();
                     }
                 }
+
+                if (isEditMode)
+                {
+                    ImGui::Spacing();
+
+                    const float dropWidth = ImGui::GetContentRegionAvail().x;
+                    const float dropHeight = SZ::Px(42.0f);
+
+                    if (dropWidth > SZ::Px(32.0f))
+                    {
+                        const ImVec2 dropMin = ImGui::GetCursorScreenPos();
+
+                        ImGui::InvisibleButton(
+                            "##HierarchyRootDropTarget",
+                            ImVec2(dropWidth, dropHeight)
+                        );
+
+                        const ImVec2 dropMax = ImGui::GetItemRectMax();
+
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
+                                kActorDragDropPayload,
+                                ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                ImGuiDragDropFlags_AcceptNoDrawDefaultRect
+                            );
+
+                            if (payload && g_DraggedActorID.has_value())
+                            {
+                                DrawFolderDropHighlight(dropMin, dropMax);
+
+                                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                                const char* hint = "Drop here to move actor to root";
+                                const ImVec2 hintSize = ImGui::CalcTextSize(hint);
+                                const ImVec2 hintPos = ImVec2(
+                                    dropMin.x + (dropWidth - hintSize.x) * 0.5f,
+                                    dropMin.y + (dropHeight - hintSize.y) * 0.5f
+                                );
+
+                                drawList->AddText(
+                                    hintPos,
+                                    ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                                    hint
+                                );
+
+                                if (payload->IsDelivery())
+                                {
+                                    pendingActorMoveToRoot = g_DraggedActorID.value();
+                                    g_DraggedActorID.reset();
+                                }
+                            }
+
+                            ImGui::EndDragDropTarget();
+                        }
+                    }
+                }
             }
 
             DrawRenameFolderPopup(scene, editorCommands);
@@ -989,6 +1090,15 @@ namespace Quiet::Renderer::UI
                 editorCommands.DeleteEmptyHierarchyFolder(
                     scene,
                     pendingFolderDelete.value()
+                );
+            }
+            else if (pendingRootNodeMove.has_value())
+            {
+                editorCommands.MoveHierarchyRootNode(
+                    scene,
+                    std::get<0>(pendingRootNodeMove.value()),
+                    std::get<1>(pendingRootNodeMove.value()),
+                    std::get<2>(pendingRootNodeMove.value())
                 );
             }
             else if (pendingActorMoveToFolder.has_value())
@@ -1004,14 +1114,6 @@ namespace Quiet::Renderer::UI
                 editorCommands.MoveActorToHierarchyRoot(
                     scene,
                     pendingActorMoveToRoot.value()
-                );
-            }
-            else if (pendingActorMove.has_value())
-            {
-                editorCommands.MoveActor(
-                    scene,
-                    pendingActorMove->first,
-                    pendingActorMove->second
                 );
             }
             else if (pendingAction.has_value() && pendingActorSelection.has_value())
