@@ -5,6 +5,8 @@
 /out/
 /dist/
 
+.version/
+
 # CMake
 CMakeCache.txt
 CMakeFiles/

@@ -1,4 +1,8 @@
-# Quiet
+<p align="center">
+  <img src="Docs/Brand/quiet-logo.png" alt="Quiet Engine" width="512">
+</p>
+
+<h1 align="start">Quiet</h1>
 
 Quiet is a C++20 Vulkan engine project with an integrated editor workflow.
 
