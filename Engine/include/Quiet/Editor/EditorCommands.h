@@ -57,7 +57,6 @@ namespace Quiet::Editor
 
         bool DuplicateActor(Scene::Scene& scene, Core::UUID actorID);
         bool DeleteActor(Scene::Scene& scene, Core::UUID actorID);
-        bool MoveActor(Scene::Scene& scene, Core::UUID actorID, std::size_t destinationIndex);
 
         bool RenameActor(Scene::Scene& scene, Core::UUID actorID, const std::string& newName);
         bool SetActorPosition(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& position);

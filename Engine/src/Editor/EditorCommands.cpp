@@ -264,14 +264,6 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::MoveActor(Scene::Scene &scene, Core::UUID actorID, std::size_t destinationIndex)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
-        {
-            return scene.MoveActor(actorID, destinationIndex);
-        });
-    }
-
     bool EditorCommands::RenameActor(Scene::Scene& scene,
                                      Core::UUID actorID,
                                      const std::string& newName)

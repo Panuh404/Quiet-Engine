@@ -35,8 +35,6 @@ namespace Quiet::Scene
         Actor* TryDuplicateActor(Core::UUID sourceID);
 
         bool DestroyActorByID(Core::UUID id);
-        bool MoveActor(Core::UUID actorID, std::size_t destinationIndex);
-
         void Clear();
 
         void ResetHierarchyFromActors();
@@ -80,7 +78,6 @@ namespace Quiet::Scene
     private:
         void AddActorToHierarchyRoot(Core::UUID actorID);
         void RemoveActorFromHierarchy(Core::UUID actorID);
-        bool MoveActorHierarchyRootNode(Core::UUID actorID, std::size_t destinationIndex);
         void SanitizeHierarchy();
 
         void OnRuntimeBegin(RuntimeMode mode);

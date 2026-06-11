@@ -88,36 +88,6 @@ namespace Quiet::Scene
         return true;
     }
 
-    bool Scene::MoveActor(Core::UUID actorID, std::size_t destinationIndex)
-    {
-        if (destinationIndex >= m_Actors.size()) return false;
-
-        const auto sourceIt = std::find_if(
-            m_Actors.begin(),
-            m_Actors.end(),
-            [actorID](const Actor& actor)
-            {
-                return actor.ID == actorID;
-            }
-        );
-        if (sourceIt == m_Actors.end()) return false;
-
-        const std::size_t sourceIndex = static_cast<std::size_t>(std::distance(m_Actors.begin(), sourceIt));
-        if (sourceIndex == destinationIndex) return false;
-
-        Actor movedActor = std::move(*sourceIt);
-        m_Actors.erase(sourceIt);
-        using DifferenceType = std::vector<Actor>::difference_type;
-
-        m_Actors.insert(
-            m_Actors.begin() + static_cast<DifferenceType>(destinationIndex),
-            std::move(movedActor)
-        );
-
-        MoveActorHierarchyRootNode(actorID, destinationIndex);
-        return true;
-    }
-
     void Scene::Clear()
     {
         m_RenderSettings = SceneRenderSettings{};
@@ -373,61 +343,6 @@ namespace Quiet::Scene
         {
             removeActorNode(folder.Children);
         }
-    }
-
-    bool Scene::MoveActorHierarchyRootNode(const Core::UUID actorID, const std::size_t destinationIndex)
-    {
-        std::vector<std::size_t> rootActorNodeIndices;
-        for (std::size_t nodeIndex = 0; nodeIndex < m_Hierarchy.RootNodes.size(); ++nodeIndex)
-        {
-            const SceneHierarchyNode& node = m_Hierarchy.RootNodes[nodeIndex];
-            if (node.Type == SceneHierarchyNodeType::Actor)
-            {
-                rootActorNodeIndices.push_back(nodeIndex);
-            }
-        }
-
-        if (destinationIndex >= rootActorNodeIndices.size())
-            return false;
-
-        const auto sourceIt = std::find_if(
-            m_Hierarchy.RootNodes.begin(),
-            m_Hierarchy.RootNodes.end(),
-            [actorID](const SceneHierarchyNode& node)
-            {
-                return node.Type == SceneHierarchyNodeType::Actor &&
-                       node.ID == actorID;
-            }
-        );
-
-        if (sourceIt == m_Hierarchy.RootNodes.end())
-            return false;
-
-        const std::size_t sourceNodeIndex =
-            static_cast<std::size_t>(
-                std::distance(m_Hierarchy.RootNodes.begin(), sourceIt)
-            );
-
-        const std::size_t destinationNodeIndex =
-            rootActorNodeIndices[destinationIndex];
-
-        if (sourceNodeIndex == destinationNodeIndex)
-        {
-            return false;
-        }
-
-        SceneHierarchyNode movedNode = *sourceIt;
-        m_Hierarchy.RootNodes.erase(sourceIt);
-
-        using DifferenceType = std::vector<SceneHierarchyNode>::difference_type;
-
-        m_Hierarchy.RootNodes.insert(
-            m_Hierarchy.RootNodes.begin() +
-                static_cast<DifferenceType>(destinationNodeIndex),
-            movedNode
-        );
-
-        return true;
     }
 
     void Scene::SanitizeHierarchy()
