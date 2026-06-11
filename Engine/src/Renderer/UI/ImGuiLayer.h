@@ -121,7 +121,8 @@ namespace Quiet::Renderer::UI
         void BuildMainMenuBar(Editor::EditorActions& editorActions,
                               Editor::EditorState& editorState);
         void BuildTopbar(Editor::EditorActions& editorActions,
-                         Editor::EditorState& editorState);
+                        Editor::EditorState& editorState,
+                        const Vulkan::TextureLibrary& textureLibrary);
 
         // Scene Panels
         void BuildInspector(Scene::Scene& scene,

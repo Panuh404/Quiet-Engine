@@ -145,7 +145,7 @@ namespace Quiet::Renderer::UI
         Editor::EditorActions actions(input, scene, commands, editorState);
 
         BuildDockspace();
-        BuildTopbar(actions, editorState);
+        BuildTopbar(actions, editorState, textureLibrary);
         BuildHierarchy(scene, actions, commands, editorState, projectContext, meshLibrary);
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary, textureLibrary);
 

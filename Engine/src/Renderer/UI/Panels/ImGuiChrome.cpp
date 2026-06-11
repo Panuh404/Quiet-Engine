@@ -5,6 +5,7 @@
 
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiToolbarCommon.h"
+#include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorState.h"
@@ -12,6 +13,7 @@
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    constexpr const char* kEditorTopbarLogoTextureID = "Editor.TopbarLogo";
 
     const char* GetSceneModeLabel(Quiet::Editor::SceneMode mode)
     {
@@ -42,30 +44,33 @@ namespace
         ImGui::PopStyleColor();
     }
 
-    void DrawTopbarBrand(float uiScale)
+    void DrawTopbarLogo(const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary, const float uiScale)
     {
-        const ImVec2 cursor = ImGui::GetCursorScreenPos();
-        const float markerWidth = 3.0f * uiScale;
-        const float markerHeight = ImGui::GetTextLineHeight() + 2.0f * uiScale;
+        const ImTextureID logoTexture = QUI::GetOrCreateTexturePreviewID(kEditorTopbarLogoTextureID, textureLibrary);
 
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (!logoTexture) return;
+        const float logoSize = 36.0f * uiScale;
+        const float toolbarHeight = QUI::ToolbarStyle::ButtonHeight();
+        const float cursorY = ImGui::GetCursorPosY();
 
-        drawList->AddRectFilled(
-            ImVec2(cursor.x, cursor.y + 1.0f * uiScale),
-            ImVec2(cursor.x + markerWidth, cursor.y + markerHeight),
-            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover),
-            2.0f * uiScale
+        ImGui::SetCursorPosY(
+            cursorY + std::max(0.0f, (toolbarHeight - logoSize) * 0.5f)
         );
 
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f * uiScale);
+        ImGui::Image(
+            logoTexture,
+            ImVec2(logoSize, logoSize),
+            ImVec2(0.0f, 1.0f),
+            ImVec2(1.0f, 0.0f)
+        );
 
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.98f, 1.0f, 1.0f));
-        ImGui::TextUnformatted("QUIET");
-        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("Quiet Engine");
+        }
     }
 
-    void DrawTopbarStatusPill(const Quiet::Editor::EditorState& editorState,
-                              float uiScale)
+    void DrawTopbarStatusPill(const Quiet::Editor::EditorState& editorState, float uiScale)
     {
         std::string sceneName = editorState.Scene.DisplayName.empty()
             ? "Untitled Scene"
@@ -125,8 +130,7 @@ namespace
         ImGui::Dummy(pillSize);
     }
 
-    bool DrawMenuAction(Quiet::Editor::EditorActions& actions,
-                        Quiet::Editor::EditorActionID actionID)
+    bool DrawMenuAction(Quiet::Editor::EditorActions& actions, Quiet::Editor::EditorActionID actionID)
     {
         const char* shortcut = actions.GetShortcut(actionID);
         if (shortcut[0] == '\0') shortcut = nullptr;
@@ -194,8 +198,7 @@ namespace Quiet::Renderer::UI
         ImGui::EndMainMenuBar();
     }
 
-    void ImGuiLayer::BuildTopbar(Editor::EditorActions& editorActions,
-                                 Editor::EditorState& editorState)
+    void ImGuiLayer::BuildTopbar(Editor::EditorActions& editorActions, Editor::EditorState& editorState, const Vulkan::TextureLibrary& textureLibrary)
     {
         const float topbarHeight = GetToolbarHeight();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -222,9 +225,7 @@ namespace Quiet::Renderer::UI
         ImGui::Begin("##MainTopbar", nullptr, windowFlags);
         ImGui::PopStyleVar(3);
 
-        if (m_Fonts.Bold) ImGui::PushFont(m_Fonts.Bold);
-        DrawTopbarBrand(m_UIScale);
-        if (m_Fonts.Bold) ImGui::PopFont();
+        DrawTopbarLogo(textureLibrary, m_UIScale);
 
         ImGui::SameLine();
         DrawTopbarSeparator();

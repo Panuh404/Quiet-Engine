@@ -4,6 +4,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
 
+#include <filesystem>
 #include <stdexcept>
 #include "GLFW/glfw3.h"
 
@@ -27,9 +28,17 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
+#include "Renderer/Vulkan/Texture/TextureImporter.h"
+#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
 namespace
 {
+    #ifndef QUIET_ENGINE_RESOURCES_PATH
+    #define QUIET_ENGINE_RESOURCES_PATH "Resources"
+    #endif
+
+    constexpr const char* kEditorTopbarLogoTextureID = "Editor.TopbarLogo";
+
      void TransitionImageLayout(VkCommandBuffer commandBuffer,
                                VkImage image,
                                VkImageAspectFlags aspectMask,
@@ -200,6 +209,8 @@ namespace Quiet::Renderer::Vulkan
         m_MeshLibrary = std::make_unique<MeshLibrary>();
         m_TextureLibrary = std::make_unique<TextureLibrary>();
 
+        LoadEditorTextures();
+
         m_CameraResources = std::make_unique<CameraResources>(
             *m_PhysicalDevice,
             *m_LogicalDevice,
@@ -247,6 +258,65 @@ namespace Quiet::Renderer::Vulkan
         m_PhysicalDevice.reset();
         m_VulkanSurface.reset();
         m_VulkanInstance.reset();
+    }
+
+    void VulkanRenderer::LoadEditorTextures()
+    {
+        if (!m_TextureLibrary ||  !m_PhysicalDevice || !m_LogicalDevice || !m_GraphicsCommands) return;
+
+        const std::filesystem::path logoPath =
+            std::filesystem::path(QUIET_ENGINE_RESOURCES_PATH) /
+            "Textures" /
+            "Editor" /
+            "quiet-topbar.png";
+
+        if (!std::filesystem::exists(logoPath))
+        {
+            QUIET_CORE_WARN("Editor topbar logo texture was not found at '{}'.", logoPath.string());
+            return;
+        }
+
+        const TexturePixelData pixelData = TextureImporter::LoadPixelsFromFile(logoPath);
+        if (!pixelData.Metadata.Succeeded() || !pixelData.IsValid())
+        {
+            QUIET_CORE_WARN(
+                "Failed to load editor topbar logo texture from '{}': {}",
+                logoPath.string(),
+                pixelData.Metadata.Error
+            );
+            return;
+        }
+
+        TextureStats stats{};
+        stats.Format = pixelData.Metadata.Format;
+        stats.Width = pixelData.Width;
+        stats.Height = pixelData.Height;
+        stats.DimensionsValid = true;
+        stats.FileSizeBytes = pixelData.Metadata.FileSizeBytes;
+        stats.PixelBytes = pixelData.GetByteSize();
+        stats.GpuReady = true;
+        stats.Warnings = pixelData.Metadata.Warnings;
+        stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
+
+        try
+        {
+            m_TextureLibrary->CreateTexture2D(
+                kEditorTopbarLogoTextureID,
+                *m_PhysicalDevice,
+                *m_LogicalDevice,
+                *m_GraphicsCommands,
+                pixelData,
+                stats
+            );
+        }
+        catch (const std::exception& e)
+        {
+            QUIET_CORE_WARN(
+                "Failed to create editor topbar logo GPU texture '{}': {}",
+                kEditorTopbarLogoTextureID,
+                e.what()
+            );
+        }
     }
 
     bool VulkanRenderer::DrawFrame(Scene::Scene &scene,

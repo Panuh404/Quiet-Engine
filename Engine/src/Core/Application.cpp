@@ -150,6 +150,7 @@ namespace Quiet::Core
         windowDesc.Width = m_Spec.Width;
         windowDesc.Height = m_Spec.Height;
         windowDesc.Title = m_Spec.Name;
+        windowDesc.IconPath = m_Spec.WindowIconPath;
         windowDesc.StartMaximized = m_Spec.StartMaximized;
 
         m_Window = std::make_unique<Platform::Window>(windowDesc);

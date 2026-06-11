@@ -1,6 +1,12 @@
 #include "Quiet/Platform/Window.h"
+
+#include "Quiet/Core/Log.h"
+
 #include <GLFW/glfw3.h>
+#include <stb_image.h>
+
 #include <stdexcept>
+#include <string>
 
 namespace
 {
@@ -11,6 +17,45 @@ namespace
         {
             quietWindow->MarkFramebufferResized();
         }
+    }
+
+    void ApplyWindowIcon(GLFWwindow* window, const std::string& iconPath)
+    {
+        if (!window || iconPath.empty()) return;
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+
+        stbi_set_flip_vertically_on_load(0);
+
+        unsigned char* pixels = stbi_load(
+            iconPath.c_str(),
+            &width,
+            &height,
+            &channels,
+            STBI_rgb_alpha
+        );
+
+        if (!pixels || width <= 0 || height <= 0)
+        {
+            QUIET_CORE_WARN(
+                "Failed to load window icon '{}': {}",
+                iconPath,
+                stbi_failure_reason() ? stbi_failure_reason() : "unknown error"
+            );
+
+            if (pixels) stbi_image_free(pixels);
+            return;
+        }
+
+        GLFWimage image{};
+        image.width = width;
+        image.height = height;
+        image.pixels = pixels;
+
+        glfwSetWindowIcon(window, 1, &image);
+        stbi_image_free(pixels);
+        QUIET_CORE_INFO("Applied window icon '{}'.", iconPath);
     }
 }
 
@@ -41,6 +86,8 @@ namespace Quiet::Platform
 
         glfwSetWindowUserPointer(m_Handle, this);
         glfwSetFramebufferSizeCallback(m_Handle, FramebufferSizeCallback);
+
+        ApplyWindowIcon(m_Handle, m_Desc.IconPath);
     }
 
     Window::~Window()

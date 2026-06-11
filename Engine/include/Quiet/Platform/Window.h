@@ -14,6 +14,7 @@ namespace Quiet::Platform
         std::uint32_t Width = 1280;
         std::uint32_t Height = 720;
         std::string Title = "Quiet";
+        std::string IconPath;
         bool Resizable = true;
         bool StartMaximized = true;
     };

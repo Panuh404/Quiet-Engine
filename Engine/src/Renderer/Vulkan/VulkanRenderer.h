@@ -96,6 +96,8 @@ namespace Quiet::Renderer::Vulkan
         void CreateRenderResources(Platform::Window& window, const Core::AppSpec& spec);
         void DestroyRenderResources();
 
+        void LoadEditorTextures();
+
         void EnsureSceneViewportSize();
         void RecordFrameCommandBuffer(std::uint32_t imageIndex,
                                       Scene::Scene& scene,
