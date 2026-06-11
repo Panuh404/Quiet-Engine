@@ -444,6 +444,9 @@ namespace Quiet::Scene
         std::unordered_set<Core::UUID> validFolderIDs;
         validFolderIDs.reserve(m_Hierarchy.Folders.size());
 
+        std::unordered_set<Core::UUID> placedActorIDs;
+        placedActorIDs.reserve(validActorIDs.size());
+
         std::vector<SceneHierarchyFolder> sanitizedFolders;
         sanitizedFolders.reserve(m_Hierarchy.Folders.size());
 
@@ -471,19 +474,13 @@ namespace Quiet::Scene
             {
                 if (childNode.Type != SceneHierarchyNodeType::Actor)
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping unsupported non-actor child node in hierarchy folder '{}'.",
-                        Core::UUIDToString(folder.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping unsupported non-actor child node in hierarchy folder '{}'.", Core::UUIDToString(folder.ID));
                     continue;
                 }
 
                 if (!validActorIDs.contains(childNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping hierarchy child actor '{}' because the actor does not exist.",
-                        Core::UUIDToString(childNode.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping hierarchy child actor '{}' because the actor does not exist.", Core::UUIDToString(childNode.ID));
                     continue;
                 }
 
@@ -497,7 +494,18 @@ namespace Quiet::Scene
                     continue;
                 }
 
+                if (placedActorIDs.contains(childNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping actor '{}' in hierarchy folder '{}' because it is already placed elsewhere.",
+                        Core::UUIDToString(childNode.ID),
+                        Core::UUIDToString(folder.ID)
+                    );
+                    continue;
+                }
+
                 childActorIDs.insert(childNode.ID);
+                placedActorIDs.insert(childNode.ID);
                 sanitizedChildren.push_back(childNode);
             }
 
@@ -513,17 +521,6 @@ namespace Quiet::Scene
         for (const SceneHierarchyFolder& folder : m_Hierarchy.Folders)
         {
             validFolderIDs.insert(folder.ID);
-        }
-
-        std::unordered_set<Core::UUID> placedActorIDs;
-        placedActorIDs.reserve(validActorIDs.size());
-
-        for (const SceneHierarchyFolder& folder : m_Hierarchy.Folders)
-        {
-            for (const SceneHierarchyNode& childNode : folder.Children)
-            {
-                placedActorIDs.insert(childNode.ID);
-            }
         }
 
         std::unordered_set<Core::UUID> placedFolderIDs;

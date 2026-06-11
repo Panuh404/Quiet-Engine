@@ -227,7 +227,7 @@ namespace
         ImGui::PopStyleVar();
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-        ImGui::TextWrapped("Actors in the active scene.");
+        ImGui::TextWrapped("Organize scene actors with folders. Drag rows to reorder or group them.");
         ImGui::PopStyleColor();
 
         if (!hasInlineButtonSpace)
@@ -267,13 +267,13 @@ namespace
         );
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("No actors in scene");
+            ImGui::TextUnformatted("No hierarchy items");
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("Use + Create to add an Empty Actor, Light, or Mesh Actor.");
+            ImGui::TextWrapped("Use + Create to add an actor, light, mesh actor, or folder.");
             ImGui::PopStyleColor();
         }
         ImGui::EndChild();
@@ -824,9 +824,6 @@ namespace Quiet::Renderer::UI
                 ImGui::EndPopup();
             }
 
-            ImGui::Spacing();
-            DrawSectionTitle("Hierarchy");
-
             std::optional<Editor::EditorActionID> pendingAction;
             std::optional<Core::UUID> pendingActorSelection;
             std::optional<std::tuple<Scene::SceneHierarchyNodeType, Core::UUID, std::size_t>> pendingRootNodeMove;
@@ -963,7 +960,13 @@ namespace Quiet::Renderer::UI
 
                         if (folder->Expanded && !folder->Children.empty())
                         {
-                            ImGui::Indent(SZ::Px(18.0f));
+                            const float childIndent = SZ::Px(20.0f);
+
+                            ImGui::Indent(childIndent);
+
+                            const ImVec2 childGuideStart = ImGui::GetCursorScreenPos();
+                            const float childGuideX = childGuideStart.x - SZ::Px(10.0f);
+                            const float childGuideY0 = childGuideStart.y + SZ::Px(3.0f);
 
                             for (const Scene::SceneHierarchyNode& childNode : folder->Children)
                             {
@@ -1016,7 +1019,19 @@ namespace Quiet::Renderer::UI
                                     ImGui::EndPopup();
                                 }
                             }
-                            ImGui::Unindent(SZ::Px(18.0f));
+                            const float childGuideY1 = ImGui::GetCursorScreenPos().y - SZ::Px(4.0f);
+
+                            if (childGuideY1 > childGuideY0)
+                            {
+                                ImGui::GetWindowDrawList()->AddLine(
+                                    ImVec2(childGuideX, childGuideY0),
+                                    ImVec2(childGuideX, childGuideY1),
+                                    ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+                                    SZ::Px(1.0f)
+                                );
+                            }
+
+                            ImGui::Unindent(childIndent);
                         }
                         continue;
                     }
@@ -1225,6 +1240,11 @@ namespace Quiet::Renderer::UI
                 editorActions.Execute(pendingAction.value());
             }
         }
+        if (ImGui::GetDragDropPayload() == nullptr)
+        {
+            ResetHierarchyDragState();
+        }
+
         ImGui::End();
     }
 }
