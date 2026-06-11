@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 
 #include "Scene/Camera/CameraPilotUtils.h"
@@ -140,6 +141,7 @@ namespace Quiet::Scene
     void Scene::SetHierarchy(SceneHierarchyState hierarchy)
     {
         m_Hierarchy = std::move(hierarchy);
+        SanitizeHierarchy();
     }
 
     Core::UUID Scene::CreateHierarchyFolder(const std::string &name)
@@ -328,6 +330,20 @@ namespace Quiet::Scene
 
     void Scene::AddActorToHierarchyRoot(const Core::UUID actorID)
     {
+        if (!actorID.IsValid()) return;
+
+        const bool alreadyInRoot = std::any_of(
+            m_Hierarchy.RootNodes.begin(),
+            m_Hierarchy.RootNodes.end(),
+            [actorID](const SceneHierarchyNode& node)
+            {
+                return node.Type == SceneHierarchyNodeType::Actor &&
+                       node.ID == actorID;
+            }
+        );
+
+        if (alreadyInRoot) return;
+
         m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{
             SceneHierarchyNodeType::Actor,
             actorID
@@ -412,6 +428,182 @@ namespace Quiet::Scene
         );
 
         return true;
+    }
+
+    void Scene::SanitizeHierarchy()
+    {
+        std::unordered_set<Core::UUID> validActorIDs;
+        validActorIDs.reserve(m_Actors.size());
+
+        for (const Actor& actor : m_Actors)
+        {
+            if (actor.ID.IsValid())
+                validActorIDs.insert(actor.ID);
+        }
+
+        std::unordered_set<Core::UUID> validFolderIDs;
+        validFolderIDs.reserve(m_Hierarchy.Folders.size());
+
+        std::vector<SceneHierarchyFolder> sanitizedFolders;
+        sanitizedFolders.reserve(m_Hierarchy.Folders.size());
+
+        for (SceneHierarchyFolder& folder : m_Hierarchy.Folders)
+        {
+            if (!folder.ID.IsValid())
+            {
+                QUIET_CORE_WARN("Skipping hierarchy folder with invalid ID.");
+                continue;
+            }
+
+            if (validFolderIDs.contains(folder.ID))
+            {
+                QUIET_CORE_WARN("Skipping duplicate hierarchy folder '{}'.", Core::UUIDToString(folder.ID));
+                continue;
+            }
+
+            validFolderIDs.insert(folder.ID);
+
+            std::unordered_set<Core::UUID> childActorIDs;
+            std::vector<SceneHierarchyNode> sanitizedChildren;
+            sanitizedChildren.reserve(folder.Children.size());
+
+            for (const SceneHierarchyNode& childNode : folder.Children)
+            {
+                if (childNode.Type != SceneHierarchyNodeType::Actor)
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping unsupported non-actor child node in hierarchy folder '{}'.",
+                        Core::UUIDToString(folder.ID)
+                    );
+                    continue;
+                }
+
+                if (!validActorIDs.contains(childNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping hierarchy child actor '{}' because the actor does not exist.",
+                        Core::UUIDToString(childNode.ID)
+                    );
+                    continue;
+                }
+
+                if (childActorIDs.contains(childNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping duplicate actor '{}' inside hierarchy folder '{}'.",
+                        Core::UUIDToString(childNode.ID),
+                        Core::UUIDToString(folder.ID)
+                    );
+                    continue;
+                }
+
+                childActorIDs.insert(childNode.ID);
+                sanitizedChildren.push_back(childNode);
+            }
+
+            folder.Children = std::move(sanitizedChildren);
+            sanitizedFolders.push_back(std::move(folder));
+        }
+
+        m_Hierarchy.Folders = std::move(sanitizedFolders);
+
+        validFolderIDs.clear();
+        validFolderIDs.reserve(m_Hierarchy.Folders.size());
+
+        for (const SceneHierarchyFolder& folder : m_Hierarchy.Folders)
+        {
+            validFolderIDs.insert(folder.ID);
+        }
+
+        std::unordered_set<Core::UUID> placedActorIDs;
+        placedActorIDs.reserve(validActorIDs.size());
+
+        for (const SceneHierarchyFolder& folder : m_Hierarchy.Folders)
+        {
+            for (const SceneHierarchyNode& childNode : folder.Children)
+            {
+                placedActorIDs.insert(childNode.ID);
+            }
+        }
+
+        std::unordered_set<Core::UUID> placedFolderIDs;
+        placedFolderIDs.reserve(validFolderIDs.size());
+
+        std::vector<SceneHierarchyNode> sanitizedRootNodes;
+        sanitizedRootNodes.reserve(m_Hierarchy.RootNodes.size() + m_Actors.size());
+
+        for (const SceneHierarchyNode& rootNode : m_Hierarchy.RootNodes)
+        {
+            if (rootNode.Type == SceneHierarchyNodeType::Actor)
+            {
+                if (!validActorIDs.contains(rootNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping hierarchy root actor '{}' because the actor does not exist.",
+                        Core::UUIDToString(rootNode.ID)
+                    );
+                    continue;
+                }
+
+                if (placedActorIDs.contains(rootNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping duplicate hierarchy root actor '{}'.",
+                        Core::UUIDToString(rootNode.ID)
+                    );
+                    continue;
+                }
+
+                placedActorIDs.insert(rootNode.ID);
+                sanitizedRootNodes.push_back(rootNode);
+                continue;
+            }
+
+            if (rootNode.Type == SceneHierarchyNodeType::Folder)
+            {
+                if (!validFolderIDs.contains(rootNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping hierarchy root folder '{}' because the folder does not exist.",
+                        Core::UUIDToString(rootNode.ID)
+                    );
+                    continue;
+                }
+
+                if (placedFolderIDs.contains(rootNode.ID))
+                {
+                    QUIET_CORE_WARN(
+                        "Skipping duplicate hierarchy root folder '{}'.",
+                        Core::UUIDToString(rootNode.ID)
+                    );
+                    continue;
+                }
+
+                placedFolderIDs.insert(rootNode.ID);
+                sanitizedRootNodes.push_back(rootNode);
+                continue;
+            }
+        }
+
+        for (const Actor& actor : m_Actors)
+        {
+            if (!actor.ID.IsValid()) continue;
+            if (placedActorIDs.contains(actor.ID)) continue;
+
+            sanitizedRootNodes.push_back(SceneHierarchyNode{
+                SceneHierarchyNodeType::Actor,
+                actor.ID
+            });
+
+            placedActorIDs.insert(actor.ID);
+
+            QUIET_CORE_WARN(
+                "Hierarchy metadata was missing actor '{}'. Appended actor to root.",
+                Core::UUIDToString(actor.ID)
+            );
+        }
+
+        m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
     void Scene::BeginRuntime(RuntimeMode mode)

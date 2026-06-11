@@ -81,6 +81,7 @@ namespace Quiet::Scene
         void AddActorToHierarchyRoot(Core::UUID actorID);
         void RemoveActorFromHierarchy(Core::UUID actorID);
         bool MoveActorHierarchyRootNode(Core::UUID actorID, std::size_t destinationIndex);
+        void SanitizeHierarchy();
 
         void OnRuntimeBegin(RuntimeMode mode);
         void OnRuntimeEnd(RuntimeMode mode);
