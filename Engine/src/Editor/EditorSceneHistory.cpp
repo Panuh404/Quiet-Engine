@@ -35,6 +35,14 @@ namespace
                AreFloatsEqual(lhs.w, rhs.w);
     }
 
+    bool AreRenderSettingsEqual(const Quiet::Scene::SceneRenderSettings& lhs, const Quiet::Scene::SceneRenderSettings& rhs)
+    {
+        return AreVec3Equal(lhs.LightDirection, rhs.LightDirection) &&
+               AreFloatsEqual(lhs.LightIntensity, rhs.LightIntensity) &&
+               AreVec3Equal(lhs.AmbientColor, rhs.AmbientColor) &&
+               AreFloatsEqual(lhs.AmbientIntensity, rhs.AmbientIntensity);
+    }
+
     bool AreTransformsEqual(const Quiet::Scene::Transform& lhs,
                             const Quiet::Scene::Transform& rhs)
     {
@@ -234,22 +242,21 @@ namespace Quiet::Editor
         return true;
     }
 
-    EditorSceneHistory::SceneSnapshot EditorSceneHistory::CaptureSnapshot(const Scene::Scene& scene,
-                                                                          const EditorState& state) const
+    EditorSceneHistory::SceneSnapshot EditorSceneHistory::CaptureSnapshot(const Scene::Scene& scene, const EditorState& state) const
     {
         SceneSnapshot snapshot{};
         snapshot.Actors = scene.GetActors();
         snapshot.Hierarchy = scene.GetHierarchy();
+        snapshot.RenderSettings = scene.GetRenderSettings();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
         return snapshot;
     }
 
-    void EditorSceneHistory::RestoreSnapshot(Scene::Scene& scene,
-                                             EditorState& state,
-                                             const SceneSnapshot& snapshot)
+    void EditorSceneHistory::RestoreSnapshot(Scene::Scene& scene, EditorState& state, const SceneSnapshot& snapshot)
     {
         scene.GetActors() = snapshot.Actors;
         scene.SetHierarchy(snapshot.Hierarchy);
+        scene.GetRenderSettings() = snapshot.RenderSettings;
         state.Selection.SelectedActorID = snapshot.SelectedActorID;
     }
 
@@ -257,7 +264,8 @@ namespace Quiet::Editor
     {
         return lhs.SelectedActorID == rhs.SelectedActorID &&
                AreActorListsEqual(lhs.Actors, rhs.Actors) &&
-               lhs.Hierarchy == rhs.Hierarchy;
+               lhs.Hierarchy == rhs.Hierarchy &&
+               AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings);
     }
 
     void EditorSceneHistory::PushUndoSnapshot(SceneSnapshot snapshot)
@@ -295,6 +303,7 @@ namespace Quiet::Editor
         const SceneSnapshot currentSnapshot = CaptureSnapshot(scene, state);
         state.Scene.Dirty =
             !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors) ||
-            m_CleanSnapshot->Hierarchy != currentSnapshot.Hierarchy;
+            m_CleanSnapshot->Hierarchy != currentSnapshot.Hierarchy ||
+            !AreRenderSettingsEqual(m_CleanSnapshot->RenderSettings, currentSnapshot.RenderSettings);
     }
 }

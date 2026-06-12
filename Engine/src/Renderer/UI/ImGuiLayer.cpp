@@ -148,6 +148,7 @@ namespace Quiet::Renderer::UI
         BuildTopbar(actions, editorState, textureLibrary);
         BuildHierarchy(scene, actions, commands, editorState, projectContext, meshLibrary);
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary, textureLibrary);
+        BuildSceneSettings(scene, commands, editorState);
 
         BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary, textureLibrary);
         BuildMainMenuBar(actions, editorState);

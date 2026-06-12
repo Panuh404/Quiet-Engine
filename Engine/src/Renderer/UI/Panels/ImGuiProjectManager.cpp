@@ -54,19 +54,6 @@ namespace
         ImGui::Spacing();
     }
 
-    void DrawMetaRow(const char* label, const std::string& value, const float valueColumnX)
-    {
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-        ImGui::Text("%s", label);
-        ImGui::PopStyleColor();
-
-        ImGui::SameLine(valueColumnX);
-
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-        ImGui::TextWrapped("%s", value.c_str());
-        ImGui::PopStyleColor();
-    }
-
     void DrawStatChip(const char* label, const std::string& value)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(8.0f));

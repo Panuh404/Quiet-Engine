@@ -580,24 +580,28 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction)
     {
+        if (!CanEditScene()) return false;
         scene.GetRenderSettings().LightDirection = direction;
         return true;
     }
 
     bool EditorCommands::SetSceneLightIntensity(Scene::Scene& scene, const float intensity)
     {
+        if (!CanEditScene()) return false;
         scene.GetRenderSettings().LightIntensity = intensity;
         return true;
     }
 
     bool EditorCommands::SetSceneAmbientColor(Scene::Scene& scene, const glm::vec3& color)
     {
+        if (!CanEditScene()) return false;
         scene.GetRenderSettings().AmbientColor = color;
         return true;
     }
 
     bool EditorCommands::SetSceneAmbientIntensity(Scene::Scene& scene, const float intensity)
     {
+        if (!CanEditScene()) return false;
         scene.GetRenderSettings().AmbientIntensity = intensity;
         return true;
     }

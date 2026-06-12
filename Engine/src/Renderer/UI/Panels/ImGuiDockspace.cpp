@@ -166,6 +166,7 @@ namespace Quiet::Renderer::UI
         ImGui::DockBuilderDockWindow("Viewport", dockMain);
         ImGui::DockBuilderDockWindow("Scene", dockLeft);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
+        ImGui::DockBuilderDockWindow("Scene Settings", dockRight);
         ImGui::DockBuilderDockWindow("Assets", dockBottom);
         ImGui::DockBuilderDockWindow("Console", dockBottom);
         ImGui::DockBuilderDockWindow("Debug", dockBottomRight);

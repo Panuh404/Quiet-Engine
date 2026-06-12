@@ -90,6 +90,7 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiInspectorSections.cpp
         src/Renderer/UI/Panels/ImGuiInspectorSections.h
         src/Renderer/UI/Panels/ImGuiProjectManager.cpp
+        src/Renderer/UI/Panels/ImGuiSceneSettingsPanel.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
         # Renderer - Vulkan - Mesh
