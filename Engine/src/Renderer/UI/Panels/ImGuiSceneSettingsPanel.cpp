@@ -1,6 +1,7 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
 #include <algorithm>
+#include <glm/geometric.hpp>
 #include <imgui.h>
 
 #include "Quiet/Editor/EditorCommands.h"
@@ -223,6 +224,14 @@ namespace
         return open;
     }
 
+    void SameLineIfEnoughWidth(const float nextItemWidth)
+    {
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+
+        if (ImGui::GetContentRegionAvail().x >= nextItemWidth + spacing)
+            ImGui::SameLine();
+    }
+
     glm::vec3 NormalizeDirectionOrDefault(const glm::vec3& direction)
     {
         const float lengthSquared = glm::dot(direction, direction);
@@ -315,15 +324,18 @@ namespace Quiet::Renderer::UI
 
                 ImGui::Spacing();
 
-                if (QUI::EditorButton("Normalize Direction", SZ::Px(ImVec2(172.0f, 0.0f)), isEditMode))
+                const float normalizeButtonWidth = SZ::Px(172.0f);
+                const float resetLightingButtonWidth = SZ::Px(132.0f);
+
+                if (QUI::EditorButton("Normalize Direction", ImVec2(normalizeButtonWidth, 0.0f), isEditMode))
                     NormalizeSceneLightDirection(scene, editorCommands);
 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
                     ImGui::SetTooltip("Normalize the scene light direction vector.");
 
-                ImGui::SameLine();
+                SameLineIfEnoughWidth(resetLightingButtonWidth);
 
-                if (QUI::EditorButton("Reset Lighting", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+                if (QUI::EditorButton("Reset Lighting", ImVec2(resetLightingButtonWidth, 0.0f), isEditMode))
                     ResetSceneDirectionalLighting(scene, editorCommands);
 
                 ImGui::PopID();
