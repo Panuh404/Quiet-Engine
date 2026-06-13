@@ -223,6 +223,44 @@ namespace
         return open;
     }
 
+    glm::vec3 NormalizeDirectionOrDefault(const glm::vec3& direction)
+    {
+        const float lengthSquared = glm::dot(direction, direction);
+        if (lengthSquared <= 0.0001f)
+            return Quiet::Scene::SceneRenderSettings{}.LightDirection;
+
+        return glm::normalize(direction);
+    }
+
+    void NormalizeSceneLightDirection(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    {
+        const glm::vec3 normalizedDirection = NormalizeDirectionOrDefault(scene.GetRenderSettings().LightDirection);
+
+        commands.BeginInteraction(scene);
+        commands.SetSceneLightDirection(scene, normalizedDirection);
+        commands.EndInteraction(scene);
+    }
+
+    void ResetSceneDirectionalLighting(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    {
+        const Quiet::Scene::SceneRenderSettings defaults{};
+
+        commands.BeginInteraction(scene);
+        commands.SetSceneLightDirection(scene, defaults.LightDirection);
+        commands.SetSceneLightIntensity(scene, defaults.LightIntensity);
+        commands.EndInteraction(scene);
+    }
+
+    void ResetSceneAmbient(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    {
+        const Quiet::Scene::SceneRenderSettings defaults{};
+
+        commands.BeginInteraction(scene);
+        commands.SetSceneAmbientColor(scene, defaults.AmbientColor);
+        commands.SetSceneAmbientIntensity(scene, defaults.AmbientIntensity);
+        commands.EndInteraction(scene);
+    }
+
     void ResetSceneLighting(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
     {
         const Quiet::Scene::SceneRenderSettings defaults{};
@@ -269,15 +307,24 @@ namespace Quiet::Renderer::UI
 
                 glm::vec3 lightDirection = settings.LightDirection;
                 if (DrawVec3Row("Direction", lightDirection, 0.01f, -1.0f, 1.0f, tracked))
-                {
                     editorCommands.SetSceneLightDirection(scene, lightDirection);
-                }
 
                 float lightIntensity = settings.LightIntensity;
                 if (DrawFloatRow("Intensity", lightIntensity, 0.01f, 0.0f, 10.0f, tracked))
-                {
                     editorCommands.SetSceneLightIntensity(scene, lightIntensity);
-                }
+
+                ImGui::Spacing();
+
+                if (QUI::EditorButton("Normalize Direction", SZ::Px(ImVec2(172.0f, 0.0f)), isEditMode))
+                    NormalizeSceneLightDirection(scene, editorCommands);
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                    ImGui::SetTooltip("Normalize the scene light direction vector.");
+
+                ImGui::SameLine();
+
+                if (QUI::EditorButton("Reset Lighting", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+                    ResetSceneDirectionalLighting(scene, editorCommands);
 
                 ImGui::PopID();
             }
@@ -290,25 +337,24 @@ namespace Quiet::Renderer::UI
 
                 glm::vec3 ambientColor = settings.AmbientColor;
                 if (DrawColor3Row("Color", ambientColor, tracked))
-                {
                     editorCommands.SetSceneAmbientColor(scene, ambientColor);
-                }
 
                 float ambientIntensity = settings.AmbientIntensity;
                 if (DrawFloatRow("Intensity", ambientIntensity, 0.01f, 0.0f, 5.0f, tracked))
-                {
                     editorCommands.SetSceneAmbientIntensity(scene, ambientIntensity);
-                }
+
+                ImGui::Spacing();
+
+                if (QUI::EditorButton("Reset Ambient", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+                    ResetSceneAmbient(scene, editorCommands);
 
                 ImGui::PopID();
             }
 
-            ImGui::Spacing();
+            ImGui::Separator();
 
-            if (QUI::EditorButton("Reset Lighting", SZ::Px(ImVec2(150.0f, 0.0f)), isEditMode))
-            {
+            if (QUI::EditorButton("Reset All", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
                 ResetSceneLighting(scene, editorCommands);
-            }
 
             if (!isEditMode) ImGui::EndDisabled();
         }
