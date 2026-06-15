@@ -107,87 +107,6 @@ namespace
         return count;
     }
 
-    bool DrawFilterButton(const char* label, const bool selected, const ImVec2& size)
-    {
-        if (selected)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-        }
-
-        const bool clicked = QUI::EditorButton(label, size);
-        if (selected) ImGui::PopStyleColor(4);
-        return clicked;
-    }
-
-    void DrawAssetBrowserToolbar(const Quiet::Project::AssetRegistry& registry, std::array<char, 128>& searchBuffer, AssetBrowserTypeFilter& typeFilter)
-    {
-        const std::size_t meshCount = CountAssetByType(registry, Quiet::Project::AssetType::Mesh);
-        const std::size_t textureCount = CountAssetByType(registry, Quiet::Project::AssetType::Texture);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.f, 7.f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
-
-        ImGui::SetNextItemWidth(std::max(SZ::Px(220.0f), ImGui::GetContentRegionAvail().x * 0.38f));
-        ImGui::InputTextWithHint("##AssetBrowserSearch", "Search assets by id, path, or type...", searchBuffer.data(), searchBuffer.size());
-
-        ImGui::SameLine();
-
-        if (DrawFilterButton("All", typeFilter == AssetBrowserTypeFilter::All, SZ::Px(ImVec2(64.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::All;
-
-        ImGui::SameLine();
-
-        const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
-        if (DrawFilterButton(meshesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Meshes, SZ::Px(ImVec2(104.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::Meshes;
-
-        ImGui::SameLine();
-
-        const std::string texturesLabel = "Textures " + std::to_string(textureCount);
-        if (DrawFilterButton(texturesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Textures, SZ::Px(ImVec2(116.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::Textures;
-
-        if (searchBuffer[0] != '\0')
-        {
-            ImGui::SameLine();
-            if (QUI::EditorButton("Clear", SZ::Px(ImVec2(72.0f, 0.0f))))
-                searchBuffer[0] = '\0';
-        }
-
-        ImGui::PopStyleVar(2);
-    }
-
-    void DrawAssetBrowserEmptyState()
-    {
-        ImGui::Spacing();
-
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
-
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
-        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
-
-        ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, SZ::Px(84.0f)), ImGuiChildFlags_Borders);
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("No assets match the current filters");
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("Clear the search field or switch the asset type filter.");
-            ImGui::PopStyleColor();
-        }
-        ImGui::EndChild();
-
-        ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar(2);
-    }
-
     template <std::size_t Size>
     void CopyToBuffer(std::array<char, Size>& buffer, const std::string& value)
     {
@@ -776,6 +695,253 @@ namespace
             ImGui::EndPopup();
         }
     }
+
+    bool DrawFilterButton(const char* label, const bool selected, const ImVec2& size)
+    {
+        if (selected)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        }
+
+        const bool clicked = QUI::EditorButton(label, size);
+        if (selected) ImGui::PopStyleColor(4);
+        return clicked;
+    }
+
+    void DrawAssetBrowserToolbar(const Quiet::Project::AssetRegistry& registry, std::array<char, 128>& searchBuffer, AssetBrowserTypeFilter& typeFilter)
+    {
+        const std::size_t meshCount = CountAssetByType(registry, Quiet::Project::AssetType::Mesh);
+        const std::size_t textureCount = CountAssetByType(registry, Quiet::Project::AssetType::Texture);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.f, 7.f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
+
+        ImGui::SetNextItemWidth(std::max(SZ::Px(220.0f), ImGui::GetContentRegionAvail().x * 0.38f));
+        ImGui::InputTextWithHint("##AssetBrowserSearch", "Search assets by id, path, or type...", searchBuffer.data(), searchBuffer.size());
+
+        ImGui::SameLine();
+
+        if (DrawFilterButton("All", typeFilter == AssetBrowserTypeFilter::All, SZ::Px(ImVec2(64.0f, 0.0f))))
+            typeFilter = AssetBrowserTypeFilter::All;
+
+        ImGui::SameLine();
+
+        const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
+        if (DrawFilterButton(meshesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Meshes, SZ::Px(ImVec2(104.0f, 0.0f))))
+            typeFilter = AssetBrowserTypeFilter::Meshes;
+
+        ImGui::SameLine();
+
+        const std::string texturesLabel = "Textures " + std::to_string(textureCount);
+        if (DrawFilterButton(texturesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Textures, SZ::Px(ImVec2(116.0f, 0.0f))))
+            typeFilter = AssetBrowserTypeFilter::Textures;
+
+        if (searchBuffer[0] != '\0')
+        {
+            ImGui::SameLine();
+            if (QUI::EditorButton("Clear", SZ::Px(ImVec2(72.0f, 0.0f))))
+                searchBuffer[0] = '\0';
+        }
+
+        ImGui::PopStyleVar(2);
+    }
+
+    void DrawAssetBrowserEmptyState()
+    {
+        ImGui::Spacing();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, SZ::Px(84.0f)), ImGuiChildFlags_Borders);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextUnformatted("No assets match the current filters");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("Clear the search field or switch the asset type filter.");
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    void DrawAssetSelectionEmptyState()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)) );
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##AssetDetailsEmptyState", ImVec2(0.0f, SZ::Px(96.0f)), ImGuiChildFlags_Borders);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextUnformatted("No asset selected");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("Select an asset from the registry to inspect its path, runtime status, "
+                "statistics, references, and preview."
+            );
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    void DrawAssetDetailsInline(const Quiet::Project::ProjectContext& projectContext,
+                                const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
+                                const Quiet::Scene::Scene& scene,
+                                const std::string& assetID,
+                                const float uiScale)
+    {
+        if (assetID.empty())
+        {
+            DrawAssetSelectionEmptyState();
+            return;
+        }
+
+        const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+
+        if (!record)
+        {
+            DrawAssetSelectionEmptyState();
+            return;
+        }
+
+        const std::string status = MakeStatusLabel(*record, meshLibrary, textureLibrary);
+        const ImVec4 statusColor = MakeStatusColor(status);
+        const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
+
+        const float labelWidth = SZ::Px(112.0f);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##AssetPersistentDetails", ImVec2(0.0f, SZ::Px(260.0f)),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextUnformatted(record->ID.c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::TextColored(statusColor, "  %s", status.c_str());
+
+            ImGui::Spacing();
+
+            DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
+            DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
+
+            if (record->Path.empty())
+                DrawDetailRow("Path", "<built-in>", labelWidth);
+            else
+                DrawDetailRowWrapped("Path", record->Path, labelWidth);
+
+            const std::uint32_t referenceCount = CountMeshReferences(scene, record->ID);
+            DrawDetailRowUInt("References", referenceCount, labelWidth);
+
+            if (record->Type == Quiet::Project::AssetType::Mesh)
+            {
+                const auto stats = meshLibrary.GetStats(record->ID);
+                DrawDetailsSectionTitle("Mesh");
+
+                if (!stats.has_value())
+                {
+                    ImGui::TextDisabled("This mesh asset is not currently loaded.");
+                }
+                else
+                {
+                    DrawDetailRowWrapped("Importer", stats->ImporterName, labelWidth);
+                    DrawDetailRowUInt("Meshes", stats->ImportedMeshCount, labelWidth);
+                    DrawDetailRowUInt("Submeshes", stats->SubmeshCount, labelWidth);
+                    DrawDetailRowUInt("Materials", stats->MaterialCount, labelWidth);
+                    DrawDetailRowUInt("Vertices", stats->VertexCount, labelWidth);
+                    DrawDetailRowUInt("Indices", stats->IndexCount, labelWidth);
+
+                    if (stats->BoundsValid)
+                    {
+                        const glm::vec3 size = stats->BoundsMax - stats->BoundsMin;
+                        DrawDetailRowVec3("Bounds Size", size, labelWidth);
+                    }
+
+                    if (!stats->Warnings.empty())
+                    {
+                        DrawDetailRowUInt("Warnings", static_cast<std::uint32_t>(stats->Warnings.size()), labelWidth);
+                    }
+                }
+            }
+            else if (record->Type == Quiet::Project::AssetType::Texture)
+            {
+                const auto textureStats = textureLibrary.GetStats(record->ID);
+                DrawDetailsSectionTitle("Texture");
+
+                if (!textureStats.has_value())
+                {
+                    ImGui::TextDisabled("Texture metadata is not currently loaded.");
+                }
+                else
+                {
+                    DrawDetailRow("Format", textureStats->Format.c_str(), labelWidth);
+
+                    if (textureStats->DimensionsValid)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                        ImGui::TextUnformatted("Dimensions");
+                        ImGui::PopStyleColor();
+
+                        ImGui::SameLine(labelWidth);
+
+                        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                        ImGui::Text("%u x %u", textureStats->Width, textureStats->Height);
+                        ImGui::PopStyleColor();
+                    }
+                    else
+                    {
+                        DrawDetailRow("Dimensions", "Unknown", labelWidth);
+                    }
+                    DrawDetailRow("GPU Ready", textureStats->GpuReady ? "true" : "false", labelWidth);
+
+                    if (textureStats->GpuReady)
+                    {
+                        ImGui::Spacing();
+                        Quiet::Renderer::UI::DrawTexturePreview(
+                            record->ID,
+                            textureLibrary,
+                            textureStats.value(),
+                            uiScale,
+                            150.0f
+                        );
+                    }
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -888,25 +1054,49 @@ namespace Quiet::Renderer::UI
                         const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
                         const std::string status = MakeStatusLabel(record, meshLibrary, textureLibrary);
 
+                        const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
+
                         ImGui::TableNextRow();
+
+                        if (isSelectedAsset)
+                        {
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim));
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim));
+                        }
 
                         // Asset
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+
+                        ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? QUI::EditorColor::Accent : QUI::EditorColor::Text);
                         ImGui::TextUnformatted(record.ID.c_str());
                         ImGui::PopStyleColor();
+
+                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                        {
+                            selectedDetailsAssetID = record.ID;
+                        }
 
                         if (record.Path.empty())
                         {
                             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
                             ImGui::TextUnformatted("<built-in>");
                             ImGui::PopStyleColor();
+
+                            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                            {
+                                selectedDetailsAssetID = record.ID;
+                            }
                         }
                         else
                         {
                             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
                             ImGui::TextWrapped("%s", record.Path.c_str());
                             ImGui::PopStyleColor();
+
+                            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                            {
+                                selectedDetailsAssetID = record.ID;
+                            }
 
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
                             {
@@ -1030,6 +1220,27 @@ namespace Quiet::Renderer::UI
                 selectedDetailsAssetID = pendingDetailsAssetID;
                 ImGui::OpenPopup("Asset Details");
             }
+
+            ImGui::Spacing();
+
+            const bool selectedAssetStillExists =
+                selectedDetailsAssetID.empty() ||
+                Quiet::Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
+
+            if (!selectedAssetStillExists)
+            {
+                selectedDetailsAssetID.clear();
+            }
+
+            DrawAssetDetailsInline(
+                projectContext,
+                meshLibrary,
+                textureLibrary,
+                scene,
+                selectedDetailsAssetID,
+                GetUIScale()
+            );
+
             if (!pendingRemoveAssetID.empty())
             {
                 const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
@@ -1037,6 +1248,10 @@ namespace Quiet::Renderer::UI
                 {
                     removeErrorMessage = "Failed to remove the selected asset from the registry.";
                     ImGui::OpenPopup("Remove Asset Failed");
+                }
+                else if (selectedDetailsAssetID == pendingRemoveAssetID)
+                {
+                    selectedDetailsAssetID.clear();
                 }
             }
             DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, GetUIScale());
