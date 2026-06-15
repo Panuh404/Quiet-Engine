@@ -942,6 +942,20 @@ namespace
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
     }
+
+    bool ShouldUseAssetDetailsSplitLayout()
+    {
+        return ImGui::GetContentRegionAvail().x >= SZ::Px(920.0f);
+    }
+
+    float CalculateAssetDetailsPanelWidth(const float availableWidth)
+    {
+        return std::clamp(
+            availableWidth * 0.34f,
+            SZ::Px(330.0f),
+            SZ::Px(460.0f)
+        );
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -1014,6 +1028,30 @@ namespace Quiet::Renderer::UI
 
             std::string pendingRemoveAssetID;
             std::string pendingDetailsAssetID;
+
+            const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
+            const bool useSplitDetailsLayout = ShouldUseAssetDetailsSplitLayout();
+
+            const float detailsPanelWidth = useSplitDetailsLayout
+                ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
+                : 0.0f;
+
+            const float tablePanelWidth = useSplitDetailsLayout
+                ? std::max(
+                    SZ::Px(440.0f),
+                    assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x
+                )
+                : 0.0f;
+
+            if (useSplitDetailsLayout)
+            {
+                ImGui::BeginChild(
+                    "##AssetRegistryTableRegion",
+                    ImVec2(tablePanelWidth, 0.0f),
+                    ImGuiChildFlags_None,
+                    ImGuiWindowFlags_None
+                );
+            }
 
             if (visibleAssets.empty())
             {
@@ -1215,13 +1253,40 @@ namespace Quiet::Renderer::UI
                 ImGui::PopStyleVar();
             }
 
+            if (useSplitDetailsLayout)
+            {
+                ImGui::EndChild();
+            }
+
             if (!pendingDetailsAssetID.empty())
             {
                 selectedDetailsAssetID = pendingDetailsAssetID;
                 ImGui::OpenPopup("Asset Details");
             }
 
-            ImGui::Spacing();
+            if (!pendingRemoveAssetID.empty())
+            {
+                const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
+                if (!removed)
+                {
+                    removeErrorMessage = "Failed to remove the selected asset from the registry.";
+                    ImGui::OpenPopup("Remove Asset Failed");
+                }
+                else if (selectedDetailsAssetID == pendingRemoveAssetID)
+                {
+                    selectedDetailsAssetID.clear();
+                }
+            }
+
+            if (useSplitDetailsLayout)
+            {
+                ImGui::SameLine();
+                ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+            }
+            else
+            {
+                ImGui::Spacing();
+            }
 
             const bool selectedAssetStillExists =
                 selectedDetailsAssetID.empty() ||
@@ -1241,19 +1306,11 @@ namespace Quiet::Renderer::UI
                 GetUIScale()
             );
 
-            if (!pendingRemoveAssetID.empty())
+            if (useSplitDetailsLayout)
             {
-                const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
-                if (!removed)
-                {
-                    removeErrorMessage = "Failed to remove the selected asset from the registry.";
-                    ImGui::OpenPopup("Remove Asset Failed");
-                }
-                else if (selectedDetailsAssetID == pendingRemoveAssetID)
-                {
-                    selectedDetailsAssetID.clear();
-                }
+                ImGui::EndChild();
             }
+
             DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, GetUIScale());
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
         }
