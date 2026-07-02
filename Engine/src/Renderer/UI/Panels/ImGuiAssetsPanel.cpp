@@ -956,6 +956,58 @@ namespace
             SZ::Px(460.0f)
         );
     }
+
+    std::string MakeAssetRemoveDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const std::uint32_t referenceCount)
+    {
+        if (record.BuiltIn) return "Built-it assets cannot be removed.";
+        if (runtimeModeActive) return "Assets cannot be removed while runtime mode is active.";
+        if (referenceCount == 0) return "This asset is referenced by actors in the current scene.";
+        return {};
+    }
+
+    void DrawAssetContextMenu(const char* popupID,
+                              const Quiet::Project::ProjectContext& projectContext,
+                              const Quiet::Project::AssetRecord& record,
+                              const bool runtimeModeActive,
+                              const std::uint32_t referenceCount,
+                              std::string& selectedDetailsAssetID,
+                              std::string& pendingDetailsAssetID,
+                              std::string& pendingRemoveAssetID)
+    {
+        if (!ImGui::BeginPopupContextItem(popupID)) return;
+
+        selectedDetailsAssetID = record.ID;
+        if (QUI::EditorMenuItem("Inspect"))
+            pendingDetailsAssetID = record.ID;
+
+        ImGui::Separator();
+        if (QUI::EditorMenuItem("Copy ID"))
+            ImGui::SetClipboardText(record.ID.c_str());
+
+        const bool hasPath = !record.Path.empty();
+        if (QUI::EditorMenuItem("Copy Path", nullptr, false, hasPath))
+            ImGui::SetClipboardText(record.Path.c_str());
+
+        if (QUI::EditorMenuItem("Copy Absolute Path", nullptr, false, hasPath))
+        {
+            const std::filesystem::path resolvedPath = ResolveDisplayPath(projectContext, record.Path);
+            const std::string resolvedPathText = resolvedPath.string();
+            ImGui::SetClipboardText(resolvedPathText.c_str());
+        }
+
+        ImGui::Separator();
+
+        const std::string removeDisabledReason = MakeAssetRemoveDisabledReason(record, runtimeModeActive, referenceCount);
+        const bool canRemove = removeDisabledReason.empty();
+
+        if (QUI::EditorMenuItem("Remove", nullptr, false, canRemove))
+            pendingRemoveAssetID = record.ID;
+
+        if (!canRemove && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            ImGui::SetTooltip("%s", removeDisabledReason.c_str());
+
+        ImGui::EndPopup();
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -1109,6 +1161,20 @@ namespace Quiet::Renderer::UI
                         ImGui::TextUnformatted(record.ID.c_str());
                         ImGui::PopStyleColor();
 
+                        const std::string assetIDContextMenuID =
+                            "AssetContext_ID_" + record.ID;
+
+                        DrawAssetContextMenu(
+                            assetIDContextMenuID.c_str(),
+                            projectContext,
+                            record,
+                            runtimeModeActive,
+                            referenceCount,
+                            selectedDetailsAssetID,
+                            pendingDetailsAssetID,
+                            pendingRemoveAssetID
+                        );
+
                         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                         {
                             selectedDetailsAssetID = record.ID;
@@ -1120,6 +1186,20 @@ namespace Quiet::Renderer::UI
                             ImGui::TextUnformatted("<built-in>");
                             ImGui::PopStyleColor();
 
+                            const std::string builtInContextMenuID =
+                                "AssetContext_BuiltIn_" + record.ID;
+
+                            DrawAssetContextMenu(
+                                builtInContextMenuID.c_str(),
+                                projectContext,
+                                record,
+                                runtimeModeActive,
+                                referenceCount,
+                                selectedDetailsAssetID,
+                                pendingDetailsAssetID,
+                                pendingRemoveAssetID
+                            );
+
                             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                             {
                                 selectedDetailsAssetID = record.ID;
@@ -1130,6 +1210,20 @@ namespace Quiet::Renderer::UI
                             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
                             ImGui::TextWrapped("%s", record.Path.c_str());
                             ImGui::PopStyleColor();
+
+                            const std::string pathContextMenuID =
+                                "AssetContext_Path_" + record.ID;
+
+                            DrawAssetContextMenu(
+                                pathContextMenuID.c_str(),
+                                projectContext,
+                                record,
+                                runtimeModeActive,
+                                referenceCount,
+                                selectedDetailsAssetID,
+                                pendingDetailsAssetID,
+                                pendingRemoveAssetID
+                            );
 
                             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                             {
