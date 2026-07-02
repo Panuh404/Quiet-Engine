@@ -8,11 +8,11 @@ Quiet is a C++20 Vulkan engine project with an integrated editor workflow.
 
 The current focus is an editor-first engine foundation: scene editing, project management, asset registration, viewport tooling, runtime mode switching, serialization, undo/redo, and a modern Dear ImGui-based editor UI.
 
+Quiet is in active prototype development. It is not a production engine yet. The goal is to build a stable, understandable engine foundation one system at a time.
+
 ---
 
 ## Current Status
-
-Quiet is in active prototype development.
 
 Implemented foundations:
 
@@ -26,12 +26,12 @@ Implemented foundations:
 * project-local asset registry
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
-* inspector with component editing
+* dedicated Scene Settings panel for scene-wide lighting and ambient controls
+* inspector with actor/component editing
 * undo/redo and dirty-state tracking
 * Edit / Simulate / Play runtime mode groundwork
 * console and diagnostics panels
-
-Quiet is not a production engine yet. It is being built step by step with a strong focus on clean architecture and practical editor tooling.
+* editor branding with application icon, window icon, README logo, and topbar logo
 
 ---
 
@@ -56,7 +56,7 @@ The editor target is currently the primary development target.
 * Dear ImGui docking layout
 * dark professional editor style
 * high-DPI scaling support
-* top toolbar
+* top toolbar with Quiet branding
 * resettable default layout
 * project manager modal
 * docked panels:
@@ -64,6 +64,7 @@ The editor target is currently the primary development target.
   * Viewport
   * Scene / Hierarchy
   * Inspector
+  * Scene Settings
   * Assets
   * Console
   * Debug
@@ -113,6 +114,23 @@ Folders are editor organization nodes only. They do not change runtime transform
 * component action menu
 * reset transform action
 
+### Scene Settings
+
+Scene-wide render settings live in a dedicated panel instead of the actor Inspector.
+
+Current controls:
+
+* directional scene light direction
+* directional scene light intensity
+* ambient color
+* ambient intensity
+* normalize light direction
+* reset directional lighting
+* reset ambient
+* reset all scene lighting settings
+
+Scene Settings are serialized with the scene and are tracked by dirty-state and undo/redo.
+
 ### Assets
 
 * project-local asset registry
@@ -121,8 +139,21 @@ Folders are editor organization nodes only. They do not change runtime transform
 * asset reload action
 * asset registration UI
 * asset file dialog
+* search by ID, path, or type
+* All / Meshes / Textures filters
 * compact asset table
+* selected row highlight
+* persistent asset details panel
+* responsive split layout for wide panels
 * texture preview support
+* asset details modal
+* asset context menu:
+
+  * Inspect
+  * Copy ID
+  * Copy Path
+  * Copy Absolute Path
+  * Remove when allowed
 
 ### Console / Diagnostics
 
@@ -131,6 +162,42 @@ Folders are editor organization nodes only. They do not change runtime transform
 * copy logs to clipboard
 * diagnostics/debug panel
 * renderer and viewport metrics
+
+---
+
+## Runtime Modes
+
+Quiet currently supports three editor scene modes.
+
+### Edit Mode
+
+Normal editor mode.
+
+* scene editing enabled
+* actor selection enabled
+* hierarchy editing enabled
+* inspector editing enabled
+* scene settings editing enabled
+* gizmos enabled
+* undo/redo enabled
+
+### Simulate Mode
+
+Runtime simulation mode.
+
+* runtime scene clone
+* editor scene remains isolated
+* editing controls are disabled for runtime safety
+* simulation can be stopped and returned to Edit Mode
+
+### Play Mode
+
+Runtime play-testing mode.
+
+* runtime scene clone
+* editor interaction disabled
+* mouse capture enabled for runtime testing
+* returns to Edit Mode when stopped
 
 ---
 
@@ -232,6 +299,27 @@ Build behavior:
 * textures are copied to the target output directory
 * shaders are compiled with `glslc`
 * compiled shaders are written to the target output `Resources/Shaders` directory
+
+---
+
+## Branding Assets
+
+Current branding files:
+
+```text
+Docs/Brand/quiet-logo.png
+Editor/Resources/Windows/QuietEditor.ico
+Editor/Resources/Windows/QuietEditor.rc
+Engine/Resources/Textures/Editor/quiet-icon.png
+Engine/Resources/Textures/Editor/quiet-topbar.png
+```
+
+Usage:
+
+* `quiet-logo.png` is used by this README
+* `QuietEditor.ico` is embedded into the Windows editor executable
+* `quiet-icon.png` is used as the GLFW window icon
+* `quiet-topbar.png` is loaded as an editor texture and shown in the topbar
 
 ---
 
@@ -352,33 +440,48 @@ F6                  Simulate / Stop Simulate
 
 ## Current Development Roadmap
 
-### Recently Completed
+### Completed Recently
 
 * dark professional editor style pass
 * high-DPI editor scaling pass
 * default dock layout refinement
+* editor branding pass
 * persistent hierarchy metadata
 * hierarchy folders
 * hierarchy drag/drop organization
 * hierarchy metadata validation
+* Scene Settings panel
+* scene render settings dirty-state and undo/redo support
+* asset browser search and type filters
+* persistent asset details panel
+* responsive asset details split layout
+* asset context menu
 
-### Immediate Next Work
+### Active Phase: Asset Browser / Asset Workflow
 
-* Scene / World Settings panel
-* move scene lighting and ambient controls out of actor Inspector
-* scene settings dirty-state and undo/redo support
-* scene settings visual polish
+Immediate next work:
+
+* reveal asset in file manager
+* improve unregister/remove workflow
+* reimport asset
+* asset context menu polish
+* drag assets into Inspector fields
+* drag assets into Viewport
+* optional grid/card asset view
 
 ### Upcoming Areas
 
-* asset browser upgrade
-* asset context menus
-* reimport / unregister asset workflows
-* better viewport grid and selection visuals
-* snapping controls
-* improved project workflow
+* viewport grid
+* better selection outline/highlight
+* snapping controls UI
+* camera speed settings
+* component copy/paste
+* reset component values
+* material/mesh assignment UX
+* recent scenes per project
+* better unsaved-change prompts
+* project settings
 * runtime/play-mode expansion
-* component copy/paste and inspector workflow polish
 
 ---
 
