@@ -241,21 +241,6 @@ namespace
         DrawPillLabel(typeLabel.c_str(), text, background);
     }
 
-    void DrawAssetStatusPill(const std::string& status)
-    {
-        const ImVec4 statusColor = MakeStatusColor(status);
-        ImVec4 background = QUI::EditorColor::Background3;
-
-        if (status == "Loaded" || status == "GPU Ready" || status == "Loaded Metadata")
-            background = ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
-        else if (status == "Registered")
-            background = ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
-        else if (status == "Missing Built-In" || status == "Missing Path")
-            background = ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
-
-        DrawPillLabel(status.c_str(), statusColor, background);
-    }
-
     std::string MakeAssetDisplayName(const Quiet::Project::AssetRecord& record)
     {
         if (!record.Path.empty())
@@ -337,20 +322,6 @@ namespace
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         return ImGui::IsItemClicked(ImGuiMouseButton_Left);
-    }
-
-    void DrawAssetMutedText(const char* text)
-    {
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-        ImGui::TextUnformatted(text);
-        ImGui::PopStyleColor();
-    }
-
-    void DrawAssetDimText(const char* text)
-    {
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-        ImGui::TextUnformatted(text);
-        ImGui::PopStyleColor();
     }
 
     void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
@@ -1049,6 +1020,15 @@ namespace
         return {};
     }
 
+    std::string MakeAssetReimportDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const bool resolvedPathExists)
+    {
+        if (record.BuiltIn) return "Built-in assets cannot be reimported.";
+        if (runtimeModeActive) return "Assets cannot be reimported while runtime mode is active.";
+        if (record.Path.empty()) return "This asset has no source path.";
+        if (!resolvedPathExists) return "The source file does not exist on disk.";
+        return {};
+    }
+
     void DrawAssetContextMenu(const char* popupID,
                               const Quiet::Project::ProjectContext& projectContext,
                               const Quiet::Project::AssetRecord& record,
@@ -1056,6 +1036,7 @@ namespace
                               const std::uint32_t referenceCount,
                               std::string& selectedDetailsAssetID,
                               std::string& pendingDetailsAssetID,
+                              std::string& pendingReimportAssetID,
                               std::string& pendingRemoveAssetID)
     {
         if (!ImGui::BeginPopupContextItem(popupID)) return;
@@ -1088,6 +1069,15 @@ namespace
             ImGui::SetTooltip("The source file does not exist on disk.");
 
         ImGui::Separator();
+
+        const std::string reimportDisabledReason = MakeAssetReimportDisabledReason(record, runtimeModeActive, resolvedPathExists);
+        const bool canReimport = reimportDisabledReason.empty();
+
+        if (QUI::EditorMenuItem("Reimport", nullptr, false, canReimport))
+            pendingReimportAssetID = record.ID;
+
+        if (!canReimport && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            ImGui::SetTooltip("%s", reimportDisabledReason.c_str());
 
         const std::string removeDisabledReason = MakeAssetRemoveDisabledReason(record, runtimeModeActive, referenceCount);
         const bool canRemove = removeDisabledReason.empty();
@@ -1172,6 +1162,7 @@ namespace Quiet::Renderer::UI
 
             std::string pendingRemoveAssetID;
             std::string pendingDetailsAssetID;
+            std::string pendingReimportAssetID;
 
             const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
             const bool useSplitDetailsLayout = ShouldUseAssetDetailsSplitLayout();
@@ -1284,6 +1275,7 @@ namespace Quiet::Renderer::UI
                                 referenceCount,
                                 selectedDetailsAssetID,
                                 pendingDetailsAssetID,
+                                pendingReimportAssetID,
                                 pendingRemoveAssetID
                             );
 
@@ -1318,6 +1310,7 @@ namespace Quiet::Renderer::UI
                                 referenceCount,
                                 selectedDetailsAssetID,
                                 pendingDetailsAssetID,
+                                pendingReimportAssetID,
                                 pendingRemoveAssetID
                             );
 
@@ -1344,6 +1337,7 @@ namespace Quiet::Renderer::UI
                                 referenceCount,
                                 selectedDetailsAssetID,
                                 pendingDetailsAssetID,
+                                pendingReimportAssetID,
                                 pendingRemoveAssetID
                             );
 
@@ -1401,6 +1395,12 @@ namespace Quiet::Renderer::UI
             {
                 selectedDetailsAssetID = pendingDetailsAssetID;
                 ImGui::OpenPopup("Asset Details");
+            }
+
+            if (!pendingReimportAssetID.empty())
+            {
+                selectedDetailsAssetID = pendingReimportAssetID;
+                editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
             }
 
             if (!pendingRemoveAssetID.empty())

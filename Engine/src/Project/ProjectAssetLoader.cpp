@@ -378,6 +378,43 @@ namespace Quiet::Project
         return meshesLoaded && texturesLoaded;
     }
 
+    bool ProjectAssetLoader::ReloadAssetByID(std::string_view assetID, bool forceReimport)
+    {
+        const AssetRecord* record = AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), assetID);
+
+        if (!record)
+        {
+            QUIET_CORE_WARN("Cannot reimport asset '{}': asset is not registered.", std::string(assetID));
+            return false;
+        }
+
+        switch (record->Type)
+        {
+            case AssetType::Mesh:
+            {
+                if (record->BuiltIn) return LoadBuiltInMesh(*record);
+                return LoadExternalMesh(*record, forceReimport);
+            }
+
+            case AssetType::Texture:
+            {
+                if (record->BuiltIn)
+                {
+                    QUIET_CORE_WARN("Cannot reimport built-in texture asset '{}'.", record->ID);
+                    return false;
+                }
+                return LoadExternalTexture(*record, forceReimport);
+            }
+
+            case AssetType::Unknown:
+            default:
+            {
+                QUIET_CORE_WARN("Cannot reimport asset '{}': unsupported asset type.", record->ID);
+                return false;
+            }
+        }
+    }
+
     bool ProjectAssetLoader::LoadBuiltInMesh(const AssetRecord &record)
     {
         if (m_MeshLibrary.Has(record.ID)) { return true; }

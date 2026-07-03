@@ -368,6 +368,7 @@ namespace Quiet::Core
                     break;
 
                 case Editor::EditorRequestType::ReloadAssets:
+                {
                     if (!m_ProjectAssetLoader)
                     {
                         QUIET_CORE_WARN("Cannot reload assets because the project asset loader is not available.");
@@ -377,11 +378,47 @@ namespace Quiet::Core
                     m_Renderer->WaitIdle();
                     const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadAssets(true);
                     m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
-                    if (!allAssetsLoaded) QUIET_CORE_WARN("Some registered assets could not be loaded.");
+
+                    if (!allAssetsLoaded)
+                    {
+                        QUIET_CORE_WARN("Some registered assets could not be loaded.");
+                    }
 
                     RelinkSceneStaticMeshes(*m_Scene);
-                    if (m_RuntimeScene) RelinkSceneStaticMeshes(*m_RuntimeScene);
+                    if (m_RuntimeScene)
+                    {
+                        RelinkSceneStaticMeshes(*m_RuntimeScene);
+                    }
                     break;
+                }
+
+                case Editor::EditorRequestType::ReimportAsset:
+                {
+                    if (!m_ProjectAssetLoader)
+                    {
+                        QUIET_CORE_WARN("Cannot reimport asset because the project asset loader is not available.");
+                        break;
+                    }
+                    if (request->Argument.empty())
+                    {
+                        QUIET_CORE_WARN("Cannot reimport asset because no asset ID was provided.");
+                        break;
+                    }
+                    m_Renderer->WaitIdle();
+                    {
+                        const bool assetLoaded = m_ProjectAssetLoader->ReloadAssetByID(request->Argument, true);
+                        m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
+
+                        if (!assetLoaded)
+                        {
+                            QUIET_CORE_WARN("Asset '{}' could not be reimported.", request->Argument);
+                        }
+
+                        RelinkSceneStaticMeshes(*m_Scene);
+                        if (m_RuntimeScene) RelinkSceneStaticMeshes(*m_RuntimeScene);
+                    }
+                    break;
+                }
             }
         }
     }

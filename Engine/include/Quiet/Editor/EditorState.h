@@ -39,7 +39,7 @@ namespace Quiet::Editor
         Undo, Redo,
         OpenProject, CreateProject,
         OpenProjectScene, SetStartupScene,
-        ReloadAssets
+        ReloadAssets, ReimportAsset
     };
 
     struct EditorRequest

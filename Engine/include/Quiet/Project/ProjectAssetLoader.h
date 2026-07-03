@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 #include "Quiet/Project/AssetRegistry.h"
 
 namespace Quiet::Project
@@ -31,6 +33,7 @@ namespace Quiet::Project
         bool ReloadMeshAssets(bool forceReimport = false);
         bool ReloadTextureAssets(bool forceReimport = false);
         bool ReloadAssets(bool forceReimport = false);
+        bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
