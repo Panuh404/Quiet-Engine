@@ -835,12 +835,17 @@ namespace
     void DrawAssetSelectionEmptyState()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)) );
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##AssetDetailsEmptyState", ImVec2(0.0f, SZ::Px(96.0f)), ImGuiChildFlags_Borders);
+        const float availableHeight = ImGui::GetContentRegionAvail().y;
+        const float panelHeight = std::max(availableHeight, SZ::Px(160.0f));
+
+        ImGui::BeginChild("##AssetDetailsEmptyState", ImVec2(0.0f, panelHeight),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding
+        );
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted("No asset selected");
@@ -849,7 +854,8 @@ namespace
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("Select an asset from the registry to inspect its path, runtime status, "
+            ImGui::TextWrapped(
+                "Select an asset from the registry to inspect its path, runtime status, "
                 "statistics, references, and preview."
             );
             ImGui::PopStyleColor();
@@ -893,8 +899,12 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##AssetPersistentDetails", ImVec2(0.0f, SZ::Px(260.0f)),
-            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+        const float availableHeight = ImGui::GetContentRegionAvail().y;
+        const float panelHeight = std::max(availableHeight, SZ::Px(260.0f));
+
+        ImGui::BeginChild("##AssetPersistentDetails", ImVec2(0.0f, panelHeight),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding
+        );
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted(record->ID.c_str());
@@ -1420,15 +1430,15 @@ namespace Quiet::Renderer::UI
             if (useSplitDetailsLayout)
             {
                 ImGui::SameLine();
-                ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+                ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f),
+                    ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             }
             else
             {
                 ImGui::Spacing();
             }
 
-            const bool selectedAssetStillExists =
-                selectedDetailsAssetID.empty() ||
+            const bool selectedAssetStillExists = selectedDetailsAssetID.empty() ||
                 Quiet::Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
 
             if (!selectedAssetStillExists)
