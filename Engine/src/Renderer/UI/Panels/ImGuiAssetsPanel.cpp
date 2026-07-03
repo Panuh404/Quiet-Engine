@@ -16,6 +16,7 @@
 #include "ImGuiAssetFileDialog.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Platform/Shell.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
@@ -961,7 +962,7 @@ namespace
     {
         if (record.BuiltIn) return "Built-it assets cannot be removed.";
         if (runtimeModeActive) return "Assets cannot be removed while runtime mode is active.";
-        if (referenceCount == 0) return "This asset is referenced by actors in the current scene.";
+        if (referenceCount > 0) return "This asset is referenced by actors in the current scene.";
         return {};
     }
 
@@ -988,12 +989,20 @@ namespace
         if (QUI::EditorMenuItem("Copy Path", nullptr, false, hasPath))
             ImGui::SetClipboardText(record.Path.c_str());
 
+        const std::filesystem::path resolvedPath = hasPath ? ResolveDisplayPath(projectContext, record.Path) : std::filesystem::path{};
+        const bool resolvedPathExists = hasPath && !resolvedPath.empty() && std::filesystem::exists(resolvedPath);
+
         if (QUI::EditorMenuItem("Copy Absolute Path", nullptr, false, hasPath))
         {
-            const std::filesystem::path resolvedPath = ResolveDisplayPath(projectContext, record.Path);
             const std::string resolvedPathText = resolvedPath.string();
             ImGui::SetClipboardText(resolvedPathText.c_str());
         }
+
+        if (QUI::EditorMenuItem("Reveal in File Manager", nullptr, false, resolvedPathExists))
+            Quiet::Platform::RevealPathInFileManager(resolvedPath);
+
+        if (!resolvedPathExists && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            ImGui::SetTooltip("The source file does not exist on disk.");
 
         ImGui::Separator();
 

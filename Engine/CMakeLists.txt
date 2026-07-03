@@ -10,6 +10,7 @@ target_sources(Quiet_Engine
 
         # Platform
         src/Platform/Window.cpp
+        src/Platform/Shell.cpp
 
         # Project
         src/Project/AssetRegistry.cpp
@@ -200,6 +201,7 @@ target_sources(Quiet_Engine
 
         include/Quiet/Renderer/RenderConventions.h
         include/Quiet/Platform/Window.h
+        include/Quiet/Platform/Shell.h
         include/Quiet/Math/Direction.h
         include/Quiet/Math/Geometry.h
         include/Quiet/Scene/SceneDocument.h
