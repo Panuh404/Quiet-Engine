@@ -256,6 +256,89 @@ namespace
         DrawPillLabel(status.c_str(), statusColor, background);
     }
 
+    std::string MakeAssetDisplayName(const Quiet::Project::AssetRecord& record)
+    {
+        if (!record.Path.empty())
+        {
+            const std::string filename = std::filesystem::path(record.Path).filename().string();
+            if (!filename.empty()) return filename;
+        }
+        return record.ID.empty() ? "<unnamed>" : record.ID;
+    }
+
+    bool IsAssetReadyStatus(const std::string& status)
+    {
+        return status == "Loaded" ||
+               status == "GPU Ready" ||
+               status == "Loaded Metadata";
+    }
+
+    bool IsAssetMissingStatus(const std::string& status)
+    {
+        return status == "Missing Built-In" ||
+               status == "Missing Path";
+    }
+
+    std::string MakeAssetBrowserStateLabel(const Quiet::Project::AssetRecord& record,
+                                           const std::string& status,
+                                           const bool runtimeModeActive,
+                                           const std::uint32_t referenceCount)
+    {
+        if (IsAssetMissingStatus(status)) return "Missing";
+        const std::string readiness = IsAssetReadyStatus(status) ? "Ready" : status;
+
+        if (record.BuiltIn) return "Built-in · " + readiness;
+        if (referenceCount > 0) return readiness + " · In Use";
+        if (runtimeModeActive) return readiness + " · Runtime";
+
+        return readiness + " · Removable";
+    }
+
+    void DrawAssetStatePill(const std::string& state)
+    {
+        ImVec4 text = QUI::EditorColor::TextMuted;
+        ImVec4 background = QUI::EditorColor::Background3;
+
+        if (state.find("Missing") != std::string::npos)
+        {
+            text = QUI::EditorColor::Error;
+            background = ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
+        }
+        else if (state.find("Built-in") != std::string::npos)
+        {
+            text = QUI::EditorColor::Accent;
+            background = ImVec4(0.040f, 0.075f, 0.135f, 1.0f);
+        }
+        else if (state.find("In Use") != std::string::npos)
+        {
+            text = QUI::EditorColor::Warning;
+            background = ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
+        }
+        else if (state.find("Removable") != std::string::npos)
+        {
+            text = QUI::EditorColor::Success;
+            background = ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
+        }
+        else if (state.find("Ready") != std::string::npos)
+        {
+            text = QUI::EditorColor::Success;
+            background = ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
+        }
+
+        DrawPillLabel(state.c_str(), text, background);
+    }
+
+    bool DrawAssetTableCellHitTarget(const char* id, const float rowHeight)
+    {
+        const float cellWidth = ImGui::GetContentRegionAvail().x;
+        if (cellWidth <= SZ::Px(4.0f)) return false;
+
+        ImGui::InvisibleButton(id, ImVec2(cellWidth, rowHeight));
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+
+        return ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    }
+
     void DrawAssetMutedText(const char* text)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
@@ -960,7 +1043,7 @@ namespace
 
     std::string MakeAssetRemoveDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const std::uint32_t referenceCount)
     {
-        if (record.BuiltIn) return "Built-it assets cannot be removed.";
+        if (record.BuiltIn) return "Built-in assets cannot be removed.";
         if (runtimeModeActive) return "Assets cannot be removed while runtime mode is active.";
         if (referenceCount > 0) return "This asset is referenced by actors in the current scene.";
         return {};
@@ -1099,7 +1182,7 @@ namespace Quiet::Renderer::UI
 
             const float tablePanelWidth = useSplitDetailsLayout
                 ? std::max(
-                    SZ::Px(440.0f),
+                    SZ::Px(520.0f),
                     assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x
                 )
                 : 0.0f;
@@ -1127,19 +1210,17 @@ namespace Quiet::Renderer::UI
                 ImGui::PushStyleColor(ImGuiCol_TableBorderLight, QUI::EditorColor::BorderSoft);
                 ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.030f, 0.036f, 0.048f, 0.45f));
 
-                if (ImGui::BeginTable("AssetsTable", 6,
-                        ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_BordersInnerV |
-                        ImGuiTableFlags_BordersOuter |
-                        ImGuiTableFlags_Resizable |
-                        ImGuiTableFlags_SizingStretchProp))
+                if (ImGui::BeginTable("AssetsTable", 4,
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_BordersOuter |
+                    ImGuiTableFlags_Resizable |
+                    ImGuiTableFlags_SizingStretchProp))
                 {
-                    ImGui::TableSetupColumn("Asset", ImGuiTableColumnFlags_WidthStretch, 0.35f);
-                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, Scale(90.0f));
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, Scale(90.0f));
-                    ImGui::TableSetupColumn("Stats", ImGuiTableColumnFlags_WidthStretch, 0.30f);
-                    ImGui::TableSetupColumn("Refs", ImGuiTableColumnFlags_WidthFixed, Scale(60.0f));
-                    ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, Scale(160.0f));
+                    ImGui::TableSetupColumn("Asset", ImGuiTableColumnFlags_WidthStretch, 0.55f);
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, Scale(92.0f));
+                    ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, Scale(190.0f));
+                    ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, Scale(96.0f));
                     ImGui::TableHeadersRow();
 
                     const bool runtimeModeActive = editorState.Scene.Mode != Editor::SceneMode::Edit;
@@ -1147,59 +1228,56 @@ namespace Quiet::Renderer::UI
                     for (const Project::AssetRecord* recordPtr : visibleAssets)
                     {
                         if (!recordPtr) continue;
-                        const Project::AssetRecord& record = *recordPtr;
 
-                        const auto stats = meshLibrary.GetStats(record.ID);
+                        const Project::AssetRecord& record = *recordPtr;
                         const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
                         const std::string status = MakeStatusLabel(record, meshLibrary, textureLibrary);
 
+                        const std::string browserState =
+                            MakeAssetBrowserStateLabel(
+                                record,
+                                status,
+                                runtimeModeActive,
+                                referenceCount
+                            );
+
+                        const std::string displayName = MakeAssetDisplayName(record);
                         const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
-                        ImGui::TableNextRow();
+                        const float rowHeight = SZ::Px(42.0f);
+                        const float contentOffsetY = SZ::Px(9.0f);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
 
                         if (isSelectedAsset)
                         {
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim));
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim));
+                            ImGui::TableSetBgColor(
+                                ImGuiTableBgTarget_RowBg0,
+                                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim)
+                            );
+
+                            ImGui::TableSetBgColor(
+                                ImGuiTableBgTarget_RowBg1,
+                                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentDim)
+                            );
                         }
+
+                        bool rowHovered = false;
 
                         // Asset
                         ImGui::TableSetColumnIndex(0);
-
-                        ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? QUI::EditorColor::Accent : QUI::EditorColor::Text);
-                        ImGui::TextUnformatted(record.ID.c_str());
-                        ImGui::PopStyleColor();
-
-                        const std::string assetIDContextMenuID =
-                            "AssetContext_ID_" + record.ID;
-
-                        DrawAssetContextMenu(
-                            assetIDContextMenuID.c_str(),
-                            projectContext,
-                            record,
-                            runtimeModeActive,
-                            referenceCount,
-                            selectedDetailsAssetID,
-                            pendingDetailsAssetID,
-                            pendingRemoveAssetID
-                        );
-
-                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                         {
-                            selectedDetailsAssetID = record.ID;
-                        }
+                            const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                            const std::string hitID = "##AssetRowHit_Asset_" + record.ID;
 
-                        if (record.Path.empty())
-                        {
-                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-                            ImGui::TextUnformatted("<built-in>");
-                            ImGui::PopStyleColor();
+                            if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                                selectedDetailsAssetID = record.ID;
 
-                            const std::string builtInContextMenuID =
-                                "AssetContext_BuiltIn_" + record.ID;
+                            const bool cellHovered = ImGui::IsItemHovered();
+                            rowHovered |= cellHovered;
 
                             DrawAssetContextMenu(
-                                builtInContextMenuID.c_str(),
+                                hitID.c_str(),
                                 projectContext,
                                 record,
                                 runtimeModeActive,
@@ -1209,143 +1287,101 @@ namespace Quiet::Renderer::UI
                                 pendingRemoveAssetID
                             );
 
-                            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                            {
-                                selectedDetailsAssetID = record.ID;
-                            }
-                        }
-                        else
-                        {
-                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                            ImGui::TextWrapped("%s", record.Path.c_str());
+                            ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
+                            ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? QUI::EditorColor::Accent : QUI::EditorColor::Text);
+
+                            ImGui::TextUnformatted(displayName.c_str());
                             ImGui::PopStyleColor();
 
-                            const std::string pathContextMenuID =
-                                "AssetContext_Path_" + record.ID;
-
-                            DrawAssetContextMenu(
-                                pathContextMenuID.c_str(),
-                                projectContext,
-                                record,
-                                runtimeModeActive,
-                                referenceCount,
-                                selectedDetailsAssetID,
-                                pendingDetailsAssetID,
-                                pendingRemoveAssetID
-                            );
-
-                            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                            {
-                                selectedDetailsAssetID = record.ID;
-                            }
-
-                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                            {
+                            if (cellHovered && !record.Path.empty())
                                 ImGui::SetTooltip("%s", record.Path.c_str());
-                            }
+                            else if (cellHovered)
+                                ImGui::SetTooltip("%s", record.ID.c_str());
                         }
 
                         // Type
                         ImGui::TableSetColumnIndex(1);
-                        DrawAssetTypePill(record.Type);
-
-                        // Status
-                        ImGui::TableSetColumnIndex(2);
-                        DrawAssetStatusPill(status);
-
-                        // Stats
-                        ImGui::TableSetColumnIndex(3);
-                        if (stats.has_value())
                         {
-                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                            ImGui::Text(
-                                "%u mesh%s  |  %u vertices  |  %u indices",
-                                stats->ImportedMeshCount,
-                                stats->ImportedMeshCount == 1 ? "" : "es",
-                                stats->VertexCount,
-                                stats->IndexCount
+                            const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                            const std::string hitID = "##AssetRowHit_Type_" + record.ID;
+
+                            if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                                selectedDetailsAssetID = record.ID;
+
+                            rowHovered |= ImGui::IsItemHovered();
+
+                            DrawAssetContextMenu(
+                                hitID.c_str(),
+                                projectContext,
+                                record,
+                                runtimeModeActive,
+                                referenceCount,
+                                selectedDetailsAssetID,
+                                pendingDetailsAssetID,
+                                pendingRemoveAssetID
                             );
-                            ImGui::PopStyleColor();
-                        }
-                        else if (record.Type == Project::AssetType::Texture)
-                        {
-                            const auto textureStats = textureLibrary.GetStats(record.ID);
-                            if (textureStats.has_value() && textureStats->DimensionsValid)
-                            {
-                                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                                ImGui::Text(
-                                    "%u x %u  |  %s",
-                                    textureStats->Width,
-                                    textureStats->Height,
-                                    textureStats->GpuReady ? "GPU ready" : "metadata"
-                                );
-                                ImGui::PopStyleColor();
-                            }
-                            else
-                            {
-                                DrawAssetDimText("-");
-                            }
-                        }
-                        else
-                        {
-                            DrawAssetDimText("-");
+
+                            ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
+                            DrawAssetTypePill(record.Type);
                         }
 
-                        // Refs
-                        ImGui::TableSetColumnIndex(4);
-                        if (referenceCount > 0)
+                        // State
+                        ImGui::TableSetColumnIndex(2);
                         {
-                            ImGui::TextColored(QUI::EditorColor::Warning, "%u", referenceCount);
+                            const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                            const std::string hitID = "##AssetRowHit_State_" + record.ID;
+
+                            if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                                selectedDetailsAssetID = record.ID;
+
+                            rowHovered |= ImGui::IsItemHovered();
+
+                            DrawAssetContextMenu(
+                                hitID.c_str(),
+                                projectContext,
+                                record,
+                                runtimeModeActive,
+                                referenceCount,
+                                selectedDetailsAssetID,
+                                pendingDetailsAssetID,
+                                pendingRemoveAssetID
+                            );
+
+                            ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
+                            DrawAssetStatePill(browserState);
+
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                            {
+                                if (referenceCount > 0)
+                                    ImGui::SetTooltip("Referenced by %u actor(s) in the current scene.", referenceCount);
+
+                                else if (record.BuiltIn)
+                                    ImGui::SetTooltip("Built-in engine asset.");
+
+                                else if (runtimeModeActive)
+                                    ImGui::SetTooltip("Asset operations are limited while runtime mode is active.");
+
+                                else
+                                    ImGui::SetTooltip("Project asset is currently removable.");
+                            }
                         }
-                        else
+
+                        if (rowHovered && !isSelectedAsset)
                         {
-                            DrawAssetDimText("0");
+                            ImGui::TableSetBgColor(
+                                ImGuiTableBgTarget_RowBg0,
+                                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background3)
+                            );
                         }
 
                         // Actions
-                        ImGui::TableSetColumnIndex(5);
-
-                        const std::string inspectLabel = "Inspect##" + record.ID;
-                        if (QUI::EditorButton(inspectLabel.c_str(), Scale(ImVec2(82.0f, 0.0f))))
-                            pendingDetailsAssetID = record.ID;
-
-                        ImGui::SameLine();
-
-                        if (record.BuiltIn)
+                        ImGui::TableSetColumnIndex(3);
                         {
-                            DrawAssetMutedText("Locked");
-                        }
-                        else if (runtimeModeActive)
-                        {
-                            DrawAssetMutedText("Runtime");
+                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SZ::Px(4.0f));
+                            const std::string inspectLabel = "Inspect##" + record.ID;
 
-                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                            {
-                                ImGui::SetTooltip("Assets cannot be removed while runtime mode is active.");
-                            }
-                        }
-                        else if (referenceCount > 0)
-                        {
-                            DrawAssetMutedText("In Use");
-
-                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                            {
-                                ImGui::SetTooltip("This asset is referenced by %u actor(s) in the current scene.", referenceCount);
-                            }
-                        }
-                        else
-                        {
-                            const std::string removeLabel = "Remove##" + record.ID;
-
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.120f, 0.045f, 0.052f, 1.0f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.220f, 0.060f, 0.075f, 1.0f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.330f, 0.080f, 0.095f, 1.0f));
-                            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Error);
-
-                            if (QUI::EditorButton(removeLabel.c_str(), Scale(ImVec2(82.0f, 0.0f))))
-                                pendingRemoveAssetID = record.ID;
-
-                            ImGui::PopStyleColor(4);
+                            if (QUI::EditorButton(inspectLabel.c_str(), Scale(ImVec2(82.0f, 0.0f))))
+                                pendingDetailsAssetID = record.ID;
                         }
                     }
 
