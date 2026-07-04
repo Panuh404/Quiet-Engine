@@ -85,6 +85,7 @@ namespace Quiet::Core
         void ProcessSandboxViewportResize();
         void ProcessEditorViewportResize(const Editor::EditorState& editorState);
         void ProcessEditorRequests(Editor::EditorState& editorState);
+        void RefreshProjectAssetLoaderRendererBindings();
 
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;

@@ -30,6 +30,10 @@ namespace Quiet::Project
                            const Renderer::Vulkan::LogicalDevice& logicalDevice,
                            const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
 
+        void BindRendererResources(const Renderer::Vulkan::PhysicalDevice& physicalDevice,
+                                   const Renderer::Vulkan::LogicalDevice& logicalDevice,
+                                   const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
+
         bool ReloadMeshAssets(bool forceReimport = false);
         bool ReloadTextureAssets(bool forceReimport = false);
         bool ReloadAssets(bool forceReimport = false);
@@ -44,8 +48,8 @@ namespace Quiet::Project
         ProjectContext& m_ProjectContext;
         Renderer::Vulkan::MeshLibrary& m_MeshLibrary;
         Renderer::Vulkan::TextureLibrary& m_TextureLibrary;
-        const Renderer::Vulkan::PhysicalDevice& m_PhysicalDevice;
-        const Renderer::Vulkan::LogicalDevice& m_LogicalDevice;
-        const Renderer::Vulkan::GraphicsCommands& m_GraphicsCommands;
+        const Renderer::Vulkan::PhysicalDevice* m_PhysicalDevice = nullptr;
+        const Renderer::Vulkan::LogicalDevice* m_LogicalDevice = nullptr;
+        const Renderer::Vulkan::GraphicsCommands* m_GraphicsCommands = nullptr;
     };
 }

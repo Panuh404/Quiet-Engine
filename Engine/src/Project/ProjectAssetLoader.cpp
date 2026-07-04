@@ -21,8 +21,17 @@
 
 namespace
 {
-    Quiet::Renderer::Vulkan::MeshStats MakeMeshStatsFromImportResult(
-        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    bool HasBoundRendererResources(
+        const Quiet::Renderer::Vulkan::PhysicalDevice* physicalDevice,
+        const Quiet::Renderer::Vulkan::LogicalDevice* logicalDevice,
+        const Quiet::Renderer::Vulkan::GraphicsCommands* graphicsCommands)
+    {
+        return physicalDevice != nullptr &&
+               logicalDevice != nullptr &&
+               graphicsCommands != nullptr;
+    }
+
+    Quiet::Renderer::Vulkan::MeshStats MakeMeshStatsFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
     {
         Quiet::Renderer::Vulkan::MeshStats stats{};
         stats.VertexCount = static_cast<std::uint32_t>(importResult.Vertices.size());
@@ -39,8 +48,7 @@ namespace
         return stats;
     }
 
-    Quiet::Renderer::Vulkan::TextureStats MakeTextureStatsFromImportResult(
-        const Quiet::Renderer::Vulkan::TextureImportResult& importResult)
+    Quiet::Renderer::Vulkan::TextureStats MakeTextureStatsFromImportResult(const Quiet::Renderer::Vulkan::TextureImportResult& importResult)
     {
         Quiet::Renderer::Vulkan::TextureStats stats{};
 
@@ -55,8 +63,7 @@ namespace
         return stats;
     }
 
-    std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> MakeStaticSubmeshesFromImportResult(
-        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> MakeStaticSubmeshesFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
     {
         std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> submeshes;
         submeshes.reserve(importResult.Submeshes.size());
@@ -77,8 +84,7 @@ namespace
         return submeshes;
     }
 
-    std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> MakeStaticMaterialSlotsFromImportResult(
-        const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> MakeStaticMaterialSlotsFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
     {
         std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> slots;
         slots.reserve(importResult.Materials.size());
@@ -105,7 +111,6 @@ namespace
             const auto uc = static_cast<unsigned char>(c);
             if (!std::isalnum(uc) && c != '_' && c != '-') c = '_';
         }
-
         while (!value.empty() && value.front() == '_')
         {
             value.erase(value.begin());
@@ -119,9 +124,7 @@ namespace
         return value;
     }
 
-    std::string MakeImportedMaterialTextureAssetID(const std::string& meshAssetID,
-                                                   const std::string& materialName,
-                                                   const std::size_t materialIndex)
+    std::string MakeImportedMaterialTextureAssetID(const std::string& meshAssetID, const std::string& materialName, const std::size_t materialIndex)
     {
         return SanitizeAssetIDPart(meshAssetID) +
                "_" +
@@ -147,9 +150,7 @@ namespace
         return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp";
     }
 
-    std::filesystem::path ResolveExternalMaterialTexturePath(
-        const std::filesystem::path& meshAssetPath,
-        const std::string& texturePath)
+    std::filesystem::path ResolveExternalMaterialTexturePath(const std::filesystem::path& meshAssetPath, const std::string& texturePath)
     {
         if (texturePath.empty()) return {};
         std::filesystem::path path(texturePath);
@@ -172,8 +173,7 @@ namespace
         return nullptr;
     }
 
-    bool WriteBinaryFileIfDifferent(const std::filesystem::path& path,
-                                    const std::vector<std::uint8_t>& bytes)
+    bool WriteBinaryFileIfDifferent(const std::filesystem::path& path, const std::vector<std::uint8_t>& bytes)
     {
         if (path.empty() || bytes.empty()) return false;
 
@@ -195,11 +195,8 @@ namespace
         return output.good();
     }
 
-    void RegisterImportedMaterialTextures(
-        Quiet::Project::ProjectContext& projectContext,
-        const std::string& meshAssetID,
-        const std::filesystem::path& meshAssetPath,
-        Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    void RegisterImportedMaterialTextures(Quiet::Project::ProjectContext& projectContext, const std::string& meshAssetID,
+        const std::filesystem::path& meshAssetPath, Quiet::Renderer::Vulkan::MeshImportResult& importResult)
     {
         for (std::size_t materialIndex = 0;
              materialIndex < importResult.Materials.size();
@@ -310,9 +307,18 @@ namespace Quiet::Project
                                                : m_ProjectContext(projectContext)
                                                , m_MeshLibrary(meshLibrary)
                                                , m_TextureLibrary(textureLibrary)
-                                               , m_PhysicalDevice(physicalDevice)
-                                               , m_LogicalDevice(logicalDevice)
-                                               , m_GraphicsCommands(graphicsCommands) {}
+    {
+        BindRendererResources(physicalDevice, logicalDevice, graphicsCommands);
+    }
+
+    void ProjectAssetLoader::BindRendererResources(const Renderer::Vulkan::PhysicalDevice &physicalDevice,
+                                                   const Renderer::Vulkan::LogicalDevice &logicalDevice,
+                                                   const Renderer::Vulkan::GraphicsCommands &graphicsCommands)
+    {
+        m_PhysicalDevice = &physicalDevice;
+        m_LogicalDevice = &logicalDevice;
+        m_GraphicsCommands = &graphicsCommands;
+    }
 
     bool ProjectAssetLoader::ReloadMeshAssets(const bool forceReimport)
     {
@@ -417,6 +423,11 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::LoadBuiltInMesh(const AssetRecord &record)
     {
+        if (!HasBoundRendererResources(m_PhysicalDevice, m_LogicalDevice, m_GraphicsCommands))
+        {
+            QUIET_CORE_WARN("Cannot load asset because renderer upload resources are not bound.");
+            return false;
+        }
         if (m_MeshLibrary.Has(record.ID)) { return true; }
 
         const auto primitive = Renderer::Vulkan::MeshPrimitives::Create(record.ID);
@@ -433,9 +444,9 @@ namespace Quiet::Project
         {
             m_MeshLibrary.CreateStaticMesh(
                 record.ID,
-                m_PhysicalDevice,
-                m_LogicalDevice,
-                m_GraphicsCommands,
+                *m_PhysicalDevice,
+                *m_LogicalDevice,
+                *m_GraphicsCommands,
                 primitive->Vertices,
                 primitive->Indices,
                 std::vector<Renderer::Vulkan::StaticSubmesh>{},
@@ -456,8 +467,14 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectAssetLoader::LoadExternalMesh(const Project::AssetRecord& record, const bool forceReimport)
+    bool ProjectAssetLoader::LoadExternalMesh(const AssetRecord& record, const bool forceReimport)
     {
+        if (!HasBoundRendererResources(m_PhysicalDevice, m_LogicalDevice, m_GraphicsCommands))
+        {
+            QUIET_CORE_WARN("Cannot load asset because renderer upload resources are not bound.");
+            return false;
+        }
+
         const bool alreadyLoaded = m_MeshLibrary.Has(record.ID);
         if (alreadyLoaded && !forceReimport) return true;
         if (record.Path.empty())
@@ -510,9 +527,9 @@ namespace Quiet::Project
             {
                 m_MeshLibrary.ReplaceStaticMesh(
                     record.ID,
-                    m_PhysicalDevice,
-                    m_LogicalDevice,
-                    m_GraphicsCommands,
+                    *m_PhysicalDevice,
+                    *m_LogicalDevice,
+                    *m_GraphicsCommands,
                     importResult.Vertices,
                     importResult.Indices,
                     submeshes,
@@ -524,9 +541,9 @@ namespace Quiet::Project
             {
                 m_MeshLibrary.CreateStaticMesh(
                     record.ID,
-                    m_PhysicalDevice,
-                    m_LogicalDevice,
-                    m_GraphicsCommands,
+                    *m_PhysicalDevice,
+                    *m_LogicalDevice,
+                    *m_GraphicsCommands,
                     importResult.Vertices,
                     importResult.Indices,
                     std::move(submeshes),
@@ -572,6 +589,12 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::LoadExternalTexture(const AssetRecord& record, const bool forceReimport)
     {
+        if (!HasBoundRendererResources(m_PhysicalDevice, m_LogicalDevice, m_GraphicsCommands))
+        {
+            QUIET_CORE_WARN("Cannot load asset because renderer upload resources are not bound.");
+            return false;
+        }
+
         const bool alreadyLoaded = m_TextureLibrary.Has(record.ID);
         if (alreadyLoaded && !forceReimport) return true;
         if (record.Path.empty())
@@ -618,9 +641,9 @@ namespace Quiet::Project
             {
                 m_TextureLibrary.ReplaceTexture2D(
                     record.ID,
-                    m_PhysicalDevice,
-                    m_LogicalDevice,
-                    m_GraphicsCommands,
+                    *m_PhysicalDevice,
+                    *m_LogicalDevice,
+                    *m_GraphicsCommands,
                     pixelData,
                     stats
                 );
@@ -629,9 +652,9 @@ namespace Quiet::Project
             {
                 m_TextureLibrary.CreateTexture2D(
                     record.ID,
-                    m_PhysicalDevice,
-                    m_LogicalDevice,
-                    m_GraphicsCommands,
+                    *m_PhysicalDevice,
+                    *m_LogicalDevice,
+                    *m_GraphicsCommands,
                     pixelData,
                     stats
                 );

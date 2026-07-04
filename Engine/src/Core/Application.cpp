@@ -300,6 +300,7 @@ namespace Quiet::Core
 
     void Application::ProcessEditorRequests(Editor::EditorState &editorState)
     {
+        RefreshProjectAssetLoaderRendererBindings();
         while (const std::optional<Editor::EditorRequest> request = editorState.PopNextRequest())
         {
             switch (request->Type)
@@ -456,6 +457,16 @@ namespace Quiet::Core
                 }
             }
         }
+    }
+
+    void Application::RefreshProjectAssetLoaderRendererBindings()
+    {
+        if (!m_ProjectAssetLoader || !m_Renderer) return;
+        m_ProjectAssetLoader->BindRendererResources(
+            m_Renderer->GetPhysicalDevice(),
+            m_Renderer->GetLogicalDevice(),
+            m_Renderer->GetGraphicsCommands()
+        );
     }
 
     Scene::Scene& Application::GetActiveScene()
