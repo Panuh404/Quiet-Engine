@@ -5,6 +5,7 @@
 #include <deque>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "Quiet/Core/UUID.h"
 
@@ -46,6 +47,38 @@ namespace Quiet::Editor
     {
         EditorRequestType Type{};
         std::string Argument{};
+    };
+
+    enum class EditorFeedbackSeverity
+    {
+        Info,
+        Success,
+        Warning,
+        Error
+    };
+
+    struct EditorFeedbackMessage
+    {
+        bool Visible = false;
+        EditorFeedbackSeverity Severity = EditorFeedbackSeverity::Info;
+        std::string Title{};
+        std::string Message{};
+
+        void Clear()
+        {
+            Visible = false;
+            Severity = EditorFeedbackSeverity::Info;
+            Title.clear();
+            Message.clear();
+        }
+
+        void Set(EditorFeedbackSeverity severity, std::string title, std::string message)
+        {
+            Visible = true;
+            Severity = severity;
+            Title = title;
+            Message = message;
+        }
     };
 
     struct EditorSelectionState
@@ -110,6 +143,7 @@ namespace Quiet::Editor
         EditorSceneState Scene{};
         EditorHistoryState History{};
         EditorProjectManagerState ProjectManager{};
+        EditorFeedbackMessage AssetOperationFeedback{};
 
         std::deque<EditorRequest> PendingRequests{};
 

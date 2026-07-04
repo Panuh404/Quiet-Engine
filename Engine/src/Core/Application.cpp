@@ -24,6 +24,7 @@
 #include "Quiet/Renderer/RenderConventions.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
+#include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
@@ -372,16 +373,31 @@ namespace Quiet::Core
                     if (!m_ProjectAssetLoader)
                     {
                         QUIET_CORE_WARN("Cannot reload assets because the project asset loader is not available.");
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Reload failed",
+                            "The project asset loader is not available.");
                         break;
                     }
 
                     m_Renderer->WaitIdle();
-                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadAssets(true);
+                    Renderer::UI::ClearTexturePreviewCache(true);
                     m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
+
+                    const bool allAssetsLoaded = m_ProjectAssetLoader->ReloadAssets(true);
 
                     if (!allAssetsLoaded)
                     {
                         QUIET_CORE_WARN("Some registered assets could not be loaded.");
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                            "Assets reloaded with warnings",
+                            "Some registered assets could not be loaded. Check the console for details.");
+                    }
+                    else
+                    {
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                            "Assets reloaded",
+                            "Project assets were reloaded successfully."
+                        );
                     }
 
                     RelinkSceneStaticMeshes(*m_Scene);
@@ -397,25 +413,44 @@ namespace Quiet::Core
                     if (!m_ProjectAssetLoader)
                     {
                         QUIET_CORE_WARN("Cannot reimport asset because the project asset loader is not available.");
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Reimport failed",
+                            "The project asset loader is not available.");
                         break;
                     }
+
                     if (request->Argument.empty())
                     {
                         QUIET_CORE_WARN("Cannot reimport asset because no asset ID was provided.");
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Reimport failed",
+                            "No asset ID was provided.");
                         break;
                     }
+
                     m_Renderer->WaitIdle();
+                    Renderer::UI::ClearTexturePreviewCache(true);
+                    m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
+                    const bool assetLoaded = m_ProjectAssetLoader->ReloadAssetByID(request->Argument, true);
+
+                    if (!assetLoaded)
                     {
-                        const bool assetLoaded = m_ProjectAssetLoader->ReloadAssetByID(request->Argument, true);
-                        m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
+                        QUIET_CORE_WARN("Asset '{}' could not be reimported.", request->Argument);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Reimport failed",
+                            "Asset '" + request->Argument + "' could not be reimported. Check the console for details.");
+                    }
+                    else
+                    {
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                            "Asset reimported",
+                            "Asset '" + request->Argument + "' was reimported successfully.");
+                    }
 
-                        if (!assetLoaded)
-                        {
-                            QUIET_CORE_WARN("Asset '{}' could not be reimported.", request->Argument);
-                        }
-
-                        RelinkSceneStaticMeshes(*m_Scene);
-                        if (m_RuntimeScene) RelinkSceneStaticMeshes(*m_RuntimeScene);
+                    RelinkSceneStaticMeshes(*m_Scene);
+                    if (m_RuntimeScene)
+                    {
+                        RelinkSceneStaticMeshes(*m_RuntimeScene);
                     }
                     break;
                 }
@@ -496,8 +531,9 @@ namespace Quiet::Core
         auto& uiLayer = *frame.UILayer;
         const float deltaTime = frame.DeltaTime;
         auto& editorState = m_EditorController->GetState();
-        Scene::Scene& activeScene = GetActiveScene();
 
+        ProcessEditorRequests(editorState);
+        Scene::Scene& activeScene = GetActiveScene();
         UpdateEditorSceneForFrame(activeScene, editorState, deltaTime);
 
         uiLayer.BeginFrame();
@@ -658,7 +694,6 @@ namespace Quiet::Core
             m_Renderer->GetSceneViewportTextureID(),
             BuildEditorViewportOverlayCallback());
 
-        ProcessEditorRequests(editorState);
         ProcessEditorViewportResize(editorState);
     }
 

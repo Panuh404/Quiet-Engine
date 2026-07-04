@@ -476,6 +476,78 @@ namespace
         }
     }
 
+    ImVec4 MakeAssetFeedbackTextColor(const Quiet::Editor::EditorFeedbackSeverity severity)
+    {
+        switch (severity)
+        {
+            case Quiet::Editor::EditorFeedbackSeverity::Success: return QUI::EditorColor::Success;
+            case Quiet::Editor::EditorFeedbackSeverity::Warning: return QUI::EditorColor::Warning;
+            case Quiet::Editor::EditorFeedbackSeverity::Error: return QUI::EditorColor::Error;
+            case Quiet::Editor::EditorFeedbackSeverity::Info:
+            default: return QUI::EditorColor::Accent;
+        }
+    }
+
+    ImVec4 MakeAssetFeedbackBackgroundColor(const Quiet::Editor::EditorFeedbackSeverity severity)
+    {
+        switch (severity)
+        {
+            case Quiet::Editor::EditorFeedbackSeverity::Success: return ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
+            case Quiet::Editor::EditorFeedbackSeverity::Warning: return ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
+            case Quiet::Editor::EditorFeedbackSeverity::Error: return ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
+            case Quiet::Editor::EditorFeedbackSeverity::Info:
+            default: return ImVec4(0.040f, 0.075f, 0.135f, 1.0f);
+        }
+    }
+
+    void DrawAssetOperationFeedback(Quiet::Editor::EditorState& editorState)
+    {
+        auto& feedback = editorState.AssetOperationFeedback;
+        if (!feedback.Visible) return;
+
+        const ImVec4 accentColor = MakeAssetFeedbackTextColor(feedback.Severity);
+        const ImVec4 backgroundColor = MakeAssetFeedbackBackgroundColor(feedback.Severity);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, backgroundColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, accentColor);
+
+        ImGui::BeginChild("##AssetOperationFeedback", ImVec2(0.0f, SZ::Px(74.0f)),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        {
+            const std::string title = feedback.Title.empty() ? "Asset operation" : feedback.Title;
+            const std::string message = feedback.Message.empty() ? "Operation completed." : feedback.Message;
+
+            ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
+            ImGui::TextUnformatted(title.c_str());
+            ImGui::PopStyleColor();
+
+            const float dismissWidth = SZ::Px(82.0f);
+            const float dismissX = ImGui::GetWindowContentRegionMax().x - dismissWidth;
+
+            ImGui::SameLine();
+
+            if (dismissX > ImGui::GetCursorPosX())
+                ImGui::SetCursorPosX(dismissX);
+
+            if (QUI::EditorButton("Dismiss", ImVec2(dismissWidth, 0.0f)))
+                feedback.Clear();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextWrapped("%s", message.c_str());
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+
+        ImGui::Spacing();
+    }
+
     std::uint32_t CountMeshReferences(const Quiet::Scene::Scene& scene, const std::string& meshID)
     {
         std::uint32_t count = 0;
@@ -1139,13 +1211,13 @@ namespace Quiet::Renderer::UI
                 ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
             {
-                DrawRegisterAssetForm(
-                    projectContext,
-                    editorState,
-                    assetIDBuffer,
-                    assetPathBuffer,
-                    registerErrorMessage
-                );
+                if (DrawRegisterAssetForm(projectContext, editorState, assetIDBuffer, assetPathBuffer, registerErrorMessage))
+                {
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                        "Asset registered",
+                        "Asset registration succeeded. Project assets will be reloaded."
+                    );
+                }
             }
             ImGui::EndChild();
 
@@ -1415,15 +1487,25 @@ namespace Quiet::Renderer::UI
 
             if (!pendingRemoveAssetID.empty())
             {
-                const bool removed = projectContext.RemoveAssetByID(pendingRemoveAssetID);
+                const std::string removedAssetID = pendingRemoveAssetID;
+                const bool removed = projectContext.RemoveAssetByID(removedAssetID);
+
                 if (!removed)
                 {
                     removeErrorMessage = "Failed to remove the selected asset from the registry.";
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                        "Remove failed",
+                        removeErrorMessage);
                     ImGui::OpenPopup("Remove Asset Failed");
                 }
-                else if (selectedDetailsAssetID == pendingRemoveAssetID)
+                else
                 {
-                    selectedDetailsAssetID.clear();
+                    if (selectedDetailsAssetID == removedAssetID)
+                        selectedDetailsAssetID.clear();
+
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                        "Asset removed",
+                        "Asset '" + removedAssetID + "' was removed from the registry.");
                 }
             }
 
@@ -1439,13 +1521,14 @@ namespace Quiet::Renderer::UI
             }
 
             const bool selectedAssetStillExists = selectedDetailsAssetID.empty() ||
-                Quiet::Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
+                Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
 
             if (!selectedAssetStillExists)
             {
                 selectedDetailsAssetID.clear();
             }
 
+            DrawAssetOperationFeedback(editorState);
             DrawAssetDetailsInline(
                 projectContext,
                 meshLibrary,
