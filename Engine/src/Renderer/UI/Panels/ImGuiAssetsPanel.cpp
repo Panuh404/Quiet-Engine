@@ -1172,6 +1172,94 @@ namespace
 
         ImGui::EndPopup();
     }
+
+    void DrawRemoveAssetConfirmationPopup(const Quiet::Project::ProjectContext& projectContext,
+                                          const std::string& assetID,
+                                          bool& confirmed,
+                                          bool& cancelled,
+                                          const float uiScale)
+    {
+        confirmed = false;
+        cancelled = false;
+
+        if (assetID.empty()) return;
+
+        const float modalWidth = 560.0f * uiScale;
+        const float labelWidth = 92.0f * uiScale;
+
+        ImGui::SetNextWindowSize(ImVec2(modalWidth, 0.0f), ImGuiCond_Appearing);
+
+        bool removeAssetOpen = true;
+        if (!QUI::EditorBeginPopupModal("Remove Asset", removeAssetOpen, ImGuiWindowFlags_AlwaysAutoResize))
+            return;
+
+        const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+        if (!record)
+        {
+            ImGui::TextWrapped("The selected asset is no longer registered.");
+            ImGui::Spacing();
+
+            if (QUI::EditorButton("OK", SZ::Px(ImVec2(120.0f, 0.0f))))
+            {
+                cancelled = true;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+            return;
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Warning);
+        ImGui::TextUnformatted("Remove asset from registry?");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::TextWrapped(
+            "This will unregister the asset from the current project. "
+            "The source file on disk will not be deleted."
+        );
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
+
+        DrawDetailRow("ID", record->ID.c_str(), labelWidth);
+        DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
+        DrawDetailRow("Source", record->BuiltIn ? "Built-in" : "Project", labelWidth);
+
+        if (record->Path.empty())
+            DrawDetailRow("Path", "<none>", labelWidth);
+        else
+            DrawDetailRowWrapped("Path", record->Path, labelWidth);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (QUI::EditorButton("Cancel", SZ::Px(ImVec2(130.0f, 0.0f))))
+        {
+            cancelled = true;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.360f, 0.070f, 0.080f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
+
+        if (QUI::EditorButton("Remove Asset", SZ::Px(ImVec2(160.0f, 0.0f))))
+        {
+            confirmed = true;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::PopStyleColor(3);
+        ImGui::EndPopup();
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -1189,6 +1277,7 @@ namespace Quiet::Renderer::UI
             static std::string registerErrorMessage;
             static std::string removeErrorMessage;
             static std::string selectedDetailsAssetID;
+            static std::string confirmRemoveAssetID;
             static std::array<char, 128> assetSearchBuffer{};
             static AssetBrowserTypeFilter assetTypeFilter = AssetBrowserTypeFilter::All;
 
@@ -1487,28 +1576,59 @@ namespace Quiet::Renderer::UI
 
             if (!pendingRemoveAssetID.empty())
             {
-                const std::string removedAssetID = pendingRemoveAssetID;
+                selectedDetailsAssetID = pendingRemoveAssetID;
+                confirmRemoveAssetID = pendingRemoveAssetID;
+                ImGui::OpenPopup("Remove Asset");
+            }
+
+            bool removeAssetConfirmed = false;
+            bool removeAssetCancelled = false;
+
+            DrawRemoveAssetConfirmationPopup(
+                projectContext,
+                confirmRemoveAssetID,
+                removeAssetConfirmed,
+                removeAssetCancelled,
+                GetUIScale()
+            );
+
+            if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
+            {
+                const std::string removedAssetID = confirmRemoveAssetID;
                 const bool removed = projectContext.RemoveAssetByID(removedAssetID);
+
+                confirmRemoveAssetID.clear();
 
                 if (!removed)
                 {
                     removeErrorMessage = "Failed to remove the selected asset from the registry.";
-                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+
+                    editorState.AssetOperationFeedback.Set(
+                        Editor::EditorFeedbackSeverity::Error,
                         "Remove failed",
-                        removeErrorMessage);
+                        removeErrorMessage
+                    );
+
                     ImGui::OpenPopup("Remove Asset Failed");
                 }
                 else
                 {
                     if (selectedDetailsAssetID == removedAssetID)
+                    {
                         selectedDetailsAssetID.clear();
+                    }
 
-                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                    editorState.AssetOperationFeedback.Set(
+                        Editor::EditorFeedbackSeverity::Success,
                         "Asset removed",
-                        "Asset '" + removedAssetID + "' was removed from the registry.");
+                        "Asset '" + removedAssetID + "' was removed from the registry. The source file was not deleted."
+                    );
                 }
             }
-
+            else if (removeAssetCancelled)
+            {
+                confirmRemoveAssetID.clear();
+            }
             if (useSplitDetailsLayout)
             {
                 ImGui::SameLine();
