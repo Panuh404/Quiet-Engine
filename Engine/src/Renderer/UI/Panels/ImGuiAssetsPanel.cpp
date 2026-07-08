@@ -40,6 +40,13 @@ namespace
         Browser
     };
 
+    enum class AssetBrowserThumbnailSize
+    {
+        Small,
+        Medium,
+        Large
+    };
+
     std::string ToLowerCopy(std::string value)
     {
         std::transform(
@@ -327,6 +334,49 @@ namespace
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         return ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    }
+
+    struct AssetBrowserCardMetrics
+    {
+        float DesiredColumnWidth = 178.0f;
+        float MinimumCardWidth = 150.0f;
+        float CardHeight = 192.0f;
+        float Padding = 10.0f;
+        float PreviewHeight = 86.0f;
+    };
+
+    AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const AssetBrowserThumbnailSize thumbnailSize)
+    {
+        switch (thumbnailSize)
+        {
+            case AssetBrowserThumbnailSize::Small:
+                return {
+                    SZ::Px(142.0f),
+                    SZ::Px(120.0f),
+                    SZ::Px(156.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(62.0f)
+                };
+
+            case AssetBrowserThumbnailSize::Large:
+                return {
+                    SZ::Px(230.0f),
+                    SZ::Px(190.0f),
+                    SZ::Px(246.0f),
+                    SZ::Px(12.0f),
+                    SZ::Px(126.0f)
+                };
+
+            case AssetBrowserThumbnailSize::Medium:
+            default:
+                return {
+                    SZ::Px(178.0f),
+                    SZ::Px(150.0f),
+                    SZ::Px(192.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(86.0f)
+                };
+        }
     }
 
     void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
@@ -876,6 +926,7 @@ namespace
                                  std::array<char, 128>& searchBuffer,
                                  AssetBrowserTypeFilter& typeFilter,
                                  AssetBrowserViewMode& viewMode,
+                                 AssetBrowserThumbnailSize& thumbnailSize,
                                  bool& openImportPopup)
     {
         const std::size_t meshCount = CountAssetByType(registry, Quiet::Project::AssetType::Mesh);
@@ -938,6 +989,32 @@ namespace
 
         if (DrawFilterButton("Browser", viewMode == AssetBrowserViewMode::Browser, ImVec2(browserButtonWidth, 0.0f)))
             viewMode = AssetBrowserViewMode::Browser;
+
+        if (viewMode == AssetBrowserViewMode::Browser)
+        {
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+
+            if (DrawFilterButton("Small", thumbnailSize == AssetBrowserThumbnailSize::Small, SZ::Px(ImVec2(76.0f, 0.0f))))
+            {
+                thumbnailSize = AssetBrowserThumbnailSize::Small;
+            }
+
+            ImGui::SameLine();
+
+            if (DrawFilterButton("Medium", thumbnailSize == AssetBrowserThumbnailSize::Medium, SZ::Px(ImVec2(92.0f, 0.0f))))
+            {
+                thumbnailSize = AssetBrowserThumbnailSize::Medium;
+            }
+
+            ImGui::SameLine();
+
+            if (DrawFilterButton("Large", thumbnailSize == AssetBrowserThumbnailSize::Large, SZ::Px(ImVec2(76.0f, 0.0f))))
+            {
+                thumbnailSize = AssetBrowserThumbnailSize::Large;
+            }
+        }
 
         ImGui::PopStyleVar(2);
     }
@@ -1327,6 +1404,71 @@ namespace
         ImGui::EndPopup();
     }
 
+    void DrawAssetPreviewCheckerboard(ImDrawList* drawList, const ImVec2& min, const ImVec2& max)
+    {
+        const float cellSize = SZ::Px(8.0f);
+
+        const ImU32 colorA = ImGui::ColorConvertFloat4ToU32(ImVec4(0.105f, 0.115f, 0.135f, 1.0f));
+        const ImU32 colorB = ImGui::ColorConvertFloat4ToU32(ImVec4(0.075f, 0.085f, 0.105f, 1.0f));
+
+        int row = 0;
+
+        for (float y = min.y; y < max.y; y += cellSize, ++row)
+        {
+            int column = 0;
+
+            for (float x = min.x; x < max.x; x += cellSize, ++column)
+            {
+                const ImVec2 cellMin(x, y);
+                const ImVec2 cellMax(
+                    std::min(x + cellSize, max.x),
+                    std::min(y + cellSize, max.y)
+                );
+
+                drawList->AddRectFilled(
+                    cellMin,
+                    cellMax,
+                    ((row + column) % 2 == 0) ? colorA : colorB
+                );
+            }
+        }
+    }
+
+    void DrawAssetMeshGlyph(ImDrawList* drawList, const ImVec2& min, const ImVec2& max)
+    {
+        const ImVec2 center(
+            min.x + (max.x - min.x) * 0.5f,
+            min.y + (max.y - min.y) * 0.48f
+        );
+
+        const float radius = std::min(max.x - min.x, max.y - min.y) * 0.26f;
+
+        const ImU32 accent = ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentSoft);
+        const ImU32 muted = ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted);
+
+        const ImVec2 top(center.x, center.y - radius);
+        const ImVec2 left(center.x - radius * 0.92f, center.y + radius * 0.54f);
+        const ImVec2 right(center.x + radius * 0.92f, center.y + radius * 0.54f);
+        const ImVec2 inner(center.x, center.y + radius * 0.06f);
+
+        drawList->AddTriangle(top, right, left, accent, SZ::Px(2.0f));
+        drawList->AddLine(top, inner, muted, SZ::Px(1.5f));
+        drawList->AddLine(left, inner, muted, SZ::Px(1.5f));
+        drawList->AddLine(right, inner, muted, SZ::Px(1.5f));
+
+        const char* label = "MESH";
+        const ImVec2 textSize = ImGui::CalcTextSize(label);
+
+        drawList->AddText(
+            ImVec2(
+                min.x + (max.x - min.x - textSize.x) * 0.5f,
+                max.y - textSize.y - SZ::Px(10.0f)
+            ),
+            muted,
+            label
+        );
+    }
+
     void DrawAssetBrowserCardPreview(const Quiet::Project::AssetRecord& record,
                                      const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
                                      const ImVec2& min,
@@ -1352,14 +1494,23 @@ namespace
             const auto textureStats = textureLibrary.GetStats(record.ID);
             if (textureStats.has_value() && textureStats->GpuReady)
             {
+                DrawAssetPreviewCheckerboard(drawList, min, max);
                 const ImTextureID previewID = Quiet::Renderer::UI::GetOrCreateTexturePreviewID(record.ID, textureLibrary);
+
                 if (previewID)
                 {
                     const float availableWidth = max.x - min.x - SZ::Px(16.0f);
                     const float availableHeight = max.y - min.y - SZ::Px(16.0f);
-                    const float maxSide = std::max(SZ::Px(32.0f), std::min(availableWidth, availableHeight));
+                    const float maxSide =
+                        std::max(SZ::Px(32.0f), std::min(availableWidth, availableHeight));
 
-                    const ImVec2 previewSize = Quiet::Renderer::UI::CalculateTexturePreviewSize(textureStats->Width, textureStats->Height,maxSide);
+                    const ImVec2 previewSize =
+                        Quiet::Renderer::UI::CalculateTexturePreviewSize(
+                            textureStats->Width,
+                            textureStats->Height,
+                            maxSide
+                        );
+
                     const ImVec2 imageMin(
                         min.x + (max.x - min.x - previewSize.x) * 0.5f,
                         min.y + (max.y - min.y - previewSize.y) * 0.5f
@@ -1377,36 +1528,39 @@ namespace
                         IM_COL32_WHITE
                     );
 
+                    drawList->AddRect(
+                        imageMin,
+                        imageMax,
+                        ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 0.10f)),
+                        SZ::Px(3.0f)
+                    );
+
                     return;
                 }
             }
         }
 
-        const char* fallbackLabel = "ASSET";
-
         if (record.Type == Quiet::Project::AssetType::Mesh)
         {
-            fallbackLabel = "MESH";
+            DrawAssetMeshGlyph(drawList, min, max);
         }
-        else if (record.Type == Quiet::Project::AssetType::Texture)
+        else
         {
-            fallbackLabel = "TEXTURE";
+            const char* fallbackLabel = record.Type == Quiet::Project::AssetType::Texture ? "TEXTURE" : "ASSET";
+            const ImVec2 textSize = ImGui::CalcTextSize(fallbackLabel);
+
+            drawList->AddText(
+                ImVec2(
+                    min.x + (max.x - min.x - textSize.x) * 0.5f,
+                    min.y + (max.y - min.y - textSize.y) * 0.5f
+                ),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                fallbackLabel
+            );
         }
-
-        const ImVec2 textSize = ImGui::CalcTextSize(fallbackLabel);
-
-        drawList->AddText(
-            ImVec2(
-                min.x + (max.x - min.x - textSize.x) * 0.5f,
-                min.y + (max.y - min.y - textSize.y) * 0.5f
-            ),
-            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
-            fallbackLabel
-        );
 
         (void)uiScale;
     }
-
     void DrawAssetBrowserGrid(const std::vector<const Quiet::Project::AssetRecord*>& visibleAssets,
                               const Quiet::Project::ProjectContext& projectContext,
                               Quiet::Editor::EditorState& editorState,
@@ -1417,13 +1571,14 @@ namespace
                               std::string& pendingDetailsAssetID,
                               std::string& pendingReimportAssetID,
                               std::string& pendingRemoveAssetID,
+                              const AssetBrowserThumbnailSize thumbnailSize,
                               const float uiScale)
     {
         const bool runtimeModeActive = editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit;
 
+        const AssetBrowserCardMetrics metrics = MakeAssetBrowserCardMetrics(thumbnailSize);
         const float availableWidth = ImGui::GetContentRegionAvail().x;
-        const float desiredCardWidth = SZ::Px(178.0f);
-        const int columnCount = std::max(1, static_cast<int>(availableWidth / std::max(SZ::Px(1.0f), desiredCardWidth)));
+        const int columnCount = std::max(1, static_cast<int>(availableWidth / std::max(SZ::Px(1.0f), metrics.DesiredColumnWidth)));
 
         if (!ImGui::BeginTable("AssetBrowserGrid", columnCount, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_PadOuterX)) return;
 
@@ -1454,14 +1609,11 @@ namespace
             const std::string displayName = MakeAssetDisplayName(record);
             const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
-            const float cardWidth = std::max(
-                SZ::Px(150.0f),
-                ImGui::GetContentRegionAvail().x
-            );
+            const float cardWidth = std::max(metrics.MinimumCardWidth, ImGui::GetContentRegionAvail().x);
 
-            const float cardHeight = SZ::Px(192.0f);
-            const float padding = SZ::Px(10.0f);
-            const float previewHeight = SZ::Px(86.0f);
+            const float cardHeight = metrics.CardHeight;
+            const float padding = metrics.Padding;
+            const float previewHeight = metrics.PreviewHeight;
 
             const ImVec2 cardMin = ImGui::GetCursorScreenPos();
             const ImVec2 cardSize(cardWidth, cardHeight);
@@ -1602,6 +1754,7 @@ namespace Quiet::Renderer::UI
             static std::array<char, 128> assetSearchBuffer{};
             static AssetBrowserTypeFilter assetTypeFilter = AssetBrowserTypeFilter::All;
             static AssetBrowserViewMode assetViewMode = AssetBrowserViewMode::List;
+            static AssetBrowserThumbnailSize assetThumbnailSize = AssetBrowserThumbnailSize::Medium;
 
             DrawSectionHeader(
                 "Content Browser",
@@ -1618,6 +1771,7 @@ namespace Quiet::Renderer::UI
                 assetSearchBuffer,
                 assetTypeFilter,
                 assetViewMode,
+                assetThumbnailSize,
                 openImportPopup
             );
 
@@ -1695,6 +1849,7 @@ namespace Quiet::Renderer::UI
                     pendingDetailsAssetID,
                     pendingReimportAssetID,
                     pendingRemoveAssetID,
+                    assetThumbnailSize,
                     GetUIScale()
                 );
             }
