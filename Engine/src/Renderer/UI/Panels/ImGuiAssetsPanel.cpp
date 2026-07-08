@@ -12,6 +12,7 @@
 
 #include <glm/vec3.hpp>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "ImGuiAssetFileDialog.h"
 #include "Quiet/Editor/EditorState.h"
@@ -415,7 +416,7 @@ namespace
         ImGui::Spacing();
         const bool canRegister = hasPath && supportedType && fileExists;
 
-        if (QUI::EditorButton("Register", SZ::Px(ImVec2(125.0f, 0.0f)), canRegister))
+        if (QUI::EditorButton("Import", SZ::Px(ImVec2(125.0f, 0.0f)), canRegister))
         {
             std::string assetID = assetIDBuffer.data();
             std::string assetPath = assetPathBuffer.data();
@@ -427,14 +428,12 @@ namespace
             {
                 case Quiet::Project::AssetType::Mesh:
                     success = projectContext.RegisterMeshAsset(assetID, assetPath, false);
-                    if (success)
-                        editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
+                    if (success) editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
                     break;
 
                 case Quiet::Project::AssetType::Texture:
                     success = projectContext.RegisterTextureAsset(assetID, assetPath, false);
-                    if (success)
-                        editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
+                    if (success) editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
                     break;
 
                 case Quiet::Project::AssetType::Unknown:
@@ -451,18 +450,48 @@ namespace
             }
             else
             {
-                errorMessage =
-                    "Failed to register asset. Check that the Asset ID is valid and the file type is supported.";
-                ImGui::OpenPopup("Register Asset Failed");
+                errorMessage = "Failed to import asset. Check that the Asset ID is valid and the file type is supported.";
+                ImGui::OpenPopup("Import Asset Failed");
             }
         }
-        ImGui::SameLine();
-
-        if (QUI::EditorButton("Reload", SZ::Px(ImVec2(125.0f, 0.0f))))
-            editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
 
         ImGui::PopStyleVar(2);
         return registered;
+    }
+
+    void DrawImportAssetPopup(Quiet::Project::ProjectContext& projectContext,
+                              Quiet::Editor::EditorState& editorState,
+                              std::array<char, 128>& assetIDBuffer,
+                              std::array<char, 260>& assetPathBuffer,
+                              std::string& errorMessage)
+    {
+        ImGui::SetNextWindowSize(SZ::Px(ImVec2(640.0f, 0.0f)), ImGuiCond_Appearing);
+        bool importPopupOpen = true;
+
+        if (!QUI::EditorBeginPopupModal("Import Asset", importPopupOpen, ImGuiWindowFlags_AlwaysAutoResize))
+            return;
+
+        DrawSectionHeader("Import Asset", "Register a supported mesh or texture file as a project asset.");
+
+        if (DrawRegisterAssetForm(projectContext, editorState, assetIDBuffer, assetPathBuffer, errorMessage))
+        {
+            editorState.AssetOperationFeedback.Set(
+                Quiet::Editor::EditorFeedbackSeverity::Success,
+                "Asset imported",
+                "Asset import succeeded. Project assets will be reloaded."
+            );
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (QUI::EditorButton("Cancel", SZ::Px(ImVec2(125.0f, 0.0f))))
+        {
+            errorMessage.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 
     void DrawFailurePopup(const char* title, const std::string& message)
@@ -842,10 +871,12 @@ namespace
         return clicked;
     }
 
-    void DrawAssetBrowserToolbar(const Quiet::Project::AssetRegistry& registry,
+    void DrawAssetBrowserToolbar(Quiet::Editor::EditorState& editorState,
+                                 const Quiet::Project::AssetRegistry& registry,
                                  std::array<char, 128>& searchBuffer,
                                  AssetBrowserTypeFilter& typeFilter,
-                                 AssetBrowserViewMode& viewMode)
+                                 AssetBrowserViewMode& viewMode,
+                                 bool& openImportPopup)
     {
         const std::size_t meshCount = CountAssetByType(registry, Quiet::Project::AssetType::Mesh);
         const std::size_t textureCount = CountAssetByType(registry, Quiet::Project::AssetType::Texture);
@@ -853,8 +884,28 @@ namespace
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.f, 7.f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
 
+        if (QUI::EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f))))
+            openImportPopup = true;
+
+        ImGui::SameLine();
+
+        if (QUI::EditorButton("Reload", SZ::Px(ImVec2(86.0f, 0.0f))))
+            editorState.QueueRequest(Quiet::Editor::EditorRequestType::ReloadAssets);
+
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        ImGui::SameLine();
+
         ImGui::SetNextItemWidth(std::max(SZ::Px(220.0f), ImGui::GetContentRegionAvail().x * 0.38f));
         ImGui::InputTextWithHint("##AssetBrowserSearch", "Search assets by id, path, or type...", searchBuffer.data(), searchBuffer.size());
+        ImGui::SameLine();
+
+        if (searchBuffer[0] != '\0')
+        {
+            ImGui::SameLine();
+            if (QUI::EditorButton("Clear", SZ::Px(ImVec2(72.0f, 0.0f))))
+                searchBuffer[0] = '\0';
+        }
 
         ImGui::SameLine();
 
@@ -873,13 +924,8 @@ namespace
         if (DrawFilterButton(texturesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Textures, SZ::Px(ImVec2(116.0f, 0.0f))))
             typeFilter = AssetBrowserTypeFilter::Textures;
 
-        if (searchBuffer[0] != '\0')
-        {
-            ImGui::SameLine();
-            if (QUI::EditorButton("Clear", SZ::Px(ImVec2(72.0f, 0.0f))))
-                searchBuffer[0] = '\0';
-        }
-
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
         const float modeButtonWidth = SZ::Px(86.0f);
@@ -1557,53 +1603,50 @@ namespace Quiet::Renderer::UI
             static AssetBrowserTypeFilter assetTypeFilter = AssetBrowserTypeFilter::All;
             static AssetBrowserViewMode assetViewMode = AssetBrowserViewMode::List;
 
-            ImGui::TextUnformatted("Register");
-            ImGui::TextDisabled("Pick a supported file and register it as a project asset.");
-            ImGui::Separator();
+            DrawSectionHeader(
+                "Content Browser",
+                "Browse, import, reload, and manage project assets."
+            );
 
-            ImGui::Spacing();
+            const auto& registry = projectContext.GetAssetRegistry();
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, Scale(10.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, Scale(1.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scale(ImVec2(14.0f, 12.0f)));
+            bool openImportPopup = false;
 
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
-            ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+            DrawAssetBrowserToolbar(
+                editorState,
+                registry,
+                assetSearchBuffer,
+                assetTypeFilter,
+                assetViewMode,
+                openImportPopup
+            );
 
-            if (ImGui::BeginChild(
-                "RegisterAssetCard",
-                Scale(ImVec2(0.0f, 210.0f)),
-                ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
-                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+            if (openImportPopup)
             {
-                if (DrawRegisterAssetForm(projectContext, editorState, assetIDBuffer, assetPathBuffer, registerErrorMessage))
-                {
-                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
-                        "Asset registered",
-                        "Asset registration succeeded. Project assets will be reloaded."
-                    );
-                }
+                ImGui::OpenPopup("Import Asset");
             }
-            ImGui::EndChild();
 
-            ImGui::PopStyleColor(2);
-            ImGui::PopStyleVar(3);
+            DrawImportAssetPopup(
+                projectContext,
+                editorState,
+                assetIDBuffer,
+                assetPathBuffer,
+                registerErrorMessage
+            );
 
             if (const auto selectedAsset = DrawAssetFileDialog(projectContext))
             {
                 CopyToBuffer(assetPathBuffer, selectedAsset->AssetPath);
+
                 if (assetIDBuffer[0] == '\0')
+                {
                     CopyToBuffer(assetIDBuffer, selectedAsset->AssetID);
+                }
             }
 
-            DrawFailurePopup("Register Asset Failed", registerErrorMessage);
+            DrawFailurePopup("Import Asset Failed", registerErrorMessage);
 
             ImGui::Spacing();
-            DrawSectionHeader("Asset Registry", "Project assets available to scenes and materials.");
-
-            const auto& registry = projectContext.GetAssetRegistry();
-            DrawAssetBrowserToolbar(registry, assetSearchBuffer, assetTypeFilter, assetViewMode);
-
             const std::vector<const Project::AssetRecord*> visibleAssets =
                 BuildVisibleAssetList(registry, assetTypeFilter, assetSearchBuffer.data());
 
