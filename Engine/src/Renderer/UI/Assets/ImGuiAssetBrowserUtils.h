@@ -39,6 +39,16 @@ namespace Quiet::Renderer::UI::Assets
     std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type);
 
     // File/path helpers
+    std::string NormalizeProjectRelativePathString(const std::filesystem::path& path);
+    std::string GetAssetsRootRelativePath(const Project::ProjectContext& projectContext);
+    bool IsAssetFolderInsideAssetsRoot(const std::string& candidateFolder, const std::string& assetsRoot);
+
+    std::filesystem::path ResolveAssetFolderPath(const Project::ProjectContext& projectContext, const std::string& assetFolder);
+    std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath);
+    void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder);
+    std::string GetParentAssetFolder(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
+    std::vector<std::string> BuildAssetFolderBreadcrumbs(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
+
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath);
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext, const std::string& assetPath);
 

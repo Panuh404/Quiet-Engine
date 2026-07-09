@@ -8,74 +8,14 @@
 
 #include <imgui.h>
 
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
-
-    std::string NormalizeRelativePathString(const std::filesystem::path& path)
-    {
-        const std::string normalized = path.lexically_normal().generic_string();
-        return normalized == "." ? std::string{} : normalized;
-    }
-
-    std::string GetAssetsRootRelativePath(const Quiet::Project::ProjectContext& projectContext)
-    {
-        const std::string assetsDirectory = NormalizeRelativePathString(projectContext.GetProjectDescriptor().AssetsDirectory);
-        return assetsDirectory.empty() ? "Assets" : assetsDirectory;
-    }
-
-    bool IsInsideAssetsRoot(const std::string& candidate, const std::string& assetsRoot)
-    {
-        if (candidate == assetsRoot) return true;
-        return candidate.rfind(assetsRoot + "/", 0) == 0;
-    }
-
-    std::string MakeProjectRelativeFolderPath(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath)
-    {
-        const std::filesystem::path relativePath = absoluteFolderPath.lexically_normal().lexically_relative(projectContext.GetRootPath());
-        const std::string relativeString = NormalizeRelativePathString(relativePath);
-        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
-
-        if (!relativeString.empty() && IsInsideAssetsRoot(relativeString, assetsRoot))
-            return relativeString;
-
-        return assetsRoot;
-    }
-
-    std::filesystem::path ResolveCurrentAssetFolderPath(const Quiet::Project::ProjectContext& projectContext, const std::string& currentAssetFolder)
-    {
-        if (currentAssetFolder.empty()) return projectContext.GetAssetsPath();
-
-        std::filesystem::path folderPath = currentAssetFolder;
-        if (folderPath.is_relative()) folderPath = projectContext.GetRootPath() / folderPath;
-
-        return folderPath.lexically_normal();
-    }
-
-    void ValidateCurrentAssetFolder(const Quiet::Project::ProjectContext& projectContext, std::string& currentAssetFolder)
-    {
-        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
-        if (currentAssetFolder.empty())
-        {
-            currentAssetFolder = assetsRoot;
-            return;
-        }
-
-        currentAssetFolder = NormalizeRelativePathString(currentAssetFolder);
-        if (!IsInsideAssetsRoot(currentAssetFolder, assetsRoot))
-        {
-            currentAssetFolder = assetsRoot;
-            return;
-        }
-
-        std::error_code ec;
-        const std::filesystem::path selectedFolderPath = ResolveCurrentAssetFolderPath(projectContext, currentAssetFolder);
-        if (!std::filesystem::exists(selectedFolderPath, ec) || !std::filesystem::is_directory(selectedFolderPath, ec))
-            currentAssetFolder = assetsRoot;
-    }
+    namespace Assets = Quiet::Renderer::UI::Assets;
 
     std::vector<std::filesystem::path> EnumerateChildFolders(const std::filesystem::path& folderPath)
     {
@@ -126,7 +66,7 @@ namespace
     {
         const std::filesystem::path assetsRoot = projectContext.GetAssetsPath().lexically_normal();
         if (folderPath.lexically_normal() == assetsRoot)
-            return GetAssetsRootRelativePath(projectContext);
+            return Assets::GetAssetsRootRelativePath(projectContext);
 
         const std::string filename = folderPath.filename().string();
         return filename.empty() ? folderPath.generic_string() : filename;
@@ -134,7 +74,7 @@ namespace
 
     void DrawFolderNode(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& folderPath, std::string& currentAssetFolder)
     {
-        const std::string relativeFolderPath = MakeProjectRelativeFolderPath(projectContext, folderPath);
+        const std::string relativeFolderPath = Assets::MakeProjectRelativeAssetFolderPath(projectContext, folderPath);
         const std::vector<std::filesystem::path> childFolders = EnumerateChildFolders(folderPath);
         const bool selected = currentAssetFolder == relativeFolderPath;
         const bool hasChildren = !childFolders.empty();

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <system_error>
 
 namespace Quiet::Renderer::UI::Assets
 {
@@ -79,6 +81,108 @@ namespace Quiet::Renderer::UI::Assets
     std::string ExtractFileNameNoExt(const std::string& path)
     {
         return std::filesystem::path(path).stem().string();
+    }
+
+    std::string NormalizeProjectRelativePathString(const std::filesystem::path& path)
+    {
+        const std::string normalized = path.lexically_normal().generic_string();
+        return normalized == "." ? std::string{} : normalized;
+    }
+
+    std::string GetAssetsRootRelativePath(const Project::ProjectContext& projectContext)
+    {
+        const std::string assetsDirectory = NormalizeProjectRelativePathString(projectContext.GetProjectDescriptor().AssetsDirectory);
+        return assetsDirectory.empty() ? "Assets" : assetsDirectory;
+    }
+
+    bool IsAssetFolderInsideAssetsRoot(const std::string& candidateFolder, const std::string& assetsRoot)
+    {
+        if (candidateFolder == assetsRoot) return true;
+        return candidateFolder.rfind(assetsRoot + "/", 0) == 0;
+    }
+
+    std::filesystem::path ResolveAssetFolderPath(const Project::ProjectContext& projectContext, const std::string& assetFolder)
+    {
+        if (assetFolder.empty()) return projectContext.GetAssetsPath();
+        std::filesystem::path folderPath = assetFolder;
+        if (folderPath.is_relative()) folderPath = projectContext.GetRootPath() / folderPath;
+
+        return folderPath.lexically_normal();
+    }
+
+    std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath)
+    {
+        const std::filesystem::path relativePath = absoluteFolderPath.lexically_normal().lexically_relative(projectContext.GetRootPath());
+        const std::string relativeString = NormalizeProjectRelativePathString(relativePath);
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+
+        if (!relativeString.empty() && IsAssetFolderInsideAssetsRoot(relativeString, assetsRoot))
+            return relativeString;
+
+        return assetsRoot;
+    }
+
+    void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder)
+    {
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        if (currentAssetFolder.empty())
+        {
+            currentAssetFolder = assetsRoot;
+            return;
+        }
+
+        currentAssetFolder = NormalizeProjectRelativePathString(currentAssetFolder);
+        if (!IsAssetFolderInsideAssetsRoot(currentAssetFolder, assetsRoot))
+        {
+            currentAssetFolder = assetsRoot;
+            return;
+        }
+
+        std::error_code ec;
+        const std::filesystem::path selectedFolderPath = ResolveAssetFolderPath(projectContext, currentAssetFolder);
+        if (!std::filesystem::exists(selectedFolderPath, ec) || !std::filesystem::is_directory(selectedFolderPath, ec))
+            currentAssetFolder = assetsRoot;
+    }
+
+    std::string GetParentAssetFolder(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder)
+    {
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        const std::string normalizedFolder = currentAssetFolder.empty()
+            ? assetsRoot
+            : NormalizeProjectRelativePathString(currentAssetFolder);
+
+        if (!IsAssetFolderInsideAssetsRoot(normalizedFolder, assetsRoot) || normalizedFolder == assetsRoot)
+            return assetsRoot;
+
+        const std::string parentFolder = NormalizeProjectRelativePathString(std::filesystem::path(normalizedFolder).parent_path());
+        if (!IsAssetFolderInsideAssetsRoot(parentFolder, assetsRoot))
+            return assetsRoot;
+
+        return parentFolder;
+    }
+
+    std::vector<std::string> BuildAssetFolderBreadcrumbs(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder)
+    {
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        std::string normalizedFolder = currentAssetFolder.empty()
+            ? assetsRoot
+            : NormalizeProjectRelativePathString(currentAssetFolder);
+
+        if (!IsAssetFolderInsideAssetsRoot(normalizedFolder, assetsRoot))
+            normalizedFolder = assetsRoot;
+
+        std::vector<std::string> breadcrumbs;
+        std::filesystem::path cumulativePath;
+
+        for (const std::filesystem::path& segment : std::filesystem::path(normalizedFolder))
+        {
+            cumulativePath /= segment;
+            const std::string breadcrumbPath = NormalizeProjectRelativePathString(cumulativePath);
+            if (!breadcrumbPath.empty()) breadcrumbs.push_back(breadcrumbPath);
+        }
+
+        if (breadcrumbs.empty()) breadcrumbs.push_back(assetsRoot);
+        return breadcrumbs;
     }
 
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath)

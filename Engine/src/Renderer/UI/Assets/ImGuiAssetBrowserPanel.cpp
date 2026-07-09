@@ -1,6 +1,8 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserPanel.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -73,6 +75,74 @@ namespace
         const float preferredWidth = std::clamp(availableWidth * 0.20f, SZ::Px(220.0f), SZ::Px(300.0f));
         const float narrowWindowMaxWidth = std::max(SZ::Px(180.0f), availableWidth * 0.42f);
         return std::min(preferredWidth, narrowWindowMaxWidth);
+    }
+
+    std::string MakeBreadcrumbLabel(const std::string& breadcrumbPath, const std::string& assetsRoot)
+    {
+        if (breadcrumbPath == assetsRoot) return assetsRoot;
+
+        const std::string label = std::filesystem::path(breadcrumbPath).filename().string();
+        return label.empty() ? breadcrumbPath : label;
+    }
+
+    void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, std::string& currentAssetFolder)
+    {
+        using namespace Quiet::Renderer::UI::Assets;
+
+        ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        const bool canGoUp = currentAssetFolder != assetsRoot;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 5.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(6.0f, 4.0f)));
+
+        if (QUI::EditorButton("Up##AssetBreadcrumbUp", SZ::Px(ImVec2(52.0f, 0.0f)), canGoUp))
+            currentAssetFolder = GetParentAssetFolder(projectContext, currentAssetFolder);
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted("|");
+        ImGui::PopStyleColor();
+
+        const std::vector<std::string> breadcrumbs = BuildAssetFolderBreadcrumbs(projectContext, currentAssetFolder);
+        for (std::size_t index = 0; index < breadcrumbs.size(); ++index)
+        {
+            ImGui::SameLine();
+
+            if (index > 0)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextUnformatted(">");
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+            }
+
+            const std::string& breadcrumbPath = breadcrumbs[index];
+            const std::string label = MakeBreadcrumbLabel(breadcrumbPath, assetsRoot);
+            const std::string buttonID = label + "##AssetBreadcrumb_" + breadcrumbPath;
+
+            const float buttonWidth = std::max(
+                SZ::Px(54.0f),
+                ImGui::CalcTextSize(label.c_str()).x + SZ::Px(24.0f)
+            );
+
+            const bool selected = breadcrumbPath == currentAssetFolder;
+            if (selected)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::Background4);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::Background4);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Background4);
+            }
+
+            if (QUI::EditorButton(buttonID.c_str(), ImVec2(buttonWidth, 0.0f)))
+                currentAssetFolder = breadcrumbPath;
+
+            if (selected)
+                ImGui::PopStyleColor(3);
+        }
+
+        ImGui::PopStyleVar(2);
     }
 }
 
@@ -152,10 +222,13 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
                 {
+                    DrawAssetBrowserBreadcrumb(projectContext, currentAssetFolder);
+                    ImGui::Spacing();
+
                     std::string pendingRemoveAssetID;
                     std::string pendingDetailsAssetID;
                     std::string pendingReimportAssetID;
-
+                    
                     const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
                     const float detailsPanelWidth = useSplitDetailsLayout
                             ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
@@ -174,8 +247,7 @@ namespace Quiet::Renderer::UI::Assets
                         ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
                             ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
-                    if (visibleAssets.empty())
-                        DrawAssetBrowserEmptyState();
+                    if (visibleAssets.empty()) DrawAssetBrowserEmptyState();
 
                     else if (assetViewMode == AssetBrowserViewMode::Browser)
                     {
@@ -209,8 +281,7 @@ namespace Quiet::Renderer::UI::Assets
                         );
                     }
 
-                    if (useSplitDetailsLayout)
-                        ImGui::EndChild();
+                    if (useSplitDetailsLayout) ImGui::EndChild();
 
                     if (!pendingDetailsAssetID.empty())
                     {
