@@ -93,6 +93,8 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Assets/ImGuiAssetBrowserImport.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserListView.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserListView.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserPanel.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserPanel.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserTypes.h
