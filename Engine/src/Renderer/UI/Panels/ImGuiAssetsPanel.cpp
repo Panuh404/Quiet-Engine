@@ -18,6 +18,7 @@
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Platform/Shell.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserContext.h"
 #include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
@@ -30,6 +31,12 @@ namespace
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
     namespace QUIA = Quiet::Renderer::UI::Assets;
+
+    using QUIA::AssetBrowserState;
+    using QUIA::AssetBrowserThumbnailSize;
+    using QUIA::AssetBrowserTypeFilter;
+    using QUIA::AssetBrowserViewMode;
+    using QUIA::AssetBrowserContext;
 
 
     std::string ToLowerCopy(std::string value)
@@ -55,15 +62,15 @@ namespace
         return lowerText.find(lowerQuery) != std::string::npos;
     }
 
-    bool MatchesTypeFilter(const Quiet::Project::AssetRecord& record, const QUIA::AssetBrowserTypeFilter filter)
+    bool MatchesTypeFilter(const Quiet::Project::AssetRecord& record, const AssetBrowserTypeFilter filter)
     {
         switch (filter)
         {
-            case QUIA::AssetBrowserTypeFilter::All:
+            case AssetBrowserTypeFilter::All:
                 return true;
-            case QUIA::AssetBrowserTypeFilter::Meshes:
+            case AssetBrowserTypeFilter::Meshes:
                 return record.Type == Quiet::Project::AssetType::Mesh;
-            case QUIA::AssetBrowserTypeFilter::Textures:
+            case AssetBrowserTypeFilter::Textures:
                 return record.Type == Quiet::Project::AssetType::Texture;
             default:
                 return true;
@@ -81,7 +88,7 @@ namespace
     }
 
     std::vector<const Quiet::Project::AssetRecord*> BuildVisibleAssetList(const Quiet::Project::AssetRegistry& registry,
-                                         const QUIA::AssetBrowserTypeFilter typeFilter,
+                                         const AssetBrowserTypeFilter typeFilter,
                                          const std::string& searchQuery)
     {
         std::vector<const Quiet::Project::AssetRecord*> visibleAssets;
@@ -330,11 +337,11 @@ namespace
         float PreviewHeight = 86.0f;
     };
 
-    AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const QUIA::AssetBrowserThumbnailSize thumbnailSize)
+    AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const AssetBrowserThumbnailSize thumbnailSize)
     {
         switch (thumbnailSize)
         {
-            case QUIA::AssetBrowserThumbnailSize::Small:
+            case AssetBrowserThumbnailSize::Small:
                 return {
                     SZ::Px(142.0f),
                     SZ::Px(120.0f),
@@ -343,7 +350,7 @@ namespace
                     SZ::Px(62.0f)
                 };
 
-            case QUIA::AssetBrowserThumbnailSize::Large:
+            case AssetBrowserThumbnailSize::Large:
                 return {
                     SZ::Px(230.0f),
                     SZ::Px(190.0f),
@@ -352,7 +359,7 @@ namespace
                     SZ::Px(126.0f)
                 };
 
-            case QUIA::AssetBrowserThumbnailSize::Medium:
+            case AssetBrowserThumbnailSize::Medium:
             default:
                 return {
                     SZ::Px(178.0f),
@@ -947,41 +954,41 @@ namespace
         }
     }
 
-    std::string MakeAssetTypeFilterDropdownLabel(const QUIA::AssetBrowserTypeFilter filter, const std::size_t meshCount, const std::size_t textureCount)
+    std::string MakeAssetTypeFilterDropdownLabel(const AssetBrowserTypeFilter filter, const std::size_t meshCount, const std::size_t textureCount)
     {
         switch (filter)
         {
-            case QUIA::AssetBrowserTypeFilter::Meshes:
+            case AssetBrowserTypeFilter::Meshes:
                 return "Filter: Meshes " + std::to_string(meshCount);
-            case QUIA::AssetBrowserTypeFilter::Textures:
+            case AssetBrowserTypeFilter::Textures:
                 return "Filter: Textures " + std::to_string(textureCount);
-            case QUIA::AssetBrowserTypeFilter::All:
+            case AssetBrowserTypeFilter::All:
             default:
                 return "Filter: All";
         }
     }
 
-    const char* ToAssetBrowserViewModeLabel(const QUIA::AssetBrowserViewMode viewMode)
+    const char* ToAssetBrowserViewModeLabel(const AssetBrowserViewMode viewMode)
     {
         switch (viewMode)
         {
-            case QUIA::AssetBrowserViewMode::Browser:
+            case AssetBrowserViewMode::Browser:
                 return "Browser";
-            case QUIA::AssetBrowserViewMode::List:
+            case AssetBrowserViewMode::List:
             default:
                 return "List";
         }
     }
 
-    const char* ToAssetBrowserThumbnailSizeLabel(const QUIA::AssetBrowserThumbnailSize thumbnailSize)
+    const char* ToAssetBrowserThumbnailSizeLabel(const AssetBrowserThumbnailSize thumbnailSize)
     {
         switch (thumbnailSize)
         {
-            case QUIA::AssetBrowserThumbnailSize::Small:
+            case AssetBrowserThumbnailSize::Small:
                 return "Small";
-            case QUIA::AssetBrowserThumbnailSize::Large:
+            case AssetBrowserThumbnailSize::Large:
                 return "Large";
-            case QUIA::AssetBrowserThumbnailSize::Medium:
+            case AssetBrowserThumbnailSize::Medium:
             default:
                 return "Medium";
         }
@@ -999,9 +1006,9 @@ namespace
     void DrawAssetBrowserToolbar(Quiet::Editor::EditorState& editorState,
                                  const Quiet::Project::AssetRegistry& registry,
                                  std::array<char, 128>& searchBuffer,
-                                 QUIA::AssetBrowserTypeFilter& typeFilter,
-                                 QUIA::AssetBrowserViewMode& viewMode,
-                                 QUIA::AssetBrowserThumbnailSize& thumbnailSize,
+                                 AssetBrowserTypeFilter& typeFilter,
+                                 AssetBrowserViewMode& viewMode,
+                                 AssetBrowserThumbnailSize& thumbnailSize,
                                  bool& openImportPopup)
     {
         const std::size_t meshCount = CountAssetByType(registry, Quiet::Project::AssetType::Mesh);
@@ -1045,14 +1052,14 @@ namespace
             const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
             const std::string texturesLabel = "Textures " + std::to_string(textureCount);
 
-            if (QUI::EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == QUIA::AssetBrowserTypeFilter::All))
-                typeFilter = QUIA::AssetBrowserTypeFilter::All;
+            if (QUI::EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::All))
+                typeFilter = AssetBrowserTypeFilter::All;
 
-            if (QUI::EditorMenuItem(meshesLabel.c_str(), nullptr, typeFilter == QUIA::AssetBrowserTypeFilter::Meshes))
-                typeFilter = QUIA::AssetBrowserTypeFilter::Meshes;
+            if (QUI::EditorMenuItem(meshesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Meshes))
+                typeFilter = AssetBrowserTypeFilter::Meshes;
 
-            if (QUI::EditorMenuItem(texturesLabel.c_str(), nullptr, typeFilter == QUIA::AssetBrowserTypeFilter::Textures))
-                typeFilter = QUIA::AssetBrowserTypeFilter::Textures;
+            if (QUI::EditorMenuItem(texturesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Textures))
+                typeFilter = AssetBrowserTypeFilter::Textures;
 
             ImGui::EndPopup();
         }
@@ -1062,30 +1069,30 @@ namespace
         const std::string viewDropdownLabel = std::string("View: ") + ToAssetBrowserViewModeLabel(viewMode);
         if (DrawAssetToolbarDropdownButton(viewDropdownLabel, "##AssetViewModeDropdown", SZ::Px(ImVec2(140.0f, 0.0f))))
         {
-            if (QUI::EditorMenuItem("List", nullptr, viewMode == QUIA::AssetBrowserViewMode::List))
-                viewMode = QUIA::AssetBrowserViewMode::List;
+            if (QUI::EditorMenuItem("List", nullptr, viewMode == AssetBrowserViewMode::List))
+                viewMode = AssetBrowserViewMode::List;
 
-            if (QUI::EditorMenuItem("Browser", nullptr, viewMode == QUIA::AssetBrowserViewMode::Browser))
-                viewMode = QUIA::AssetBrowserViewMode::Browser;
+            if (QUI::EditorMenuItem("Browser", nullptr, viewMode == AssetBrowserViewMode::Browser))
+                viewMode = AssetBrowserViewMode::Browser;
 
             ImGui::EndPopup();
         }
 
-        if (viewMode == QUIA::AssetBrowserViewMode::Browser)
+        if (viewMode == AssetBrowserViewMode::Browser)
         {
             ImGui::SameLine();
 
             const std::string sizeDropdownLabel = std::string("Size: ") + ToAssetBrowserThumbnailSizeLabel(thumbnailSize);
             if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(140.0f, 0.0f))))
             {
-                if (QUI::EditorMenuItem("Small", nullptr, thumbnailSize == QUIA::AssetBrowserThumbnailSize::Small))
-                    thumbnailSize = QUIA::AssetBrowserThumbnailSize::Small;
+                if (QUI::EditorMenuItem("Small", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Small))
+                    thumbnailSize = AssetBrowserThumbnailSize::Small;
 
-                if (QUI::EditorMenuItem("Medium", nullptr, thumbnailSize == QUIA::AssetBrowserThumbnailSize::Medium))
-                    thumbnailSize = QUIA::AssetBrowserThumbnailSize::Medium;
+                if (QUI::EditorMenuItem("Medium", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Medium))
+                    thumbnailSize = AssetBrowserThumbnailSize::Medium;
 
-                if (QUI::EditorMenuItem("Large", nullptr, thumbnailSize == QUIA::AssetBrowserThumbnailSize::Large))
-                    thumbnailSize = QUIA::AssetBrowserThumbnailSize::Large;
+                if (QUI::EditorMenuItem("Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Large))
+                    thumbnailSize = AssetBrowserThumbnailSize::Large;
 
                 ImGui::EndPopup();
             }
@@ -1656,7 +1663,7 @@ namespace
                               std::string& pendingDetailsAssetID,
                               std::string& pendingReimportAssetID,
                               std::string& pendingRemoveAssetID,
-                              const QUIA::AssetBrowserThumbnailSize thumbnailSize,
+                              const AssetBrowserThumbnailSize thumbnailSize,
                               const float uiScale)
     {
         const bool runtimeModeActive = editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit;
@@ -1810,6 +1817,15 @@ namespace Quiet::Renderer::UI
             auto& assetViewMode = assetBrowserState.ViewMode;
             auto& assetThumbnailSize = assetBrowserState.ThumbnailSize;
 
+            const AssetBrowserContext assetBrowserContext{
+                projectContext,
+                editorState,
+                scene,
+                meshLibrary,
+                textureLibrary,
+                GetUIScale()
+            };
+
             const auto& registry = projectContext.GetAssetRegistry();
             bool openImportPopup = false;
 
@@ -1900,7 +1916,7 @@ namespace Quiet::Renderer::UI
                     pendingReimportAssetID,
                     pendingRemoveAssetID,
                     assetThumbnailSize,
-                    GetUIScale()
+                    assetBrowserContext.UIScale
                 );
             }
             else
@@ -2129,7 +2145,7 @@ namespace Quiet::Renderer::UI
                 confirmRemoveAssetID,
                 removeAssetConfirmed,
                 removeAssetCancelled,
-                GetUIScale()
+                assetBrowserContext.UIScale
             );
 
             if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
@@ -2195,7 +2211,7 @@ namespace Quiet::Renderer::UI
                 textureLibrary,
                 scene,
                 selectedDetailsAssetID,
-                GetUIScale()
+                assetBrowserContext.UIScale
             );
 
                 if (useSplitDetailsLayout)
@@ -2211,7 +2227,7 @@ namespace Quiet::Renderer::UI
                 ImGui::OpenPopup("Asset Details");
             }
 
-            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, GetUIScale());
+            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, assetBrowserContext.UIScale);
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
         }
         ImGui::End();

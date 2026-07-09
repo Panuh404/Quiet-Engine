@@ -80,6 +80,7 @@ target_sources(Quiet_Engine
         src/Renderer/UI/ImGuiToolbarCommon.h
 
         # Renderer - UI - Assets
+        src/Renderer/UI/Assets/ImGuiAssetBrowserContext.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserTypes.h
         src/Renderer/UI/Assets/ImGuiAssetFileDialog.cpp
         src/Renderer/UI/Assets/ImGuiAssetFileDialog.h
