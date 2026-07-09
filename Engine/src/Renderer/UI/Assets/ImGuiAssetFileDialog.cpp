@@ -23,11 +23,6 @@ namespace
         "Meshes (*.obj *.fbx *.gltf *.glb *.dae)" "{.obj,.fbx,.gltf,.glb,.dae},"
         "Textures (*.png *.jpg *.jpeg *.tga *.bmp)" "{.png,.jpg,.jpeg,.tga,.bmp}";
 
-    std::string ExtractAssetIDFromPath(const std::string& path)
-    {
-        return std::filesystem::path(path).stem().string();
-    }
-
     std::string ToLowerCopy(std::string value)
     {
         std::transform(
@@ -40,28 +35,6 @@ namespace
             }
         );
         return value;
-    }
-
-    ImVec2 CalculateAssetDialogSize()
-    {
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        const ImVec2 workSize = viewport
-            ? viewport->WorkSize
-            : ImGui::GetIO().DisplaySize;
-
-        const float width = std::clamp(
-            workSize.x * 0.78f,
-            SZ::Px(820.0f),
-            SZ::Px(1500.0f)
-        );
-
-        const float height = std::clamp(
-            workSize.y * 0.78f,
-            SZ::Px(560.0f),
-            SZ::Px(960.0f)
-        );
-
-        return { width, height };
     }
 
     void ConfigureAssetFileDialogStyles()
@@ -87,42 +60,6 @@ namespace
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".jpeg", textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".tga",  textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".bmp",  textureColor, "");
-    }
-
-    void PushAssetDialogStyle()
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   SZ::Px(14.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding,    SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,    SZ::Px(7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding,SZ::Px(8.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,    SZ::Px(14.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    SZ::Px(ImVec2(14.0f, 12.0f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,     SZ::Px(ImVec2(10.0f, 7.0f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      SZ::Px(ImVec2(9.0f, 8.0f)));
-
-        ImGui::PushStyleColor(ImGuiCol_WindowBg,               Theme::Background1);
-        ImGui::PushStyleColor(ImGuiCol_PopupBg,                Theme::Background1);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg,                Theme::Background2);
-        ImGui::PushStyleColor(ImGuiCol_Border,                 Theme::Border);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg,                Theme::Background3);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,         Theme::Background4);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,          Theme::AccentDim);
-        ImGui::PushStyleColor(ImGuiCol_Header,                 Theme::Background3);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,          Theme::AccentDim);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive,           Theme::AccentSoft);
-        ImGui::PushStyleColor(ImGuiCol_Button,                 Theme::Background3);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,          Theme::Background4);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,           Theme::AccentSoft);
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,            Theme::Background0);
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,          ImVec4(0.090f, 0.105f, 0.135f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered,   ImVec4(0.140f, 0.170f, 0.220f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,    Theme::AccentSoft);
-    }
-
-    void PopAssetDialogStyle()
-    {
-        ImGui::PopStyleColor(17);
-        ImGui::PopStyleVar(8);
     }
 }
 
@@ -150,7 +87,6 @@ namespace Quiet::Renderer::UI
         config.countSelectionMax = 1;
         config.flags = ImGuiFileDialogFlags_Modal;
 
-
         ImGuiFileDialog::Instance()->OpenDialog(
             kAssetFileDialogKey,
             "Import Asset",
@@ -161,14 +97,59 @@ namespace Quiet::Renderer::UI
 
     std::optional<AssetFileDialogResult> DrawAssetFileDialog(const Project::ProjectContext &projectContext)
     {
-        const ImVec2 dialogSize = CalculateAssetDialogSize();
+        // Calculate Dialog Size
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 workSize = viewport
+            ? viewport->WorkSize
+            : ImGui::GetIO().DisplaySize;
+
+        const float width = std::clamp(
+            workSize.x * 0.78f,
+            SZ::Px(820.0f),
+            SZ::Px(1500.0f)
+        );
+
+        const float height = std::clamp(
+            workSize.y * 0.78f,
+            SZ::Px(560.0f),
+            SZ::Px(960.0f)
+        );
+
+        const ImVec2 dialogSize = { width, height };
         const ImVec2 minSize{
             std::min(SZ::Px(760.0f), dialogSize.x),
             std::min(SZ::Px(500.0f), dialogSize.y)
         };
 
         ImGui::SetNextWindowSize(dialogSize, ImGuiCond_Appearing);
-        PushAssetDialogStyle();
+
+        // Push Asset Style
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   SZ::Px(14.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding,    SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,    SZ::Px(7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding,SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize,    SZ::Px(14.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    SZ::Px(ImVec2(14.0f, 12.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,     SZ::Px(ImVec2(10.0f, 7.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      SZ::Px(ImVec2(9.0f, 8.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,               Theme::Background1);
+        ImGui::PushStyleColor(ImGuiCol_PopupBg,                Theme::Background1);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg,                Theme::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border,                 Theme::Border);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,                Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,         Theme::Background4);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,          Theme::AccentDim);
+        ImGui::PushStyleColor(ImGuiCol_Header,                 Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,          Theme::AccentDim);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive,           Theme::AccentSoft);
+        ImGui::PushStyleColor(ImGuiCol_Button,                 Theme::Background3);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,          Theme::Background4);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,           Theme::AccentSoft);
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarBg,            Theme::Background0);
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,          ImVec4(0.090f, 0.105f, 0.135f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered,   ImVec4(0.140f, 0.170f, 0.220f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,    Theme::AccentSoft);
 
         const bool dialogOpen = ImGuiFileDialog::Instance()->Display(
             kAssetFileDialogKey,
@@ -177,7 +158,10 @@ namespace Quiet::Renderer::UI
             dialogSize
         );
 
-        PopAssetDialogStyle();
+        // Pop Asset Style
+        ImGui::PopStyleColor(17);
+        ImGui::PopStyleVar(8);
+
         if (!dialogOpen) return std::nullopt;
 
         std::optional<AssetFileDialogResult> result;
@@ -191,7 +175,7 @@ namespace Quiet::Renderer::UI
             {
                 result = AssetFileDialogResult{
                     type,
-                    ExtractAssetIDFromPath(selectedPath),
+                    std::filesystem::path(selectedPath).stem().string(),
                     projectContext.NormalizeAssetPath(selectedPath).generic_string()
                 };
             }

@@ -79,9 +79,11 @@ target_sources(Quiet_Engine
         src/Renderer/UI/ImGuiToolbarCommon.cpp
         src/Renderer/UI/ImGuiToolbarCommon.h
 
+        # Renderer - UI - Assets
+        src/Renderer/UI/Assets/ImGuiAssetFileDialog.cpp
+        src/Renderer/UI/Assets/ImGuiAssetFileDialog.h
+
         # Renderer - UI - Panels
-        src/Renderer/UI/Panels/ImGuiAssetFileDialog.cpp
-        src/Renderer/UI/Panels/ImGuiAssetFileDialog.h
         src/Renderer/UI/Panels/ImGuiAssetsPanel.cpp
         src/Renderer/UI/Panels/ImGuiChrome.cpp
         src/Renderer/UI/Panels/ImGuiDiagnostics.cpp

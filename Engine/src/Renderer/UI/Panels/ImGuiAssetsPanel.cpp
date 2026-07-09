@@ -14,11 +14,11 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include "ImGuiAssetFileDialog.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Platform/Shell.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
