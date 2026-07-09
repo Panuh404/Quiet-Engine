@@ -353,7 +353,7 @@ namespace
                 return {
                     SZ::Px(142.0f),
                     SZ::Px(120.0f),
-                    SZ::Px(156.0f),
+                    SZ::Px(132.0f),
                     SZ::Px(8.0f),
                     SZ::Px(62.0f)
                 };
@@ -362,7 +362,7 @@ namespace
                 return {
                     SZ::Px(230.0f),
                     SZ::Px(190.0f),
-                    SZ::Px(246.0f),
+                    SZ::Px(218.0f),
                     SZ::Px(12.0f),
                     SZ::Px(126.0f)
                 };
@@ -372,29 +372,73 @@ namespace
                 return {
                     SZ::Px(178.0f),
                     SZ::Px(150.0f),
-                    SZ::Px(192.0f),
+                    SZ::Px(166.0f),
                     SZ::Px(10.0f),
                     SZ::Px(86.0f)
                 };
         }
     }
 
-    void DrawSectionHeader(const char* title, const char* subtitle = nullptr)
+    void DrawAssetPaddedTooltip(const std::string& text)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-        ImGui::TextUnformatted(title);
-        ImGui::PopStyleColor();
+        if (text.empty()) return;
 
-        if (subtitle && subtitle[0] != '\0')
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 9.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, SZ::Px(8.0f));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginTooltip();
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("%s", subtitle);
+            ImGui::PushTextWrapPos(SZ::Px(520.0f));
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::TextWrapped("%s", text.c_str());
             ImGui::PopStyleColor();
+
+            ImGui::PopTextWrapPos();
+        }
+        ImGui::EndTooltip();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    std::string MakeEllipsizedText(const std::string& text, const float maxWidth)
+    {
+        if (text.empty()) return {};
+        if (ImGui::CalcTextSize(text.c_str()).x <= maxWidth) return text;
+
+        constexpr const char* ellipsis = "...";
+        const float ellipsisWidth = ImGui::CalcTextSize(ellipsis).x;
+
+        if (ellipsisWidth >= maxWidth) return ellipsis;
+
+        std::size_t low = 0;
+        std::size_t high = text.size();
+
+        while (low < high)
+        {
+            const std::size_t mid = (low + high + 1) / 2;
+            const std::string candidate = text.substr(0, mid) + ellipsis;
+
+            if (ImGui::CalcTextSize(candidate.c_str()).x <= maxWidth) low = mid;
+            else high = mid - 1;
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
-        ImGui::Separator();
-        ImGui::PopStyleColor();
+        return text.substr(0, low) + ellipsis;
+    }
+
+    void DrawAssetCardTextLine(const std::string& text, const ImVec2& min, const ImVec2& max, const ImVec4& color)
+    {
+        const float maxWidth = std::max(0.0f, max.x - min.x);
+        const std::string visibleText = MakeEllipsizedText(text, maxWidth);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->PushClipRect(min, max, true);
+        drawList->AddText(min, ImGui::ColorConvertFloat4ToU32(color), visibleText.c_str());
+        drawList->PopClipRect();
     }
 
     bool DrawRegisterAssetForm(Quiet::Project::ProjectContext& projectContext,
@@ -521,7 +565,19 @@ namespace
         if (!QUI::EditorBeginPopupModal("Import Asset", importPopupOpen, ImGuiWindowFlags_AlwaysAutoResize))
             return;
 
-        DrawSectionHeader("Import Asset", "Register a supported mesh or texture file as a project asset.");
+        // Title
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::TextUnformatted("Import Asset");
+        ImGui::PopStyleColor();
+
+        // Subtitle
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextWrapped("%s", "Register a supported mesh or texture file as a project asset.");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+        ImGui::Separator();
+        ImGui::PopStyleColor();
 
         if (DrawRegisterAssetForm(projectContext, editorState, assetIDBuffer, assetPathBuffer, errorMessage))
         {
@@ -575,11 +631,11 @@ namespace
     {
         switch (severity)
         {
-            case Quiet::Editor::EditorFeedbackSeverity::Success: return ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
-            case Quiet::Editor::EditorFeedbackSeverity::Warning: return ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
-            case Quiet::Editor::EditorFeedbackSeverity::Error: return ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
+            case Quiet::Editor::EditorFeedbackSeverity::Success: return {0.035f, 0.105f, 0.065f, 1.0f};
+            case Quiet::Editor::EditorFeedbackSeverity::Warning: return {0.130f, 0.095f, 0.030f, 1.0f};
+            case Quiet::Editor::EditorFeedbackSeverity::Error: return {0.140f, 0.045f, 0.050f, 1.0f};
             case Quiet::Editor::EditorFeedbackSeverity::Info:
-            default: return ImVec4(0.040f, 0.075f, 0.135f, 1.0f);
+            default: return {0.040f, 0.075f, 0.135f, 1.0f};
         }
     }
 
@@ -1063,7 +1119,9 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, SZ::Px(84.0f)), ImGuiChildFlags_Borders);
+        const float emptyStateHeight = std::max(SZ::Px(120.0f), ImGui::GetContentRegionAvail().y);
+
+        ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, emptyStateHeight), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
             ImGui::TextUnformatted("No assets match the current filters");
@@ -1298,7 +1356,15 @@ namespace
                               std::string& pendingReimportAssetID,
                               std::string& pendingRemoveAssetID)
     {
-        if (!ImGui::BeginPopupContextItem(popupID)) return;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 5.0f)));
+
+        if (!ImGui::BeginPopupContextItem(popupID))
+        {
+            ImGui::PopStyleVar(3);
+            return;
+        }
 
         selectedDetailsAssetID = record.ID;
         if (QUI::EditorMenuItem("Inspect"))
@@ -1348,6 +1414,7 @@ namespace
             ImGui::SetTooltip("%s", removeDisabledReason.c_str());
 
         ImGui::EndPopup();
+        ImGui::PopStyleVar(3);
     }
 
     void DrawRemoveAssetConfirmationPopup(const Quiet::Project::ProjectContext& projectContext,
@@ -1599,7 +1666,6 @@ namespace
                               const Quiet::Project::ProjectContext& projectContext,
                               Quiet::Editor::EditorState& editorState,
                               const Quiet::Scene::Scene& scene,
-                              const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
                               const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
                               std::string& selectedDetailsAssetID,
                               std::string& pendingDetailsAssetID,
@@ -1630,16 +1696,6 @@ namespace
             ImGui::TableNextColumn();
 
             const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
-            const std::string status = MakeStatusLabel(record, meshLibrary, textureLibrary);
-
-            const std::string browserState =
-                MakeAssetBrowserStateLabel(
-                    record,
-                    status,
-                    runtimeModeActive,
-                    referenceCount
-                );
-
             const std::string displayName = MakeAssetDisplayName(record);
             const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
@@ -1707,15 +1763,8 @@ namespace
                 SZ::Px(12.0f)
             );
 
-            const ImVec2 previewMin(
-                cardMin.x + padding,
-                cardMin.y + padding
-            );
-
-            const ImVec2 previewMax(
-                cardMax.x - padding,
-                previewMin.y + previewHeight
-            );
+            const ImVec2 previewMin(cardMin.x + padding, cardMin.y + padding);
+            const ImVec2 previewMax(cardMax.x - padding, previewMin.y + previewHeight);
 
             DrawAssetBrowserCardPreview(
                 record,
@@ -1726,40 +1775,24 @@ namespace
             );
 
             const ImVec2 afterCardCursor = ImGui::GetCursorScreenPos();
+            const ImVec2 nameMin(cardMin.x + padding, previewMax.y + SZ::Px(8.0f));
+            const ImVec2 nameMax(cardMax.x - padding, nameMin.y + ImGui::GetTextLineHeight());
 
-            ImGui::SetCursorScreenPos(
-                ImVec2(cardMin.x + padding, previewMax.y + SZ::Px(8.0f))
-            );
-
-            ImGui::PushTextWrapPos(cardMax.x - padding);
-            ImGui::PushStyleColor(
-                ImGuiCol_Text,
+            DrawAssetCardTextLine(
+                displayName,
+                nameMin,
+                nameMax,
                 isSelectedAsset ? QUI::EditorColor::Accent : QUI::EditorColor::Text
             );
-            ImGui::TextWrapped("%s", displayName.c_str());
-            ImGui::PopStyleColor();
-            ImGui::PopTextWrapPos();
 
-            ImGui::SetCursorScreenPos(
-                ImVec2(cardMin.x + padding, cardMax.y - SZ::Px(54.0f))
-            );
+            const ImVec2 typePillPos(cardMin.x + padding, nameMax.y + SZ::Px(8.0f));
+
+            ImGui::SetCursorScreenPos(typePillPos);
             DrawAssetTypePill(record.Type);
-
-            ImGui::SetCursorScreenPos(
-                ImVec2(cardMin.x + padding, cardMax.y - SZ::Px(28.0f))
-            );
-            DrawAssetStatePill(browserState);
 
             if (hovered)
             {
-                if (!record.Path.empty())
-                {
-                    ImGui::SetTooltip("%s", record.Path.c_str());
-                }
-                else
-                {
-                    ImGui::SetTooltip("%s", record.ID.c_str());
-                }
+                DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
             }
 
             ImGui::SetCursorScreenPos(afterCardCursor);
@@ -1787,16 +1820,10 @@ namespace Quiet::Renderer::UI
             static std::string confirmRemoveAssetID;
             static std::array<char, 128> assetSearchBuffer{};
             static AssetBrowserTypeFilter assetTypeFilter = AssetBrowserTypeFilter::All;
-            static AssetBrowserViewMode assetViewMode = AssetBrowserViewMode::List;
-            static AssetBrowserThumbnailSize assetThumbnailSize = AssetBrowserThumbnailSize::Medium;
-
-            DrawSectionHeader(
-                "Content Browser",
-                "Browse, import, reload, and manage project assets."
-            );
+            static AssetBrowserViewMode assetViewMode = AssetBrowserViewMode::Browser;
+            static AssetBrowserThumbnailSize assetThumbnailSize = AssetBrowserThumbnailSize::Small;
 
             const auto& registry = projectContext.GetAssetRegistry();
-
             bool openImportPopup = false;
 
             DrawAssetBrowserToolbar(
@@ -1838,33 +1865,36 @@ namespace Quiet::Renderer::UI
             const std::vector<const Project::AssetRecord*> visibleAssets =
                 BuildVisibleAssetList(registry, assetTypeFilter, assetSearchBuffer.data());
 
-            std::string pendingRemoveAssetID;
-            std::string pendingDetailsAssetID;
-            std::string pendingReimportAssetID;
+            bool openAssetDetailsPopup = false;
 
-            const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
             const bool useSplitDetailsLayout = ShouldUseAssetDetailsSplitLayout();
+            const ImGuiWindowFlags browserBodyFlags = useSplitDetailsLayout
+                    ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                    : ImGuiWindowFlags_None;
 
-            const float detailsPanelWidth = useSplitDetailsLayout
-                ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
-                : 0.0f;
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(0.0f, 0.0f)));
 
-            const float tablePanelWidth = useSplitDetailsLayout
-                ? std::max(
-                    SZ::Px(520.0f),
-                    assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x
-                )
-                : 0.0f;
-
-            if (useSplitDetailsLayout)
+            ImGui::BeginChild("##AssetBrowserBodyRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
             {
-                ImGui::BeginChild(
-                    "##AssetRegistryTableRegion",
-                    ImVec2(tablePanelWidth, 0.0f),
-                    ImGuiChildFlags_None,
-                    ImGuiWindowFlags_None
-                );
-            }
+                std::string pendingRemoveAssetID;
+                std::string pendingDetailsAssetID;
+                std::string pendingReimportAssetID;
+
+                const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
+                const float detailsPanelWidth = useSplitDetailsLayout
+                    ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
+                    : 0.0f;
+                const float tablePanelWidth = useSplitDetailsLayout
+                    ? std::max(
+                        SZ::Px(520.0f),
+                        assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x
+                    )
+                    : 0.0f;
+
+                if (useSplitDetailsLayout)
+                {
+                    ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+                }
 
             if (visibleAssets.empty())
             {
@@ -1877,7 +1907,6 @@ namespace Quiet::Renderer::UI
                     projectContext,
                     editorState,
                     scene,
-                    meshLibrary,
                     textureLibrary,
                     selectedDetailsAssetID,
                     pendingDetailsAssetID,
@@ -1981,9 +2010,9 @@ namespace Quiet::Renderer::UI
                             ImGui::PopStyleColor();
 
                             if (cellHovered && !record.Path.empty())
-                                ImGui::SetTooltip("%s", record.Path.c_str());
+                                DrawAssetPaddedTooltip(record.Path);
                             else if (cellHovered)
-                                ImGui::SetTooltip("%s", record.ID.c_str());
+                                DrawAssetPaddedTooltip(record.ID);
                         }
 
                         // Type
@@ -2089,7 +2118,7 @@ namespace Quiet::Renderer::UI
             if (!pendingDetailsAssetID.empty())
             {
                 selectedDetailsAssetID = pendingDetailsAssetID;
-                ImGui::OpenPopup("Asset Details");
+                openAssetDetailsPopup = true;
             }
 
             if (!pendingReimportAssetID.empty())
@@ -2182,9 +2211,17 @@ namespace Quiet::Renderer::UI
                 GetUIScale()
             );
 
-            if (useSplitDetailsLayout)
+                if (useSplitDetailsLayout)
+                {
+                    ImGui::EndChild();
+                }
+            }
+            ImGui::EndChild();
+            ImGui::PopStyleVar();
+
+            if (openAssetDetailsPopup)
             {
-                ImGui::EndChild();
+                ImGui::OpenPopup("Asset Details");
             }
 
             DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID, GetUIScale());
