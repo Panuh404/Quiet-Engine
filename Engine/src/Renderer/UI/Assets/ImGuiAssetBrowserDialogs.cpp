@@ -4,8 +4,7 @@
 
 #include <imgui.h>
 
-#include "ImGuiAssetBrowserDetails.h"
-#include "Renderer/UI/ImGuiLayer.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace

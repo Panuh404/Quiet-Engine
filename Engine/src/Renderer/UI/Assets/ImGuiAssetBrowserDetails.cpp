@@ -1,8 +1,6 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
 
-#include <array>
-#include <cstdio>
-#include <optional>
+#include <algorithm>
 #include <string>
 
 #include <imgui.h>
@@ -10,7 +8,6 @@
 #include "Quiet/Project/AssetRegistry.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
-#include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
 

@@ -7,7 +7,6 @@
 #include <imgui_internal.h>
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
-#include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace

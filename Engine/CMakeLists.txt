@@ -80,30 +80,30 @@ target_sources(Quiet_Engine
         src/Renderer/UI/ImGuiToolbarCommon.h
 
         # Renderer - UI - Assets
+        src/Renderer/UI/Assets/ImGuiAssetBrowserTypes.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserContext.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserUtils.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserUtils.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserWidgets.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserImport.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserImport.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserListView.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserListView.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserDetails.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserDetails.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserDialogs.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserImport.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserImport.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserListView.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserListView.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserPanel.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserPanel.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserTypes.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserUtils.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserUtils.h
-        src/Renderer/UI/Assets/ImGuiAssetBrowserWidgets.cpp
-        src/Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h
-        src/Renderer/UI/Assets/ImGuiAssetFileDialog.cpp
         src/Renderer/UI/Assets/ImGuiAssetFileDialog.h
+        src/Renderer/UI/Assets/ImGuiAssetFileDialog.cpp
 
         # Renderer - UI - Panels
         src/Renderer/UI/Panels/ImGuiAssetsPanel.cpp

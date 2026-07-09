@@ -147,12 +147,18 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * responsive split layout for wide panels
 * texture preview support
 * asset details modal
+* grid/browser asset view with small, medium, and large thumbnail sizes
+* texture thumbnail previews and mesh glyph fallback
+* asset reimport workflow
+* remove confirmation and asset operation feedback
 * asset context menu:
 
   * Inspect
   * Copy ID
   * Copy Path
   * Copy Absolute Path
+  * Reveal in File Manager
+  * Reimport
   * Remove when allowed
 
 ### Console / Diagnostics
@@ -456,18 +462,23 @@ F6                  Simulate / Stop Simulate
 * persistent asset details panel
 * responsive asset details split layout
 * asset context menu
+* asset browser list/grid view split
+* asset import, reload, reimport, remove confirmation, and operation feedback
+* Asset Browser UI module split under `Engine/src/Renderer/UI/Assets`
 
-### Active Phase: Asset Browser / Asset Workflow
+### Active Phase: Physical Project Assets Folder / Sources Panel
 
 Immediate next work:
 
-* reveal asset in file manager
-* improve unregister/remove workflow
-* reimport asset
-* asset context menu polish
-* drag assets into Inspector fields
-* drag assets into Viewport
-* optional grid/card asset view
+* physical `Project/Assets` folder tree as the primary asset organization model
+* Sources panel for navigating real project folders
+* breadcrumb/current folder navigation
+* import assets into the selected physical folder
+* show only current-folder contents in list/browser views
+* create, rename, and delete empty folders
+* move assets between folders
+* project-relative asset paths by default
+* missing/external asset diagnostics
 
 ### Upcoming Areas
 

@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "ImGuiAssetBrowserTypes.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
