@@ -906,19 +906,53 @@ namespace
         }
     }
 
-    bool DrawFilterButton(const char* label, const bool selected, const ImVec2& size)
+    std::string MakeAssetTypeFilterDropdownLabel(const AssetBrowserTypeFilter filter, const std::size_t meshCount, const std::size_t textureCount)
     {
-        if (selected)
+        switch (filter)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            case AssetBrowserTypeFilter::Meshes:
+                return "Filter: Meshes " + std::to_string(meshCount);
+            case AssetBrowserTypeFilter::Textures:
+                return "Filter: Textures " + std::to_string(textureCount);
+            case AssetBrowserTypeFilter::All:
+            default:
+                return "Filter: All";
         }
+    }
 
-        const bool clicked = QUI::EditorButton(label, size);
-        if (selected) ImGui::PopStyleColor(4);
-        return clicked;
+    const char* ToAssetBrowserViewModeLabel(const AssetBrowserViewMode viewMode)
+    {
+        switch (viewMode)
+        {
+            case AssetBrowserViewMode::Browser:
+                return "Browser";
+            case AssetBrowserViewMode::List:
+            default:
+                return "List";
+        }
+    }
+
+    const char* ToAssetBrowserThumbnailSizeLabel(const AssetBrowserThumbnailSize thumbnailSize)
+    {
+        switch (thumbnailSize)
+        {
+            case AssetBrowserThumbnailSize::Small:
+                return "Small";
+            case AssetBrowserThumbnailSize::Large:
+                return "Large";
+            case AssetBrowserThumbnailSize::Medium:
+            default:
+                return "Medium";
+        }
+    }
+
+    bool DrawAssetToolbarDropdownButton(const std::string& label, const char* popupID, const ImVec2& size)
+    {
+        if (QUI::EditorButton(label.c_str(), size))
+        {
+            ImGui::OpenPopup(popupID);
+        }
+        return ImGui::BeginPopup(popupID);
     }
 
     void DrawAssetBrowserToolbar(Quiet::Editor::EditorState& editorState,
@@ -959,60 +993,60 @@ namespace
         }
 
         ImGui::SameLine();
-
-        if (DrawFilterButton("All", typeFilter == AssetBrowserTypeFilter::All, SZ::Px(ImVec2(64.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::All;
-
-        ImGui::SameLine();
-
-        const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
-        if (DrawFilterButton(meshesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Meshes, SZ::Px(ImVec2(104.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::Meshes;
-
-        ImGui::SameLine();
-
-        const std::string texturesLabel = "Textures " + std::to_string(textureCount);
-        if (DrawFilterButton(texturesLabel.c_str(), typeFilter == AssetBrowserTypeFilter::Textures, SZ::Px(ImVec2(116.0f, 0.0f))))
-            typeFilter = AssetBrowserTypeFilter::Textures;
-
-        ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        const float modeButtonWidth = SZ::Px(86.0f);
-        const float browserButtonWidth = SZ::Px(104.0f);
+        const std::size_t totalAssetCount = registry.Records.size();
+        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount);
+        if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(140.0f, 0.0f))))
+        {
+            const std::string allLabel = "All " + std::to_string(totalAssetCount);
+            const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
+            const std::string texturesLabel = "Textures " + std::to_string(textureCount);
 
-        if (DrawFilterButton("List", viewMode == AssetBrowserViewMode::List, ImVec2(modeButtonWidth, 0.0f)))
-            viewMode = AssetBrowserViewMode::List;
+            if (QUI::EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::All))
+                typeFilter = AssetBrowserTypeFilter::All;
+
+            if (QUI::EditorMenuItem(meshesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Meshes))
+                typeFilter = AssetBrowserTypeFilter::Meshes;
+
+            if (QUI::EditorMenuItem(texturesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Textures))
+                typeFilter = AssetBrowserTypeFilter::Textures;
+
+            ImGui::EndPopup();
+        }
 
         ImGui::SameLine();
 
-        if (DrawFilterButton("Browser", viewMode == AssetBrowserViewMode::Browser, ImVec2(browserButtonWidth, 0.0f)))
-            viewMode = AssetBrowserViewMode::Browser;
+        const std::string viewDropdownLabel = std::string("View: ") + ToAssetBrowserViewModeLabel(viewMode);
+        if (DrawAssetToolbarDropdownButton(viewDropdownLabel, "##AssetViewModeDropdown", SZ::Px(ImVec2(140.0f, 0.0f))))
+        {
+            if (QUI::EditorMenuItem("List", nullptr, viewMode == AssetBrowserViewMode::List))
+                viewMode = AssetBrowserViewMode::List;
+
+            if (QUI::EditorMenuItem("Browser", nullptr, viewMode == AssetBrowserViewMode::Browser))
+                viewMode = AssetBrowserViewMode::Browser;
+
+            ImGui::EndPopup();
+        }
 
         if (viewMode == AssetBrowserViewMode::Browser)
         {
             ImGui::SameLine();
-            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-            ImGui::SameLine();
 
-            if (DrawFilterButton("Small", thumbnailSize == AssetBrowserThumbnailSize::Small, SZ::Px(ImVec2(76.0f, 0.0f))))
+            const std::string sizeDropdownLabel = std::string("Size: ") + ToAssetBrowserThumbnailSizeLabel(thumbnailSize);
+            if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(140.0f, 0.0f))))
             {
-                thumbnailSize = AssetBrowserThumbnailSize::Small;
-            }
+                if (QUI::EditorMenuItem("Small", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Small))
+                    thumbnailSize = AssetBrowserThumbnailSize::Small;
 
-            ImGui::SameLine();
+                if (QUI::EditorMenuItem("Medium", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Medium))
+                    thumbnailSize = AssetBrowserThumbnailSize::Medium;
 
-            if (DrawFilterButton("Medium", thumbnailSize == AssetBrowserThumbnailSize::Medium, SZ::Px(ImVec2(92.0f, 0.0f))))
-            {
-                thumbnailSize = AssetBrowserThumbnailSize::Medium;
-            }
+                if (QUI::EditorMenuItem("Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Large))
+                    thumbnailSize = AssetBrowserThumbnailSize::Large;
 
-            ImGui::SameLine();
-
-            if (DrawFilterButton("Large", thumbnailSize == AssetBrowserThumbnailSize::Large, SZ::Px(ImVec2(76.0f, 0.0f))))
-            {
-                thumbnailSize = AssetBrowserThumbnailSize::Large;
+                ImGui::EndPopup();
             }
         }
 
