@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+
 #include <glm/vec3.hpp>
 
 #include "Quiet/Project/ProjectContext.h"

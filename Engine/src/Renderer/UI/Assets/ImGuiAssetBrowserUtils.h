@@ -17,16 +17,9 @@
 
 namespace Quiet::Renderer::UI::Assets
 {
+    // Text / string helpers
     std::string ToLowerCopy(std::string value);
-
     bool ContainsCaseInsensitive(const std::string& text, const std::string& query);
-    bool MatchesTypeFilter(const Project::AssetRecord& record, AssetBrowserTypeFilter filter);
-    bool MatchesAssetSearch(const Project::AssetRecord& record, const std::string& query);
-
-    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
-        const Project::AssetRegistry& registry, AssetBrowserTypeFilter typeFilter, const std::string& searchQuery);
-
-    std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type);
 
     template <std::size_t Size>
     void CopyToBuffer(std::array<char, Size>& buffer, const std::string& value)
@@ -36,9 +29,20 @@ namespace Quiet::Renderer::UI::Assets
 
     std::string ExtractFileNameNoExt(const std::string& path);
 
+    // Registry search / filtering
+    bool MatchesTypeFilter(const Project::AssetRecord& record, AssetBrowserTypeFilter filter);
+    bool MatchesAssetSearch(const Project::AssetRecord& record, const std::string& query);
+
+    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
+        const Project::AssetRegistry& registry, AssetBrowserTypeFilter typeFilter, const std::string& searchQuery);
+
+    std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type);
+
+    // File/path helpers
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath);
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext, const std::string& assetPath);
 
+    // Asset display/status helpers
     std::string MakeStatusLabel(const Project::AssetRecord& record, const Vulkan::MeshLibrary& meshLibrary, const Vulkan::TextureLibrary& textureLibrary);
     std::string MakeAssetDisplayName(const Project::AssetRecord& record);
 
@@ -46,7 +50,12 @@ namespace Quiet::Renderer::UI::Assets
     bool IsAssetMissingStatus(const std::string& status);
 
     std::string MakeAssetBrowserStateLabel(
-        const Project::AssetRecord& record, const std::string& status, bool runtimeModeActive, std::uint32_t referenceCount);
+        const Project::AssetRecord& record,
+        const std::string& status,
+        bool runtimeModeActive,
+        std::uint32_t referenceCount
+    );
 
+    // Scene usage helpers
     std::uint32_t CountMeshReferences(const Scene::Scene& scene, const std::string& meshID);
 }
