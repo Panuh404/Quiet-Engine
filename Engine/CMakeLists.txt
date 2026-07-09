@@ -81,6 +81,10 @@ target_sources(Quiet_Engine
 
         # Renderer - UI - Assets
         src/Renderer/UI/Assets/ImGuiAssetBrowserContext.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.cpp
+        src/Renderer/UI/Assets/ImGuiAssetBrowserGridView.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserImport.cpp
         src/Renderer/UI/Assets/ImGuiAssetBrowserImport.h
         src/Renderer/UI/Assets/ImGuiAssetBrowserToolbar.cpp
