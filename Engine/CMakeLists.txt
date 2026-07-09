@@ -1,5 +1,7 @@
 # ENGINE
-add_library(Quiet_Engine STATIC)
+add_library(Quiet_Engine STATIC
+        src/Renderer/UI/Assets/ImGuiAssetBrowserSources.h
+        src/Renderer/UI/Assets/ImGuiAssetBrowserSources.cpp)
 
 target_sources(Quiet_Engine
     PRIVATE

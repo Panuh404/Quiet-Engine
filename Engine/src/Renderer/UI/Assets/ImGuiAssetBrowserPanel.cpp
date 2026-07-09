@@ -13,6 +13,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserGridView.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserImport.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserListView.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserSources.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserToolbar.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
@@ -66,6 +67,13 @@ namespace
             SZ::Px(460.0f)
         );
     }
+
+    float CalculateAssetSourcesPanelWidth(const float availableWidth)
+    {
+        const float preferredWidth = std::clamp(availableWidth * 0.20f, SZ::Px(220.0f), SZ::Px(300.0f));
+        const float narrowWindowMaxWidth = std::max(SZ::Px(180.0f), availableWidth * 0.42f);
+        return std::min(preferredWidth, narrowWindowMaxWidth);
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -84,6 +92,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& removeErrorMessage = state.RemoveErrorMessage;
         auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
         auto& confirmRemoveAssetID = state.ConfirmRemoveAssetID;
+        auto& currentAssetFolder = state.CurrentAssetFolder;
         auto& assetSearchBuffer = state.SearchBuffer;
         auto& assetTypeFilter = state.TypeFilter;
         auto& assetViewMode = state.ViewMode;
@@ -134,152 +143,163 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(0.0f, 0.0f)));
             ImGui::BeginChild("##AssetBrowserBodyRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
             {
-                std::string pendingRemoveAssetID;
-                std::string pendingDetailsAssetID;
-                std::string pendingReimportAssetID;
+                const float bodyWidth = ImGui::GetContentRegionAvail().x;
+                const float sourcesPanelWidth = CalculateAssetSourcesPanelWidth(bodyWidth);
 
-                const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
-                const float detailsPanelWidth = useSplitDetailsLayout
-                        ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
-                        : 0.0f;
+                DrawAssetBrowserSourcesPanel(projectContext, currentAssetFolder, sourcesPanelWidth);
 
-                const float tablePanelWidth = useSplitDetailsLayout
-                        ? std::max(
-                            SZ::Px(520.0f),
-                            assetBrowserWidth -
-                            detailsPanelWidth -
-                            ImGui::GetStyle().ItemSpacing.x
-                        )
-                        : 0.0f;
+                ImGui::SameLine();
 
-                if (useSplitDetailsLayout)
-                    ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
-                        ImGuiChildFlags_None, ImGuiWindowFlags_None);
-
-                if (visibleAssets.empty())
-                    DrawAssetBrowserEmptyState();
-
-                else if (assetViewMode == AssetBrowserViewMode::Browser)
+                ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
                 {
-                    DrawAssetBrowserGrid(
-                        visibleAssets,
+                    std::string pendingRemoveAssetID;
+                    std::string pendingDetailsAssetID;
+                    std::string pendingReimportAssetID;
+
+                    const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
+                    const float detailsPanelWidth = useSplitDetailsLayout
+                            ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
+                            : 0.0f;
+
+                    const float tablePanelWidth = useSplitDetailsLayout
+                            ? std::max(
+                                SZ::Px(520.0f),
+                                assetBrowserWidth -
+                                detailsPanelWidth -
+                                ImGui::GetStyle().ItemSpacing.x
+                            )
+                            : 0.0f;
+
+                    if (useSplitDetailsLayout)
+                        ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
+                            ImGuiChildFlags_None, ImGuiWindowFlags_None);
+
+                    if (visibleAssets.empty())
+                        DrawAssetBrowserEmptyState();
+
+                    else if (assetViewMode == AssetBrowserViewMode::Browser)
+                    {
+                        DrawAssetBrowserGrid(
+                            visibleAssets,
+                            projectContext,
+                            editorState,
+                            scene,
+                            textureLibrary,
+                            selectedDetailsAssetID,
+                            pendingDetailsAssetID,
+                            pendingReimportAssetID,
+                            pendingRemoveAssetID,
+                            assetThumbnailSize,
+                            context.UIScale
+                        );
+                    }
+                    else if (assetViewMode == AssetBrowserViewMode::List)
+                    {
+                        DrawAssetBrowserList(
+                            visibleAssets,
+                            projectContext,
+                            editorState,
+                            scene,
+                            meshLibrary,
+                            textureLibrary,
+                            selectedDetailsAssetID,
+                            pendingDetailsAssetID,
+                            pendingReimportAssetID,
+                            pendingRemoveAssetID
+                        );
+                    }
+
+                    if (useSplitDetailsLayout)
+                        ImGui::EndChild();
+
+                    if (!pendingDetailsAssetID.empty())
+                    {
+                        selectedDetailsAssetID = pendingDetailsAssetID;
+                        openAssetDetailsPopup = true;
+                    }
+
+                    if (!pendingReimportAssetID.empty())
+                    {
+                        selectedDetailsAssetID = pendingReimportAssetID;
+                        editorState.QueueRequest(Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
+                    }
+
+                    if (!pendingRemoveAssetID.empty())
+                    {
+                        selectedDetailsAssetID = pendingRemoveAssetID;
+                        confirmRemoveAssetID = pendingRemoveAssetID;
+                        ImGui::OpenPopup("Remove Asset");
+                    }
+
+                    bool removeAssetConfirmed = false;
+                    bool removeAssetCancelled = false;
+
+                    DrawRemoveAssetConfirmationPopup(
                         projectContext,
-                        editorState,
-                        scene,
-                        textureLibrary,
-                        selectedDetailsAssetID,
-                        pendingDetailsAssetID,
-                        pendingReimportAssetID,
-                        pendingRemoveAssetID,
-                        assetThumbnailSize,
+                        confirmRemoveAssetID,
+                        removeAssetConfirmed,
+                        removeAssetCancelled,
                         context.UIScale
                     );
-                }
-                else if (assetViewMode == AssetBrowserViewMode::List)
-                {
-                    DrawAssetBrowserList(
-                        visibleAssets,
-                        projectContext,
-                        editorState,
-                        scene,
-                        meshLibrary,
-                        textureLibrary,
-                        selectedDetailsAssetID,
-                        pendingDetailsAssetID,
-                        pendingReimportAssetID,
-                        pendingRemoveAssetID
-                    );
-                }
 
-                if (useSplitDetailsLayout)
-                    ImGui::EndChild();
-
-                if (!pendingDetailsAssetID.empty())
-                {
-                    selectedDetailsAssetID = pendingDetailsAssetID;
-                    openAssetDetailsPopup = true;
-                }
-
-                if (!pendingReimportAssetID.empty())
-                {
-                    selectedDetailsAssetID = pendingReimportAssetID;
-                    editorState.QueueRequest(Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
-                }
-
-                if (!pendingRemoveAssetID.empty())
-                {
-                    selectedDetailsAssetID = pendingRemoveAssetID;
-                    confirmRemoveAssetID = pendingRemoveAssetID;
-                    ImGui::OpenPopup("Remove Asset");
-                }
-
-                bool removeAssetConfirmed = false;
-                bool removeAssetCancelled = false;
-
-                DrawRemoveAssetConfirmationPopup(
-                    projectContext,
-                    confirmRemoveAssetID,
-                    removeAssetConfirmed,
-                    removeAssetCancelled,
-                    context.UIScale
-                );
-
-                if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
-                {
-                    const std::string removedAssetID = confirmRemoveAssetID;
-                    const bool removed = projectContext.RemoveAssetByID(removedAssetID);
-
-                    confirmRemoveAssetID.clear();
-                    if (!removed)
+                    if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
                     {
-                        removeErrorMessage = "Failed to remove the selected asset from the registry.";
+                        const std::string removedAssetID = confirmRemoveAssetID;
+                        const bool removed = projectContext.RemoveAssetByID(removedAssetID);
 
-                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error, "Remove failed", removeErrorMessage);
-                        ImGui::OpenPopup("Remove Asset Failed");
+                        confirmRemoveAssetID.clear();
+                        if (!removed)
+                        {
+                            removeErrorMessage = "Failed to remove the selected asset from the registry.";
+
+                            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error, "Remove failed", removeErrorMessage);
+                            ImGui::OpenPopup("Remove Asset Failed");
+                        }
+                        else
+                        {
+                            if (selectedDetailsAssetID == removedAssetID)
+                                selectedDetailsAssetID.clear();
+
+                            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                                "Asset removed",
+                                "Asset '" + removedAssetID +
+                                "' was removed from the registry. The source file was not deleted."
+                            );
+                        }
+                    }
+                    else if (removeAssetCancelled)
+                        confirmRemoveAssetID.clear();
+
+                    if (useSplitDetailsLayout)
+                    {
+                        ImGui::SameLine();
+                        ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f), ImGuiChildFlags_None,
+                            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
                     }
                     else
                     {
-                        if (selectedDetailsAssetID == removedAssetID)
-                            selectedDetailsAssetID.clear();
+                        ImGui::Spacing();
+                    }
 
-                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
-                            "Asset removed",
-                            "Asset '" + removedAssetID +
-                            "' was removed from the registry. The source file was not deleted."
-                        );
+                    const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
+                    if (!selectedAssetStillExists) selectedDetailsAssetID.clear();
+
+                    DrawAssetOperationFeedback(editorState);
+                    DrawAssetDetailsInline(
+                        projectContext,
+                        meshLibrary,
+                        textureLibrary,
+                        scene,
+                        selectedDetailsAssetID,
+                        context.UIScale
+                    );
+
+                    if (useSplitDetailsLayout)
+                    {
+                        ImGui::EndChild();
                     }
                 }
-                else if (removeAssetCancelled)
-                    confirmRemoveAssetID.clear();
-
-                if (useSplitDetailsLayout)
-                {
-                    ImGui::SameLine();
-                    ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f), ImGuiChildFlags_None,
-                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-                }
-                else
-                {
-                    ImGui::Spacing();
-                }
-
-                const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
-                if (!selectedAssetStillExists) selectedDetailsAssetID.clear();
-
-                DrawAssetOperationFeedback(editorState);
-                DrawAssetDetailsInline(
-                    projectContext,
-                    meshLibrary,
-                    textureLibrary,
-                    scene,
-                    selectedDetailsAssetID,
-                    context.UIScale
-                );
-
-                if (useSplitDetailsLayout)
-                {
-                    ImGui::EndChild();
-                }
+                ImGui::EndChild();
             }
 
             ImGui::EndChild();

@@ -35,6 +35,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string RemoveErrorMessage{};
         std::string SelectedDetailsAssetID{};
         std::string ConfirmRemoveAssetID{};
+        std::string CurrentAssetFolder{};
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;
