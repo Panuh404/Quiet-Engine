@@ -52,18 +52,51 @@ namespace Quiet::Renderer::UI::Assets
         return ContainsCaseInsensitive(typeLabel, query);
     }
 
-    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
-        const Project::AssetRegistry& registry, const AssetBrowserTypeFilter typeFilter, const std::string& searchQuery)
+    bool MatchesAssetFolder(
+        const Project::ProjectContext& projectContext,
+        const Project::AssetRecord& record,
+        const std::string& currentAssetFolder)
     {
-        std::vector<const Project::AssetRecord*> visibleAssets;
-        visibleAssets.reserve(registry.Records.size());
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        const std::string normalizedFolder = currentAssetFolder.empty()
+            ? assetsRoot
+            : NormalizeProjectRelativePathString(currentAssetFolder);
+
+        if (!IsAssetFolderInsideAssetsRoot(normalizedFolder, assetsRoot)) return false;
+        return GetAssetBrowserFolderForRecord(projectContext, record) == normalizedFolder;
+    }
+
+    std::vector<const Project::AssetRecord*> BuildAssetFolderList(
+        const Project::ProjectContext& projectContext,
+        const Project::AssetRegistry& registry,
+        const std::string& currentAssetFolder)
+    {
+        std::vector<const Project::AssetRecord*> folderAssets;
+        folderAssets.reserve(registry.Records.size());
 
         for (const Project::AssetRecord& record : registry.Records)
         {
             if (!record.IsValid()) continue;
-            if (!MatchesTypeFilter(record, typeFilter)) continue;
-            if (!MatchesAssetSearch(record, searchQuery)) continue;
-            visibleAssets.push_back(&record);
+            if (!MatchesAssetFolder(projectContext, record, currentAssetFolder)) continue;
+            folderAssets.push_back(&record);
+        }
+        return folderAssets;
+    }
+
+    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
+        const std::vector<const Project::AssetRecord*>& folderAssets,
+        const AssetBrowserTypeFilter typeFilter,
+        const std::string& searchQuery)
+    {
+        std::vector<const Project::AssetRecord*> visibleAssets;
+        visibleAssets.reserve(folderAssets.size());
+
+        for (const Project::AssetRecord* record : folderAssets)
+        {
+            if (!record || !record->IsValid()) continue;
+            if (!MatchesTypeFilter(*record, typeFilter)) continue;
+            if (!MatchesAssetSearch(*record, searchQuery)) continue;
+            visibleAssets.push_back(record);
         }
         return visibleAssets;
     }
@@ -122,6 +155,29 @@ namespace Quiet::Renderer::UI::Assets
         return assetsRoot;
     }
 
+    std::string GetAssetBrowserFolderForRecord(const Project::ProjectContext& projectContext, const Project::AssetRecord& record)
+    {
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+
+        // Keep built-in, pathless, and external records accessible from the
+        // Assets root until dedicated source categories/diagnostics are added.
+        if (record.BuiltIn || record.Path.empty()) return assetsRoot;
+
+        const std::filesystem::path resolvedAssetPath = ResolveDisplayPath(projectContext, record.Path);
+        if (resolvedAssetPath.empty()) return assetsRoot;
+
+        const std::filesystem::path relativeParentPath =
+            resolvedAssetPath
+                .parent_path()
+                .lexically_relative(projectContext.GetRootPath());
+
+        const std::string relativeFolder = NormalizeProjectRelativePathString(relativeParentPath);
+        if (!relativeFolder.empty() && IsAssetFolderInsideAssetsRoot(relativeFolder, assetsRoot))
+            return relativeFolder;
+
+        return assetsRoot;
+    }
+
     void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder)
     {
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
@@ -171,17 +227,18 @@ namespace Quiet::Renderer::UI::Assets
         if (!IsAssetFolderInsideAssetsRoot(normalizedFolder, assetsRoot))
             normalizedFolder = assetsRoot;
 
-        std::vector<std::string> breadcrumbs;
-        std::filesystem::path cumulativePath;
+        std::vector<std::string> breadcrumbs{ assetsRoot };
+        if (normalizedFolder == assetsRoot) return breadcrumbs;
 
-        for (const std::filesystem::path& segment : std::filesystem::path(normalizedFolder))
+        const std::filesystem::path relativeFolderPath = std::filesystem::path(normalizedFolder).lexically_relative(std::filesystem::path(assetsRoot));
+        std::filesystem::path cumulativePath = assetsRoot;
+
+        for (const std::filesystem::path& segment : relativeFolderPath)
         {
             cumulativePath /= segment;
             const std::string breadcrumbPath = NormalizeProjectRelativePathString(cumulativePath);
             if (!breadcrumbPath.empty()) breadcrumbs.push_back(breadcrumbPath);
         }
-
-        if (breadcrumbs.empty()) breadcrumbs.push_back(assetsRoot);
         return breadcrumbs;
     }
 

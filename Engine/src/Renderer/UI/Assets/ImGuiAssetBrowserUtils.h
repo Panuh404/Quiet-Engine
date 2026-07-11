@@ -32,9 +32,19 @@ namespace Quiet::Renderer::UI::Assets
     // Registry search / filtering
     bool MatchesTypeFilter(const Project::AssetRecord& record, AssetBrowserTypeFilter filter);
     bool MatchesAssetSearch(const Project::AssetRecord& record, const std::string& query);
+    bool MatchesAssetFolder(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const std::string& currentAssetFolder);
+
+    std::vector<const Project::AssetRecord*> BuildAssetFolderList(
+        const Project::ProjectContext& projectContext,
+        const Project::AssetRegistry& registry,
+        const std::string& currentAssetFolder
+    );
 
     std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
-        const Project::AssetRegistry& registry, AssetBrowserTypeFilter typeFilter, const std::string& searchQuery);
+        const std::vector<const Project::AssetRecord*>& folderAssets,
+        AssetBrowserTypeFilter typeFilter,
+        const std::string& searchQuery
+    );
 
     std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type);
 
@@ -45,6 +55,7 @@ namespace Quiet::Renderer::UI::Assets
 
     std::filesystem::path ResolveAssetFolderPath(const Project::ProjectContext& projectContext, const std::string& assetFolder);
     std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath);
+    std::string GetAssetBrowserFolderForRecord(const Project::ProjectContext& projectContext, const Project::AssetRecord& record);
     void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder);
     std::string GetParentAssetFolder(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
     std::vector<std::string> BuildAssetFolderBreadcrumbs(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);

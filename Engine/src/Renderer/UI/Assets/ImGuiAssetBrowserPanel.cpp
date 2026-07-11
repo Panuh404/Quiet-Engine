@@ -26,7 +26,7 @@ namespace
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
-    void DrawAssetBrowserEmptyState()
+    void DrawAssetBrowserEmptyState(const std::string& currentAssetFolder, const bool folderHasAssets)
     {
         ImGui::Spacing();
 
@@ -41,13 +41,20 @@ namespace
         ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, emptyStateHeight), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("No assets match the current filters");
+            ImGui::TextUnformatted(folderHasAssets ? "No assets match the current filters" : "This folder contains no registered assets");
+
             ImGui::PopStyleColor();
-
             ImGui::Spacing();
-
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("Clear the search field or switch the asset type filter.");
+
+            if (folderHasAssets)
+            {
+                ImGui::TextWrapped("Clear the search field or switch the asset type filter.");
+            }
+            else
+            {
+                ImGui::TextWrapped("No registered assets are stored directly in '%s'.", currentAssetFolder.c_str());
+            }
             ImGui::PopStyleColor();
         }
         ImGui::EndChild();
@@ -168,6 +175,8 @@ namespace Quiet::Renderer::UI::Assets
         auto& assetViewMode = state.ViewMode;
         auto& assetThumbnailSize = state.ThumbnailSize;
 
+        ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
+
         ImGui::Begin("Assets");
         {
             const auto& registry = projectContext.GetAssetRegistry();
@@ -202,7 +211,6 @@ namespace Quiet::Renderer::UI::Assets
             DrawFailurePopup("Import Asset Failed", registerErrorMessage);
             ImGui::Spacing();
 
-            const std::vector<const Project::AssetRecord*> visibleAssets = BuildVisibleAssetList(registry, assetTypeFilter, assetSearchBuffer.data());
             bool openAssetDetailsPopup = false;
 
             const bool useSplitDetailsLayout = ShouldUseAssetDetailsSplitLayout();
@@ -224,6 +232,25 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     DrawAssetBrowserBreadcrumb(projectContext, currentAssetFolder);
                     ImGui::Spacing();
+
+                    const std::vector<const Project::AssetRecord*> folderAssets = BuildAssetFolderList(projectContext, registry, currentAssetFolder);
+
+                    if (!selectedDetailsAssetID.empty())
+                    {
+                        const bool selectedAssetIsInCurrentFolder =
+                            std::any_of(
+                                folderAssets.begin(),
+                                folderAssets.end(),
+                                [&](const Project::AssetRecord* record)
+                                {
+                                    return record && record->ID == selectedDetailsAssetID;
+                                }
+                            );
+
+                        if (!selectedAssetIsInCurrentFolder) selectedDetailsAssetID.clear();
+                    }
+
+                    const std::vector<const Project::AssetRecord*> visibleAssets = BuildVisibleAssetList(folderAssets, assetTypeFilter, assetSearchBuffer.data());
 
                     std::string pendingRemoveAssetID;
                     std::string pendingDetailsAssetID;
@@ -247,7 +274,7 @@ namespace Quiet::Renderer::UI::Assets
                         ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
                             ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
-                    if (visibleAssets.empty()) DrawAssetBrowserEmptyState();
+                    if (visibleAssets.empty()) DrawAssetBrowserEmptyState(currentAssetFolder, !folderAssets.empty());
 
                     else if (assetViewMode == AssetBrowserViewMode::Browser)
                     {
