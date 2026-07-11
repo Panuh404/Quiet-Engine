@@ -170,6 +170,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
         auto& confirmRemoveAssetID = state.ConfirmRemoveAssetID;
         auto& currentAssetFolder = state.CurrentAssetFolder;
+        auto& reopenImportPopupAfterFileDialog = state.ReopenImportPopupAfterFileDialog;
         auto& assetSearchBuffer = state.SearchBuffer;
         auto& assetTypeFilter = state.TypeFilter;
         auto& assetViewMode = state.ViewMode;
@@ -192,20 +193,28 @@ namespace Quiet::Renderer::UI::Assets
                 openImportPopup
             );
 
-            if (openImportPopup) ImGui::OpenPopup("Import Asset");
-
-            DrawImportAssetPopup(
-                projectContext,
-                editorState,
-                assetIDBuffer,
-                assetPathBuffer,
-                registerErrorMessage
-            );
-
-            if (const auto selectedAsset = DrawAssetFileDialog(projectContext))
+            if (openImportPopup)
             {
-                CopyToBuffer(assetPathBuffer, selectedAsset->AssetPath);
-                if (assetIDBuffer[0] == '\0') CopyToBuffer(assetIDBuffer, selectedAsset->AssetID);
+                assetIDBuffer.fill('\0');
+                assetPathBuffer.fill('\0');
+                registerErrorMessage.clear();
+                reopenImportPopupAfterFileDialog = false;
+                ImGui::OpenPopup("Import Asset");
+            }
+
+            if (reopenImportPopupAfterFileDialog && !IsAssetFileDialogOpen())
+            {
+                ImGui::OpenPopup("Import Asset");
+                reopenImportPopupAfterFileDialog = false;
+            }
+
+            DrawImportAssetPopup(projectContext, editorState, currentAssetFolder, assetIDBuffer, assetPathBuffer, registerErrorMessage, reopenImportPopupAfterFileDialog);
+
+            if (const auto selectedAsset = DrawAssetFileDialog())
+            {
+                CopyToBuffer(assetPathBuffer, selectedAsset->SourcePath);
+                CopyToBuffer(assetIDBuffer, selectedAsset->AssetID);
+                registerErrorMessage.clear();
             }
 
             DrawFailurePopup("Import Asset Failed", registerErrorMessage);

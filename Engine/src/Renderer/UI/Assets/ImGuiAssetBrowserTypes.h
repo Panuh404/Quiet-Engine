@@ -28,7 +28,7 @@ namespace Quiet::Renderer::UI::Assets
     struct AssetBrowserState
     {
         std::array<char, 128> AssetIDBuffer{};
-        std::array<char, 260> AssetPathBuffer{};
+        std::array<char, 1024> AssetPathBuffer{};
         std::array<char, 128> SearchBuffer{};
 
         std::string ImportErrorMessage{};
@@ -36,6 +36,8 @@ namespace Quiet::Renderer::UI::Assets
         std::string SelectedDetailsAssetID{};
         std::string ConfirmRemoveAssetID{};
         std::string CurrentAssetFolder{};
+
+        bool ReopenImportPopupAfterFileDialog = false;
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;

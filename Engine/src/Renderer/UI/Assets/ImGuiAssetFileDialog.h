@@ -17,14 +17,13 @@ namespace Quiet::Renderer::UI
     {
         Project::AssetType Type = Project::AssetType::Unknown;
         std::string AssetID;
-        std::string AssetPath;
+        std::string SourcePath;
     };
 
     [[nodiscard]] Project::AssetType DetectImportAssetType(const std::filesystem::path& path);
 
-    void OpenAssetFileDialog(const Project::ProjectContext& projectContext);
+    void OpenAssetFileDialog(const Project::ProjectContext& projectContext, const std::string& initialAssetFolder);
 
-    [[nodiscard]] std::optional<AssetFileDialogResult> DrawAssetFileDialog(
-        const Project::ProjectContext& projectContext
-    );
+    [[nodiscard]] bool IsAssetFileDialogOpen();
+    [[nodiscard]] std::optional<AssetFileDialogResult> DrawAssetFileDialog();
 }

@@ -10,6 +10,7 @@
 
 #include "ImGuiFileDialog.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace Theme = Quiet::Renderer::UI::EditorColor;
@@ -23,19 +24,6 @@ namespace
         "Meshes (*.obj *.fbx *.gltf *.glb *.dae)" "{.obj,.fbx,.gltf,.glb,.dae},"
         "Textures (*.png *.jpg *.jpeg *.tga *.bmp)" "{.png,.jpg,.jpeg,.tga,.bmp}";
 
-    std::string ToLowerCopy(std::string value)
-    {
-        std::transform(
-            value.begin(),
-            value.end(),
-            value.begin(),
-            [](const unsigned char c)
-            {
-                return static_cast<char>(std::tolower(c));
-            }
-        );
-        return value;
-    }
 
     void ConfigureAssetFileDialogStyles()
     {
@@ -67,35 +55,33 @@ namespace Quiet::Renderer::UI
 {
     Project::AssetType DetectImportAssetType(const std::filesystem::path &path)
     {
-        const std::string ext = ToLowerCopy(path.extension().string());
-
-        if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" || ext == ".dae")
-            return Project::AssetType::Mesh;
-
-        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp")
-            return Project::AssetType::Texture;
-
+        const std::string ext = Assets::ToLowerCopy(path.extension().string());
+        if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" || ext == ".dae") return Project::AssetType::Mesh;
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp") return Project::AssetType::Texture;
         return Project::AssetType::Unknown;
     }
 
-    void OpenAssetFileDialog(const Project::ProjectContext& projectContext)
+    void OpenAssetFileDialog(const Project::ProjectContext& projectContext, const std::string& initialAssetFolder)
     {
         ConfigureAssetFileDialogStyles();
 
+        std::string validatedFolder = initialAssetFolder;
+        Assets::ValidateCurrentAssetFolder(projectContext, validatedFolder);
+
         IGFD::FileDialogConfig config;
-        config.path = projectContext.GetAssetsPath().string();
+        config.path = Assets::ResolveAssetFolderPath(projectContext, validatedFolder).string();
         config.countSelectionMax = 1;
         config.flags = ImGuiFileDialogFlags_Modal;
 
-        ImGuiFileDialog::Instance()->OpenDialog(
-            kAssetFileDialogKey,
-            "Import Asset",
-            kSupportedAssetFilters,
-            config
-        );
+        ImGuiFileDialog::Instance()->OpenDialog(kAssetFileDialogKey, "Select Asset Source", kSupportedAssetFilters, config);
     }
 
-    std::optional<AssetFileDialogResult> DrawAssetFileDialog(const Project::ProjectContext &projectContext)
+    bool IsAssetFileDialogOpen()
+    {
+        return ImGuiFileDialog::Instance()->IsOpened(kAssetFileDialogKey);
+    }
+
+    std::optional<AssetFileDialogResult> DrawAssetFileDialog()
     {
         // Calculate Dialog Size
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -172,13 +158,7 @@ namespace Quiet::Renderer::UI
             const Project::AssetType type = DetectImportAssetType(selectedFile);
 
             if (type != Project::AssetType::Unknown)
-            {
-                result = AssetFileDialogResult{
-                    type,
-                    std::filesystem::path(selectedPath).stem().string(),
-                    projectContext.NormalizeAssetPath(selectedPath).generic_string()
-                };
-            }
+                result = AssetFileDialogResult{ type, selectedFile.stem().string(), selectedFile.lexically_normal().generic_string() };
         }
 
         ImGuiFileDialog::Instance()->Close();

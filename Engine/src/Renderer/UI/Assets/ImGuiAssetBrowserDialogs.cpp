@@ -1,5 +1,6 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
 
+#include <algorithm>
 #include <string>
 
 #include <imgui.h>
@@ -89,19 +90,39 @@ namespace Quiet::Renderer::UI::Assets
         const ImVec4 accentColor = MakeAssetFeedbackTextColor(feedback.Severity);
         const ImVec4 backgroundColor = MakeAssetFeedbackBackgroundColor(feedback.Severity);
 
+        const std::string title = feedback.Title.empty() ? "Asset operation" : feedback.Title;
+        const std::string message = feedback.Message.empty() ? "Operation completed." : feedback.Message;
+
+        const ImVec2 feedbackPadding = SZ::Px(ImVec2(12.0f, 10.0f));
+
+        const float availableWidth = std::max(SZ::Px(180.0f), ImGui::GetContentRegionAvail().x);
+        const float messageWrapWidth = std::max(SZ::Px(1.0f), availableWidth - feedbackPadding.x * 2.0f - SZ::Px(4.0f));
+        const float titleRowHeight = std::max(ImGui::GetTextLineHeight(), ImGui::GetFrameHeight());
+
+        const float messageHeight = ImGui::CalcTextSize(
+            message.c_str(),
+            nullptr,
+            false,
+            messageWrapWidth
+        ).y;
+
+        const float feedbackHeight = std::max(
+            SZ::Px(74.0f),
+            feedbackPadding.y * 2.0f +
+            titleRowHeight +
+            ImGui::GetStyle().ItemSpacing.y +
+            messageHeight
+        );
+
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, feedbackPadding);
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, backgroundColor);
         ImGui::PushStyleColor(ImGuiCol_Border, accentColor);
 
-        ImGui::BeginChild("##AssetOperationFeedback", ImVec2(0.0f, SZ::Px(74.0f)),
-            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
-            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::BeginChild("##AssetOperationFeedback", ImVec2(0.0f, feedbackHeight),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
-            const std::string title = feedback.Title.empty() ? "Asset operation" : feedback.Title;
-            const std::string message = feedback.Message.empty() ? "Operation completed." : feedback.Message;
-
             ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
             ImGui::TextUnformatted(title.c_str());
             ImGui::PopStyleColor();
@@ -111,13 +132,11 @@ namespace Quiet::Renderer::UI::Assets
 
             ImGui::SameLine();
 
-            if (dismissX > ImGui::GetCursorPosX())
-                ImGui::SetCursorPosX(dismissX);
-
+            if (dismissX > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(dismissX);
             if (EditorButton("Dismiss", ImVec2(dismissWidth, 0.0f)))
                 feedback.Clear();
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
             ImGui::TextWrapped("%s", message.c_str());
             ImGui::PopStyleColor();
         }
