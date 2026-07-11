@@ -144,16 +144,9 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
-
-        ImGui::Spacing();
     }
 
-    void DrawRemoveAssetConfirmationPopup(
-        const Project::ProjectContext &projectContext,
-        const std::string &assetID,
-        bool &confirmed,
-        bool &cancelled,
-        float uiScale)
+    void DrawRemoveAssetConfirmationPopup(const Project::ProjectContext& projectContext, const std::string& assetID, bool& confirmed, bool& cancelled, const float uiScale)
     {
         confirmed = false;
         cancelled = false;
@@ -163,18 +156,38 @@ namespace Quiet::Renderer::UI::Assets
         const float modalWidth = 560.0f * uiScale;
         const float labelWidth = 92.0f * uiScale;
 
+        const ImVec2 modalPadding = SZ::Px(ImVec2(15.0f, 15.0f));
         ImGui::SetNextWindowSize(ImVec2(modalWidth, 0.0f), ImGuiCond_Appearing);
+
         bool removeAssetOpen = true;
 
-        if (!EditorBeginPopupModal("Remove Asset", removeAssetOpen, ImGuiWindowFlags_AlwaysAutoResize)) return;
-        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+        // The Asset Browser body intentionally uses zero padding. Push explicit
+        // modal padding before BeginPopupModal so the popup does not inherit it.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, modalPadding);
+        const bool popupVisible = EditorBeginPopupModal("Remove Asset", removeAssetOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::PopStyleVar();
 
+        if (!popupVisible) return;
+
+        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
         if (!record)
         {
+            ImGui::PushStyleColor( ImGuiCol_Text, EditorColor::TextMuted);
             ImGui::TextWrapped("The selected asset is no longer registered.");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+            ImGui::Separator();
             ImGui::Spacing();
 
-            if (EditorButton("OK", SZ::Px(ImVec2(120.0f, 0.0f))))
+            const float buttonWidth = SZ::Px(120.0f);
+            const float availableWidth = ImGui::GetContentRegionAvail().x;
+            if (availableWidth > buttonWidth)
+            {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - buttonWidth);
+            }
+
+            if (EditorButton("OK", ImVec2(buttonWidth, 0.0f)))
             {
                 cancelled = true;
                 ImGui::CloseCurrentPopup();
@@ -184,23 +197,24 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Warning);
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
         ImGui::TextUnformatted("Remove asset from registry?");
         ImGui::PopStyleColor();
 
         ImGui::Spacing();
 
-        ImGui::TextWrapped(
-            "This will unregister the asset from the current project. "
-            "The source file on disk will not be deleted."
-        );
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextWrapped("This will unregister the asset from the current project. The source file on disk will not be deleted.");
+        ImGui::PopStyleColor();
 
         ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
         ImGui::Separator();
+
+        ImGui::PopStyleColor();
         ImGui::Spacing();
 
         const std::string typeLabel = std::string(Project::ToString(record->Type));
-
         DrawDetailRow("ID", record->ID.c_str(), labelWidth);
         DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
         DrawDetailRow("Source", record->BuiltIn ? "Built-in" : "Project", labelWidth);
@@ -215,22 +229,36 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
         ImGui::Separator();
+
+        ImGui::PopStyleColor();
         ImGui::Spacing();
 
-        if (EditorButton("Cancel", SZ::Px(ImVec2(130.0f, 0.0f))))
+        const float cancelWidth = SZ::Px(130.0f);
+        const float removeWidth = SZ::Px(160.0f);
+        const float actionSpacing = ImGui::GetStyle().ItemSpacing.x;
+
+        const float actionRowWidth = cancelWidth + actionSpacing + removeWidth;
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+
+        if (availableWidth > actionRowWidth)
+        {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - actionRowWidth);
+        }
+
+        if (EditorButton("Cancel", ImVec2(cancelWidth, 0.0f)))
         {
             cancelled = true;
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::SameLine();
-
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.360f, 0.070f, 0.080f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
 
-        if (EditorButton("Remove Asset", SZ::Px(ImVec2(160.0f, 0.0f))))
+        if (EditorButton("Remove Asset", ImVec2(removeWidth, 0.0f)))
         {
             confirmed = true;
             ImGui::CloseCurrentPopup();

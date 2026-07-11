@@ -112,16 +112,24 @@ namespace Quiet::Renderer::UI::Assets
     {
         ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 12.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 10.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##AssetBrowserSourcesPanel", ImVec2(width, 0.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##AssetBrowserSourcesPanel", ImVec2(width, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
         {
             DrawSectionTitle("Sources");
+
             ImGui::Spacing();
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(4.0f, 4.0f)));
+            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, SZ::Px(18.0f));
+
+            ImGui::PushStyleColor(ImGuiCol_Header, EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
 
             const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
 
@@ -130,7 +138,6 @@ namespace Quiet::Renderer::UI::Assets
             {
                 DrawMutedText("Project Assets folder is missing.");
                 ImGui::Spacing();
-
                 ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
                 ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
                 ImGui::PopStyleColor();
@@ -140,17 +147,8 @@ namespace Quiet::Renderer::UI::Assets
                 DrawFolderNode(projectContext, assetsRootPath, currentAssetFolder);
             }
 
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
-            ImGui::Separator();
-            ImGui::PopStyleColor();
-
-            DrawMutedText("Selected Folder");
-
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-            ImGui::TextWrapped("%s", currentAssetFolder.c_str());
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
         }
         ImGui::EndChild();
 

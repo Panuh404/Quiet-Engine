@@ -70,11 +70,7 @@ namespace
 
     float CalculateAssetDetailsPanelWidth(const float availableWidth)
     {
-        return std::clamp(
-            availableWidth * 0.34f,
-            SZ::Px(330.0f),
-            SZ::Px(460.0f)
-        );
+        return std::clamp(availableWidth * 0.30f, SZ::Px(320.0f), SZ::Px(420.0f));
     }
 
     float CalculateAssetSourcesPanelWidth(const float availableWidth)
@@ -100,55 +96,85 @@ namespace
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
         const bool canGoUp = currentAssetFolder != assetsRoot;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 5.0f)));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(6.0f, 4.0f)));
-
-        if (QUI::EditorButton("Up##AssetBreadcrumbUp", SZ::Px(ImVec2(52.0f, 0.0f)), canGoUp))
-            currentAssetFolder = GetParentAssetFolder(projectContext, currentAssetFolder);
-
-        ImGui::SameLine();
-
-        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-        ImGui::TextUnformatted("|");
-        ImGui::PopStyleColor();
-
         const std::vector<std::string> breadcrumbs = BuildAssetFolderBreadcrumbs(projectContext, currentAssetFolder);
-        for (std::size_t index = 0; index < breadcrumbs.size(); ++index)
+
+        const ImVec2 navigationPadding = SZ::Px(ImVec2(6.0f, 5.0f));
+        const float navigationHeight = ImGui::GetFrameHeight() + navigationPadding.y * 2.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, navigationPadding);
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##AssetBrowserNavigationBar", ImVec2(0.0f, navigationHeight),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, SZ::Px(5.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::Background3);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::Background4);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
+
+            if (QUI::EditorButton("Up##AssetBreadcrumbUp", SZ::Px(ImVec2(52.0f, 0.0f)), canGoUp))
+            {
+                currentAssetFolder = GetParentAssetFolder(projectContext, currentAssetFolder);
+            }
+
+            ImGui::PopStyleColor(3);
             ImGui::SameLine();
 
-            if (index > 0)
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim );
+            ImGui::TextUnformatted(">");
+            ImGui::PopStyleColor();
+
+            for (std::size_t index = 0; index < breadcrumbs.size(); ++index)
             {
-                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                ImGui::TextUnformatted(">");
-                ImGui::PopStyleColor();
                 ImGui::SameLine();
+
+                const std::string& breadcrumbPath = breadcrumbs[index];
+                const std::string label = MakeBreadcrumbLabel(breadcrumbPath, assetsRoot);
+                const std::string buttonID = label + "##AssetBreadcrumb_" + breadcrumbPath;
+
+                const float buttonWidth = std::max(SZ::Px(48.0f), ImGui::CalcTextSize(label.c_str()).x + SZ::Px(20.0f));
+                const bool selected = breadcrumbPath == currentAssetFolder;
+
+                ImGui::PushStyleColor(ImGuiCol_Button, selected
+                        ? QUI::EditorColor::AccentSoft
+                        : QUI::EditorColor::Background2
+                );
+
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected
+                        ? QUI::EditorColor::AccentSoft
+                        : QUI::EditorColor::Background4
+                );
+
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
+                ImGui::PushStyleColor(ImGuiCol_Text, selected
+                        ? QUI::EditorColor::Text
+                        : QUI::EditorColor::TextMuted
+                );
+
+                if (QUI::EditorButton(buttonID.c_str(), ImVec2(buttonWidth, 0.0f)))
+                    currentAssetFolder = breadcrumbPath;
+
+                ImGui::PopStyleColor(4);
+
+                if (index + 1 < breadcrumbs.size())
+                {
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+                    ImGui::TextUnformatted(">");
+                    ImGui::PopStyleColor();
+                }
             }
 
-            const std::string& breadcrumbPath = breadcrumbs[index];
-            const std::string label = MakeBreadcrumbLabel(breadcrumbPath, assetsRoot);
-            const std::string buttonID = label + "##AssetBreadcrumb_" + breadcrumbPath;
-
-            const float buttonWidth = std::max(
-                SZ::Px(54.0f),
-                ImGui::CalcTextSize(label.c_str()).x + SZ::Px(24.0f)
-            );
-
-            const bool selected = breadcrumbPath == currentAssetFolder;
-            if (selected)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::Background4);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::Background4);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Background4);
-            }
-
-            if (QUI::EditorButton(buttonID.c_str(), ImVec2(buttonWidth, 0.0f)))
-                currentAssetFolder = breadcrumbPath;
-
-            if (selected)
-                ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
         }
+        ImGui::EndChild();
 
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
     }
 }
@@ -218,10 +244,11 @@ namespace Quiet::Renderer::UI::Assets
             }
 
             DrawFailurePopup("Import Asset Failed", registerErrorMessage);
+            DrawAssetOperationFeedback(editorState);
+
             ImGui::Spacing();
 
             bool openAssetDetailsPopup = false;
-
             const bool useSplitDetailsLayout = ShouldUseAssetDetailsSplitLayout();
             const ImGuiWindowFlags browserBodyFlags = useSplitDetailsLayout
                     ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
@@ -237,7 +264,9 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::SameLine();
 
-                ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
+                ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding, browserBodyFlags);
+                ImGui::PopStyleVar();
                 {
                     DrawAssetBrowserBreadcrumb(projectContext, currentAssetFolder);
                     ImGui::Spacing();
@@ -391,20 +420,8 @@ namespace Quiet::Renderer::UI::Assets
                     const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
                     if (!selectedAssetStillExists) selectedDetailsAssetID.clear();
 
-                    DrawAssetOperationFeedback(editorState);
-                    DrawAssetDetailsInline(
-                        projectContext,
-                        meshLibrary,
-                        textureLibrary,
-                        scene,
-                        selectedDetailsAssetID,
-                        context.UIScale
-                    );
-
-                    if (useSplitDetailsLayout)
-                    {
-                        ImGui::EndChild();
-                    }
+                    DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, scene, selectedDetailsAssetID, context.UIScale);
+                    if (useSplitDetailsLayout) ImGui::EndChild();
                 }
                 ImGui::EndChild();
             }
