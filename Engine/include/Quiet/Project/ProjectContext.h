@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
-#include <string_view>
 
 #include "AssetRegistry.h"
 #include "ProjectDescriptor.h"
@@ -160,6 +160,8 @@ namespace Quiet::Project
         [[nodiscard]] std::filesystem::path NormalizeAssetPath(std::filesystem::path assetPath) const;
 
     private:
+        void NormalizeAssetRegistryPaths();
+
         std::filesystem::path m_RootPath;
         std::filesystem::path m_ProjectFilePath;
         std::filesystem::path m_ActiveScenePath;

@@ -1,10 +1,11 @@
 #include "Quiet/Project/ProjectContext.h"
 
-#include <filesystem>
-#include <utility>
 #include <algorithm>
-#include <string_view>
 #include <cctype>
+#include <filesystem>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace
 {
@@ -143,6 +144,23 @@ namespace
         return true;
     }
 
+    std::filesystem::path MakeAbsoluteNormalizedPath(std::filesystem::path path)
+    {
+        if (path.empty()) return {};
+        std::error_code ec;
+        if (path.is_relative())
+        {
+            const std::filesystem::path absolutePath = std::filesystem::absolute(path, ec);
+            if (!ec) path = absolutePath;
+            ec.clear();
+        }
+
+        const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(path, ec);
+        if (!ec) return canonicalPath.lexically_normal();
+
+        return path.lexically_normal();
+    }
+
     std::filesystem::path ResolveAssetRecordPath(const Quiet::Project::ProjectContext& projectContext, const std::string& recordPath)
     {
         std::filesystem::path resolvedPath = recordPath;
@@ -159,20 +177,20 @@ namespace Quiet::Project
     bool ProjectContext::LoadOrCreateAssetRegistry()
     {
         AssetRegistry registry{};
-
         const std::filesystem::path registryPath = GetAssetRegistryPath();
         if (std::filesystem::exists(registryPath))
         {
-            if (!AssetRegistryIO::LoadFromFile(registryPath, registry))
-                return false;
+            if (!AssetRegistryIO::LoadFromFile(registryPath, registry)) return false;
         }
         else
+        {
             registry = AssetRegistryIO::MakeDefault();
-
+        }
         AssetRegistryIO::EnsureBuiltInAssets(registry);
         m_AssetRegistry = std::move(registry);
 
-        return AssetRegistryIO::SaveToFile(registryPath, m_AssetRegistry);
+        NormalizeAssetRegistryPaths();
+        return SaveAssetRegistry();
     }
 
     bool ProjectContext::RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
@@ -181,6 +199,7 @@ namespace Quiet::Project
         if (!IsValidAssetID(assetID)) return false;
 
         assetPath = NormalizeAssetPath(std::move(assetPath));
+        if (!builtIn && assetPath.empty()) return false;
 
         AssetRecord record{};
         record.ID = std::move(assetID);
@@ -201,6 +220,7 @@ namespace Quiet::Project
         if (!IsValidAssetID(assetID)) return false;
 
         assetPath = NormalizeAssetPath(std::move(assetPath));
+        if (!builtIn && assetPath.empty()) return false;
 
         AssetRecord record{};
         record.ID = std::move(assetID);
@@ -628,15 +648,43 @@ namespace Quiet::Project
     std::filesystem::path ProjectContext::NormalizeAssetPath(std::filesystem::path assetPath) const
     {
         if (assetPath.empty()) return {};
-        assetPath = assetPath.lexically_normal();
 
-        if (assetPath.is_relative()) return assetPath.generic_string();
-        const std::filesystem::path relativeToRoot = assetPath.lexically_relative(GetRootPath());
+        const std::filesystem::path projectRoot = MakeAbsoluteNormalizedPath(GetRootPath());
+        if (projectRoot.empty()) return assetPath.lexically_normal();
+        if (assetPath.is_relative()) assetPath = projectRoot / assetPath;
 
-        if (!relativeToRoot.empty() && *relativeToRoot.begin() != "..")
-            return relativeToRoot.lexically_normal().generic_string();
+        const std::filesystem::path resolvedAssetPath = MakeAbsoluteNormalizedPath(std::move(assetPath));
+        if (resolvedAssetPath.empty()) return {};
 
-        return assetPath.lexically_normal().generic_string();
+        if (IsPathInsideOrEqual(resolvedAssetPath, projectRoot))
+        {
+            const std::filesystem::path relativePath = resolvedAssetPath
+                    .lexically_relative(projectRoot)
+                    .lexically_normal();
+
+            if (relativePath == ".") return {};
+            return relativePath;
+        }
+        return resolvedAssetPath;
+    }
+
+    void ProjectContext::NormalizeAssetRegistryPaths()
+    {
+        for (AssetRecord& record : m_AssetRegistry.Records)
+        {
+            if (record.BuiltIn)
+            {
+                record.Path.clear();
+                continue;
+            }
+            if (record.Path.empty()) continue;
+
+            const std::filesystem::path normalizedPath = NormalizeAssetPath(record.Path);
+            if (!normalizedPath.empty())
+            {
+                record.Path = normalizedPath.generic_string();
+            }
+        }
     }
 
     bool LoadOrCreateProject(ProjectContext& projectContext, const std::filesystem::path& projectFilePath)
