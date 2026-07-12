@@ -260,7 +260,15 @@ namespace Quiet::Renderer::UI::Assets
                 const float bodyWidth = ImGui::GetContentRegionAvail().x;
                 const float sourcesPanelWidth = CalculateAssetSourcesPanelWidth(bodyWidth);
 
-                DrawAssetBrowserSourcesPanel(projectContext, currentAssetFolder, sourcesPanelWidth);
+                AssetBrowserFolderActionRequest folderActionRequest{};
+                DrawAssetBrowserSourcesPanel(projectContext, currentAssetFolder, sourcesPanelWidth, folderActionRequest);
+
+                if (folderActionRequest.Action != AssetBrowserFolderAction::None)
+                {
+                    BeginAssetFolderAction(state, folderActionRequest);
+                    const char* popupTitle = GetAssetFolderActionPopupTitle(folderActionRequest.Action);
+                    if (popupTitle) ImGui::OpenPopup(popupTitle);
+                }
 
                 ImGui::SameLine();
 
@@ -424,6 +432,7 @@ namespace Quiet::Renderer::UI::Assets
                     if (useSplitDetailsLayout) ImGui::EndChild();
                 }
                 ImGui::EndChild();
+                DrawAssetFolderActionPopup(projectContext, editorState, state);
             }
 
             ImGui::EndChild();

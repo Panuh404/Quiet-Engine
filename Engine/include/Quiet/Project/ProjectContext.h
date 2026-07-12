@@ -6,6 +6,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+#include <string_view>
 
 #include "AssetRegistry.h"
 #include "ProjectDescriptor.h"
@@ -118,8 +119,22 @@ namespace Quiet::Project
 
         [[nodiscard]] bool RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
-
         [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
+
+        // Folders
+        [[nodiscard]] bool CreateAssetFolder(
+            const std::filesystem::path& parentFolder,
+            std::string folderName,
+            std::filesystem::path& outCreatedFolder,
+            std::string& outErrorMessage
+        );
+        [[nodiscard]] bool RenameAssetFolder(
+            const std::filesystem::path& folder,
+            std::string newName,
+            std::filesystem::path& outRenamedFolder,
+            std::string& outErrorMessage
+        );
+        [[nodiscard]] bool DeleteEmptyAssetFolder(const std::filesystem::path& folder, std::string& outErrorMessage);
 
         [[nodiscard]] bool EnsureDirectoriesExist() const
         {

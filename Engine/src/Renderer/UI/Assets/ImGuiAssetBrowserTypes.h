@@ -25,10 +25,25 @@ namespace Quiet::Renderer::UI::Assets
         Large
     };
 
+    enum class AssetBrowserFolderAction
+    {
+        None,
+        Create,
+        Rename,
+        Delete
+    };
+
+    struct AssetBrowserFolderActionRequest
+    {
+        AssetBrowserFolderAction Action = AssetBrowserFolderAction::None;
+        std::string TargetFolder{};
+    };
+
     struct AssetBrowserState
     {
         std::array<char, 128> AssetIDBuffer{};
         std::array<char, 1024> AssetPathBuffer{};
+        std::array<char, 128> FolderNameBuffer{};
         std::array<char, 128> SearchBuffer{};
 
         std::string ImportErrorMessage{};
@@ -36,11 +51,14 @@ namespace Quiet::Renderer::UI::Assets
         std::string SelectedDetailsAssetID{};
         std::string ConfirmRemoveAssetID{};
         std::string CurrentAssetFolder{};
+        std::string FolderOperationTarget{};
+        std::string FolderOperationErrorMessage{};
 
         bool ReopenImportPopupAfterFileDialog = false;
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;
-        AssetBrowserThumbnailSize ThumbnailSize = AssetBrowserThumbnailSize::Small;
+        AssetBrowserThumbnailSize ThumbnailSize = AssetBrowserThumbnailSize::Medium;
+        AssetBrowserFolderAction PendingFolderAction = AssetBrowserFolderAction::None;
     };
 }
