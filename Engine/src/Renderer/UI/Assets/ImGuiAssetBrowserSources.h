@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "ImGuiAssetBrowserTypes.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Quiet/Project/ProjectContext.h"
 
 namespace Quiet::Renderer::UI::Assets
@@ -11,6 +11,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         std::string& currentAssetFolder,
         float width,
-        AssetBrowserFolderActionRequest& folderActionRequest
+        AssetBrowserFolderActionRequest& folderActionRequest,
+        AssetBrowserAssetMoveRequest& assetMoveRequest
     );
 }

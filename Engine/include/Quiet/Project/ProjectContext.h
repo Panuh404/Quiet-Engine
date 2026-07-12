@@ -126,15 +126,23 @@ namespace Quiet::Project
             const std::filesystem::path& parentFolder,
             std::string folderName,
             std::filesystem::path& outCreatedFolder,
-            std::string& outErrorMessage
-        );
+            std::string& outErrorMessage);
+
         [[nodiscard]] bool RenameAssetFolder(
             const std::filesystem::path& folder,
             std::string newName,
             std::filesystem::path& outRenamedFolder,
-            std::string& outErrorMessage
-        );
-        [[nodiscard]] bool DeleteEmptyAssetFolder(const std::filesystem::path& folder, std::string& outErrorMessage);
+            std::string& outErrorMessage);
+
+        [[nodiscard]] bool DeleteEmptyAssetFolder(
+            const std::filesystem::path& folder,
+            std::string& outErrorMessage);
+
+        [[nodiscard]] bool MoveAssetToFolder(
+            std::string_view assetID,
+            const std::filesystem::path& destinationFolder,
+            std::filesystem::path& outMovedAssetPath,
+            std::string& outErrorMessage);
 
         [[nodiscard]] bool EnsureDirectoriesExist() const
         {

@@ -17,6 +17,9 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetStatePill(const std::string& state);
 
     bool DrawAssetTableCellHitTarget(const char* id, float rowHeight);
+    void DrawAssetBrowserDragSource(const Project::AssetRecord& record, bool enabled);
+
+    [[nodiscard]] bool AcceptAssetBrowserDrop(std::string& outAssetID);
 
     struct AssetBrowserCardMetrics
     {

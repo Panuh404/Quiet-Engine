@@ -1,12 +1,13 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
 
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <string>
-
 #include <imgui.h>
 
-#include "ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace

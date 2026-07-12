@@ -266,6 +266,11 @@ namespace Quiet::Renderer::UI::Assets
                 pendingRemoveAssetID
             );
 
+            DrawAssetBrowserDragSource(
+                record,
+                !runtimeModeActive
+            );
+
             ImDrawList* drawList = ImGui::GetWindowDrawList();
 
             const ImVec4 cardColor =

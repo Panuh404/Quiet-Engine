@@ -8,6 +8,8 @@
 namespace
 {
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
+
+    constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_ASSET_ID";
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -131,6 +133,56 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         return ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    }
+
+    void DrawAssetBrowserDragSource(const Project::AssetRecord &record, bool enabled)
+    {
+        if (!enabled || record.BuiltIn || record.Path.empty()) return;
+        if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover)) return;
+
+        ImGui::SetDragDropPayload(kAssetBrowserPayloadType, record.ID.c_str(), record.ID.size() + 1);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+        ImGui::TextUnformatted("Move Asset");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
+        ImGui::TextUnformatted(record.ID.c_str());
+        ImGui::PopStyleColor();
+
+        if (!record.Path.empty())
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+            ImGui::TextWrapped("%s", record.Path.c_str());
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndDragDropSource();
+    }
+
+    bool AcceptAssetBrowserDrop(std::string &outAssetID)
+    {
+        outAssetID.clear();
+
+        if (!ImGui::BeginDragDropTarget()) return false;
+        bool accepted = false;
+
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetBrowserPayloadType))
+        {
+            if (payload->IsDelivery() && payload->Data && payload->DataSize > 1)
+            {
+                const char* payloadAssetID = static_cast<const char*>(payload->Data);
+                const std::size_t payloadSize = static_cast<std::size_t>(payload->DataSize);
+
+                if (payloadAssetID[payloadSize - 1] == '\0')
+                {
+                    outAssetID = payloadAssetID;
+                    accepted = !outAssetID.empty();
+                }
+            }
+        }
+
+        ImGui::EndDragDropTarget();
+        return accepted;
     }
 
     AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const AssetBrowserThumbnailSize thumbnailSize)

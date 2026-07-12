@@ -96,6 +96,11 @@ namespace Quiet::Renderer::UI::Assets
                         pendingRemoveAssetID
                     );
 
+                    DrawAssetBrowserDragSource(
+                        record,
+                        !runtimeModeActive
+                    );
+
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
                     ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? EditorColor::Accent : EditorColor::Text);
 

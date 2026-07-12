@@ -261,13 +261,42 @@ namespace Quiet::Renderer::UI::Assets
                 const float sourcesPanelWidth = CalculateAssetSourcesPanelWidth(bodyWidth);
 
                 AssetBrowserFolderActionRequest folderActionRequest{};
-                DrawAssetBrowserSourcesPanel(projectContext, currentAssetFolder, sourcesPanelWidth, folderActionRequest);
+                AssetBrowserAssetMoveRequest assetMoveRequest{};
+
+                DrawAssetBrowserSourcesPanel(
+                    projectContext,
+                    currentAssetFolder,
+                    sourcesPanelWidth,
+                    folderActionRequest,
+                    assetMoveRequest
+                );
 
                 if (folderActionRequest.Action != AssetBrowserFolderAction::None)
                 {
                     BeginAssetFolderAction(state, folderActionRequest);
                     const char* popupTitle = GetAssetFolderActionPopupTitle(folderActionRequest.Action);
                     if (popupTitle) ImGui::OpenPopup(popupTitle);
+                }
+                if (assetMoveRequest.IsValid())
+                {
+                    std::filesystem::path movedAssetPath;
+                    std::string moveErrorMessage;
+
+                    if (projectContext.MoveAssetToFolder(assetMoveRequest.AssetID, assetMoveRequest.TargetFolder, movedAssetPath, moveErrorMessage))
+                    {
+                        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+                        editorState.AssetOperationFeedback.Set(
+                            Editor::EditorFeedbackSeverity::Success,
+                            "Asset moved",
+                            "Moved asset '" + assetMoveRequest.AssetID + "' to '" + movedAssetPath.generic_string() + "'.");
+                    }
+                    else
+                    {
+                        editorState.AssetOperationFeedback.Set(
+                            Editor::EditorFeedbackSeverity::Error,
+                            "Move failed",
+                            moveErrorMessage.empty() ? "The asset could not be moved." : moveErrorMessage);
+                    }
                 }
 
                 ImGui::SameLine();

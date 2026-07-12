@@ -4,11 +4,12 @@
 #include <filesystem>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
-
 #include <imgui.h>
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -109,7 +110,8 @@ namespace
         const Quiet::Project::ProjectContext& projectContext,
         const std::filesystem::path& folderPath,
         std::string& currentAssetFolder,
-        Assets::AssetBrowserFolderActionRequest& request)
+        Assets::AssetBrowserFolderActionRequest& folderActionRequest,
+        Assets::AssetBrowserAssetMoveRequest& assetMoveRequest)
     {
         const std::string relativeFolderPath = Assets::MakeProjectRelativeAssetFolderPath(projectContext, folderPath);
         const std::vector<std::filesystem::path> childFolders = EnumerateChildFolders(folderPath);
@@ -133,13 +135,21 @@ namespace
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) currentAssetFolder = relativeFolderPath;
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) currentAssetFolder = relativeFolderPath;
 
-        DrawFolderContextMenu(projectContext, relativeFolderPath, request);
+        std::string droppedAssetID;
+
+        if (Assets::AcceptAssetBrowserDrop(droppedAssetID))
+        {
+            assetMoveRequest.AssetID = std::move(droppedAssetID);
+            assetMoveRequest.TargetFolder = relativeFolderPath;
+        }
+
+        DrawFolderContextMenu(projectContext, relativeFolderPath, folderActionRequest);
 
         if (open && hasChildren)
         {
             for (const std::filesystem::path& childFolder : childFolders)
             {
-                DrawFolderNode(projectContext, childFolder, currentAssetFolder, request);
+                DrawFolderNode(projectContext, childFolder, currentAssetFolder, folderActionRequest, assetMoveRequest);
             }
             ImGui::TreePop();
         }
@@ -152,7 +162,8 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         std::string& currentAssetFolder,
         const float width,
-        AssetBrowserFolderActionRequest& folderActionRequest)
+        AssetBrowserFolderActionRequest& folderActionRequest,
+        AssetBrowserAssetMoveRequest& assetMoveRequest)
     {
         ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
 
@@ -206,7 +217,7 @@ namespace Quiet::Renderer::UI::Assets
             }
             else
             {
-                DrawFolderNode(projectContext, assetsRootPath, currentAssetFolder, folderActionRequest);
+                DrawFolderNode(projectContext, assetsRootPath, currentAssetFolder, folderActionRequest, assetMoveRequest);
             }
 
             ImGui::PopStyleColor(3);

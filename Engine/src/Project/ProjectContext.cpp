@@ -91,11 +91,8 @@ namespace
         return firstSegment != relativePath.end() && *firstSegment != "..";
     }
 
-    bool ResolveExistingAssetFolder(
-        const Quiet::Project::ProjectContext& projectContext,
-        const std::filesystem::path& requestedFolder,
-        std::filesystem::path& outResolvedFolder,
-        std::string& outErrorMessage)
+    bool ResolveExistingAssetFolder(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& requestedFolder,
+        std::filesystem::path& outResolvedFolder, std::string& outErrorMessage)
     {
         outResolvedFolder.clear();
         outErrorMessage.clear();
@@ -229,11 +226,8 @@ namespace Quiet::Project
         return SaveAssetRegistry();
     }
 
-    bool ProjectContext::CreateAssetFolder(
-        const std::filesystem::path &parentFolder,
-        std::string folderName,
-        std::filesystem::path &outCreatedFolder,
-        std::string &outErrorMessage)
+    bool ProjectContext::CreateAssetFolder(const std::filesystem::path &parentFolder, std::string folderName,
+        std::filesystem::path &outCreatedFolder, std::string &outErrorMessage)
     {
         outCreatedFolder.clear();
         outErrorMessage.clear();
@@ -281,11 +275,8 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectContext::RenameAssetFolder(
-        const std::filesystem::path &folder,
-        std::string newName,
-        std::filesystem::path &outRenamedFolder,
-        std::string &outErrorMessage)
+    bool ProjectContext::RenameAssetFolder(const std::filesystem::path &folder, std::string newName,
+        std::filesystem::path &outRenamedFolder, std::string &outErrorMessage)
     {
         outRenamedFolder.clear();
         outErrorMessage.clear();
@@ -452,6 +443,185 @@ namespace Quiet::Project
             return false;
         }
 
+        return true;
+    }
+
+    bool ProjectContext::MoveAssetToFolder(std::string_view assetID, const std::filesystem::path &destinationFolder,
+        std::filesystem::path &outMovedAssetPath, std::string &outErrorMessage)
+    {
+        outMovedAssetPath.clear();
+        outErrorMessage.clear();
+
+        const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
+        if (!record)
+        {
+            outErrorMessage = "The selected asset is no longer registered.";
+            return false;
+        }
+        if (record->BuiltIn)
+        {
+            outErrorMessage = "Built-in assets cannot be moved.";
+            return false;
+        }
+        if (record->Path.empty())
+        {
+            outErrorMessage = "The selected asset has no physical source path.";
+            return false;
+        }
+
+        std::filesystem::path resolvedDestinationFolder;
+        if (!ResolveExistingAssetFolder(*this, destinationFolder, resolvedDestinationFolder, outErrorMessage))
+            return false;
+
+        const std::filesystem::path sourcePath = ResolveAssetRecordPath(*this, record->Path);
+
+        std::error_code ec;
+        if (!std::filesystem::exists(sourcePath, ec) || ec)
+        {
+            outErrorMessage = "The asset source file does not exist.";
+            return false;
+        }
+
+        ec.clear();
+        if (!std::filesystem::is_regular_file(sourcePath, ec) || ec)
+        {
+            outErrorMessage = "The registered asset path is not a regular file.";
+            return false;
+        }
+
+        ec.clear();
+        const std::filesystem::path assetsRoot = std::filesystem::weakly_canonical(GetAssetsPath(), ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to resolve the project Assets folder: " + ec.message();
+            return false;
+        }
+
+        ec.clear();
+        const std::filesystem::path canonicalSourcePath = std::filesystem::weakly_canonical(sourcePath, ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to resolve the asset source path: " + ec.message();
+            return false;
+        }
+
+        if (!IsPathInsideOrEqual(canonicalSourcePath, assetsRoot))
+        {
+            outErrorMessage = "External assets cannot be moved through the project Assets browser.";
+            return false;
+        }
+        if (canonicalSourcePath.parent_path() == resolvedDestinationFolder)
+        {
+            outErrorMessage = "The asset is already stored in the selected folder.";
+            return false;
+        }
+
+        const std::filesystem::path sourceFilename = sourcePath.filename();
+        if (sourceFilename.empty())
+        {
+            outErrorMessage = "The asset source path has no valid filename.";
+            return false;
+        }
+
+        const std::filesystem::path movedPath = (resolvedDestinationFolder / sourceFilename).lexically_normal();
+        ec.clear();
+        if (std::filesystem::exists(movedPath, ec))
+        {
+            if (ec)
+            {
+                outErrorMessage = "Failed to inspect the destination path: " + ec.message();
+            }
+            else
+            {
+                outErrorMessage = "A file named '" + sourceFilename.string() + "' already exists in the destination folder.";
+            }
+            return false;
+        }
+
+        if (ec)
+        {
+            outErrorMessage = "Failed to inspect the destination path: " + ec.message();
+            return false;
+        }
+
+        for (const AssetRecord& existingRecord :
+             m_AssetRegistry.Records)
+        {
+            if (existingRecord.ID == assetID ||
+                existingRecord.BuiltIn ||
+                existingRecord.Path.empty())
+            {
+                continue;
+            }
+
+            const std::filesystem::path existingPath = ResolveAssetRecordPath(*this, existingRecord.Path);
+            if (existingPath.lexically_normal() == movedPath.lexically_normal())
+            {
+                outErrorMessage = "The destination path is already registered as asset '" + existingRecord.ID + "'.";
+                return false;
+            }
+        }
+
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+
+        const auto updatedRecord =
+            std::find_if(
+                updatedRegistry.Records.begin(),
+                updatedRegistry.Records.end(),
+                [&](const AssetRecord& candidate)
+                {
+                    return candidate.ID == assetID;
+                }
+            );
+
+        if (updatedRecord == updatedRegistry.Records.end())
+        {
+            outErrorMessage = "The selected asset disappeared from the registry.";
+            return false;
+        }
+
+        updatedRecord->Path = NormalizeAssetPath(movedPath).generic_string();
+
+        ec.clear();
+        std::filesystem::rename(sourcePath, movedPath, ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to move the asset file: " + ec.message();
+            return false;
+        }
+
+        m_AssetRegistry = std::move(updatedRegistry);
+        if (!SaveAssetRegistry())
+        {
+            m_AssetRegistry = previousRegistry;
+            std::error_code rollbackError;
+            std::filesystem::rename(movedPath, sourcePath, rollbackError);
+
+            const bool registryRestored = SaveAssetRegistry();
+            if (rollbackError)
+            {
+                outErrorMessage =
+                    "The asset file was moved, but the registry could not "
+                    "be saved and the filesystem rollback also failed: " +
+                    rollbackError.message();
+            }
+            else if (!registryRestored)
+            {
+                outErrorMessage =
+                    "The asset move was rolled back, but the original "
+                    "registry could not be restored on disk.";
+            }
+            else
+            {
+                outErrorMessage =
+                    "The asset move was rolled back because the registry "
+                    "could not be saved.";
+            }
+            return false;
+        }
+
+        outMovedAssetPath = NormalizeAssetPath(movedPath);
         return true;
     }
 

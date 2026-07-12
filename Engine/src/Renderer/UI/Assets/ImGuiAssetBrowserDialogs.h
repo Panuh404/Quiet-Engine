@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "ImGuiAssetBrowserTypes.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 

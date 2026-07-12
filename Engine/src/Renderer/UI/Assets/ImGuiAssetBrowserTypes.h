@@ -39,6 +39,17 @@ namespace Quiet::Renderer::UI::Assets
         std::string TargetFolder{};
     };
 
+    struct AssetBrowserAssetMoveRequest
+    {
+        std::string AssetID{};
+        std::string TargetFolder{};
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return !AssetID.empty() && !TargetFolder.empty();
+        }
+    };
+
     struct AssetBrowserState
     {
         std::array<char, 128> AssetIDBuffer{};
