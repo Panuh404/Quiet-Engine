@@ -29,6 +29,7 @@ namespace Quiet::Renderer::UI::Assets
 
     std::string ExtractFileNameNoExt(const std::string& path);
 
+
     // Registry search / filtering
     bool MatchesTypeFilter(const Project::AssetRecord& record, AssetBrowserTypeFilter filter);
     bool MatchesAssetSearch(const Project::AssetRecord& record, const std::string& query);
@@ -41,8 +42,10 @@ namespace Quiet::Renderer::UI::Assets
     );
 
     std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
+        const Project::ProjectContext& projectContext,
         const std::vector<const Project::AssetRecord*>& folderAssets,
         AssetBrowserTypeFilter typeFilter,
+        AssetBrowserDiagnosticsFilter diagnosticsFilter,
         const std::string& searchQuery
     );
 
@@ -60,22 +63,57 @@ namespace Quiet::Renderer::UI::Assets
     std::string GetParentAssetFolder(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
     std::vector<std::string> BuildAssetFolderBreadcrumbs(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
 
+    // Path diagnostics
+    struct AssetPathDiagnostics
+    {
+        std::filesystem::path ResolvedPath{};
+
+        bool BuiltIn = false;
+        bool HasPath = false;
+        bool Exists = false;
+        bool RegularFile = false;
+        bool External = false;
+
+        [[nodiscard]] bool IsMissing() const
+        {
+            return !BuiltIn && (!HasPath || !Exists || !RegularFile);
+        }
+
+        [[nodiscard]] bool HasIssue() const
+        {
+            return IsMissing() || External;
+        }
+    };
+
+    struct AssetDiagnosticsCounts
+    {
+        std::size_t Issues = 0;
+        std::size_t Missing = 0;
+        std::size_t External = 0;
+    };
+
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath);
-    bool DoesAssetPathExist(const Project::ProjectContext& projectContext, const std::string& assetPath);
+
+    AssetPathDiagnostics InspectAssetPath(const Project::ProjectContext& projectContext, const Project::AssetRecord& record);
+
+    std::string MakeAssetPathDiagnosticLabel(const AssetPathDiagnostics& diagnostics);
+    std::string MakeAssetPathDiagnosticDescription(const AssetPathDiagnostics& diagnostics);
+
+    bool MatchesDiagnosticsFilter(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, AssetBrowserDiagnosticsFilter filter);
+
+    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext);
+    bool DoesAssetPathExist(const Project::ProjectContext& projectContext,const std::string& assetPath);
 
     // Asset display/status helpers
-    std::string MakeStatusLabel(const Project::AssetRecord& record, const Vulkan::MeshLibrary& meshLibrary, const Vulkan::TextureLibrary& textureLibrary);
+    std::string MakeStatusLabel(const Project::ProjectContext& projectContext, const Project::AssetRecord& record,
+        const Vulkan::MeshLibrary& meshLibrary, const Vulkan::TextureLibrary& textureLibrary);
     std::string MakeAssetDisplayName(const Project::AssetRecord& record);
 
     bool IsAssetReadyStatus(const std::string& status);
     bool IsAssetMissingStatus(const std::string& status);
 
-    std::string MakeAssetBrowserStateLabel(
-        const Project::AssetRecord& record,
-        const std::string& status,
-        bool runtimeModeActive,
-        std::uint32_t referenceCount
-    );
+    std::string MakeAssetBrowserStateLabel(const AssetPathDiagnostics& diagnostics, const Project::AssetRecord& record,
+        const std::string& status, bool runtimeModeActive, std::uint32_t referenceCount);
 
     // Scene usage helpers
     std::uint32_t CountMeshReferences(const Scene::Scene& scene, const std::string& meshID);

@@ -33,6 +33,14 @@ namespace Quiet::Renderer::UI::Assets
         Delete
     };
 
+    enum class AssetBrowserDiagnosticsFilter
+    {
+        All,
+        Issues,
+        Missing,
+        External
+    };
+
     struct AssetBrowserFolderActionRequest
     {
         AssetBrowserFolderAction Action = AssetBrowserFolderAction::None;
@@ -71,5 +79,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;
         AssetBrowserThumbnailSize ThumbnailSize = AssetBrowserThumbnailSize::Medium;
         AssetBrowserFolderAction PendingFolderAction = AssetBrowserFolderAction::None;
+        AssetBrowserDiagnosticsFilter DiagnosticsFilter = AssetBrowserDiagnosticsFilter::All;
     };
 }

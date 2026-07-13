@@ -19,21 +19,17 @@ namespace Quiet::Renderer::UI::Assets
         if (status == "Loaded" ||
             status == "GPU Ready" ||
             status == "Loaded Metadata")
-        {
             return EditorColor::Success;
-        }
 
         if (status == "Registered")
-        {
             return EditorColor::Warning;
-        }
 
         if (status == "Missing Built-In" ||
             status == "Missing Path" ||
+            status == "Missing File" ||
+            status == "Invalid Source" ||
             status == "Unknown")
-        {
-            return  EditorColor::Error;
-        }
+            return EditorColor::Error;
 
         return EditorColor::TextMuted;
     }
@@ -102,6 +98,11 @@ namespace Quiet::Renderer::UI::Assets
             text = EditorColor::Error;
             background = ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
         }
+        else if (state.find("External") != std::string::npos)
+        {
+            text = EditorColor::Warning;
+            background = ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
+        }
         else if (state.find("Built-in") != std::string::npos)
         {
             text = EditorColor::Accent;
@@ -120,6 +121,15 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         DrawPillLabel(state.c_str(), text, background);
+    }
+
+    void DrawAssetDiagnosticPill(const std::string &label, bool missing)
+    {
+        if (label.empty()) return;
+        const ImVec4 textColor = missing ? EditorColor::Error : EditorColor::Warning;
+        const ImVec4 backgroundColor = missing ? ImVec4(0.140f, 0.045f, 0.050f, 0.96f) : ImVec4(0.130f, 0.095f, 0.030f, 0.96f);
+
+        DrawPillLabel(label.c_str(), textColor, backgroundColor);
     }
 
     bool DrawAssetTableCellHitTarget(const char* id, const float rowHeight)

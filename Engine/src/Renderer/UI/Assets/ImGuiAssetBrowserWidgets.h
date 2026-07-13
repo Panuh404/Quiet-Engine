@@ -15,6 +15,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetTypePill(Project::AssetType type);
     void DrawAssetStatusPill(const std::string& status);
     void DrawAssetStatePill(const std::string& state);
+    void DrawAssetDiagnosticPill(const std::string& label, bool missing);
 
     bool DrawAssetTableCellHitTarget(const char* id, float rowHeight);
     void DrawAssetBrowserDragSource(const Project::AssetRecord& record, bool enabled);

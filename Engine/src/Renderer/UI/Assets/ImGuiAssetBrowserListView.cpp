@@ -52,11 +52,11 @@ namespace Quiet::Renderer::UI::Assets
                 if (!recordPtr) continue;
                 const Project::AssetRecord& record = *recordPtr;
                 const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
-                const std::string status = MakeStatusLabel(record, meshLibrary, textureLibrary);
-
-                const std::string browserState = MakeAssetBrowserStateLabel(record, status, runtimeModeActive, referenceCount);
-
+                const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
+                const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary);
+                const std::string browserState = MakeAssetBrowserStateLabel(diagnostics, record, status, runtimeModeActive, referenceCount);
                 const std::string displayName = MakeAssetDisplayName(record);
+
                 const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
                 const float rowHeight = SZ::Px(42.0f);
@@ -107,10 +107,20 @@ namespace Quiet::Renderer::UI::Assets
                     ImGui::TextUnformatted(displayName.c_str());
                     ImGui::PopStyleColor();
 
-                    if (cellHovered && !record.Path.empty())
-                        DrawAssetPaddedTooltip(record.Path);
-                    else if (cellHovered)
-                        DrawAssetPaddedTooltip(record.ID);
+                    if (cellHovered)
+                    {
+                        if (diagnostics.HasIssue())
+                        {
+                            std::string tooltip = MakeAssetPathDiagnosticDescription(diagnostics);
+                            if (!record.Path.empty())
+                                tooltip += "\n\nRegistered path: " + record.Path;
+                            DrawAssetPaddedTooltip(tooltip);
+                        }
+                        else
+                        {
+                            DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
+                        }
+                    }
                 }
 
                 // Type
@@ -169,7 +179,9 @@ namespace Quiet::Renderer::UI::Assets
 
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
                     {
-                        if (referenceCount > 0)
+                        if (diagnostics.HasIssue())
+                            DrawAssetPaddedTooltip(MakeAssetPathDiagnosticDescription(diagnostics));
+                        else if (referenceCount > 0)
                             DrawAssetPaddedTooltip("Referenced by " + std::to_string(referenceCount) + " actor(s) in the current scene.");
                         else if (record.BuiltIn)
                             DrawAssetPaddedTooltip("Built-in engine asset.");

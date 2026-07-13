@@ -49,7 +49,7 @@ namespace
 
             if (folderHasAssets)
             {
-                ImGui::TextWrapped("Clear the search field or switch the asset type filter.");
+                ImGui::TextWrapped("Clear the search field or switch the type or diagnostics filter.");
             }
             else
             {
@@ -199,6 +199,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& reopenImportPopupAfterFileDialog = state.ReopenImportPopupAfterFileDialog;
         auto& assetSearchBuffer = state.SearchBuffer;
         auto& assetTypeFilter = state.TypeFilter;
+        auto& assetDiagnosticsFilter = state.DiagnosticsFilter;
         auto& assetViewMode = state.ViewMode;
         auto& assetThumbnailSize = state.ThumbnailSize;
 
@@ -211,9 +212,10 @@ namespace Quiet::Renderer::UI::Assets
 
             DrawAssetBrowserToolbar(
                 editorState,
-                registry,
+                projectContext,
                 assetSearchBuffer,
                 assetTypeFilter,
+                assetDiagnosticsFilter,
                 assetViewMode,
                 assetThumbnailSize,
                 openImportPopup
@@ -325,7 +327,14 @@ namespace Quiet::Renderer::UI::Assets
                         if (!selectedAssetIsInCurrentFolder) selectedDetailsAssetID.clear();
                     }
 
-                    const std::vector<const Project::AssetRecord*> visibleAssets = BuildVisibleAssetList(folderAssets, assetTypeFilter, assetSearchBuffer.data());
+                    const std::vector<const Project::AssetRecord*> visibleAssets =
+                        BuildVisibleAssetList(
+                            projectContext,
+                            folderAssets,
+                            assetTypeFilter,
+                            assetDiagnosticsFilter,
+                            assetSearchBuffer.data()
+                        );
 
                     std::string pendingRemoveAssetID;
                     std::string pendingDetailsAssetID;

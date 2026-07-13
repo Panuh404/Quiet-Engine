@@ -222,6 +222,7 @@ namespace Quiet::Renderer::UI::Assets
 
             const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
             const std::string displayName = MakeAssetDisplayName(record);
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
             const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
             const float cardWidth =
@@ -280,6 +281,15 @@ namespace Quiet::Renderer::UI::Assets
                         ? EditorColor::Background3
                         : EditorColor::Background2;
 
+            const ImVec4 cardBorderColor =
+                isSelectedAsset
+                    ? EditorColor::AccentSoft
+                    : diagnostics.IsMissing()
+                        ? EditorColor::Error
+                        : diagnostics.External
+                            ? EditorColor::Warning
+                            : EditorColor::BorderSoft;
+
             drawList->AddRectFilled(
                 cardMin,
                 cardMax,
@@ -291,9 +301,7 @@ namespace Quiet::Renderer::UI::Assets
                 cardMin,
                 cardMax,
                 ImGui::ColorConvertFloat4ToU32(
-                    isSelectedAsset
-                        ? EditorColor::AccentSoft
-                        : EditorColor::BorderSoft
+                    cardBorderColor
                 ),
                 SZ::Px(12.0f)
             );
@@ -308,6 +316,9 @@ namespace Quiet::Renderer::UI::Assets
                 previewMin.y + previewHeight
             );
 
+            const ImVec2 afterCardCursor =
+                ImGui::GetCursorScreenPos();
+
             DrawAssetBrowserCardPreview(
                 record,
                 textureLibrary,
@@ -316,38 +327,36 @@ namespace Quiet::Renderer::UI::Assets
                 uiScale
             );
 
-            const ImVec2 afterCardCursor = ImGui::GetCursorScreenPos();
+            if (diagnostics.HasIssue())
+            {
+                ImGui::SetCursorScreenPos(ImVec2(previewMin.x + SZ::Px(6.0f), previewMin.y + SZ::Px(6.0f)));
+                DrawAssetDiagnosticPill(MakeAssetPathDiagnosticLabel(diagnostics), diagnostics.IsMissing());
+            }
 
-            const ImVec2 nameMin(
-                cardMin.x + padding,
-                previewMax.y + SZ::Px(8.0f)
-            );
+            const ImVec2 nameMin(cardMin.x + padding, previewMax.y + SZ::Px(8.0f));
+            const ImVec2 nameMax(cardMax.x - padding, nameMin.y + ImGui::GetTextLineHeight());
 
-            const ImVec2 nameMax(
-                cardMax.x - padding,
-                nameMin.y + ImGui::GetTextLineHeight()
-            );
-
-            DrawAssetCardTextLine(
-                displayName,
-                nameMin,
-                nameMax,
-                isSelectedAsset
-                    ? EditorColor::Accent
-                    : EditorColor::Text
-            );
-
-            const ImVec2 typePillPos(
-                cardMin.x + padding,
-                nameMax.y + SZ::Px(8.0f)
-            );
+            DrawAssetCardTextLine(displayName, nameMin, nameMax, isSelectedAsset ? EditorColor::Accent : EditorColor::Text);
+            const ImVec2 typePillPos(cardMin.x + padding, nameMax.y + SZ::Px(8.0f));
 
             ImGui::SetCursorScreenPos(typePillPos);
             DrawAssetTypePill(record.Type);
 
             if (hovered)
             {
-                DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
+                if (diagnostics.HasIssue())
+                {
+                    std::string tooltip = MakeAssetPathDiagnosticDescription(diagnostics);
+                    if (!record.Path.empty())
+                    {
+                        tooltip += "\n\nRegistered path: " + record.Path;
+                    }
+                    DrawAssetPaddedTooltip(tooltip);
+                }
+                else
+                {
+                    DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
+                }
             }
 
             ImGui::SetCursorScreenPos(afterCardCursor);

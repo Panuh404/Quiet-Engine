@@ -60,21 +60,53 @@ namespace
         return ImGui::BeginPopup(popupID);
     }
 
+    std::string MakeDiagnosticsDropdownLabel(
+        const Quiet::Renderer::UI::Assets::AssetBrowserDiagnosticsFilter filter,
+        const std::size_t issueCount,
+        const std::size_t missingCount,
+        const std::size_t externalCount)
+    {
+        using Quiet::Renderer::UI::Assets::AssetBrowserDiagnosticsFilter;
+
+        switch (filter)
+        {
+            case AssetBrowserDiagnosticsFilter::Issues:
+                return "Diagnostics: Issues " + std::to_string(issueCount);
+
+            case AssetBrowserDiagnosticsFilter::Missing:
+                return "Diagnostics: Missing " + std::to_string(missingCount);
+
+            case AssetBrowserDiagnosticsFilter::External:
+                return "Diagnostics: External " + std::to_string(externalCount);
+
+            case AssetBrowserDiagnosticsFilter::All:
+            default:
+                return "Diagnostics: All";
+        }
+    }
+
 }
 
 namespace Quiet::Renderer::UI::Assets
 {
     void DrawAssetBrowserToolbar(
-        Editor::EditorState &editorState,
-        const Project::AssetRegistry &registry,
-        std::array<char, 128> &searchBuffer,
-        AssetBrowserTypeFilter &typeFilter,
-        AssetBrowserViewMode &viewMode,
-        AssetBrowserThumbnailSize &thumbnailSize,
-        bool &openImportPopup)
+        Editor::EditorState& editorState,
+        const Project::ProjectContext& projectContext,
+        std::array<char, 128>& searchBuffer,
+        AssetBrowserTypeFilter& typeFilter,
+        AssetBrowserDiagnosticsFilter& diagnosticsFilter,
+        AssetBrowserViewMode& viewMode,
+        AssetBrowserThumbnailSize& thumbnailSize,
+        bool& openImportPopup)
     {
+        const Project::AssetRegistry& registry = projectContext.GetAssetRegistry();
         const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh);
         const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture);
+        const AssetDiagnosticsCounts diagnosticsCounts = CountAssetDiagnostics(projectContext);
+
+        const std::size_t issueCount = diagnosticsCounts.Issues;
+        const std::size_t missingCount = diagnosticsCounts.Missing;
+        const std::size_t externalCount = diagnosticsCounts.External;
 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
@@ -105,21 +137,50 @@ namespace Quiet::Renderer::UI::Assets
 
         const std::size_t totalAssetCount = registry.Records.size();
         const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount);
-
         if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
         {
             const std::string allLabel = "All " + std::to_string(totalAssetCount);
             const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
             const std::string texturesLabel = "Textures " + std::to_string(textureCount);
 
+            // All
             if (EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::All))
                 typeFilter = AssetBrowserTypeFilter::All;
 
+            // Meshes
             if (EditorMenuItem(meshesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Meshes))
                 typeFilter = AssetBrowserTypeFilter::Meshes;
 
+            // Textures
             if (EditorMenuItem(texturesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Textures))
                 typeFilter = AssetBrowserTypeFilter::Textures;
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::SameLine();
+
+        const std::string diagnosticsDropdownLabel = MakeDiagnosticsDropdownLabel(diagnosticsFilter, issueCount, missingCount, externalCount);
+        if (DrawAssetToolbarDropdownButton(diagnosticsDropdownLabel, "##AssetDiagnosticsDropdown", SZ::Px(ImVec2(190.0f, 0.0f))))
+        {
+            // All
+            if (EditorMenuItem("All", nullptr, diagnosticsFilter == AssetBrowserDiagnosticsFilter::All))
+                diagnosticsFilter = AssetBrowserDiagnosticsFilter::All;
+
+            // Issues
+            const std::string issuesLabel = "Issues " + std::to_string(issueCount);
+            if (EditorMenuItem(issuesLabel.c_str(), nullptr, diagnosticsFilter == AssetBrowserDiagnosticsFilter::Issues))
+                diagnosticsFilter = AssetBrowserDiagnosticsFilter::Issues;
+
+            // Missing
+            const std::string missingLabel = "Missing " + std::to_string(missingCount);
+            if (EditorMenuItem(missingLabel.c_str(), nullptr, diagnosticsFilter == AssetBrowserDiagnosticsFilter::Missing))
+                diagnosticsFilter = AssetBrowserDiagnosticsFilter::Missing;
+
+            // External
+            const std::string externalLabel = "External " + std::to_string(externalCount);
+            if (EditorMenuItem(externalLabel.c_str(), nullptr, diagnosticsFilter == AssetBrowserDiagnosticsFilter::External))
+                diagnosticsFilter = AssetBrowserDiagnosticsFilter::External;
 
             ImGui::EndPopup();
         }
@@ -130,9 +191,11 @@ namespace Quiet::Renderer::UI::Assets
 
         if (DrawAssetToolbarDropdownButton(viewDropdownLabel, "##AssetViewModeDropdown", SZ::Px(ImVec2(142.0f, 0.0f))))
         {
+            // List
             if (EditorMenuItem("List", nullptr, viewMode == AssetBrowserViewMode::List))
                 viewMode = AssetBrowserViewMode::List;
 
+            // Browser
             if (EditorMenuItem("Browser", nullptr, viewMode == AssetBrowserViewMode::Browser))
                 viewMode = AssetBrowserViewMode::Browser;
 
@@ -146,12 +209,15 @@ namespace Quiet::Renderer::UI::Assets
 
             if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(142.0f, 0.0f))))
             {
+                // Small
                 if (EditorMenuItem("Small", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Small))
                     thumbnailSize = AssetBrowserThumbnailSize::Small;
 
+                // Medium
                 if (EditorMenuItem("Medium", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Medium))
                     thumbnailSize = AssetBrowserThumbnailSize::Medium;
 
+                // Large
                 if (EditorMenuItem("Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Large))
                     thumbnailSize = AssetBrowserThumbnailSize::Large;
 

@@ -84,8 +84,10 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
+        const Project::ProjectContext& projectContext,
         const std::vector<const Project::AssetRecord*>& folderAssets,
         const AssetBrowserTypeFilter typeFilter,
+        const AssetBrowserDiagnosticsFilter diagnosticsFilter,
         const std::string& searchQuery)
     {
         std::vector<const Project::AssetRecord*> visibleAssets;
@@ -95,9 +97,11 @@ namespace Quiet::Renderer::UI::Assets
         {
             if (!record || !record->IsValid()) continue;
             if (!MatchesTypeFilter(*record, typeFilter)) continue;
+            if (!MatchesDiagnosticsFilter(projectContext, *record, diagnosticsFilter)) continue;
             if (!MatchesAssetSearch(*record, searchQuery)) continue;
             visibleAssets.push_back(record);
         }
+
         return visibleAssets;
     }
 
@@ -159,8 +163,8 @@ namespace Quiet::Renderer::UI::Assets
     {
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
 
-        // Keep built-in, pathless, and external records accessible from the
-        // Assets root until dedicated source categories/diagnostics are added.
+        // Built-in, pathless, and external records do not belong to a physical
+        // project subfolder, so they remain accessible from the Assets root.
         if (record.BuiltIn || record.Path.empty()) return assetsRoot;
 
         const std::filesystem::path resolvedAssetPath = ResolveDisplayPath(projectContext, record.Path);
@@ -250,14 +254,116 @@ namespace Quiet::Renderer::UI::Assets
         return (projectContext.GetRootPath() / path).lexically_normal();
     }
 
+    AssetPathDiagnostics InspectAssetPath(const Project::ProjectContext& projectContext, const Project::AssetRecord& record)
+    {
+        AssetPathDiagnostics diagnostics{};
+        diagnostics.BuiltIn = record.BuiltIn;
+
+        if (record.BuiltIn) return diagnostics;
+        diagnostics.HasPath = !record.Path.empty();
+        if (!diagnostics.HasPath) return diagnostics;
+
+        const std::filesystem::path registryPath = std::filesystem::path(record.Path).lexically_normal();
+
+        // external assets are stored as absolute paths.
+        diagnostics.External = registryPath.is_absolute();
+        diagnostics.ResolvedPath = ResolveDisplayPath(projectContext, record.Path);
+        if (diagnostics.ResolvedPath.empty()) return diagnostics;
+
+        std::error_code ec;
+        const std::filesystem::file_status sourceStatus = std::filesystem::status(diagnostics.ResolvedPath, ec);
+        if (ec) return diagnostics;
+
+        diagnostics.Exists = std::filesystem::exists(sourceStatus);
+        diagnostics.RegularFile = diagnostics.Exists && std::filesystem::is_regular_file(sourceStatus);
+        return diagnostics;
+    }
+
+    std::string MakeAssetPathDiagnosticLabel(const AssetPathDiagnostics& diagnostics)
+    {
+        if (diagnostics.BuiltIn)        return "Built-in";
+        if (!diagnostics.HasPath)       return "Missing Path";
+        if (!diagnostics.Exists)        return "Missing File";
+        if (!diagnostics.RegularFile)   return "Invalid Source";
+        if (diagnostics.External)       return "External";
+        return "Project";
+    }
+
+    std::string MakeAssetPathDiagnosticDescription(const AssetPathDiagnostics& diagnostics)
+    {
+        if (diagnostics.BuiltIn)
+            return "This is an engine-managed built-in asset and does not use a project source path.";
+
+        if (!diagnostics.HasPath)
+            return "This registry record has no source path. Reimport and physical folder operations are unavailable.";
+
+        if (!diagnostics.Exists)
+            return diagnostics.External
+                ? "The external source file does not exist at its registered path."
+                : "The registered project source file does not exist on disk.";
+
+        if (!diagnostics.RegularFile)
+            return "The registered source path exists, but it does not point to a regular file.";
+
+        if (diagnostics.External)
+            return
+                "This asset points outside the current project. It can be "
+                "inspected and reimported, but it cannot be moved through "
+                "the physical Assets browser.";
+
+        return "The source file is available inside the current project.";
+    }
+
+    bool MatchesDiagnosticsFilter(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const AssetBrowserDiagnosticsFilter filter)
+    {
+        if (filter == AssetBrowserDiagnosticsFilter::All) return true;
+        const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
+        switch (filter)
+        {
+            case AssetBrowserDiagnosticsFilter::Issues:     return diagnostics.HasIssue();
+            case AssetBrowserDiagnosticsFilter::Missing:    return diagnostics.IsMissing();
+            case AssetBrowserDiagnosticsFilter::External:   return diagnostics.External;
+            case AssetBrowserDiagnosticsFilter::All:
+            default:                                        return true;
+        }
+    }
+
+    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext)
+    {
+        AssetDiagnosticsCounts counts{};
+
+        for (const Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
+        {
+            if (!record.IsValid()) continue;
+
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
+            if (diagnostics.HasIssue()) ++counts.Issues;
+            if (diagnostics.IsMissing()) ++counts.Missing;
+            if (diagnostics.External) ++counts.External;
+        }
+        return counts;
+    }
+
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext, const std::string& assetPath)
     {
         const std::filesystem::path resolvedPath = ResolveDisplayPath(projectContext, assetPath);
         return !resolvedPath.empty() && std::filesystem::exists(resolvedPath);
     }
 
-    std::string MakeStatusLabel(const Project::AssetRecord& record, const Vulkan::MeshLibrary& meshLibrary, const Vulkan::TextureLibrary& textureLibrary)
+    std::string MakeStatusLabel(
+        const Project::ProjectContext& projectContext,
+        const Project::AssetRecord& record,
+        const Vulkan::MeshLibrary& meshLibrary,
+        const Vulkan::TextureLibrary& textureLibrary)
     {
+        const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
+        if (!record.BuiltIn)
+        {
+            if (!diagnostics.HasPath)       return "Missing Path";
+            if (!diagnostics.Exists)        return "Missing File";
+            if (!diagnostics.RegularFile)   return "Invalid Source";
+        }
+
         if (record.Type == Project::AssetType::Mesh)
         {
             if (meshLibrary.TryGet(record.ID))  return "Loaded";
@@ -268,11 +374,12 @@ namespace Quiet::Renderer::UI::Assets
         if (record.Type == Project::AssetType::Texture)
         {
             const auto textureStats = textureLibrary.GetStats(record.ID);
-            if (textureStats.has_value())               return textureStats->GpuReady ? "GPU Ready" : "Loaded Metadata";
-            if (record.Path.empty() && !record.BuiltIn) return "Missing Path";
+            if (textureStats.has_value())
+            {
+                return textureStats->GpuReady ? "GPU Ready" : "Loaded Metadata";
+            }
             return "Registered";
         }
-
         return "Unknown";
     }
 
@@ -296,20 +403,34 @@ namespace Quiet::Renderer::UI::Assets
     bool IsAssetMissingStatus(const std::string& status)
     {
         return status == "Missing Built-In" ||
-               status == "Missing Path";
+               status == "Missing Path" ||
+               status == "Missing File" ||
+               status == "Invalid Source";
     }
 
-    std::string MakeAssetBrowserStateLabel(const Project::AssetRecord& record, const std::string& status, const bool runtimeModeActive, const std::uint32_t referenceCount)
+    std::string MakeAssetBrowserStateLabel(
+        const AssetPathDiagnostics& diagnostics,
+        const Project::AssetRecord& record,
+        const std::string& status,
+        const bool runtimeModeActive,
+        const std::uint32_t referenceCount)
     {
+        if (diagnostics.IsMissing())
+        {
+            std::string label = MakeAssetPathDiagnosticLabel(diagnostics);
+            if (diagnostics.External) label += " · External";
+            return label;
+        }
+
         if (IsAssetMissingStatus(status)) return "Missing";
         const std::string readiness = IsAssetReadyStatus(status) ? "Ready" : status;
 
-        if (record.BuiltIn)     return "Built-in · " + readiness;
-        if (referenceCount > 0) return readiness + " · In Use";
-        if (runtimeModeActive)  return readiness + " · Runtime";
+        if (diagnostics.External)   return "External · " + readiness;
+        if (record.BuiltIn)         return "Built-in · " + readiness;
+        if (referenceCount > 0)     return readiness + " · In Use";
+        if (runtimeModeActive)      return readiness + " · Runtime";
         return readiness + " · Removable";
     }
-
     std::uint32_t CountMeshReferences(const Scene::Scene& scene, const std::string& meshID)
     {
         std::uint32_t count = 0;

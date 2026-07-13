@@ -139,6 +139,49 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
     }
 
+    void DrawAssetSourceDiagnostics(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const float labelWidth)
+    {
+        const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
+        DrawDetailsSectionTitle("Source");
+
+        const char* locationLabel = diagnostics.BuiltIn
+                ? "Built-in"
+                : diagnostics.External
+                    ? "External"
+                    : "Project";
+
+        const char* sourceState =
+            diagnostics.BuiltIn
+                ? "Engine managed"
+                : !diagnostics.HasPath
+                    ? "Missing Path"
+                    : !diagnostics.Exists
+                        ? "Missing File"
+                        : !diagnostics.RegularFile
+                            ? "Invalid Source"
+                            : "Available";
+
+        DrawDetailRow("Location", locationLabel, labelWidth);
+        DrawDetailRow("Source State", sourceState, labelWidth);
+
+        if (record.Path.empty())
+            DrawDetailRow("Registry Path", record.BuiltIn ? "<built-in>" : "<missing>", labelWidth);
+        else
+            DrawDetailRowWrapped("Registry Path", record.Path, labelWidth);
+
+        if (!diagnostics.ResolvedPath.empty())
+            DrawDetailRowWrapped("Resolved Path", diagnostics.ResolvedPath.generic_string(), labelWidth);
+
+        if (diagnostics.HasIssue())
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, diagnostics.IsMissing() ? EditorColor::Error : EditorColor::Warning);
+            ImGui::TextWrapped("%s", MakeAssetPathDiagnosticDescription(diagnostics).c_str());
+            ImGui::PopStyleColor();
+        }
+    }
+
     void DrawAssetDetailsInline(const Project::ProjectContext& projectContext,
                                 const Vulkan::MeshLibrary& meshLibrary,
                                 const Vulkan::TextureLibrary& textureLibrary,
@@ -159,7 +202,7 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        const std::string status = MakeStatusLabel(*record, meshLibrary, textureLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary);
         const ImVec4 statusColor = MakeStatusColor(status);
         const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
 
@@ -189,13 +232,9 @@ namespace Quiet::Renderer::UI::Assets
             DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
             DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
 
-            if (record->Path.empty())
-                DrawDetailRow("Path", "<built-in>", labelWidth);
-            else
-                DrawDetailRowWrapped("Path", record->Path, labelWidth);
-
             const std::uint32_t referenceCount = CountMeshReferences(scene, record->ID);
             DrawDetailRowUInt("References", referenceCount, labelWidth);
+            DrawAssetSourceDiagnostics(projectContext, *record, labelWidth);
 
             if (record->Type == Project::AssetType::Mesh)
             {
@@ -284,7 +323,8 @@ namespace Quiet::Renderer::UI::Assets
         if (!record) return;
 
         const auto stats = meshLibrary.GetStats(record->ID);
-        const std::string status = MakeStatusLabel(*record, meshLibrary, textureLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary);
+
         const ImVec4 statusColor = MakeStatusColor(status);
 
         const float labelWidth = 128.0f * uiScale;
@@ -311,10 +351,7 @@ namespace Quiet::Renderer::UI::Assets
             DrawDetailRow("Status", status.c_str(), labelWidth);
             DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
 
-            if (record->Path.empty())
-                DrawDetailRow("Path", "<built-in>", labelWidth);
-            else
-                DrawDetailRowWrapped("Path", record->Path, labelWidth);
+            DrawAssetSourceDiagnostics(projectContext, *record, labelWidth);
 
             if (record->Type == Project::AssetType::Mesh)
             {
