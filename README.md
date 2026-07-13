@@ -23,7 +23,7 @@ Implemented foundations:
 * scene viewport with picking, overlays, camera controls, and ImGuizmo editing
 * project manager with `.quiet` project descriptors
 * scene save/load workflow
-* project-local asset registry
+* physical project Assets workflow backed by a project-local asset registry
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
 * dedicated Scene Settings panel for scene-wide lighting and ambient controls
@@ -151,6 +151,15 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * texture thumbnail previews and mesh glyph fallback
 * asset reimport workflow
 * remove confirmation and asset operation feedback
+* physical `Project/Assets` Sources tree
+* breadcrumb and parent-folder navigation
+* non-recursive current-folder List and Browser views
+* import into the selected physical folder with automatic registration
+* create, rename, and delete empty physical folders
+* drag/drop asset moves between physical folders
+* project-relative registry paths for project assets
+* missing, invalid, pathless, and external source diagnostics
+* diagnostics filters for Issues, Missing, and External assets
 * asset context menu:
 
   * Inspect
@@ -226,9 +235,12 @@ Typical project layout:
 ```text
 MyProject/
 ├── MyProject.quiet
+├── AssetRegistry.json
 ├── Scenes/
 │   └── DefaultScene.json
 ├── Assets/
+│   ├── Meshes/
+│   └── Textures/
 └── Cache/
 ```
 
@@ -240,6 +252,11 @@ The editor can:
 * open project scenes
 * set a startup scene
 * reload project assets
+* navigate real project asset folders
+* import and automatically register assets in the selected folder
+* create, rename, and delete empty asset folders
+* move registered assets between folders with drag/drop
+* diagnose missing and external source paths
 
 ---
 
@@ -464,12 +481,6 @@ F6                  Simulate / Stop Simulate
 * asset context menu
 * asset browser list/grid view split
 * asset import, reload, reimport, remove confirmation, and operation feedback
-* Asset Browser UI module split under `Engine/src/Renderer/UI/Assets`
-
-### Active Phase: Physical Project Assets Folder / Sources Panel
-
-Immediate next work:
-
 * physical `Project/Assets` folder tree as the primary asset organization model
 * Sources panel for navigating real project folders
 * breadcrumb/current folder navigation
