@@ -80,18 +80,6 @@ namespace
         state.FolderNameBuffer.fill('\0');
     }
 
-    std::string RemapCurrentFolderAfterRename(const std::string& currentFolder, const std::string& previousFolder, const std::string& renamedFolder)
-    {
-        if (currentFolder == previousFolder) return renamedFolder;
-        const std::string previousPrefix = previousFolder + "/";
-
-        if (currentFolder.rfind(previousPrefix, 0) == 0)
-        {
-            return renamedFolder + currentFolder.substr(previousFolder.size());
-        }
-        return currentFolder;
-    }
-
     void DrawFolderPath(const char* label, const std::string& folderPath)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
@@ -446,8 +434,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (projectContext.CreateAssetFolder(state.FolderOperationTarget, folderName, createdFolder, state.FolderOperationErrorMessage))
                 {
-                    state.CurrentAssetFolder = createdFolder.generic_string();
-                    state.SelectedContentFolder.clear();
+                    NavigateToAssetFolder(projectContext, state, createdFolder.generic_string());
                     editorState.AssetOperationFeedback.Set(
                         Editor::EditorFeedbackSeverity::Success,
                         "Folder created",
@@ -511,8 +498,7 @@ namespace Quiet::Renderer::UI::Assets
                 if (projectContext.RenameAssetFolder(previousFolder, newName, renamedFolder, state.FolderOperationErrorMessage))
                 {
                     const std::string renamedFolderString = renamedFolder.generic_string();
-                    state.CurrentAssetFolder = RemapCurrentFolderAfterRename(state.CurrentAssetFolder, previousFolder, renamedFolderString);
-                    state.SelectedContentFolder = RemapCurrentFolderAfterRename(state.SelectedContentFolder, previousFolder, renamedFolderString);
+                    RemapAssetFolderHistoryAfterRename(state, previousFolder, renamedFolderString);
                     editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
                     editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                         "Folder renamed",
@@ -572,14 +558,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (projectContext.DeleteEmptyAssetFolder(deletedFolder, state.FolderOperationErrorMessage))
                 {
-                    if (state.CurrentAssetFolder == deletedFolder)
-                    {
-                        state.CurrentAssetFolder = parentFolder;
-                    }
-                    if (state.SelectedContentFolder == deletedFolder)
-                    {
-                        state.SelectedContentFolder.clear();
-                    }
+                    RepairAssetFolderHistoryAfterDelete(state, deletedFolder, parentFolder);
                     editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                         "Folder deleted",
                         "Deleted the empty folder '" + deletedFolder + "'." );

@@ -59,11 +59,25 @@ namespace Quiet::Renderer::UI::Assets
     std::filesystem::path ResolveAssetFolderPath(const Project::ProjectContext& projectContext, const std::string& assetFolder);
     std::vector<AssetBrowserFolderEntry> BuildAssetChildFolderList(const Project::ProjectContext& projectContext, const std::string& parentFolder);
     std::vector<AssetBrowserFolderEntry> BuildVisibleAssetFolderList(const std::vector<AssetBrowserFolderEntry>& childFolders, const std::string& searchQuery);
+
     std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath);
     std::string GetAssetBrowserFolderForRecord(const Project::ProjectContext& projectContext, const Project::AssetRecord& record);
     void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder);
     std::string GetParentAssetFolder(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
     std::vector<std::string> BuildAssetFolderBreadcrumbs(const Project::ProjectContext& projectContext, const std::string& currentAssetFolder);
+
+    bool DoesAssetFolderExist(const Project::ProjectContext& projectContext, const std::string& assetFolder);
+    void SynchronizeAssetFolderHistory(const Project::ProjectContext& projectContext, AssetBrowserState& state);
+
+    [[nodiscard]] bool CanNavigateAssetFolderBack(const AssetBrowserState& state);
+    [[nodiscard]] bool CanNavigateAssetFolderForward(const AssetBrowserState& state);
+
+    void NavigateToAssetFolder(const Project::ProjectContext& projectContext, AssetBrowserState& state, const std::string& targetFolder);
+    void NavigateAssetFolderBack(const Project::ProjectContext& projectContext, AssetBrowserState& state);
+    void NavigateAssetFolderForward(const Project::ProjectContext& projectContext, AssetBrowserState& state);
+
+    void RemapAssetFolderHistoryAfterRename(AssetBrowserState& state, const std::string& previousFolder, const std::string& renamedFolder);
+    void RepairAssetFolderHistoryAfterDelete(AssetBrowserState& state, const std::string& deletedFolder, const std::string& fallbackFolder);
 
     // Path diagnostics
     struct AssetPathDiagnostics

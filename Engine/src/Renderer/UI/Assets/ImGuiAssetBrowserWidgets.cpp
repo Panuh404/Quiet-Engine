@@ -150,28 +150,50 @@ namespace Quiet::Renderer::UI::Assets
         return ImGui::IsItemClicked(ImGuiMouseButton_Left);
     }
 
-    void DrawAssetBrowserDragSource(const Project::AssetRecord &record, bool enabled)
+    void DrawAssetBrowserDragSource(const Project::AssetRecord& record, const bool enabled)
     {
         if (!enabled || record.BuiltIn || record.Path.empty()) return;
-        if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover)) return;
+
+        const ImVec2 previewPadding = SZ::Px(ImVec2(14.0f, 11.0f));
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, previewPadding);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, SZ::Px(1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(5.0f, 5.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
+
+        if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover))
+        {
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar(4);
+            return;
+        }
 
         ImGui::SetDragDropPayload(kAssetBrowserPayloadType, record.ID.c_str(), record.ID.size() + 1);
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + SZ::Px(280.0f));
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
         ImGui::TextUnformatted("Move Asset");
         ImGui::PopStyleColor();
 
+        ImGui::Spacing();
+
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
-        ImGui::TextUnformatted(record.ID.c_str());
+        ImGui::TextWrapped("%s", record.ID.c_str());
         ImGui::PopStyleColor();
 
-        if (!record.Path.empty())
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-            ImGui::TextWrapped("%s", record.Path.c_str());
-            ImGui::PopStyleColor();
-        }
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextWrapped("%s", record.Path.c_str());
+        ImGui::PopStyleColor();
+
+        ImGui::PopTextWrapPos();
+
         ImGui::EndDragDropSource();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(4);
     }
 
     bool AcceptAssetBrowserDrop(std::string &outAssetID)

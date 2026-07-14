@@ -90,16 +90,18 @@ namespace
         return label.empty() ? breadcrumbPath : label;
     }
 
-    void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, std::string& currentAssetFolder)
+    void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, Quiet::Renderer::UI::Assets::AssetBrowserState& state)
     {
         using namespace Quiet::Renderer::UI::Assets;
 
-        ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
+        SynchronizeAssetFolderHistory(projectContext, state);
+
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
-        const bool canGoUp = currentAssetFolder != assetsRoot;
+        const bool canGoBack = CanNavigateAssetFolderBack(state);
+        const bool canGoForward = CanNavigateAssetFolderForward(state);
+        const bool canGoUp = state.CurrentAssetFolder != assetsRoot;
 
-        const std::vector<std::string> breadcrumbs = BuildAssetFolderBreadcrumbs(projectContext, currentAssetFolder);
-
+        const std::vector<std::string> breadcrumbs = BuildAssetFolderBreadcrumbs(projectContext, state.CurrentAssetFolder);
         const ImVec2 navigationPadding = SZ::Px(ImVec2(6.0f, 5.0f));
         const float navigationHeight = ImGui::GetFrameHeight() + navigationPadding.y * 2.0f;
 
@@ -110,7 +112,8 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
         ImGui::BeginChild("##AssetBrowserNavigationBar", ImVec2(0.0f, navigationHeight),
-            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, SZ::Px(5.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -119,16 +122,30 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::Background4);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
 
+            if (QUI::EditorButton("<##AssetHistoryBack", SZ::Px(ImVec2(34.0f, 0.0f)), canGoBack))
+                NavigateAssetFolderBack(projectContext, state);
+
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                ImGui::SetTooltip("Back");
+
+            ImGui::SameLine();
+
+            if (QUI::EditorButton(">##AssetHistoryForward", SZ::Px(ImVec2(34.0f, 0.0f)), canGoForward))
+                NavigateAssetFolderForward(projectContext, state);
+
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                ImGui::SetTooltip("Forward");
+
+            ImGui::SameLine();
+
             if (QUI::EditorButton("Up##AssetBreadcrumbUp", SZ::Px(ImVec2(52.0f, 0.0f)), canGoUp))
-            {
-                currentAssetFolder = GetParentAssetFolder(projectContext, currentAssetFolder);
-            }
+                NavigateToAssetFolder(projectContext, state, GetParentAssetFolder(projectContext, state.CurrentAssetFolder));
 
             ImGui::PopStyleColor(3);
             ImGui::SameLine();
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim );
-            ImGui::TextUnformatted(">");
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("|");
             ImGui::PopStyleColor();
 
             for (std::size_t index = 0; index < breadcrumbs.size(); ++index)
@@ -139,33 +156,31 @@ namespace
                 const std::string label = MakeBreadcrumbLabel(breadcrumbPath, assetsRoot);
                 const std::string buttonID = label + "##AssetBreadcrumb_" + breadcrumbPath;
 
-                const float buttonWidth = std::max(SZ::Px(48.0f), ImGui::CalcTextSize(label.c_str()).x + SZ::Px(20.0f));
-                const bool selected = breadcrumbPath == currentAssetFolder;
+                const float buttonWidth =
+                    std::max(
+                        SZ::Px(48.0f),
+                        ImGui::CalcTextSize(
+                            label.c_str()
+                        ).x +
+                        SZ::Px(20.0f)
+                    );
 
-                ImGui::PushStyleColor(ImGuiCol_Button, selected
-                        ? QUI::EditorColor::AccentSoft
-                        : QUI::EditorColor::Background2
-                );
+                const bool selected = breadcrumbPath == state.CurrentAssetFolder;
 
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected
-                        ? QUI::EditorColor::AccentSoft
-                        : QUI::EditorColor::Background4
-                );
-
+                ImGui::PushStyleColor(ImGuiCol_Button, selected ? QUI::EditorColor::AccentSoft : QUI::EditorColor::Background2);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? QUI::EditorColor::AccentSoft : QUI::EditorColor::Background4);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
-                ImGui::PushStyleColor(ImGuiCol_Text, selected
-                        ? QUI::EditorColor::Text
-                        : QUI::EditorColor::TextMuted
-                );
+                ImGui::PushStyleColor(ImGuiCol_Text, selected ? QUI::EditorColor::Text : QUI::EditorColor::TextMuted);
 
                 if (QUI::EditorButton(buttonID.c_str(), ImVec2(buttonWidth, 0.0f)))
-                    currentAssetFolder = breadcrumbPath;
+                    NavigateToAssetFolder(projectContext, state, breadcrumbPath);
 
                 ImGui::PopStyleColor(4);
 
                 if (index + 1 < breadcrumbs.size())
                 {
                     ImGui::SameLine();
+
                     ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
                     ImGui::TextUnformatted(">");
                     ImGui::PopStyleColor();
@@ -206,7 +221,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& assetThumbnailSize = state.ThumbnailSize;
         auto& selectedContentFolder = state.SelectedContentFolder;
 
-        ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
+        SynchronizeAssetFolderHistory(projectContext, state);
 
         ImGui::Begin("Assets");
         {
@@ -276,13 +291,15 @@ namespace Quiet::Renderer::UI::Assets
                     assetMoveRequest
                 );
 
+                SynchronizeAssetFolderHistory(projectContext, state);
+
                 ImGui::SameLine();
 
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
                 ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding, browserBodyFlags);
                 ImGui::PopStyleVar();
                 {
-                    DrawAssetBrowserBreadcrumb(projectContext, currentAssetFolder);
+                    DrawAssetBrowserBreadcrumb(projectContext, state);
                     ImGui::Spacing();
 
                     const std::vector<AssetBrowserFolderEntry> childFolders = BuildAssetChildFolderList(projectContext, currentAssetFolder);
@@ -403,11 +420,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
 
                     if (!pendingNavigateFolder.empty())
-                    {
-                        currentAssetFolder = pendingNavigateFolder;
-                        selectedContentFolder.clear();
-                        selectedDetailsAssetID.clear();
-                    }
+                        NavigateToAssetFolder(projectContext, state, pendingNavigateFolder);
 
                     if (useSplitDetailsLayout) ImGui::EndChild();
 

@@ -2,8 +2,68 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <filesystem>
 #include <system_error>
+
+namespace
+{
+    namespace Assets = Quiet::Renderer::UI::Assets;
+
+    bool IsSameOrDescendantFolder(const std::string& candidateFolder, const std::string& parentFolder)
+    {
+        if (candidateFolder == parentFolder) return true;
+        return candidateFolder.rfind(parentFolder + "/", 0) == 0;
+    }
+
+    std::string RemapFolderPath(const std::string& folder, const std::string& previousFolder, const std::string& renamedFolder)
+    {
+        if (folder.empty()) return {};
+        if (folder == previousFolder) return renamedFolder;
+
+        const std::string previousPrefix = previousFolder + "/";
+
+        if (folder.rfind(previousPrefix, 0) == 0)
+        {
+            return renamedFolder + folder.substr(previousFolder.size());
+        }
+        return folder;
+    }
+
+    void ClearContentSelection(Assets::AssetBrowserState& state)
+    {
+        state.SelectedContentFolder.clear();
+        state.SelectedDetailsAssetID.clear();
+    }
+
+    void CollapseAdjacentHistoryEntries(Assets::AssetBrowserState& state)
+    {
+        if (state.FolderHistory.empty())
+        {
+            state.FolderHistoryIndex = 0;
+            return;
+        }
+
+        const std::size_t previousIndex = std::min(state.FolderHistoryIndex,  state.FolderHistory.size() - 1);
+        std::vector<std::string> collapsedHistory;
+        collapsedHistory.reserve(state.FolderHistory.size());
+        std::size_t collapsedIndex = 0;
+
+        for (std::size_t index = 0; index < state.FolderHistory.size(); ++index)
+        {
+            const std::string& entry = state.FolderHistory[index];
+
+            if (collapsedHistory.empty() || collapsedHistory.back() != entry)
+                collapsedHistory.push_back(entry);
+
+            if (index == previousIndex)
+                collapsedIndex = collapsedHistory.size() - 1;
+        }
+
+        state.FolderHistory.swap(collapsedHistory);
+        state.FolderHistoryIndex = std::min(collapsedIndex, state.FolderHistory.size() - 1);
+    }
+}
 
 namespace Quiet::Renderer::UI::Assets
 {
@@ -309,6 +369,186 @@ namespace Quiet::Renderer::UI::Assets
             if (!breadcrumbPath.empty()) breadcrumbs.push_back(breadcrumbPath);
         }
         return breadcrumbs;
+    }
+
+    bool DoesAssetFolderExist(const Project::ProjectContext& projectContext, const std::string& assetFolder)
+    {
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        const std::string normalizedFolder = NormalizeProjectRelativePathString(assetFolder);
+
+        if (!IsAssetFolderInsideAssetsRoot(normalizedFolder, assetsRoot)) return false;
+        const std::filesystem::path resolvedFolder = ResolveAssetFolderPath(projectContext, normalizedFolder);
+
+        std::error_code ec;
+        if (!std::filesystem::exists(resolvedFolder, ec) || ec) return false;
+        ec.clear();
+
+        return std::filesystem::is_directory(resolvedFolder, ec) && !ec;
+    }
+
+    void SynchronizeAssetFolderHistory(const Project::ProjectContext& projectContext, AssetBrowserState& state)
+    {
+        ValidateCurrentAssetFolder(projectContext, state.CurrentAssetFolder);
+        auto& history = state.FolderHistory;
+
+        if (history.empty())
+        {
+            history.push_back(state.CurrentAssetFolder);
+            state.FolderHistoryIndex = 0;
+            return;
+        }
+
+        state.FolderHistoryIndex = std::min(state.FolderHistoryIndex, history.size() - 1);
+        const std::size_t previousIndex = state.FolderHistoryIndex;
+
+        std::vector<std::string> validHistory;
+        validHistory.reserve(history.size());
+
+        bool previousEntrySurvived = false;
+        std::size_t remappedIndex = 0;
+
+        for (std::size_t index = 0; index < history.size(); ++index)
+        {
+            if (!DoesAssetFolderExist(projectContext, history[index])) continue;
+            const std::size_t destinationIndex = validHistory.size();
+            validHistory.push_back(history[index]);
+
+            if (index == previousIndex)
+            {
+                previousEntrySurvived = true;
+                remappedIndex = destinationIndex;
+            }
+        }
+
+        history.swap(validHistory);
+        if (history.empty())
+        {
+            history.push_back(state.CurrentAssetFolder);
+            state.FolderHistoryIndex = 0;
+            return;
+        }
+
+        if (previousEntrySurvived)
+        {
+            state.FolderHistoryIndex = remappedIndex;
+        }
+        else
+        {
+            const auto currentEntry =
+                std::find(
+                    history.begin(),
+                    history.end(),
+                    state.CurrentAssetFolder
+                );
+
+            if (currentEntry != history.end())
+            {
+                state.FolderHistoryIndex =
+                    static_cast<std::size_t>(
+                        std::distance(
+                            history.begin(),
+                            currentEntry
+                        )
+                    );
+            }
+            else
+            {
+                history.push_back(state.CurrentAssetFolder);
+                state.FolderHistoryIndex = history.size() - 1;
+            }
+        }
+
+        if (history[state.FolderHistoryIndex] == state.CurrentAssetFolder) return;
+        history.erase(
+            history.begin() +
+                static_cast<std::ptrdiff_t>(
+                    state.FolderHistoryIndex + 1
+                ),
+            history.end()
+        );
+
+        if (history.empty() || history.back() != state.CurrentAssetFolder)
+        {
+            history.push_back(state.CurrentAssetFolder);
+        }
+
+        state.FolderHistoryIndex = history.size() - 1;
+        ClearContentSelection(state);
+    }
+
+    bool CanNavigateAssetFolderBack(const AssetBrowserState& state)
+    {
+        return !state.FolderHistory.empty() && state.FolderHistoryIndex > 0;
+    }
+
+    bool CanNavigateAssetFolderForward(const AssetBrowserState& state)
+    {
+        return !state.FolderHistory.empty() && state.FolderHistoryIndex + 1 < state.FolderHistory.size();
+    }
+
+    void NavigateToAssetFolder(const Project::ProjectContext& projectContext, AssetBrowserState& state, const std::string& targetFolder)
+    {
+        SynchronizeAssetFolderHistory(projectContext, state);
+        std::string validatedFolder = targetFolder;
+
+        ValidateCurrentAssetFolder(projectContext, validatedFolder);
+
+        if (validatedFolder == state.CurrentAssetFolder) return;
+        state.CurrentAssetFolder = validatedFolder;
+
+        ClearContentSelection(state);
+        SynchronizeAssetFolderHistory(projectContext, state);
+    }
+
+    void NavigateAssetFolderBack(const Project::ProjectContext& projectContext, AssetBrowserState& state)
+    {
+        SynchronizeAssetFolderHistory(projectContext, state);
+        if (!CanNavigateAssetFolderBack(state)) return;
+
+        --state.FolderHistoryIndex;
+        state.CurrentAssetFolder = state.FolderHistory[state.FolderHistoryIndex];
+        ClearContentSelection(state);
+    }
+
+    void NavigateAssetFolderForward(const Project::ProjectContext& projectContext, AssetBrowserState& state)
+    {
+        SynchronizeAssetFolderHistory(projectContext, state);
+        if (!CanNavigateAssetFolderForward(state)) return;
+
+        ++state.FolderHistoryIndex;
+        state.CurrentAssetFolder = state.FolderHistory[state.FolderHistoryIndex];
+        ClearContentSelection(state);
+    }
+
+    void RemapAssetFolderHistoryAfterRename(AssetBrowserState& state, const std::string& previousFolder, const std::string& renamedFolder)
+    {
+        for (std::string& entry : state.FolderHistory)
+        {
+            entry = RemapFolderPath(entry, previousFolder, renamedFolder);
+        }
+
+        state.CurrentAssetFolder = RemapFolderPath(state.CurrentAssetFolder, previousFolder, renamedFolder);
+        state.SelectedContentFolder = RemapFolderPath(state.SelectedContentFolder, previousFolder, renamedFolder);
+        CollapseAdjacentHistoryEntries(state);
+    }
+
+    void RepairAssetFolderHistoryAfterDelete(AssetBrowserState& state, const std::string& deletedFolder, const std::string& fallbackFolder)
+    {
+        for (std::string& entry : state.FolderHistory)
+        {
+            if (IsSameOrDescendantFolder(entry, deletedFolder))
+                entry = fallbackFolder;
+        }
+        if (IsSameOrDescendantFolder(state.CurrentAssetFolder, deletedFolder))
+        {
+            state.CurrentAssetFolder = fallbackFolder;
+        }
+        if (IsSameOrDescendantFolder(state.SelectedContentFolder, deletedFolder))
+        {
+            state.SelectedContentFolder.clear();
+        }
+
+        CollapseAdjacentHistoryEntries(state);
     }
 
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath)

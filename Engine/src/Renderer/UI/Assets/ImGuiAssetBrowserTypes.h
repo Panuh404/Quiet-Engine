@@ -1,7 +1,8 @@
 #pragma once
-
 #include <array>
+#include <cstddef>
 #include <string>
+#include <vector>
 
 namespace Quiet::Renderer::UI::Assets
 {
@@ -77,8 +78,13 @@ namespace Quiet::Renderer::UI::Assets
         std::string ConfirmRemoveAssetID{};
         std::string CurrentAssetFolder{};
         std::string SelectedContentFolder{};
+
+        std::vector<std::string> FolderHistory{};
+        std::size_t FolderHistoryIndex = 0;
+
         std::string FolderOperationTarget{};
         std::string FolderOperationErrorMessage{};
+
 
         bool ReopenImportPopupAfterFileDialog = false;
 

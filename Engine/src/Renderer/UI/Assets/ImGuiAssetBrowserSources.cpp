@@ -31,18 +31,6 @@ namespace
         return selectedFolderPath.rfind(folderPath + "/", 0) == 0;
     }
 
-    std::string MakeFolderLabel(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& folderPath)
-    {
-        const std::filesystem::path assetsRoot = projectContext.GetAssetsPath().lexically_normal();
-
-        if (folderPath.lexically_normal() == assetsRoot)
-        {
-            return Assets::GetAssetsRootRelativePath(projectContext);
-        }
-        const std::string filename = folderPath.filename().string();
-        return filename.empty() ? folderPath.generic_string() : filename;
-    }
-
     void DrawFolderNode(
         const Quiet::Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
