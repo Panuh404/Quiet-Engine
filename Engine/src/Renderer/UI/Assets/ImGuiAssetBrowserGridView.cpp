@@ -175,22 +175,69 @@ namespace
 
         (void)uiScale;
     }
+
+    void DrawAssetFolderGlyph(ImDrawList* drawList, const ImVec2& min, const ImVec2& max)
+    {
+        const float width = max.x - min.x;
+        const float height = max.y - min.y;
+
+        const float folderWidth = std::min(width * 0.58f, SZ::Px(92.0f));
+        const float folderHeight = folderWidth * 0.64f;
+
+        const ImVec2 folderMin(min.x + (width - folderWidth) * 0.5f, min.y + (height - folderHeight) * 0.5f);
+        const ImVec2 folderMax(folderMin.x + folderWidth, folderMin.y + folderHeight);
+
+        const float tabWidth = folderWidth * 0.42f;
+        const float tabHeight = folderHeight * 0.22f;
+
+        const ImU32 folderColor = ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Warning);
+        const ImU32 folderShadow = ImGui::ColorConvertFloat4ToU32(ImVec4(0.160f, 0.110f, 0.025f, 1.0f));
+
+        drawList->AddRectFilled(
+            ImVec2(folderMin.x, folderMin.y + tabHeight),
+            folderMax,
+            folderShadow,
+            SZ::Px(7.0f)
+        );
+
+        drawList->AddRectFilled(
+            folderMin,
+            ImVec2(
+                folderMin.x + tabWidth,
+                folderMin.y + tabHeight * 1.5f
+            ),
+            folderColor,
+            SZ::Px(5.0f)
+        );
+
+        drawList->AddRectFilled(
+            ImVec2(folderMin.x, folderMin.y + tabHeight),
+            folderMax,
+            folderColor,
+            SZ::Px(7.0f)
+        );
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
 {
     void DrawAssetBrowserGrid(
+        const std::vector<AssetBrowserFolderEntry>& visibleFolders,
         const std::vector<const Project::AssetRecord*>& visibleAssets,
         const Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         const Scene::Scene& scene,
         const Vulkan::TextureLibrary& textureLibrary,
+        std::string& selectedContentFolder,
         std::string& selectedDetailsAssetID,
+        std::string& pendingNavigateFolder,
+        AssetBrowserFolderActionRequest& folderActionRequest,
+        AssetBrowserAssetMoveRequest& assetMoveRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
         std::string& pendingRemoveAssetID,
-        const AssetBrowserThumbnailSize thumbnailSize,
-        const float uiScale)
+        AssetBrowserThumbnailSize thumbnailSize,
+        float uiScale)
     {
         const bool runtimeModeActive = editorState.Scene.Mode != Editor::SceneMode::Edit;
         const AssetBrowserCardMetrics metrics = MakeAssetBrowserCardMetrics(thumbnailSize);
@@ -213,6 +260,123 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
         }
 
+        for (const AssetBrowserFolderEntry& folder : visibleFolders)
+        {
+            ImGui::TableNextColumn();
+
+            const bool isSelectedFolder = selectedContentFolder == folder.RelativePath;
+
+            const float cardWidth = std::max(metrics.MinimumCardWidth, ImGui::GetContentRegionAvail().x);
+            const float cardHeight = metrics.CardHeight;
+            const float padding = metrics.Padding;
+            const float previewHeight = metrics.PreviewHeight;
+
+            const ImVec2 cardMin = ImGui::GetCursorScreenPos();
+            const ImVec2 cardSize(cardWidth, cardHeight);
+            const ImVec2 cardMax(cardMin.x + cardSize.x, cardMin.y + cardSize.y);
+            const std::string hitID = "##AssetBrowserFolderCard_" + folder.RelativePath;
+
+            ImGui::InvisibleButton(hitID.c_str(), cardSize);
+            const bool hovered = ImGui::IsItemHovered();
+
+            if (hovered)
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                selectedContentFolder = folder.RelativePath;
+                selectedDetailsAssetID.clear();
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+            {
+                selectedContentFolder = folder.RelativePath;
+                selectedDetailsAssetID.clear();
+            }
+
+            if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                pendingNavigateFolder = folder.RelativePath;
+            }
+
+            std::string droppedAssetID;
+            if (AcceptAssetBrowserDrop(droppedAssetID))
+            {
+                assetMoveRequest.AssetID = droppedAssetID;
+                assetMoveRequest.TargetFolder = folder.RelativePath;
+            }
+
+            DrawAssetFolderContextMenu(hitID.c_str(), projectContext, folder.RelativePath, folderActionRequest);
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+            const ImVec4 cardColor =
+                isSelectedFolder
+                    ? EditorColor::AccentDim
+                    : hovered
+                        ? EditorColor::Background3
+                        : EditorColor::Background2;
+
+            const ImVec4 borderColor =
+                isSelectedFolder
+                    ? EditorColor::AccentSoft
+                    : EditorColor::BorderSoft;
+
+            drawList->AddRectFilled(
+                cardMin,
+                cardMax,
+                ImGui::ColorConvertFloat4ToU32(
+                    cardColor
+                ),
+                SZ::Px(12.0f)
+            );
+
+            drawList->AddRect(
+                cardMin,
+                cardMax,
+                ImGui::ColorConvertFloat4ToU32(
+                    borderColor
+                ),
+                SZ::Px(12.0f)
+            );
+
+            const ImVec2 previewMin(cardMin.x + padding, cardMin.y + padding);
+            const ImVec2 previewMax(cardMax.x - padding, previewMin.y + previewHeight);
+            const ImVec2 afterCardCursor = ImGui::GetCursorScreenPos();
+
+            drawList->AddRectFilled(
+                previewMin,
+                previewMax,
+                ImGui::ColorConvertFloat4ToU32(
+                    EditorColor::Background3
+                ),
+                SZ::Px(8.0f)
+            );
+
+            drawList->AddRect(
+                previewMin,
+                previewMax,
+                ImGui::ColorConvertFloat4ToU32(
+                    EditorColor::BorderSoft
+                ),
+                SZ::Px(8.0f)
+            );
+
+            DrawAssetFolderGlyph(drawList, previewMin, previewMax);
+            const ImVec2 nameMin(cardMin.x + padding, previewMax.y + SZ::Px(8.0f));
+            const ImVec2 nameMax(cardMax.x - padding, nameMin.y + ImGui::GetTextLineHeight());
+
+            DrawAssetCardTextLine(folder.Name, nameMin, nameMax, isSelectedFolder ? EditorColor::Accent : EditorColor::Text);
+            ImGui::SetCursorScreenPos(ImVec2(cardMin.x + padding, nameMax.y + SZ::Px(8.0f)));
+            DrawAssetFolderPill();
+
+            if (hovered)
+            {
+                DrawAssetPaddedTooltip(folder.RelativePath + "\n\nDouble-click to open.");
+            }
+
+            ImGui::SetCursorScreenPos(afterCardCursor);
+        }
+
         for (const Project::AssetRecord* recordPtr : visibleAssets)
         {
             if (!recordPtr) continue;
@@ -225,22 +389,14 @@ namespace Quiet::Renderer::UI::Assets
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
             const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
 
-            const float cardWidth =
-                std::max(
-                    metrics.MinimumCardWidth,
-                    ImGui::GetContentRegionAvail().x
-                );
-
+            const float cardWidth = std::max(metrics.MinimumCardWidth, ImGui::GetContentRegionAvail().x);
             const float cardHeight = metrics.CardHeight;
             const float padding = metrics.Padding;
             const float previewHeight = metrics.PreviewHeight;
 
             const ImVec2 cardMin = ImGui::GetCursorScreenPos();
             const ImVec2 cardSize(cardWidth, cardHeight);
-            const ImVec2 cardMax(
-                cardMin.x + cardSize.x,
-                cardMin.y + cardSize.y
-            );
+            const ImVec2 cardMax(cardMin.x + cardSize.x, cardMin.y + cardSize.y);
 
             const std::string hitID = "##AssetBrowserCard_" + record.ID;
             ImGui::InvisibleButton(hitID.c_str(), cardSize);
@@ -250,10 +406,16 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
                 selectedDetailsAssetID = record.ID;
+                selectedContentFolder.clear();
+            }
 
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 pendingDetailsAssetID = record.ID;
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                selectedContentFolder.clear();
 
             DrawAssetContextMenu(
                 hitID.c_str(),
@@ -267,11 +429,7 @@ namespace Quiet::Renderer::UI::Assets
                 pendingRemoveAssetID
             );
 
-            DrawAssetBrowserDragSource(
-                record,
-                !runtimeModeActive
-            );
-
+            DrawAssetBrowserDragSource(record, !runtimeModeActive);
             ImDrawList* drawList = ImGui::GetWindowDrawList();
 
             const ImVec4 cardColor =
@@ -358,7 +516,6 @@ namespace Quiet::Renderer::UI::Assets
                     DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
                 }
             }
-
             ImGui::SetCursorScreenPos(afterCardCursor);
         }
 

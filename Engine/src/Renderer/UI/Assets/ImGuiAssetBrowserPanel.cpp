@@ -26,7 +26,7 @@ namespace
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
-    void DrawAssetBrowserEmptyState(const std::string& currentAssetFolder, const bool folderHasAssets)
+    void DrawAssetBrowserEmptyState(const std::string& currentAssetFolder, const bool folderHasItems)
     {
         ImGui::Spacing();
 
@@ -41,20 +41,22 @@ namespace
         ImGui::BeginChild("##AssetBrowserEmptyState", ImVec2(0.0f, emptyStateHeight), ImGuiChildFlags_Borders);
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted(folderHasAssets ? "No assets match the current filters" : "This folder contains no registered assets");
-
+            ImGui::TextUnformatted(folderHasItems ? "No items match the current filters" : "This folder is empty");
             ImGui::PopStyleColor();
-            ImGui::Spacing();
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
 
-            if (folderHasAssets)
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text,  QUI::EditorColor::TextMuted);
+
+            if (folderHasItems)
             {
                 ImGui::TextWrapped("Clear the search field or switch the type or diagnostics filter.");
             }
             else
             {
-                ImGui::TextWrapped("No registered assets are stored directly in '%s'.", currentAssetFolder.c_str());
+                ImGui::TextWrapped("No physical folders or registered assets are stored directly in '%s'.", currentAssetFolder.c_str());
             }
+
             ImGui::PopStyleColor();
         }
         ImGui::EndChild();
@@ -202,6 +204,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& assetDiagnosticsFilter = state.DiagnosticsFilter;
         auto& assetViewMode = state.ViewMode;
         auto& assetThumbnailSize = state.ThumbnailSize;
+        auto& selectedContentFolder = state.SelectedContentFolder;
 
         ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
 
@@ -273,34 +276,6 @@ namespace Quiet::Renderer::UI::Assets
                     assetMoveRequest
                 );
 
-                if (folderActionRequest.Action != AssetBrowserFolderAction::None)
-                {
-                    BeginAssetFolderAction(state, folderActionRequest);
-                    const char* popupTitle = GetAssetFolderActionPopupTitle(folderActionRequest.Action);
-                    if (popupTitle) ImGui::OpenPopup(popupTitle);
-                }
-                if (assetMoveRequest.IsValid())
-                {
-                    std::filesystem::path movedAssetPath;
-                    std::string moveErrorMessage;
-
-                    if (projectContext.MoveAssetToFolder(assetMoveRequest.AssetID, assetMoveRequest.TargetFolder, movedAssetPath, moveErrorMessage))
-                    {
-                        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
-                        editorState.AssetOperationFeedback.Set(
-                            Editor::EditorFeedbackSeverity::Success,
-                            "Asset moved",
-                            "Moved asset '" + assetMoveRequest.AssetID + "' to '" + movedAssetPath.generic_string() + "'.");
-                    }
-                    else
-                    {
-                        editorState.AssetOperationFeedback.Set(
-                            Editor::EditorFeedbackSeverity::Error,
-                            "Move failed",
-                            moveErrorMessage.empty() ? "The asset could not be moved." : moveErrorMessage);
-                    }
-                }
-
                 ImGui::SameLine();
 
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
@@ -309,6 +284,25 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     DrawAssetBrowserBreadcrumb(projectContext, currentAssetFolder);
                     ImGui::Spacing();
+
+                    const std::vector<AssetBrowserFolderEntry> childFolders = BuildAssetChildFolderList(projectContext, currentAssetFolder);
+                    const std::vector<AssetBrowserFolderEntry> visibleFolders = BuildVisibleAssetFolderList(childFolders, assetSearchBuffer.data());
+
+                    if (!selectedContentFolder.empty())
+                    {
+                        const bool selectedFolderStillExists =
+                            std::any_of(
+                                childFolders.begin(),
+                                childFolders.end(),
+                                [&](const AssetBrowserFolderEntry& folder)
+                                {
+                                    return folder.RelativePath ==
+                                           selectedContentFolder;
+                                }
+                            );
+
+                        if (!selectedFolderStillExists) selectedContentFolder.clear();
+                    }
 
                     const std::vector<const Project::AssetRecord*> folderAssets = BuildAssetFolderList(projectContext, registry, currentAssetFolder);
 
@@ -339,6 +333,7 @@ namespace Quiet::Renderer::UI::Assets
                     std::string pendingRemoveAssetID;
                     std::string pendingDetailsAssetID;
                     std::string pendingReimportAssetID;
+                    std::string pendingNavigateFolder;
                     
                     const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
                     const float detailsPanelWidth = useSplitDetailsLayout
@@ -358,17 +353,27 @@ namespace Quiet::Renderer::UI::Assets
                         ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
                             ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
-                    if (visibleAssets.empty()) DrawAssetBrowserEmptyState(currentAssetFolder, !folderAssets.empty());
+                    const bool hasVisibleItems = !visibleFolders.empty() || !visibleAssets.empty();
+                    const bool folderHasItems = !childFolders.empty() || !folderAssets.empty();
 
+                    if (!hasVisibleItems)
+                    {
+                        DrawAssetBrowserEmptyState(currentAssetFolder, folderHasItems);
+                    }
                     else if (assetViewMode == AssetBrowserViewMode::Browser)
                     {
                         DrawAssetBrowserGrid(
+                            visibleFolders,
                             visibleAssets,
                             projectContext,
                             editorState,
                             scene,
                             textureLibrary,
+                            selectedContentFolder,
                             selectedDetailsAssetID,
+                            pendingNavigateFolder,
+                            folderActionRequest,
+                            assetMoveRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
                             pendingRemoveAssetID,
@@ -379,17 +384,29 @@ namespace Quiet::Renderer::UI::Assets
                     else if (assetViewMode == AssetBrowserViewMode::List)
                     {
                         DrawAssetBrowserList(
+                            visibleFolders,
                             visibleAssets,
                             projectContext,
                             editorState,
                             scene,
                             meshLibrary,
                             textureLibrary,
+                            selectedContentFolder,
                             selectedDetailsAssetID,
+                            pendingNavigateFolder,
+                            folderActionRequest,
+                            assetMoveRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
                             pendingRemoveAssetID
                         );
+                    }
+
+                    if (!pendingNavigateFolder.empty())
+                    {
+                        currentAssetFolder = pendingNavigateFolder;
+                        selectedContentFolder.clear();
+                        selectedDetailsAssetID.clear();
                     }
 
                     if (useSplitDetailsLayout) ImGui::EndChild();
@@ -416,13 +433,7 @@ namespace Quiet::Renderer::UI::Assets
                     bool removeAssetConfirmed = false;
                     bool removeAssetCancelled = false;
 
-                    DrawRemoveAssetConfirmationPopup(
-                        projectContext,
-                        confirmRemoveAssetID,
-                        removeAssetConfirmed,
-                        removeAssetCancelled,
-                        context.UIScale
-                    );
+                    DrawRemoveAssetConfirmationPopup(projectContext, confirmRemoveAssetID, removeAssetConfirmed, removeAssetCancelled, context.UIScale);
 
                     if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
                     {
@@ -433,7 +444,6 @@ namespace Quiet::Renderer::UI::Assets
                         if (!removed)
                         {
                             removeErrorMessage = "Failed to remove the selected asset from the registry.";
-
                             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error, "Remove failed", removeErrorMessage);
                             ImGui::OpenPopup("Remove Asset Failed");
                         }
@@ -470,6 +480,35 @@ namespace Quiet::Renderer::UI::Assets
                     if (useSplitDetailsLayout) ImGui::EndChild();
                 }
                 ImGui::EndChild();
+
+                if (folderActionRequest.Action != AssetBrowserFolderAction::None)
+                {
+                    BeginAssetFolderAction(state, folderActionRequest);
+                    const char* popupTitle = GetAssetFolderActionPopupTitle(folderActionRequest.Action);
+                    if (popupTitle)
+                        ImGui::OpenPopup(popupTitle);
+                }
+
+                if (assetMoveRequest.IsValid())
+                {
+                    std::filesystem::path movedAssetPath;
+                    std::string moveErrorMessage;
+
+                    if (projectContext.MoveAssetToFolder(assetMoveRequest.AssetID, assetMoveRequest.TargetFolder, movedAssetPath, moveErrorMessage))
+                    {
+                        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                            "Asset moved",
+                            "Moved asset '" + assetMoveRequest.AssetID + "' to '" + movedAssetPath.generic_string() + "'.");
+                    }
+                    else
+                    {
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Move failed",
+                            moveErrorMessage.empty() ? "The asset could not be moved." : moveErrorMessage);
+                    }
+                }
+
                 DrawAssetFolderActionPopup(projectContext, editorState, state);
             }
 

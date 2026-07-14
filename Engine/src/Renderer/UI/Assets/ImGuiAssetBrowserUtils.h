@@ -57,6 +57,8 @@ namespace Quiet::Renderer::UI::Assets
     bool IsAssetFolderInsideAssetsRoot(const std::string& candidateFolder, const std::string& assetsRoot);
 
     std::filesystem::path ResolveAssetFolderPath(const Project::ProjectContext& projectContext, const std::string& assetFolder);
+    std::vector<AssetBrowserFolderEntry> BuildAssetChildFolderList(const Project::ProjectContext& projectContext, const std::string& parentFolder);
+    std::vector<AssetBrowserFolderEntry> BuildVisibleAssetFolderList(const std::vector<AssetBrowserFolderEntry>& childFolders, const std::string& searchQuery);
     std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath);
     std::string GetAssetBrowserFolderForRecord(const Project::ProjectContext& projectContext, const Project::AssetRecord& record);
     void ValidateCurrentAssetFolder(const Project::ProjectContext& projectContext, std::string& currentAssetFolder);

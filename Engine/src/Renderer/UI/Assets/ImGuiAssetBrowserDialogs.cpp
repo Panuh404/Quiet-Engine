@@ -447,6 +447,7 @@ namespace Quiet::Renderer::UI::Assets
                 if (projectContext.CreateAssetFolder(state.FolderOperationTarget, folderName, createdFolder, state.FolderOperationErrorMessage))
                 {
                     state.CurrentAssetFolder = createdFolder.generic_string();
+                    state.SelectedContentFolder.clear();
                     editorState.AssetOperationFeedback.Set(
                         Editor::EditorFeedbackSeverity::Success,
                         "Folder created",
@@ -511,17 +512,11 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     const std::string renamedFolderString = renamedFolder.generic_string();
                     state.CurrentAssetFolder = RemapCurrentFolderAfterRename(state.CurrentAssetFolder, previousFolder, renamedFolderString);
+                    state.SelectedContentFolder = RemapCurrentFolderAfterRename(state.SelectedContentFolder, previousFolder, renamedFolderString);
                     editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
-
-                    editorState.AssetOperationFeedback.Set(
-                        Editor::EditorFeedbackSeverity::Success,
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                         "Folder renamed",
-                        "Renamed '" +
-                        previousFolder +
-                        "' to '" +
-                        renamedFolderString +
-                        "'. Registered asset paths were updated."
-                    );
+                        "Renamed '" + previousFolder + "' to '" + renamedFolderString + "'. Registered asset paths were updated.");
                     operationSucceeded = true;
                 }
             }
@@ -581,13 +576,13 @@ namespace Quiet::Renderer::UI::Assets
                     {
                         state.CurrentAssetFolder = parentFolder;
                     }
-                    editorState.AssetOperationFeedback.Set(
-                        Editor::EditorFeedbackSeverity::Success,
+                    if (state.SelectedContentFolder == deletedFolder)
+                    {
+                        state.SelectedContentFolder.clear();
+                    }
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                         "Folder deleted",
-                        "Deleted the empty folder '" +
-                        deletedFolder +
-                        "'."
-                    );
+                        "Deleted the empty folder '" + deletedFolder + "'." );
                     operationSucceeded = true;
                 }
             }

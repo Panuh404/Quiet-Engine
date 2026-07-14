@@ -13,6 +13,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawPillLabel(const char* label, const ImVec4& textColor, const ImVec4& backgroundColor);
 
     void DrawAssetTypePill(Project::AssetType type);
+    void DrawAssetFolderPill();
     void DrawAssetStatusPill(const std::string& status);
     void DrawAssetStatePill(const std::string& state);
     void DrawAssetDiagnosticPill(const std::string& label, bool missing);

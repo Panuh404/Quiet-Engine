@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 
+#include "ImGuiAssetBrowserTypes.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectContext.h"
 
@@ -18,5 +19,12 @@ namespace Quiet::Renderer::UI::Assets
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
         std::string& pendingRemoveAssetID
+    );
+
+    void DrawAssetFolderContextMenu(
+        const char* popupID,
+        const Project::ProjectContext& projectContext,
+        const std::string& relativeFolderPath,
+        AssetBrowserFolderActionRequest& folderActionRequest
     );
 }

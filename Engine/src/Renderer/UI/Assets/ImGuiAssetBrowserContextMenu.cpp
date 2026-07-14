@@ -29,6 +29,13 @@ namespace
 
         return {};
     }
+
+    void RequestFolderAction(Quiet::Renderer::UI::Assets::AssetBrowserFolderActionRequest& request,
+        const Quiet::Renderer::UI::Assets::AssetBrowserFolderAction action, const std::string& targetFolder)
+    {
+        request.Action = action;
+        request.TargetFolder = targetFolder;
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -103,6 +110,46 @@ namespace Quiet::Renderer::UI::Assets
 
         if (!canRemove && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
             ImGui::SetTooltip("%s", removeDisabledReason.c_str());
+
+        ImGui::EndPopup();
+        ImGui::PopStyleVar(3);
+    }
+
+    void DrawAssetFolderContextMenu(
+        const char* popupID,
+        const Project::ProjectContext& projectContext,
+        const std::string& relativeFolderPath,
+        AssetBrowserFolderActionRequest& folderActionRequest)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 5.0f)));
+
+        if (!ImGui::BeginPopupContextItem(popupID))
+        {
+            ImGui::PopStyleVar(3);
+            return;
+        }
+
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        const bool isAssetsRoot = relativeFolderPath == assetsRoot;
+
+        if (EditorMenuItem("Create Folder"))
+        {
+            RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create, relativeFolderPath);
+        }
+
+        ImGui::Separator();
+
+        if (EditorMenuItem("Rename", nullptr, false, !isAssetsRoot))
+        {
+            RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Rename, relativeFolderPath);
+        }
+
+        if (EditorMenuItem("Delete Empty Folder", nullptr, false, !isAssetsRoot))
+        {
+            RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Delete, relativeFolderPath);
+        }
 
         ImGui::EndPopup();
         ImGui::PopStyleVar(3);

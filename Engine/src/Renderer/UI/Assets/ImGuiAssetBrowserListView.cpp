@@ -17,13 +17,18 @@ namespace
 namespace Quiet::Renderer::UI::Assets
 {
     void DrawAssetBrowserList(
+        const std::vector<AssetBrowserFolderEntry>& visibleFolders,
         const std::vector<const Project::AssetRecord*>& visibleAssets,
         const Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         const Scene::Scene& scene,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
+        std::string& selectedContentFolder,
         std::string& selectedDetailsAssetID,
+        std::string& pendingNavigateFolder,
+        AssetBrowserFolderActionRequest& folderActionRequest,
+        AssetBrowserAssetMoveRequest& assetMoveRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
         std::string& pendingRemoveAssetID)
@@ -46,6 +51,99 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::TableHeadersRow();
 
             const bool runtimeModeActive = editorState.Scene.Mode != Editor::SceneMode::Edit;
+
+            for (const AssetBrowserFolderEntry& folder : visibleFolders)
+            {
+                const bool isSelectedFolder = selectedContentFolder == folder.RelativePath;
+                const float rowHeight = SZ::Px(42.0f);
+                const float contentOffsetY = SZ::Px(9.0f);
+
+                ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
+
+                if (isSelectedFolder)
+                {
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(EditorColor::AccentDim));
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::ColorConvertFloat4ToU32(EditorColor::AccentDim));
+                }
+                bool rowHovered = false;
+
+                // Folder
+                ImGui::TableSetColumnIndex(0);
+                {
+                    const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                    const std::string hitID = "##AssetFolderRow_" + folder.RelativePath;
+
+                    if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                    {
+                        selectedContentFolder = folder.RelativePath;
+                        selectedDetailsAssetID.clear();
+                    }
+
+                    const bool cellHovered = ImGui::IsItemHovered();
+                    rowHovered |= cellHovered;
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                    {
+                        selectedContentFolder = folder.RelativePath;
+                        selectedDetailsAssetID.clear();
+                    }
+
+                    if (cellHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    {
+                        pendingNavigateFolder = folder.RelativePath;
+                    }
+
+                    std::string droppedAssetID;
+                    if (AcceptAssetBrowserDrop(droppedAssetID))
+                    {
+                        assetMoveRequest.AssetID = droppedAssetID;
+                        assetMoveRequest.TargetFolder = folder.RelativePath;
+                    }
+
+                    DrawAssetFolderContextMenu(hitID.c_str(), projectContext, folder.RelativePath, folderActionRequest);
+                    ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
+                    ImGui::PushStyleColor(ImGuiCol_Text, isSelectedFolder ? EditorColor::Accent : EditorColor::Text);
+                    ImGui::TextUnformatted(folder.Name.c_str());
+                    ImGui::PopStyleColor();
+
+                    if (cellHovered)
+                    {
+                        DrawAssetPaddedTooltip(folder.RelativePath + "\n\nDouble-click to open.");
+                    }
+                }
+
+                // Type
+                ImGui::TableSetColumnIndex(1);
+                {
+                    const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                    ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
+                    DrawAssetFolderPill();
+                }
+
+                // State
+                ImGui::TableSetColumnIndex(2);
+                {
+                    const ImVec2 cellStart = ImGui::GetCursorScreenPos();
+                    ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
+                    DrawAssetStatePill("Physical Folder");
+                }
+
+                // Actions
+                ImGui::TableSetColumnIndex(3);
+                {
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SZ::Px(4.0f));
+                    const std::string openLabel = "Open##" + folder.RelativePath;
+                    if (EditorButton(openLabel.c_str(), SZ::Px(ImVec2(82.0f, 0.0f))))
+                    {
+                        pendingNavigateFolder = folder.RelativePath;
+                    }
+                }
+
+                if (rowHovered && !isSelectedFolder)
+                {
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(EditorColor::Background3));
+                }
+            }
 
             for (const Project::AssetRecord* recordPtr : visibleAssets)
             {
@@ -79,10 +177,16 @@ namespace Quiet::Renderer::UI::Assets
                     const std::string hitID = "##AssetRowHit_Asset_" + record.ID;
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                    {
                         selectedDetailsAssetID = record.ID;
+                        selectedContentFolder.clear();
+                    }
 
                     const bool cellHovered = ImGui::IsItemHovered();
                     rowHovered |= cellHovered;
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                        selectedContentFolder.clear();
 
                     DrawAssetContextMenu(
                         hitID.c_str(),
@@ -96,10 +200,7 @@ namespace Quiet::Renderer::UI::Assets
                         pendingRemoveAssetID
                     );
 
-                    DrawAssetBrowserDragSource(
-                        record,
-                        !runtimeModeActive
-                    );
+                    DrawAssetBrowserDragSource(record, !runtimeModeActive);
 
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
                     ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? EditorColor::Accent : EditorColor::Text);
@@ -130,9 +231,15 @@ namespace Quiet::Renderer::UI::Assets
                     const std::string hitID = "##AssetRowHit_Type_" + record.ID;
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                    {
                         selectedDetailsAssetID = record.ID;
+                        selectedContentFolder.clear();
+                    }
 
                     rowHovered |= ImGui::IsItemHovered();
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                        selectedContentFolder.clear();
 
                     DrawAssetContextMenu(
                         hitID.c_str(),
@@ -157,9 +264,15 @@ namespace Quiet::Renderer::UI::Assets
                     const std::string hitID = "##AssetRowHit_State_" + record.ID;
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
+                    {
                         selectedDetailsAssetID = record.ID;
+                        selectedContentFolder.clear();
+                    }
 
                     rowHovered |= ImGui::IsItemHovered();
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                        selectedContentFolder.clear();
 
                     DrawAssetContextMenu(
                         hitID.c_str(),

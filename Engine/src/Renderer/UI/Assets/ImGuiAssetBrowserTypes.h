@@ -47,6 +47,12 @@ namespace Quiet::Renderer::UI::Assets
         std::string TargetFolder{};
     };
 
+    struct AssetBrowserFolderEntry
+    {
+        std::string Name{};
+        std::string RelativePath{};
+    };
+
     struct AssetBrowserAssetMoveRequest
     {
         std::string AssetID{};
@@ -70,6 +76,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string SelectedDetailsAssetID{};
         std::string ConfirmRemoveAssetID{};
         std::string CurrentAssetFolder{};
+        std::string SelectedContentFolder{};
         std::string FolderOperationTarget{};
         std::string FolderOperationErrorMessage{};
 

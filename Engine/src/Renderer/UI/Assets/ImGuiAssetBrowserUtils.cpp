@@ -147,6 +147,71 @@ namespace Quiet::Renderer::UI::Assets
         return folderPath.lexically_normal();
     }
 
+    std::vector<AssetBrowserFolderEntry> BuildAssetChildFolderList(const Project::ProjectContext &projectContext, const std::string &parentFolder)
+    {
+        std::vector<AssetBrowserFolderEntry> childFolders;
+        const std::filesystem::path resolvedParentFolder = ResolveAssetFolderPath(projectContext, parentFolder);
+
+        std::error_code ec;
+        if (!std::filesystem::exists(resolvedParentFolder, ec) || ec)
+            return childFolders;
+
+        ec.clear();
+        if (!std::filesystem::is_directory(resolvedParentFolder, ec) || ec)
+            return childFolders;
+
+        for (std::filesystem::directory_iterator iterator(resolvedParentFolder, ec), end; iterator != end; iterator.increment(ec))
+        {
+            if (ec)
+            {
+                ec.clear();
+                continue;
+            }
+
+            std::error_code entryError;
+            if (!iterator->is_directory(entryError) || entryError)
+                continue;
+
+            const std::string folderName = iterator->path().filename().string();
+            if (folderName.empty() || folderName.front() == '.')
+                continue;
+
+            childFolders.push_back(AssetBrowserFolderEntry{
+                folderName,
+                MakeProjectRelativeAssetFolderPath(projectContext, iterator->path())
+            });
+        }
+
+        std::sort(
+            childFolders.begin(),
+            childFolders.end(),
+            [](const AssetBrowserFolderEntry& left,
+               const AssetBrowserFolderEntry& right)
+            {
+                return ToLowerCopy(left.Name) <
+                       ToLowerCopy(right.Name);
+            }
+        );
+
+        return childFolders;
+    }
+
+    std::vector<AssetBrowserFolderEntry> BuildVisibleAssetFolderList(const std::vector<AssetBrowserFolderEntry> &childFolders, const std::string &searchQuery)
+    {
+        if (searchQuery.empty()) return childFolders;
+
+        std::vector<AssetBrowserFolderEntry> visibleFolders;
+        visibleFolders.reserve(childFolders.size());
+
+        for (const AssetBrowserFolderEntry& folder : childFolders)
+        {
+            if (ContainsCaseInsensitive(folder.Name, searchQuery) || ContainsCaseInsensitive(folder.RelativePath, searchQuery))
+                visibleFolders.push_back(folder);
+        }
+
+        return visibleFolders;
+    }
+
     std::string MakeProjectRelativeAssetFolderPath(const Project::ProjectContext& projectContext, const std::filesystem::path& absoluteFolderPath)
     {
         const std::filesystem::path relativePath = absoluteFolderPath.lexically_normal().lexically_relative(projectContext.GetRootPath());
