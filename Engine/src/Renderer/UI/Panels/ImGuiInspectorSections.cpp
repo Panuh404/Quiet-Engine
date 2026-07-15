@@ -20,7 +20,7 @@ namespace
 {
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
-    namespace Assets = Quiet::Renderer::UI::Assets;
+    namespace ASSETS = Quiet::Renderer::UI::Assets;
 
     struct InspectorComponentHeaderResult
     {
@@ -334,13 +334,13 @@ namespace
 
     bool DrawAssetPickerPropertyRow(const char* label,
                                     const Quiet::Project::ProjectContext& projectContext,
-                                    const Assets::AssetPickerOptions& options,
+                                    const ASSETS::AssetPickerOptions& options,
                                     const std::string& currentAssetID,
                                     std::string& outSelectedAssetID)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
-        const bool changed = Assets::DrawAssetPicker("##Value", projectContext, options, currentAssetID, outSelectedAssetID);
+        const bool changed = ASSETS::DrawAssetPicker("##Value", projectContext, options, currentAssetID, outSelectedAssetID);
         ImGui::PopID();
 
         return changed;
@@ -398,7 +398,7 @@ namespace
             tracked.Begin();
             tracked.End();
 
-            Assets::AssetPickerOptions texturePickerOptions{};
+            ASSETS::AssetPickerOptions texturePickerOptions{};
             texturePickerOptions.Type = Quiet::Project::AssetType::Texture;
             texturePickerOptions.AllowNone = true;
             texturePickerOptions.TextureLibrary = &textureLibrary;

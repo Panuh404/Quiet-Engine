@@ -87,6 +87,19 @@ namespace Quiet::Editor
         std::optional<Core::UUID> PilotedCameraActorID;
     };
 
+    struct EditorViewportAssetDropRequest
+    {
+        std::string AssetID{};
+
+        float ScreenX = 0.0f;
+        float ScreenY = 0.0f;
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return !AssetID.empty();
+        }
+    };
+
     struct EditorViewportState
     {
         std::uint32_t Width = 0;
@@ -100,6 +113,8 @@ namespace Quiet::Editor
 
         float ScreenX = 0.0f;
         float ScreenY = 0.0f;
+
+        std::optional<EditorViewportAssetDropRequest> PendingMeshAssetDrop{};
     };
 
     struct EditorGizmoState

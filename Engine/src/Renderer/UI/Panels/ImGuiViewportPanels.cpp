@@ -1,5 +1,6 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <string>
 
@@ -7,12 +8,19 @@
 #include <imgui_internal.h>
 
 #include "Quiet/Editor/EditorState.h"
+#include "Quiet/Project/AssetRecord.h"
+#include "Quiet/Project/AssetRegistry.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiToolbarCommon.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
+    namespace ASSETS = Quiet::Renderer::UI::Assets;
 
     const char* GetViewportModeLabel(const Quiet::Editor::SceneMode mode)
     {
@@ -43,28 +51,159 @@ namespace
         }
     }
 
+    struct ViewportAssetDropVisual
+    {
+        bool Visible = false;
+        bool Accepted = false;
+
+        std::string Label{};
+    };
+
+    ViewportAssetDropVisual HandleViewportMeshAssetDrop(Quiet::Editor::EditorState& editorState,
+                                                        const Quiet::Project::ProjectContext& projectContext,
+                                                        const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary)
+    {
+        ViewportAssetDropVisual visual{};
+        ASSETS::AssetBrowserDragPayload payload{};
+
+        const ImGuiDragDropFlags dropFlags = ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect;
+
+        if (!ASSETS::ReadAssetBrowserDrop(payload, dropFlags)) return visual;
+        visual.Visible = true;
+
+        if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit)
+        {
+            visual.Label = "Viewport asset drops are disabled during runtime";
+            return visual;
+        }
+
+        const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), payload.AssetID);
+        if (!record)
+        {
+            visual.Label = "Asset is not registered";
+            return visual;
+        }
+
+        if (record->Type != Quiet::Project::AssetType::Mesh)
+        {
+            visual.Label = "Mesh asset required";
+            return visual;
+        }
+
+        const ASSETS::AssetPathDiagnostics diagnostics = ASSETS::InspectAssetPath(projectContext, *record);
+        if (diagnostics.IsMissing())
+        {
+            visual.Label = ASSETS::MakeAssetPathDiagnosticLabel(diagnostics);
+            return visual;
+        }
+
+        if (!meshLibrary.TryGet(record->ID))
+        {
+            visual.Label = "Mesh is registered but not loaded";
+            return visual;
+        }
+
+        visual.Accepted = true;
+        visual.Label = "Create " + record->ID + " actor";
+
+        if (payload.Delivered)
+        {
+            const ImVec2 mousePosition = ImGui::GetMousePos();
+            editorState.Viewport.PendingMeshAssetDrop = Quiet::Editor::EditorViewportAssetDropRequest{
+                record->ID,
+                mousePosition.x,
+                mousePosition.y
+            };
+        }
+
+        return visual;
+    }
+
+    void DrawViewportAssetDropOverlay(const ViewportAssetDropVisual& visual, const ImVec2& imageMin, const ImVec2& imageSize, const float uiScale)
+    {
+        if (!visual.Visible || imageSize.x <= 1.0f || imageSize.y <= 1.0f) return;
+
+        const ImVec2 imageMax(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
+        const ImVec4 accentColor = visual.Accepted ? QUI::EditorColor::Success : QUI::EditorColor::Error;
+
+        ImVec4 tintColor = accentColor;
+        tintColor.w = 0.08f;
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->PushClipRect(imageMin, imageMax, true);
+        drawList->AddRectFilled(
+            imageMin,
+            imageMax,
+            ImGui::ColorConvertFloat4ToU32(tintColor)
+        );
+
+        drawList->AddRect(
+            ImVec2(imageMin.x + 2.0f * uiScale, imageMin.y + 2.0f * uiScale),
+            ImVec2(imageMax.x - 2.0f * uiScale, imageMax.y - 2.0f * uiScale),
+            ImGui::ColorConvertFloat4ToU32(accentColor),
+            8.0f * uiScale,
+            0,
+            3.0f * uiScale
+        );
+
+        const float horizontalPadding = 18.0f * uiScale;
+        const float verticalPadding = 12.0f * uiScale;
+
+        const float maximumCardWidth = std::max(140.0f * uiScale, imageSize.x - 32.0f * uiScale);
+        const float desiredCardWidth = ImGui::CalcTextSize(visual.Label.c_str()).x + horizontalPadding * 2.0f;
+
+        const float cardWidth = std::min(std::max(220.0f * uiScale, desiredCardWidth), maximumCardWidth);
+
+        const std::string visibleLabel = ASSETS::MakeEllipsizedText(visual.Label, std::max(30.0f * uiScale, cardWidth - horizontalPadding * 2.0f));
+
+        const ImVec2 textSize = ImGui::CalcTextSize(visibleLabel.c_str());
+        const ImVec2 cardSize(cardWidth, textSize.y + verticalPadding * 2.0f);
+
+        const ImVec2 cardMin(imageMin.x + (imageSize.x - cardSize.x) * 0.5f, imageMin.y + (imageSize.y - cardSize.y) * 0.5f);
+        const ImVec2 cardMax(cardMin.x + cardSize.x, cardMin.y + cardSize.y);
+
+        ImVec4 backgroundColor = QUI::EditorColor::Background0;
+        backgroundColor.w = 0.94f;
+
+        drawList->AddRectFilled(
+            cardMin,
+            cardMax,
+            ImGui::ColorConvertFloat4ToU32(backgroundColor),
+            9.0f * uiScale
+        );
+
+        drawList->AddRect(
+            cardMin,
+            cardMax,
+            ImGui::ColorConvertFloat4ToU32(accentColor),
+            9.0f * uiScale,
+            0,
+            1.5f * uiScale
+        );
+
+        drawList->AddText(
+            ImVec2(cardMin.x + (cardSize.x - textSize.x) * 0.5f, cardMin.y + verticalPadding),
+            ImGui::ColorConvertFloat4ToU32(accentColor),
+            visibleLabel.c_str()
+        );
+
+        drawList->PopClipRect();
+    }
+
     void DrawViewportUnavailableState(const float uiScale)
     {
         const ImVec2 available = ImGui::GetContentRegionAvail();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f * uiScale);
-        ImGui::PushStyleVar(
-            ImGuiStyleVar_WindowPadding,
-            ImVec2(18.0f * uiScale, 16.0f * uiScale)
-        );
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f * uiScale, 16.0f * uiScale));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
-        const ImVec2 cardSize(
-            available.x > 420.0f * uiScale ? 420.0f * uiScale : available.x,
-            104.0f * uiScale
-        );
+        const ImVec2 cardSize(available.x > 420.0f * uiScale ? 420.0f * uiScale : available.x, 104.0f * uiScale);
 
-        ImGui::SetCursorPos(ImVec2(
-            (available.x - cardSize.x) * 0.5f,
-            (available.y - cardSize.y) * 0.5f
-        ));
+        ImGui::SetCursorPos(ImVec2((available.x - cardSize.x) * 0.5f, (available.y - cardSize.y) * 0.5f ));
 
         ImGui::BeginChild("##ViewportUnavailableCard", cardSize, ImGuiChildFlags_Borders);
         {
@@ -114,20 +253,9 @@ namespace
         const ImVec2 padding = ImVec2(9.0f * uiScale, 6.0f * uiScale);
         const ImVec2 textSize = ImGui::CalcTextSize(statusText.c_str());
 
-        const ImVec2 panelSize(
-            textSize.x + padding.x * 2.0f,
-            textSize.y + padding.y * 2.0f
-        );
-
-        const ImVec2 panelMin(
-            imageMin.x + 12.0f * uiScale,
-            imageMin.y + imageSize.y - panelSize.y - 12.0f * uiScale
-        );
-
-        const ImVec2 panelMax(
-            panelMin.x + panelSize.x,
-            panelMin.y + panelSize.y
-        );
+        const ImVec2 panelSize(textSize.x + padding.x * 2.0f, textSize.y + padding.y * 2.0f);
+        const ImVec2 panelMin(imageMin.x + 12.0f * uiScale, imageMin.y + imageSize.y - panelSize.y - 12.0f * uiScale);
+        const ImVec2 panelMax(panelMin.x + panelSize.x, panelMin.y + panelSize.y);
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
@@ -383,6 +511,8 @@ namespace Quiet::Renderer::UI
     }
 
     void ImGuiLayer::BuildViewport(Editor::EditorState& editorState,
+                                   const Project::ProjectContext& projectContext,
+                                   const Vulkan::MeshLibrary& meshLibrary,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()>& viewportOverlayCallback)
     {
@@ -399,27 +529,20 @@ namespace Quiet::Renderer::UI
             if (sceneViewportTexture && editorState.Viewport.Width > 0 && editorState.Viewport.Height > 0)
             {
                 const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-                const ImVec2 imageSize(
-                    static_cast<float>(editorState.Viewport.Width),
-                    static_cast<float>(editorState.Viewport.Height)
-                );
+                const ImVec2 imageSize(static_cast<float>(editorState.Viewport.Width), static_cast<float>(editorState.Viewport.Height));
 
                 ImGui::Image(sceneViewportTexture, imageSize);
-
                 editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
                 editorState.Viewport.ScreenX = imageMin.x;
                 editorState.Viewport.ScreenY = imageMin.y;
 
+                // This must run immediately after ImGui::Image because the image
+                // must remain the active ImGui drag/drop target item.
+                const ViewportAssetDropVisual assetDropVisual = HandleViewportMeshAssetDrop(editorState, projectContext, meshLibrary);
                 BuildViewportToolbar(editorState, imageMin);
-                if (viewportOverlayCallback)
-                    viewportOverlayCallback();
 
-                DrawViewportStatusOverlay(
-                    editorState,
-                    imageMin,
-                    imageSize,
-                    m_UIScale
-                );
+                DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
+                DrawViewportAssetDropOverlay(assetDropVisual, imageMin, imageSize, m_UIScale);
             }
             else
             {

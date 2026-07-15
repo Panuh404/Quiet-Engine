@@ -155,7 +155,7 @@ namespace Quiet::Renderer::UI
         BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
 
         BuildDebugWindow(stats);
-        BuildViewport(editorState, sceneViewportTexture, viewportOverlayCallback);
+        BuildViewport( editorState, projectContext, meshLibrary, sceneViewportTexture, viewportOverlayCallback);
         BuildConsoleWindow();
 
         actions.HandleShortcuts(stats.MouseCaptured);

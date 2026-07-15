@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -14,7 +15,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "imgui.h"
+#include "Editor/Viewport/EditorViewportProjection.h"
 #include "GLFW/glfw3.h"
+#include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Input/Input.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Editor/EditorRuntimeController.h"
@@ -47,8 +50,7 @@ namespace
         }
     }
 
-    Quiet::Renderer::Vulkan::CameraUniformData BuildSceneCameraUniformData(const Quiet::Scene::Actor& cameraActor,
-                                                                           float aspect)
+    Quiet::Renderer::Vulkan::CameraUniformData BuildSceneCameraUniformData(const Quiet::Scene::Actor& cameraActor, float aspect)
     {
         using namespace Quiet;
 
@@ -79,6 +81,25 @@ namespace
         }
 
         return data;
+    }
+
+    glm::vec3 CalculateViewportMeshDropPosition(const Quiet::Math::Ray& ray, const Quiet::Renderer::Vulkan::StaticMesh& mesh)
+    {
+        constexpr float fallbackDistance = 5.0f;
+        constexpr float minimumHitDistance = 0.05f;
+        constexpr float maximumGroundDistance = 1000.0f;
+
+        glm::vec3 position = ray.Origin + ray.Direction * fallbackDistance;
+        if (std::abs(ray.Direction.y) <= 0.00001f) return position;
+
+        const float groundHitDistance = -ray.Origin.y / ray.Direction.y;
+        if (groundHitDistance < minimumHitDistance || groundHitDistance > maximumGroundDistance) return position;
+
+        position = ray.Origin + ray.Direction * groundHitDistance;
+
+        // Place the mesh's lowest local-space point on the ground plane.
+        position.y -= mesh.GetLocalBoundsMin().y;
+        return position;
     }
 }
 
@@ -296,6 +317,47 @@ namespace Quiet::Core
             editorState.Viewport.Width,
             editorState.Viewport.Height
         );
+    }
+
+    void Application::ProcessEditorViewportAssetDrop(Scene::Scene &activeScene, Editor::EditorState &editorState)
+    {
+        std::optional<Editor::EditorViewportAssetDropRequest> request = std::move(editorState.Viewport.PendingMeshAssetDrop);
+
+        editorState.Viewport.PendingMeshAssetDrop.reset();
+
+        if (!request.has_value() || !request->IsValid()) return;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit) return;
+        if (!m_EditorController || !m_FreeCamera || !m_Renderer) return;
+
+        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), request->AssetID);
+
+        if (!record || record->Type != Project::AssetType::Mesh)
+        {
+            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not a registered mesh.", request->AssetID);
+            return;
+        }
+
+        const auto mesh = m_Renderer->GetMeshLibrary().TryGet(record->ID);
+        if (!mesh)
+        {
+            QUIET_CORE_WARN("Viewport asset drop rejected because mesh '{}' is not loaded.", record->ID);
+            return;
+        }
+
+        Math::Ray dropRay{};
+        glm::vec3 actorPosition = m_FreeCamera->GetPosition() + m_FreeCamera->GetForwardVector() * 5.0f;
+
+        if (Editor::BuildViewportPickRay(request->ScreenX, request->ScreenY, editorState.Viewport, *m_FreeCamera, *m_Renderer, dropRay))
+        {
+            actorPosition = CalculateViewportMeshDropPosition(dropRay, *mesh);
+        }
+
+        Editor::EditorCommands commands(*m_EditorController);
+
+        if (!commands.CreateStaticMeshActor(activeScene, record->ID, record->ID, m_ProjectContext, m_Renderer->GetMeshLibrary(), actorPosition))
+        {
+            QUIET_CORE_WARN("Failed to create Static Mesh actor from dropped asset '{}'.", record->ID);
+        }
     }
 
     void Application::ProcessEditorRequests(Editor::EditorState &editorState)
@@ -703,8 +765,10 @@ namespace Quiet::Core
             m_Renderer->GetMeshLibrary(),
             m_Renderer->GetTextureLibrary(),
             m_Renderer->GetSceneViewportTextureID(),
-            BuildEditorViewportOverlayCallback());
+            BuildEditorViewportOverlayCallback()
+        );
 
+        ProcessEditorViewportAssetDrop(activeScene, editorState);
         ProcessEditorViewportResize(editorState);
     }
 

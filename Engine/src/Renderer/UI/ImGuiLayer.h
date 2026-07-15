@@ -151,6 +151,8 @@ namespace Quiet::Renderer::UI
                           const ImVec2& imageMin);
 
         void BuildViewport(Editor::EditorState& editorState,
+                           const Project::ProjectContext& projectContext,
+                           const Vulkan::MeshLibrary& meshLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()>& viewportOverlayCallback);
 

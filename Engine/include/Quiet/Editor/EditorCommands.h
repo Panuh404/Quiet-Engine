@@ -42,7 +42,8 @@ namespace Quiet::Editor
                                    const std::string& actorName,
                                    const std::string& meshResourceID,
                                    const Project::ProjectContext& projectContext,
-                                   const Renderer::Vulkan::MeshLibrary& meshLibrary);
+                                   const Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                   const glm::vec3& position = glm::vec3(0.0f));
         bool CreateDirectionalLightActor(Scene::Scene& scene,
                                          const std::string& actorName = "Directional Light");
         bool CreateHierarchyFolder(Scene::Scene& scene, const std::string& name = "Folder");

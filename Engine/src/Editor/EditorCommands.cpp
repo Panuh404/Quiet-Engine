@@ -118,11 +118,12 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::CreateStaticMeshActor(Scene::Scene &scene,
-                                               const std::string &actorName,
-                                               const std::string &meshResourceID,
-                                               const Project::ProjectContext &projectContext,
-                                               const Renderer::Vulkan::MeshLibrary &meshLibrary)
+    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene,
+                                               const std::string& actorName,
+                                               const std::string& meshResourceID,
+                                               const Project::ProjectContext& projectContext,
+                                               const Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                               const glm::vec3& position)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
         if (!mesh)
@@ -137,6 +138,7 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
             Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
+            actor.Transform.WorldTransform.Position = position;
 
             actor.StaticMesh = Scene::StaticMeshComponent{};
             actor.StaticMesh->MeshResourceID = meshResourceID;

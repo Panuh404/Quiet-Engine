@@ -84,6 +84,7 @@ namespace Quiet::Core
         void ProcessGlobalShortcuts();
         void ProcessSandboxViewportResize();
         void ProcessEditorViewportResize(const Editor::EditorState& editorState);
+        void ProcessEditorViewportAssetDrop(Scene::Scene& activeScene, Editor::EditorState& editorState);
         void ProcessEditorRequests(Editor::EditorState& editorState);
         void RefreshProjectAssetLoaderRendererBindings();
 

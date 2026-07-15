@@ -34,6 +34,7 @@ namespace Quiet::Editor
         if (mouseCaptureEnabled) return;
         if (m_State.Scene.Mode != SceneMode::Edit) return;
         if (!m_State.Viewport.ImageHovered) return;
+        if (ImGui::GetDragDropPayload()) return;
         if (!input.IsMouseButtonPressed(Input::MouseCode::ButtonLeft)) return;
         if (ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
 
