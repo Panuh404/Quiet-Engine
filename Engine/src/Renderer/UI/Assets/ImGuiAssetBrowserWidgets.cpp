@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <utility>
 
 #include "Renderer/UI/ImGuiTheme.h"
 
@@ -10,6 +11,20 @@ namespace
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
     constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_ASSET_ID";
+
+    bool TryReadAssetBrowserPayload(const ImGuiPayload* payload, std::string& outAssetID)
+    {
+        outAssetID.clear();
+
+        if (!payload || !payload->Data || payload->DataSize <= 1) return false;
+        const char* payloadAssetID = static_cast<const char*>(payload->Data);
+        const std::size_t payloadSize = static_cast<std::size_t>(payload->DataSize);
+
+        if (payloadAssetID[payloadSize - 1] != '\0') return false;
+        outAssetID = payloadAssetID;
+        return !outAssetID.empty();
+    }
+
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -152,7 +167,7 @@ namespace Quiet::Renderer::UI::Assets
 
     void DrawAssetBrowserDragSource(const Project::AssetRecord& record, const bool enabled)
     {
-        if (!enabled || record.BuiltIn || record.Path.empty()) return;
+        if (!enabled || (!record.BuiltIn && record.Path.empty())) return;
 
         const ImVec2 previewPadding = SZ::Px(ImVec2(14.0f, 11.0f));
 
@@ -175,7 +190,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + SZ::Px(280.0f));
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-        ImGui::TextUnformatted("Move Asset");
+        ImGui::TextUnformatted("Asset");
         ImGui::PopStyleColor();
 
         ImGui::Spacing();
@@ -185,7 +200,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-        ImGui::TextWrapped("%s", record.Path.c_str());
+        ImGui::TextWrapped("%s", record.BuiltIn ? "<built-in>" : record.Path.c_str());
         ImGui::PopStyleColor();
 
         ImGui::PopTextWrapPos();
@@ -196,30 +211,31 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleVar(4);
     }
 
-    bool AcceptAssetBrowserDrop(std::string &outAssetID)
+    bool ReadAssetBrowserDrop(AssetBrowserDragPayload& outPayload, const ImGuiDragDropFlags flags)
     {
-        outAssetID.clear();
+        outPayload = {};
 
         if (!ImGui::BeginDragDropTarget()) return false;
-        bool accepted = false;
-
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetBrowserPayloadType))
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetBrowserPayloadType, flags);
+        if (payload)
         {
-            if (payload->IsDelivery() && payload->Data && payload->DataSize > 1)
-            {
-                const char* payloadAssetID = static_cast<const char*>(payload->Data);
-                const std::size_t payloadSize = static_cast<std::size_t>(payload->DataSize);
-
-                if (payloadAssetID[payloadSize - 1] == '\0')
-                {
-                    outAssetID = payloadAssetID;
-                    accepted = !outAssetID.empty();
-                }
-            }
+            outPayload.Delivered = payload->IsDelivery();
+            TryReadAssetBrowserPayload(payload, outPayload.AssetID);
         }
 
         ImGui::EndDragDropTarget();
-        return accepted;
+        return outPayload.IsValid();
+    }
+
+    bool AcceptAssetBrowserDrop(std::string& outAssetID)
+    {
+        outAssetID.clear();
+
+        AssetBrowserDragPayload payload{};
+        if (!ReadAssetBrowserDrop(payload) || !payload.Delivered) return false;
+
+        outAssetID = std::move(payload.AssetID);
+        return !outAssetID.empty();
     }
 
     AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const AssetBrowserThumbnailSize thumbnailSize)

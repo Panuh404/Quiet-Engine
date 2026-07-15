@@ -4,13 +4,18 @@
 #include <array>
 #include <string>
 #include <vector>
+
 #include <imgui.h>
 
-#include "ImGuiAssetBrowserUtils.h"
-#include "ImGuiAssetBrowserWidgets.h"
 #include "Quiet/Project/AssetRecord.h"
+#include "Quiet/Project/AssetRegistry.h"
+#include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 namespace
 {
@@ -84,10 +89,9 @@ namespace
         );
     }
 
-    std::string MakePickerStatusLabel(
-        const Quiet::Project::AssetRecord& record,
-        const Assets::AssetPathDiagnostics& diagnostics,
-        const Assets::AssetPickerOptions& options)
+    std::string MakePickerStatusLabel(const Quiet::Project::AssetRecord& record,
+                                      const Assets::AssetPathDiagnostics& diagnostics,
+                                      const Assets::AssetPickerOptions& options)
     {
         if (diagnostics.IsMissing())
             return Assets::MakeAssetPathDiagnosticLabel(diagnostics);
@@ -127,21 +131,23 @@ namespace
         return QUI::EditorColor::TextMuted;
     }
 
-    bool IsAssetPickerRecordAssignable(
-        const Quiet::Project::AssetRecord& record,
-        const Assets::AssetPathDiagnostics& diagnostics,
-        const Assets::AssetPickerOptions& options)
+    bool IsAssetPickerRecordAssignable(const Quiet::Project::AssetRecord& record,
+                                       const Assets::AssetPathDiagnostics& diagnostics,
+                                       const Assets::AssetPickerOptions& options)
     {
+        if (record.Type != options.Type) return false;
         if (diagnostics.IsMissing()) return false;
         if (record.Type == Quiet::Project::AssetType::Mesh && options.MeshLibrary && !options.MeshLibrary->TryGet(record.ID)) return false;
         return true;
     }
 
-    std::string MakeAssetPickerDisabledReason(
-        const Quiet::Project::AssetRecord& record,
-        const Assets::AssetPathDiagnostics& diagnostics,
-        const Assets::AssetPickerOptions& options)
+    std::string MakeAssetPickerDisabledReason(const Quiet::Project::AssetRecord& record,
+                                              const Assets::AssetPathDiagnostics& diagnostics,
+                                              const Assets::AssetPickerOptions& options)
     {
+        if (record.Type != options.Type)
+            return "This field only accepts " + std::string(Quiet::Project::ToString(options.Type)) + " assets.";
+
         if (diagnostics.IsMissing())
             return Assets::MakeAssetPathDiagnosticDescription(diagnostics);
 
@@ -151,11 +157,10 @@ namespace
         return {};
     }
 
-    bool DrawAssetPickerRow(
-        const Quiet::Project::AssetRecord& record,
-        const Quiet::Project::ProjectContext& projectContext,
-        const Assets::AssetPickerOptions& options,
-        const bool selected)
+    bool DrawAssetPickerRow(const Quiet::Project::AssetRecord& record,
+                            const Quiet::Project::ProjectContext& projectContext,
+                            const Assets::AssetPickerOptions& options,
+                            const bool selected)
     {
         const Assets::AssetPathDiagnostics diagnostics = Assets::InspectAssetPath(projectContext, record);
 
@@ -294,6 +299,90 @@ namespace
 
         return pressed;
     }
+
+    void DrawAssetPickerDropOverlay(const ImVec2& fieldMin, const ImVec2& fieldMax,  const std::string& label, const bool assignable)
+    {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec4 backgroundColor = QUI::EditorColor::Background2;
+
+        backgroundColor.w = 0.96f;
+        const ImVec4 borderColor = assignable ? QUI::EditorColor::Success : QUI::EditorColor::Error;
+
+        drawList->AddRectFilled(
+            fieldMin,
+            fieldMax,
+            ImGui::ColorConvertFloat4ToU32(backgroundColor),
+            ImGui::GetStyle().FrameRounding
+        );
+
+        drawList->AddRect(
+            fieldMin,
+            fieldMax,
+            ImGui::ColorConvertFloat4ToU32(borderColor),
+            ImGui::GetStyle().FrameRounding,
+            0,
+            SZ::Px(2.0f)
+        );
+
+        const float horizontalPadding = SZ::Px(12.0f);
+        const float availableWidth = std::max(SZ::Px(20.0f), fieldMax.x - fieldMin.x - horizontalPadding * 2.0f);
+
+        const std::string visibleLabel = Assets::MakeEllipsizedText(label, availableWidth);
+        const ImVec2 textSize = ImGui::CalcTextSize(visibleLabel.c_str());
+        const ImVec2 textPosition(fieldMin.x + (fieldMax.x - fieldMin.x - textSize.x) * 0.5f, fieldMin.y + (fieldMax.y - fieldMin.y - textSize.y) * 0.5f);
+
+        drawList->AddText(
+            textPosition,
+            ImGui::ColorConvertFloat4ToU32(
+                borderColor
+            ),
+            visibleLabel.c_str()
+        );
+    }
+
+    bool DrawAssetPickerDropTarget(const Quiet::Project::ProjectContext& projectContext,
+                                   const Assets::AssetPickerOptions& options,
+                                   const ImVec2& fieldMin,
+                                   const ImVec2& fieldMax,
+                                   std::string& outSelectedAssetID)
+    {
+        Assets::AssetBrowserDragPayload payload{};
+
+        const ImGuiDragDropFlags dropFlags = ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect;
+
+        if (!Assets::ReadAssetBrowserDrop(payload, dropFlags)) return false;
+        const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), payload.AssetID);
+
+        bool assignable = false;
+        std::string overlayLabel;
+
+        if (!record)
+        {
+            overlayLabel = "Asset is not registered";
+        }
+        else
+        {
+            const Assets::AssetPathDiagnostics diagnostics = Assets::InspectAssetPath(projectContext, *record);
+            assignable = IsAssetPickerRecordAssignable(*record, diagnostics, options);
+            if (assignable)
+            {
+                overlayLabel = "Assign " + record->ID;
+            }
+            else if (record->Type != options.Type)
+            {
+                overlayLabel = std::string(Quiet::Project::ToString(options.Type)) + " asset required";
+            }
+            else
+            {
+                overlayLabel = MakePickerStatusLabel(*record, diagnostics, options);
+            }
+        }
+
+        DrawAssetPickerDropOverlay(fieldMin, fieldMax, overlayLabel, assignable);
+        if (!payload.Delivered || !assignable || !record) return false;
+        outSelectedAssetID = record->ID;
+        return true;
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -325,9 +414,16 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
         }
 
-        const bool pickerOpen = EditorBeginCombo(id,previewLabel.c_str(), ImGuiComboFlags_HeightLargest);
+        const bool pickerOpen = EditorBeginCombo(id, previewLabel.c_str(), ImGuiComboFlags_HeightLargest);
+
         if (currentSelectionInvalid) ImGui::PopStyleColor();
-        if (!pickerOpen) return false;
+        if (!pickerOpen)
+        {
+            const ImVec2 fieldMin = ImGui::GetItemRectMin();
+            const ImVec2 fieldMax = ImGui::GetItemRectMax();
+
+            return DrawAssetPickerDropTarget(projectContext, options, fieldMin, fieldMax, outSelectedAssetID);
+        }
         const ImGuiID pickerID = ImGui::GetID(id);
 
         if (ImGui::IsWindowAppearing() || g_ActiveAssetPickerID != pickerID)

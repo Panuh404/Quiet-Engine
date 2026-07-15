@@ -19,8 +19,21 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetDiagnosticPill(const std::string& label, bool missing);
 
     bool DrawAssetTableCellHitTarget(const char* id, float rowHeight);
+
+    struct AssetBrowserDragPayload
+    {
+        std::string AssetID{};
+        bool Delivered = false;
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return !AssetID.empty();
+        }
+    };
+
     void DrawAssetBrowserDragSource(const Project::AssetRecord& record, bool enabled);
 
+    [[nodiscard]] bool ReadAssetBrowserDrop(AssetBrowserDragPayload& outPayload, ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
     [[nodiscard]] bool AcceptAssetBrowserDrop(std::string& outAssetID);
 
     struct AssetBrowserCardMetrics
