@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include <imgui.h>
 
@@ -12,6 +11,7 @@
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiToolbarCommon.h"
+#include "Renderer/UI/Assets/ImGuiAssetPicker.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
@@ -20,6 +20,7 @@ namespace
 {
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
+    namespace Assets = Quiet::Renderer::UI::Assets;
 
     struct InspectorComponentHeaderResult
     {
@@ -32,8 +33,7 @@ namespace
     ImVec2 g_OpenInspectorComponentMenuPosition = ImVec2(0.0f, 0.0f);
     int g_OpenInspectorComponentMenuFrame = -1;
 
-    ImVec2 ClampMenuPositionToViewport(const ImVec2 desiredPosition,
-                                       const ImVec2 menuSize)
+    ImVec2 ClampMenuPositionToViewport(const ImVec2 desiredPosition, const ImVec2 menuSize)
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         const float viewportMargin = SZ::Px(8.0f);
@@ -43,20 +43,12 @@ namespace
         const float maxX = viewport->WorkPos.x + viewport->WorkSize.x - menuSize.x - viewportMargin;
         const float maxY = viewport->WorkPos.y + viewport->WorkSize.y - menuSize.y - viewportMargin;
 
-        return ImVec2(
-            std::clamp(desiredPosition.x, minX, maxX),
-            std::clamp(desiredPosition.y, minY, maxY)
-        );
+        return {std::clamp(desiredPosition.x, minX, maxX), std::clamp(desiredPosition.y, minY, maxY)};
     }
 
-    void DrawFloatingComponentOptionsMenu(const char* popupID,
-                                          const bool removable,
-                                          const bool resettable,
-                                          InspectorComponentHeaderResult& result)
+    void DrawFloatingComponentOptionsMenu(const char* popupID, const bool removable, const bool resettable, InspectorComponentHeaderResult& result)
     {
-        if (g_OpenInspectorComponentMenuID != popupID)
-            return;
-
+        if (g_OpenInspectorComponentMenuID != popupID) return;
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             g_OpenInspectorComponentMenuID.clear();
@@ -67,10 +59,7 @@ namespace
         const float estimatedMenuHeight = SZ::Px(48.0f);
 
         const ImVec2 menuSize(menuWidth, estimatedMenuHeight);
-        const ImVec2 menuPosition = ClampMenuPositionToViewport(
-            g_OpenInspectorComponentMenuPosition,
-            menuSize
-        );
+        const ImVec2 menuPosition = ClampMenuPositionToViewport(g_OpenInspectorComponentMenuPosition, menuSize);
 
         const std::string windowID = std::string("##FloatingComponentMenu_") + popupID;
 
@@ -108,44 +97,27 @@ namespace
 
             if (resettable)
             {
-                if (QUI::EditorSelectable(
-                        "Reset Transform",
-                        false,
-                        0,
-                        itemSize))
+                if (QUI::EditorSelectable("Reset Transform", false, 0, itemSize))
                 {
                     result.ResetRequested = true;
                     g_OpenInspectorComponentMenuID.clear();
                 }
-
                 ImGui::Separator();
             }
 
             if (removable)
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Error);
-
-                if (QUI::EditorSelectable(
-                        "Remove Component",
-                        false,
-                        0,
-                        itemSize))
+                if (QUI::EditorSelectable("Remove Component", false, 0, itemSize))
                 {
                     result.RemoveRequested = true;
                     g_OpenInspectorComponentMenuID.clear();
                 }
-
                 ImGui::PopStyleColor();
             }
             else
             {
-                QUI::EditorSelectable(
-                    "Transform cannot be removed",
-                    false,
-                    0,
-                    itemSize,
-                    false
-                );
+                QUI::EditorSelectable("Transform cannot be removed", false, 0, itemSize, false);
             }
         }
 
@@ -154,22 +126,14 @@ namespace
         ImGui::PopStyleColor(5);
         ImGui::PopStyleVar(5);
 
-        const bool openedThisFrame =
-            g_OpenInspectorComponentMenuFrame == ImGui::GetFrameCount();
-
-        if (!openedThisFrame &&
-            !hovered &&
-            (ImGui::IsMouseClicked(ImGuiMouseButton_Left) ||
-             ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
+        const bool openedThisFrame = g_OpenInspectorComponentMenuFrame == ImGui::GetFrameCount();
+        if (!openedThisFrame && !hovered && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
         {
             g_OpenInspectorComponentMenuID.clear();
         }
     }
 
-    InspectorComponentHeaderResult BeginInspectorComponent(const char* title,
-                                                           const char* popupID,
-                                                           const bool removable = true,
-                                                           const bool resettable = false)
+    InspectorComponentHeaderResult BeginInspectorComponent(const char* title, const char* popupID, const bool removable = true, const bool resettable = false)
     {
         InspectorComponentHeaderResult result{};
 
@@ -180,10 +144,7 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, QUI::EditorColor::Background4);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, QUI::EditorColor::AccentDim);
 
-        result.Open = ImGui::CollapsingHeader(
-            title,
-            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap
-        );
+        result.Open = ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
 
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar();
@@ -208,21 +169,10 @@ namespace
         const ImVec2 gearMax = ImGui::GetItemRectMax();
 
         const ImVec2 iconSize = ImGui::CalcTextSize(gearIcon);
-        const ImVec2 iconPos = ImVec2(
-            gearMin.x + (buttonSize - iconSize.x) * 0.5f,
-            gearMin.y + (buttonSize - iconSize.y) * 0.5f
-        );
+        const ImVec2 iconPos = ImVec2(gearMin.x + (buttonSize - iconSize.x) * 0.5f, gearMin.y + (buttonSize - iconSize.y) * 0.5f);
+        const ImVec4 iconColor = gearHovered ? QUI::EditorColor::AccentHover : QUI::EditorColor::TextMuted;
 
-        const ImVec4 iconColor =
-            gearHovered
-                ? QUI::EditorColor::AccentHover
-                : QUI::EditorColor::TextMuted;
-
-        ImGui::GetWindowDrawList()->AddText(
-            iconPos,
-            ImGui::ColorConvertFloat4ToU32(iconColor),
-            gearIcon
-        );
+        ImGui::GetWindowDrawList()->AddText(iconPos, ImGui::ColorConvertFloat4ToU32(iconColor), gearIcon);
 
         if (gearPressed)
         {
@@ -235,19 +185,13 @@ namespace
                 const float menuWidth = SZ::Px(230.0f);
                 g_OpenInspectorComponentMenuID = popupID;
                 g_OpenInspectorComponentMenuFrame = ImGui::GetFrameCount();
-                g_OpenInspectorComponentMenuPosition = ImVec2(
-                    gearMax.x - menuWidth,
-                    gearMax.y + SZ::Px(4.0f)
-                );
+                g_OpenInspectorComponentMenuPosition = ImVec2(gearMax.x - menuWidth, gearMax.y + SZ::Px(4.0f));
             }
         }
         else if (g_OpenInspectorComponentMenuID == popupID)
         {
             const float menuWidth = SZ::Px(230.0f);
-            g_OpenInspectorComponentMenuPosition = ImVec2(
-                gearMax.x - menuWidth,
-                gearMax.y + SZ::Px(4.0f)
-            );
+            g_OpenInspectorComponentMenuPosition = ImVec2(gearMax.x - menuWidth, gearMax.y + SZ::Px(4.0f));
         }
 
         ImGui::PopID();
@@ -275,9 +219,7 @@ namespace
         const float uiScale,
         const float previewSize)
     {
-        if (textureAssetID.empty())
-            return;
-
+        if (textureAssetID.empty()) return;
         const auto textureStats = textureLibrary.GetStats(textureAssetID);
         if (!textureStats.has_value())
         {
@@ -291,13 +233,7 @@ namespace
             return;
         }
 
-        QUI::DrawTexturePreview(
-            textureAssetID,
-            textureLibrary,
-            textureStats.value(),
-            uiScale,
-            previewSize
-        );
+        QUI::DrawTexturePreview(textureAssetID, textureLibrary, textureStats.value(), uiScale, previewSize);
     }
 
     float GetInspectorPropertyLabelWidth()
@@ -320,25 +256,14 @@ namespace
         ImGui::SameLine(rowStartX + labelWidth);
     }
 
-    bool DrawFloatPropertyRow(const char* label,
-                              float& value,
-                              const float speed,
-                              const float minValue,
-                              const float maxValue,
+    bool DrawFloatPropertyRow(const char* label, float& value, const float speed, const float minValue, const float maxValue,
                               const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
-        const bool changed = ImGui::DragFloat(
-            "##Value",
-            &value,
-            speed,
-            minValue,
-            maxValue,
-            "%.3f"
-        );
+        const bool changed = ImGui::DragFloat("##Value", &value, speed, minValue, maxValue, "%.3f");
 
         tracked.Begin();
         tracked.End();
@@ -347,11 +272,7 @@ namespace
         return changed;
     }
 
-    bool DrawVec3PropertyRow(const char* label,
-                             glm::vec3& value,
-                             const float speed,
-                             const float minValue,
-                             const float maxValue,
+    bool DrawVec3PropertyRow(const char* label, glm::vec3& value, const float speed, const float minValue, const float maxValue,
                              const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
@@ -362,13 +283,9 @@ namespace
         const float axisLabelWidth = SZ::Px(14.0f);
         const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 
-        const float fieldWidth = std::max(
-            SZ::Px(54.0f),
-            (availableWidth - axisLabelWidth * 3.0f - spacing * 5.0f) / 3.0f
-        );
+        const float fieldWidth = std::max(SZ::Px(54.0f), (availableWidth - axisLabelWidth * 3.0f - spacing * 5.0f) / 3.0f);
 
         bool changed = false;
-
         auto drawAxis = [&](const char* axisLabel, float& axisValue)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
@@ -379,14 +296,7 @@ namespace
             ImGui::SameLine();
 
             ImGui::SetNextItemWidth(fieldWidth);
-            changed |= ImGui::DragFloat(
-                "##Axis",
-                &axisValue,
-                speed,
-                minValue,
-                maxValue,
-                "%.3f"
-            );
+            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f");
 
             tracked.Begin();
             tracked.End();
@@ -409,7 +319,6 @@ namespace
         ImGui::PopID();
 
         ImGui::PopID();
-
         return changed;
     }
 
@@ -423,19 +332,21 @@ namespace
         return changed;
     }
 
-    bool BeginComboPropertyRow(const char* label, const char* previewValue)
+    bool DrawAssetPickerPropertyRow(const char* label,
+                                    const Quiet::Project::ProjectContext& projectContext,
+                                    const Assets::AssetPickerOptions& options,
+                                    const std::string& currentAssetID,
+                                    std::string& outSelectedAssetID)
     {
+        ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
+        const bool changed = Assets::DrawAssetPicker("##Value", projectContext, options, currentAssetID, outSelectedAssetID);
+        ImGui::PopID();
 
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-
-        const std::string comboID = std::string("##") + label;
-        return QUI::EditorBeginCombo(comboID.c_str(), previewValue);
+        return changed;
     }
 
-    bool DrawColor3PropertyRow(const char* label,
-                               glm::vec3& value,
-                               const QUI::TrackedInspectorInteraction& tracked)
+    bool DrawColor3PropertyRow(const char* label, glm::vec3& value, const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
@@ -450,9 +361,7 @@ namespace
         return changed;
     }
 
-    bool DrawColor4PropertyRow(const char* label,
-                               glm::vec4& value,
-                               const QUI::TrackedInspectorInteraction& tracked)
+    bool DrawColor4PropertyRow(const char* label, glm::vec4& value, const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
@@ -467,16 +376,15 @@ namespace
         return changed;
     }
 
-    void DrawMaterialSlotEditor(
-        Quiet::Scene::Scene& scene,
-        Quiet::Scene::Actor& actor,
-        Quiet::Editor::EditorCommands& commands,
-        Quiet::Scene::MaterialComponent& materialSlot,
-        const std::uint32_t slotIndex,
-        const std::vector<std::string>& textureAssetIDs,
-        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
-        const Quiet::Renderer::UI::TrackedInspectorInteraction& tracked,
-        const float uiScale)
+    void DrawMaterialSlotEditor(Quiet::Scene::Scene& scene,
+                                Quiet::Scene::Actor& actor,
+                                Quiet::Editor::EditorCommands& commands,
+                                const Quiet::Project::ProjectContext& projectContext,
+                                Quiet::Scene::MaterialComponent& materialSlot,
+                                const std::uint32_t slotIndex,
+                                const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
+                                const Quiet::Renderer::UI::TrackedInspectorInteraction& tracked,
+                                const float uiScale)
     {
         ImGui::PushID(static_cast<int>(slotIndex));
 
@@ -485,74 +393,29 @@ namespace
         {
             glm::vec4 baseColor = materialSlot.BaseColor;
             if (ImGui::ColorEdit4("Base Color", &baseColor.x))
-            {
-                commands.SetStaticMeshMaterialSlotBaseColor(
-                    scene,
-                    actor.ID,
-                    slotIndex,
-                    baseColor
-                );
-            }
+                commands.SetStaticMeshMaterialSlotBaseColor(scene, actor.ID, slotIndex, baseColor);
 
             tracked.Begin();
             tracked.End();
 
-            const char* texturePreview =
-                materialSlot.HasBaseColorTexture()
-                    ? materialSlot.BaseColorTextureAssetID.c_str()
-                    : "None";
+            Assets::AssetPickerOptions texturePickerOptions{};
+            texturePickerOptions.Type = Quiet::Project::AssetType::Texture;
+            texturePickerOptions.AllowNone = true;
+            texturePickerOptions.TextureLibrary = &textureLibrary;
 
-            if (QUI::EditorBeginCombo("Base Color Texture", texturePreview))
+            std::string selectedTextureAssetID;
+
+            if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, materialSlot.BaseColorTextureAssetID, selectedTextureAssetID))
             {
-                const bool noneSelected = !materialSlot.HasBaseColorTexture();
-
-                if (QUI::EditorSelectable("None", noneSelected))
-                {
-                    commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
-                        scene,
-                        actor.ID,
-                        slotIndex,
-                        std::string{}
-                    );
-                }
-
-                if (noneSelected)
-                    ImGui::SetItemDefaultFocus();
-
-                if (!textureAssetIDs.empty())
-                    ImGui::Separator();
-
-                for (const std::string& textureAssetID : textureAssetIDs)
-                {
-                    const bool selected = materialSlot.BaseColorTextureAssetID == textureAssetID;
-                    if (QUI::EditorSelectable(textureAssetID.c_str(), selected))
-                    {
-                        commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(
-                            scene,
-                            actor.ID,
-                            slotIndex,
-                            textureAssetID
-                        );
-                    }
-
-                    if (selected)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
+                commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(scene, actor.ID, slotIndex, selectedTextureAssetID);
             }
-
             if (!materialSlot.HasBaseColorTexture())
             {
                 DrawInspectorHint("No texture assigned to this slot.");
             }
             else
             {
-                DrawMaterialTexturePreviewIfAvailable(
-                    materialSlot.BaseColorTextureAssetID,
-                    textureLibrary,
-                    uiScale,
-                    96.0f
-                );
+                DrawMaterialTexturePreviewIfAvailable(materialSlot.BaseColorTextureAssetID, textureLibrary, uiScale, 96.0f);
             }
             ImGui::TreePop();
         }
@@ -565,14 +428,12 @@ namespace Quiet::Renderer::UI
 {
     void TrackedInspectorInteraction::Begin() const
     {
-        if (Enabled && ImGui::IsItemActivated())
-            Commands.BeginInteraction(SceneRef);
+        if (Enabled && ImGui::IsItemActivated()) Commands.BeginInteraction(SceneRef);
     }
 
     void TrackedInspectorInteraction::End() const
     {
-        if (Enabled && ImGui::IsItemDeactivated())
-            Commands.EndInteraction(SceneRef);
+        if (Enabled && ImGui::IsItemDeactivated()) Commands.EndInteraction(SceneRef);
     }
 
     void DrawActorDetailsSection(Scene::Scene& scene,
@@ -744,7 +605,7 @@ namespace Quiet::Renderer::UI
                                const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary)
     {
-        const auto meshAssetIDs = projectContext.EnumerateMeshAssetIDs();
+        const bool hasMeshAssets = !projectContext.EnumerateMeshAssetIDs().empty();
         if (!actor.StaticMesh.has_value()) return;
 
         const auto header = BeginInspectorComponent("Static Mesh", "StaticMeshComponentOptions");
@@ -755,46 +616,25 @@ namespace Quiet::Renderer::UI
         }
         if (!header.Open) return;
 
-        if (meshAssetIDs.empty())
-            DrawInspectorHint("No mesh assets registered.");
+        Assets::AssetPickerOptions meshPickerOptions{};
+        meshPickerOptions.Type = Project::AssetType::Mesh;
+        meshPickerOptions.MeshLibrary = &meshLibrary;
+        std::string selectedMeshAssetID;
 
-        else
+        if (DrawAssetPickerPropertyRow("Mesh Resource", projectContext, meshPickerOptions, actor.StaticMesh->MeshResourceID, selectedMeshAssetID))
         {
-            int currentIndex = 0;
-            bool foundCurrent = false;
-
-            for (int i = 0; i < static_cast<int>(meshAssetIDs.size()); ++i)
-            {
-                if (meshAssetIDs[i] == actor.StaticMesh->MeshResourceID)
-                {
-                    currentIndex = i;
-                    foundCurrent = true;
-                    break;
-                }
-            }
-
-            const char* currentPreview =
-                foundCurrent
-                    ? meshAssetIDs[currentIndex].c_str()
-                    : actor.StaticMesh->MeshResourceID.c_str();
-
-            if (BeginComboPropertyRow("Mesh Resource", currentPreview))
-            {
-                for (const auto & meshAssetID : meshAssetIDs)
-                {
-                    const bool isSelected = (meshAssetID == actor.StaticMesh->MeshResourceID);
-                    if (EditorSelectable(meshAssetID.c_str(), isSelected))
-                        commands.SetStaticMeshResource(scene, actor.ID, meshAssetID, projectContext, meshLibrary);
-                    if (isSelected)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
+            commands.SetStaticMeshResource(scene, actor.ID, selectedMeshAssetID, projectContext, meshLibrary);
+        }
+        if (!hasMeshAssets)
+        {
+            DrawInspectorHint("No mesh assets registered.");
         }
 
         bool visible = actor.StaticMesh->Visible;
         if (DrawCheckboxPropertyRow("Visible", visible))
+        {
             commands.SetStaticMeshVisible(scene, actor.ID, visible);
+        }
     }
 
     void DrawMaterialSection(Scene::Scene& scene,
@@ -822,41 +662,24 @@ namespace Quiet::Renderer::UI
 
         ImGui::Spacing();
 
-        const std::vector<std::string> textureAssetIDs =
-            projectContext.EnumerateTextureAssetIDs();
+        const bool hasTextureAssets = !projectContext
+                .EnumerateTextureAssetIDs()
+                .empty();
 
-        const char* texturePreview =
-            actor.Material->HasBaseColorTexture()
-                ? actor.Material->BaseColorTextureAssetID.c_str()
-                : "None";
+        Assets::AssetPickerOptions texturePickerOptions{};
+        texturePickerOptions.Type = Project::AssetType::Texture;
+        texturePickerOptions.AllowNone = true;
+        texturePickerOptions.TextureLibrary = &textureLibrary;
 
-        if (BeginComboPropertyRow("Base Color Texture", texturePreview))
+        std::string selectedTextureAssetID;
+
+        if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions,
+            actor.Material->BaseColorTextureAssetID, selectedTextureAssetID))
         {
-            const bool noneSelected = !actor.Material->HasBaseColorTexture();
-            if (EditorSelectable("None", noneSelected))
-                commands.SetMaterialBaseColorTextureAsset(scene, actor.ID, std::string{});
-
-            if (noneSelected) ImGui::SetItemDefaultFocus();
-            if (!textureAssetIDs.empty()) ImGui::Separator();
-
-            for (const std::string& textureAssetID : textureAssetIDs)
-            {
-                const bool selected = actor.Material->BaseColorTextureAssetID == textureAssetID;
-                if (EditorSelectable(textureAssetID.c_str(), selected))
-                {
-                    commands.SetMaterialBaseColorTextureAsset(
-                        scene,
-                        actor.ID,
-                        textureAssetID
-                    );
-                }
-
-                if (selected) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
+            commands.SetMaterialBaseColorTextureAsset(scene, actor.ID, selectedTextureAssetID);
         }
 
-        if (textureAssetIDs.empty())
+        if (!hasTextureAssets)
             DrawInspectorHint("No texture assets registered.");
         else if (!actor.Material->HasBaseColorTexture())
             DrawInspectorHint("No base color texture assigned.");
@@ -891,17 +714,15 @@ namespace Quiet::Renderer::UI
             {
                 DrawInspectorHint("Imported submeshes use these slots by their source material index.");
 
-                for (std::size_t slotIndex = 0;
-                     slotIndex < actor.StaticMesh->MaterialSlots.size();
-                     ++slotIndex)
+                for (std::size_t slotIndex = 0; slotIndex < actor.StaticMesh->MaterialSlots.size(); ++slotIndex)
                 {
                     DrawMaterialSlotEditor(
                         scene,
                         actor,
                         commands,
+                        projectContext,
                         actor.StaticMesh->MaterialSlots[slotIndex],
                         static_cast<std::uint32_t>(slotIndex),
-                        textureAssetIDs,
                         textureLibrary,
                         tracked,
                         uiScale
