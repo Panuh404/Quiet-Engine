@@ -539,6 +539,7 @@ namespace Quiet::Renderer::UI
                 // This must run immediately after ImGui::Image because the image
                 // must remain the active ImGui drag/drop target item.
                 const ViewportAssetDropVisual assetDropVisual = HandleViewportMeshAssetDrop(editorState, projectContext, meshLibrary);
+                if (viewportOverlayCallback) viewportOverlayCallback();
                 BuildViewportToolbar(editorState, imageMin);
 
                 DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
