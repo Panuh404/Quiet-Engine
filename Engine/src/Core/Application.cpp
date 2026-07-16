@@ -79,7 +79,6 @@ namespace
         {
             data.Projection[1][1] *= -1.0f;
         }
-
         return data;
     }
 
@@ -160,10 +159,7 @@ namespace Quiet::Core
         m_Input->EnableRawMouseMotionIfSupported(enabled);
         m_Input->ResetMouseDelta();
 
-        QUIET_CORE_TRACE(
-            "Mouse capture: {}. Toggle with Shift+F1.",
-            enabled ? "enabled" : "disabled"
-        );
+        QUIET_CORE_TRACE("Mouse capture: {}. Toggle with Shift+F1.", enabled ? "enabled" : "disabled");
     }
 
     void Application::InitializeCommonStartup()
@@ -179,9 +175,7 @@ namespace Quiet::Core
         if (!m_Window->IsVulkanSupported())
         {
             QUIET_CORE_ERROR("GLFW reports that Vulkan is not available.");
-            throw std::runtime_error(
-                "GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK."
-            );
+            throw std::runtime_error("GLFW reports that Vulkan is not available. Check your Vulkan loader, drivers, or SDK.");
         }
 
         m_Input = std::make_unique<Input::Input>(*m_Window);
@@ -241,10 +235,7 @@ namespace Quiet::Core
         const VkExtent2D initialRuntimeExtent = m_Renderer->GetSwapchainExtent();
         if (initialRuntimeExtent.width > 0 && initialRuntimeExtent.height > 0)
         {
-            m_Renderer->RequestViewportResize(
-                initialRuntimeExtent.width,
-                initialRuntimeExtent.height
-            );
+            m_Renderer->RequestViewportResize(initialRuntimeExtent.width, initialRuntimeExtent.height);
         }
 
         m_Scene->BeginRuntime(Scene::RuntimeMode::Play);
@@ -253,11 +244,8 @@ namespace Quiet::Core
 
     void Application::ShutdownCommon()
     {
-        if (m_EditorRuntimeController)
-            m_EditorRuntimeController->Shutdown();
-
-        if (m_Scene && m_Scene->IsRuntimeActive())
-            m_Scene->EndRuntime();
+        if (m_EditorRuntimeController) m_EditorRuntimeController->Shutdown();
+        if (m_Scene && m_Scene->IsRuntimeActive()) m_Scene->EndRuntime();
 
         m_EditorRuntimeController.reset();
         m_EditorSceneWorkflow.reset();
@@ -275,10 +263,7 @@ namespace Quiet::Core
 
     void Application::ProcessGlobalShortcuts()
     {
-        const bool shiftDown =
-            m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
-            m_Input->IsKeyDown(Input::KeyCode::RightShift);
-
+        const bool shiftDown = m_Input->IsKeyDown(Input::KeyCode::LeftShift) || m_Input->IsKeyDown(Input::KeyCode::RightShift);
         if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
         {
             ToggleMouseCapture();
@@ -291,49 +276,60 @@ namespace Quiet::Core
         const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
 
         if (swapchainExtent.width == 0 || swapchainExtent.height == 0) return;
-        if (currentViewportExtent.width == swapchainExtent.width &&
-            currentViewportExtent.height == swapchainExtent.height)
-            return;
+        if (currentViewportExtent.width == swapchainExtent.width && currentViewportExtent.height == swapchainExtent.height) return;
 
-        m_Renderer->RequestViewportResize(
-            swapchainExtent.width,
-            swapchainExtent.height
-        );
+        m_Renderer->RequestViewportResize(swapchainExtent.width, swapchainExtent.height);
         m_Renderer->ApplyPendingViewportResize();
     }
 
     void Application::ProcessEditorViewportResize(const Editor::EditorState &editorState)
     {
-        if (editorState.Viewport.Width == 0 || editorState.Viewport.Height == 0)
-            return;
+        if (editorState.Viewport.Width == 0 || editorState.Viewport.Height == 0) return;
 
         const VkExtent2D currentViewportExtent = m_Renderer->GetSceneViewportExtent();
+        if (currentViewportExtent.width == editorState.Viewport.Width && currentViewportExtent.height == editorState.Viewport.Height) return;
 
-        if (currentViewportExtent.width == editorState.Viewport.Width &&
-            currentViewportExtent.height == editorState.Viewport.Height)
-            return;
-
-        m_Renderer->RequestViewportResize(
-            editorState.Viewport.Width,
-            editorState.Viewport.Height
-        );
+        m_Renderer->RequestViewportResize(editorState.Viewport.Width, editorState.Viewport.Height);
     }
 
-    void Application::ProcessEditorViewportAssetDrop(Scene::Scene &activeScene, Editor::EditorState &editorState)
+    void Application::ProcessEditorViewportAssetDrop(Scene::Scene& activeScene, Editor::EditorState& editorState)
     {
         std::optional<Editor::EditorViewportAssetDropRequest> request = std::move(editorState.Viewport.PendingMeshAssetDrop);
-
         editorState.Viewport.PendingMeshAssetDrop.reset();
 
         if (!request.has_value() || !request->IsValid()) return;
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit) return;
-        if (!m_EditorController || !m_FreeCamera || !m_Renderer) return;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Viewport drop rejected",
+                "Mesh actors can only be created while the editor is in Edit mode.");
+            return;
+        }
+
+        if (!m_EditorController || !m_FreeCamera || !m_Renderer)
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Viewport drop failed",
+                "The editor viewport dependencies are not available.");
+            return;
+        }
 
         const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), request->AssetID);
-
-        if (!record || record->Type != Project::AssetType::Mesh)
+        if (!record)
         {
-            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not a registered mesh.", request->AssetID);
+            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not registered.", request->AssetID);
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Viewport drop failed",
+                "Asset '" + request->AssetID + "' is no longer registered.");
+            return;
+        }
+
+        if (record->Type != Project::AssetType::Mesh)
+        {
+            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not a mesh.", record->ID);
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Viewport drop failed",
+                "Asset '" + record->ID + "' is not a Mesh asset.");
             return;
         }
 
@@ -341,23 +337,32 @@ namespace Quiet::Core
         if (!mesh)
         {
             QUIET_CORE_WARN("Viewport asset drop rejected because mesh '{}' is not loaded.", record->ID);
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Viewport drop failed",
+                "Mesh asset '" + record->ID + "' is registered but not loaded.");
             return;
         }
 
         Math::Ray dropRay{};
         glm::vec3 actorPosition = m_FreeCamera->GetPosition() + m_FreeCamera->GetForwardVector() * 5.0f;
-
         if (Editor::BuildViewportPickRay(request->ScreenX, request->ScreenY, editorState.Viewport, *m_FreeCamera, *m_Renderer, dropRay))
         {
             actorPosition = CalculateViewportMeshDropPosition(dropRay, *mesh);
         }
 
         Editor::EditorCommands commands(*m_EditorController);
-
         if (!commands.CreateStaticMeshActor(activeScene, record->ID, record->ID, m_ProjectContext, m_Renderer->GetMeshLibrary(), actorPosition))
         {
             QUIET_CORE_WARN("Failed to create Static Mesh actor from dropped asset '{}'.", record->ID);
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Actor creation failed",
+                "Quiet could not create a Static Mesh actor from asset '" + record->ID + "'.");
+            return;
         }
+
+        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+            "Mesh actor created",
+            "Created and selected a Static Mesh actor using asset '" + record->ID + "'.");
     }
 
     void Application::ProcessEditorRequests(Editor::EditorState &editorState)
@@ -459,8 +464,7 @@ namespace Quiet::Core
                     {
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                             "Assets reloaded",
-                            "Project assets were reloaded successfully."
-                        );
+                            "Project assets were reloaded successfully.");
                     }
 
                     RelinkSceneStaticMeshes(*m_Scene);
@@ -571,14 +575,9 @@ namespace Quiet::Core
         ProcessGlobalShortcuts();
 
         const float deltaTime = CalculateDeltaTime(previousTime);
+        const bool deferViewportResize = m_Spec.IsEditor() && m_Input->IsMouseButtonDown(Input::MouseCode::ButtonLeft);
 
-        const bool deferViewportResize =
-            m_Spec.IsEditor() &&
-            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonLeft);
-
-        if (!deferViewportResize)
-            m_Renderer->ApplyPendingViewportResize();
-
+        if (!deferViewportResize) m_Renderer->ApplyPendingViewportResize();
         auto& uiLayer = m_Renderer->GetImGuiLayer();
 
         FrameContext frame{};
@@ -723,18 +722,14 @@ namespace Quiet::Core
         return m_FreeCamera->GetPosition();
     }
 
-    void Application::UpdateEditorSceneForFrame(Scene::Scene &activeScene,
-                                                Editor::EditorState &editorState,
-                                                float deltaTime)
+    void Application::UpdateEditorSceneForFrame(Scene::Scene &activeScene, Editor::EditorState &editorState, float deltaTime)
     {
         const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
         const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
         const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-        const bool isUsingEditorFlyControls =
-            (isEditMode || isSimulateMode) &&
-            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        const bool isUsingEditorFlyControls = (isEditMode || isSimulateMode) && m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
 
         if (!isPilotingEditCamera && isUsingEditorFlyControls)
         {
@@ -748,10 +743,7 @@ namespace Quiet::Core
         activeScene.Update(deltaTime);
     }
 
-    void Application::BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer &uiLayer,
-                                              Scene::Scene &activeScene,
-                                              Editor::EditorState &editorState,
-                                              float deltaTime)
+    void Application::BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer &uiLayer, Scene::Scene &activeScene, Editor::EditorState &editorState, float deltaTime)
     {
         const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
         uiLayer.BuildEditorUI(
@@ -786,10 +778,7 @@ namespace Quiet::Core
         std::uint32_t runtimeViewportWidth = 0;
         std::uint32_t runtimeViewportHeight = 0;
 
-        uiLayer.BuildRuntimeUI(
-            runtimeViewportWidth,
-            runtimeViewportHeight,
-            m_Renderer->GetSceneViewportTextureID());
+        uiLayer.BuildRuntimeUI(runtimeViewportWidth, runtimeViewportHeight, m_Renderer->GetSceneViewportTextureID());
     }
 
     bool Application::UpdatePilotedEditorCamera(float deltaTime)
@@ -797,9 +786,7 @@ namespace Quiet::Core
         if (!m_Spec.IsEditor() || !m_EditorController) return false;
 
         auto& editorState = m_EditorController->GetState();
-
-        if (editorState.Scene.Mode != Editor::SceneMode::Edit ||
-            !editorState.Selection.PilotedCameraActorID.has_value())
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit || !editorState.Selection.PilotedCameraActorID.has_value())
         {
             return false;
         }
@@ -812,7 +799,6 @@ namespace Quiet::Core
         }
 
         Scene::CameraPilotState state = Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
-
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
 
@@ -841,11 +827,7 @@ namespace Quiet::Core
             }
             else
             {
-                QUIET_CORE_WARN(
-                    "Could not relink actor '{}' to missing mesh resource '{}'.",
-                    actor.Name,
-                    meshID
-                );
+                QUIET_CORE_WARN("Could not relink actor '{}' to missing mesh resource '{}'.", actor.Name, meshID);
             }
         }
     }

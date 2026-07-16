@@ -45,20 +45,12 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.width) /
             static_cast<float>(sceneExtent.height);
 
-        const auto cameraData =
-            camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
 
         const ImVec2 mousePosition = ImGui::GetMousePos();
         if (m_State.Viewport.ShowDebugIcons)
         {
-            const std::optional<Core::UUID> debugIconHit =
-                PickViewportDebugIcon(
-                    scene,
-                    cameraData,
-                    m_State.Viewport,
-                    mousePosition
-                );
-
+            const std::optional<Core::UUID> debugIconHit = PickViewportDebugIcon(scene, cameraData, m_State.Viewport, mousePosition);
             if (debugIconHit.has_value())
             {
                 m_State.Selection.SelectedActorID = debugIconHit;
@@ -68,18 +60,10 @@ namespace Quiet::Editor
         }
 
         Math::Ray ray{};
-        if (!BuildViewportPickRay(
-                mousePosition.x,
-                mousePosition.y,
-                m_State.Viewport,
-                camera,
-                renderer,
-                ray))
+        if (!BuildViewportPickRay(mousePosition.x, mousePosition.y, m_State.Viewport, camera, renderer, ray))
             return;
 
-        const std::optional<Core::UUID> staticMeshHit =
-            PickStaticMeshActor(scene, ray);
-
+        const std::optional<Core::UUID> staticMeshHit = PickStaticMeshActor(scene, ray);
         if (staticMeshHit.has_value())
         {
             m_State.Selection.SelectedActorID = staticMeshHit;
@@ -193,56 +177,27 @@ namespace Quiet::Editor
             for (const Scene::Actor& actor : scene.GetActors())
             {
                 if (!actor.Camera.has_value() && !actor.DirectionalLight.has_value())
-                {
                     continue;
-                }
 
                 ImVec2 screenPosition{};
-                if (!ProjectWorldToViewport(
-                        actor.Transform.WorldTransform.Position,
-                        cameraData,
-                        m_State.Viewport,
-                        screenPosition))
-                {
+                if (!ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, m_State.Viewport, screenPosition))
                     continue;
-                }
 
                 const bool selected =
                     m_State.Selection.SelectedActorID.has_value() &&
                     m_State.Selection.SelectedActorID.value() == actor.ID;
 
                 if (actor.Camera.has_value())
-                {
-                    DrawCameraFrustumOverlay(
-                        drawList,
-                        actor,
-                        actor.Camera.value(),
-                        cameraData,
-                        m_State.Viewport,
-                        selected
-                    );
-                }
+                    DrawCameraFrustumOverlay(drawList, actor, actor.Camera.value(), cameraData, m_State.Viewport, selected);
 
                 if (actor.DirectionalLight.has_value())
-                {
-                    DrawDirectionalLightDirectionOverlay(
-                        drawList,
-                        actor,
-                        actor.DirectionalLight.value(),
-                        cameraData,
-                        m_State.Viewport,
-                        selected
-                    );
-                }
+                    DrawDirectionalLightDirectionOverlay(drawList, actor, actor.DirectionalLight.value(), cameraData, m_State.Viewport, selected);
 
                 float verticalOffset = 0.0f;
 
                 if (actor.Camera.has_value())
                 {
-                    const ImVec2 iconPosition(
-                        screenPosition.x,
-                        screenPosition.y + verticalOffset
-                    );
+                    const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
 
                     DrawCameraDebugIcon(drawList, iconPosition, selected);
                     DrawDebugLabel(drawList, iconPosition, "Camera", selected);
@@ -252,10 +207,7 @@ namespace Quiet::Editor
 
                 if (actor.DirectionalLight.has_value())
                 {
-                    const ImVec2 iconPosition(
-                        screenPosition.x,
-                        screenPosition.y + verticalOffset
-                    );
+                    const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
 
                     DrawDirectionalLightDebugIcon(drawList, iconPosition, selected);
                     DrawDebugLabel(drawList, iconPosition, "Light", selected);
@@ -265,17 +217,10 @@ namespace Quiet::Editor
 
         if (m_State.Selection.SelectedActorID.has_value())
         {
-            const Scene::Actor* selectedActor =
-                scene.FindActorByID(m_State.Selection.SelectedActorID.value());
-
+            const Scene::Actor* selectedActor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
             if (selectedActor)
             {
-                DrawSelectedActorViewportOverlay(
-                    *selectedActor,
-                    cameraData,
-                    m_State.Viewport,
-                    drawList
-                );
+                DrawSelectedActorViewportOverlay(*selectedActor, cameraData, m_State.Viewport, drawList);
             }
         }
 

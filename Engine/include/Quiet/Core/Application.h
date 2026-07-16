@@ -91,14 +91,8 @@ namespace Quiet::Core
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
 
-        void UpdateEditorSceneForFrame(Scene::Scene& activeScene,
-                               Editor::EditorState& editorState,
-                               float deltaTime);
-        void BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer& uiLayer,
-                                     Scene::Scene& activeScene,
-                                     Editor::EditorState& editorState,
-                                     float deltaTime);
-
+        void UpdateEditorSceneForFrame(Scene::Scene& activeScene, Editor::EditorState& editorState, float deltaTime);
+        void BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer& uiLayer, Scene::Scene& activeScene, Editor::EditorState& editorState, float deltaTime);
         void UpdateSandboxSceneForFrame(Scene::Scene& activeScene, float deltaTime);
 
         void BuildSandboxUI(Renderer::UI::ImGuiLayer& uiLayer);
