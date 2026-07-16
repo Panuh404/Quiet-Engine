@@ -23,7 +23,7 @@ namespace
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
     namespace Assets = Quiet::Renderer::UI::Assets;
 
-    std::array<char, 128> g_AssetPickerSearchBuffer;
+    std::array<char, 128> g_AssetPickerSearchBuffer{};
     ImGuiID g_ActiveAssetPickerID = 0;
 
     bool MatchesAssetPickerSearch(const Quiet::Project::AssetRecord& record, const std::string& searchQuery)
@@ -394,36 +394,77 @@ namespace Quiet::Renderer::UI::Assets
         const std::string &currentAssetID,
         std::string &outSelectedAssetID)
     {
-        const Project::AssetRecord* currentRecord = currentAssetID.empty()
-            ? nullptr
-            : Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), currentAssetID);
+        const bool hasCurrentSelection =
+    !currentAssetID.empty();
 
-        const bool currentSelectionInvalid = !currentAssetID.empty() && (!currentRecord || currentRecord->Type != options.Type);
-        const std::string previewLabel =
-            currentAssetID.empty()
-                ? "None"
-                : currentSelectionInvalid
-                    ? "Missing: " + currentAssetID
-                    : currentAssetID;
+    const Project::AssetRecord* currentRecord = hasCurrentSelection ? Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), currentAssetID) : nullptr;
+    const bool currentRecordMissing = hasCurrentSelection && !currentRecord;
+    const bool currentTypeMismatch = currentRecord && currentRecord->Type != options.Type;
 
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        ImGui::SetNextWindowSizeConstraints(SZ::Px(ImVec2(380.0f, 220.0f)), SZ::Px(ImVec2(560.0f, 460.0f)));
+    AssetPathDiagnostics currentDiagnostics{};
+    if (currentRecord && !currentTypeMismatch)
+    {
+        currentDiagnostics = InspectAssetPath(projectContext, *currentRecord);
+    }
 
-        if (currentSelectionInvalid)
+    const bool currentSourceMissing = currentRecord && !currentTypeMismatch && currentDiagnostics.IsMissing();
+    const bool currentMeshNotLoaded = currentRecord && !currentTypeMismatch &&
+        currentRecord->Type == Project::AssetType::Mesh && options.MeshLibrary && !options.MeshLibrary->TryGet(currentRecord->ID);
+
+    std::string previewLabel = "None";
+    if (hasCurrentSelection)
+    {
+        if (currentRecordMissing)
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            previewLabel = "Missing: " + currentAssetID;
         }
-
-        const bool pickerOpen = EditorBeginCombo(id, previewLabel.c_str(), ImGuiComboFlags_HeightLargest);
-
-        if (currentSelectionInvalid) ImGui::PopStyleColor();
-        if (!pickerOpen)
+        else if (currentTypeMismatch)
         {
-            const ImVec2 fieldMin = ImGui::GetItemRectMin();
-            const ImVec2 fieldMax = ImGui::GetItemRectMax();
-
-            return DrawAssetPickerDropTarget(projectContext, options, fieldMin, fieldMax, outSelectedAssetID);
+            previewLabel = "Invalid Type: " + currentAssetID;
         }
+        else if (currentSourceMissing)
+        {
+            previewLabel = MakeAssetPathDiagnosticLabel(currentDiagnostics) + ": " + currentAssetID;
+        }
+        else if (currentMeshNotLoaded)
+        {
+            previewLabel = "Not Loaded: " + currentAssetID;
+        }
+        else
+        {
+            previewLabel = currentAssetID;
+        }
+    }
+
+    const bool currentSelectionError = currentRecordMissing || currentTypeMismatch || currentSourceMissing;
+    const bool currentSelectionWarning = !currentSelectionError && currentMeshNotLoaded;
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+    ImGui::SetNextWindowSizeConstraints(SZ::Px(ImVec2(380.0f, 220.0f)), SZ::Px(ImVec2(560.0f, 460.0f)));
+
+    if (currentSelectionError)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+    }
+    else if (currentSelectionWarning)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+    }
+
+    const bool pickerOpen = EditorBeginCombo(id, previewLabel.c_str(), ImGuiComboFlags_HeightLargest);
+
+    if (currentSelectionError || currentSelectionWarning)
+    {
+        ImGui::PopStyleColor();
+    }
+
+    if (!pickerOpen)
+    {
+        const ImVec2 fieldMin = ImGui::GetItemRectMin();
+        const ImVec2 fieldMax = ImGui::GetItemRectMax();
+
+        return DrawAssetPickerDropTarget(projectContext, options, fieldMin, fieldMax, outSelectedAssetID);
+    }
         const ImGuiID pickerID = ImGui::GetID(id);
 
         if (ImGui::IsWindowAppearing() || g_ActiveAssetPickerID != pickerID)
@@ -440,43 +481,51 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (currentSelectionInvalid)
+        if (currentRecordMissing)
         {
-            ImGui::PushStyleColor(
-                ImGuiCol_Text,
-                EditorColor::Error
-            );
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("The currently assigned asset '%s' is no longer present in the registry.", currentAssetID.c_str());
+            ImGui::PopStyleColor();
 
-            ImGui::TextWrapped(
-                "The currently assigned asset is no longer "
-                "present in the registry."
-            );
+            ImGui::Spacing();
+        }
+        else if (currentTypeMismatch)
+        {
+            const std::string assignedType = std::string(Project::ToString(currentRecord->Type));
+            const std::string requiredType = std::string(Project::ToString(options.Type));
 
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("The assigned asset is type %s, but this field requires a %s asset.", assignedType.c_str(), requiredType.c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+        }
+        else if (currentSourceMissing)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("%s", MakeAssetPathDiagnosticDescription(currentDiagnostics).c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+        }
+        else if (currentMeshNotLoaded)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+            ImGui::TextWrapped("The assigned mesh is registered but not loaded. Reload project assets before using it.");
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
         }
 
-        std::vector<const Project::AssetRecord*> records =
-            Project::AssetRegistryIO::GetAssetsByType(
-                projectContext.GetAssetRegistry(),
-                options.Type
-            );
-
+        std::vector<const Project::AssetRecord*> records = Project::AssetRegistryIO::GetAssetsByType(projectContext.GetAssetRegistry(), options.Type);
         std::sort(
             records.begin(),
             records.end(),
-            [](const Project::AssetRecord* left,
-               const Project::AssetRecord* right)
+            [](const Project::AssetRecord* left, const Project::AssetRecord* right)
             {
-                if (!left)
-                    return false;
-
-                if (!right)
-                    return true;
-
-                return ToLowerCopy(left->ID) <
-                       ToLowerCopy(right->ID);
+                if (!left) return false;
+                if (!right) return true;
+                return ToLowerCopy(left->ID) < ToLowerCopy(right->ID);
             }
         );
 

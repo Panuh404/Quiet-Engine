@@ -3,12 +3,12 @@
 #include <string>
 #include <vector>
 
-#include "ImGuiAssetBrowserTypes.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Renderer::UI::Assets

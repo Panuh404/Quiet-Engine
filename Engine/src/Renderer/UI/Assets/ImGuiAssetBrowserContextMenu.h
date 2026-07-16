@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "ImGuiAssetBrowserTypes.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectContext.h"
 

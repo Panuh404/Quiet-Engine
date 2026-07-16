@@ -26,9 +26,14 @@
 #include "Quiet/Project/ProjectWorkflow.h"
 #include "Quiet/Renderer/RenderConventions.h"
 
+#include "Quiet/Math/Geometry.h"
+#include "Quiet/Project/AssetRecord.h"
+#include "Quiet/Project/AssetRegistry.h"
+
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
