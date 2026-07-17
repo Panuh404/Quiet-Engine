@@ -82,6 +82,9 @@ The editor target is currently the primary development target.
 * local/world gizmo mode
 * snapping support
 * focus selected actor
+* drag mesh assets from the Content Browser into the Viewport
+* cursor-ray actor placement with ground-plane fallback
+* undoable Static Mesh actor creation from asset drops
 
 ### Hierarchy
 
@@ -113,6 +116,10 @@ Folders are editor organization nodes only. They do not change runtime transform
 * add component menu
 * component action menu
 * reset transform action
+* searchable Mesh and Texture asset pickers
+* asset search by registry ID and path
+* texture previews and source diagnostics in picker results
+* drag/drop Mesh and Texture assignment
 
 ### Scene Settings
 
@@ -137,9 +144,9 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * mesh and texture asset records
 * built-in resources
 * asset reload action
-* asset registration UI
+* automatic asset import and registration UI
 * asset file dialog
-* search by ID, path, or type
+* search assets by ID, path, or type and folders by name or path
 * All / Meshes / Textures filters
 * compact asset table
 * selected row highlight
@@ -160,6 +167,10 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * project-relative registry paths for project assets
 * missing, invalid, pathless, and external source diagnostics
 * diagnostics filters for Issues, Missing, and External assets
+* physical child folders in Browser and List content views
+* folder cards and rows with navigation, context menus, and drop targets
+* Back and Forward folder navigation history
+* typed asset drag payloads shared with the Inspector and Viewport
 * asset context menu:
 
   * Inspect
@@ -489,7 +500,12 @@ F6                  Simulate / Stop Simulate
 * create, rename, and delete empty folders
 * move assets between folders
 * project-relative asset paths by default
-* missing/external asset diagnostics
+* missing, invalid, pathless, and external asset diagnostics
+* Content Browser child-folder cards and rows
+* Back and Forward asset-folder navigation history
+* searchable Inspector asset pickers
+* drag/drop Mesh and Texture assignment in the Inspector
+* drag/drop Static Mesh actor creation in the Viewport
 
 ### Upcoming Areas
 
@@ -499,7 +515,6 @@ F6                  Simulate / Stop Simulate
 * camera speed settings
 * component copy/paste
 * reset component values
-* material/mesh assignment UX
 * recent scenes per project
 * better unsaved-change prompts
 * project settings
