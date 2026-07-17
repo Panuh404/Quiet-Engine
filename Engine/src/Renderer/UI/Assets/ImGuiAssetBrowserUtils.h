@@ -79,6 +79,22 @@ namespace Quiet::Renderer::UI::Assets
     void RemapAssetFolderHistoryAfterRename(AssetBrowserState& state, const std::string& previousFolder, const std::string& renamedFolder);
     void RepairAssetFolderHistoryAfterDelete(AssetBrowserState& state, const std::string& deletedFolder, const std::string& fallbackFolder);
 
+    // Asset selection
+    [[nodiscard]] bool IsAssetSelected(const AssetBrowserState& state, const std::string& assetID);
+
+    void ClearAssetSelection(AssetBrowserState& state);
+    void SelectSingleAsset(AssetBrowserState& state, const std::string& assetID);
+    void HandleAssetSelectionClick(
+        AssetBrowserState& state,
+        const std::vector<const Project::AssetRecord*>& orderedAssets,
+        const std::string& assetID,
+        bool toggleModifier,
+        bool rangeModifier
+    );
+
+    void RemoveAssetFromSelection(AssetBrowserState& state, const std::string& assetID);
+    void RepairAssetSelection(AssetBrowserState& state, const std::vector<const Project::AssetRecord*>& folderAssets);
+
     // Path diagnostics
     struct AssetPathDiagnostics
     {

@@ -228,8 +228,7 @@ namespace Quiet::Renderer::UI::Assets
         Editor::EditorState& editorState,
         const Scene::Scene& scene,
         const Vulkan::TextureLibrary& textureLibrary,
-        std::string& selectedContentFolder,
-        std::string& selectedDetailsAssetID,
+        AssetBrowserState& state,
         std::string& pendingNavigateFolder,
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
@@ -239,6 +238,9 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserThumbnailSize thumbnailSize,
         float uiScale)
     {
+        auto& selectedContentFolder = state.SelectedContentFolder;
+        auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
+
         const bool runtimeModeActive = editorState.Scene.Mode != Editor::SceneMode::Edit;
         const AssetBrowserCardMetrics metrics = MakeAssetBrowserCardMetrics(thumbnailSize);
         const float availableWidth = ImGui::GetContentRegionAvail().x;
@@ -284,14 +286,14 @@ namespace Quiet::Renderer::UI::Assets
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             {
+                ClearAssetSelection(state);
                 selectedContentFolder = folder.RelativePath;
-                selectedDetailsAssetID.clear();
             }
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
             {
+                ClearAssetSelection(state);
                 selectedContentFolder = folder.RelativePath;
-                selectedDetailsAssetID.clear();
             }
 
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -387,7 +389,7 @@ namespace Quiet::Renderer::UI::Assets
             const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
             const std::string displayName = MakeAssetDisplayName(record);
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
-            const bool isSelectedAsset = selectedDetailsAssetID == record.ID;
+            const bool isSelectedAsset = IsAssetSelected(state, record.ID);
 
             const float cardWidth = std::max(metrics.MinimumCardWidth, ImGui::GetContentRegionAvail().x);
             const float cardHeight = metrics.CardHeight;
@@ -407,16 +409,25 @@ namespace Quiet::Renderer::UI::Assets
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             {
-                selectedDetailsAssetID = record.ID;
-                selectedContentFolder.clear();
+                const ImGuiIO& io = ImGui::GetIO();
+                HandleAssetSelectionClick(state, visibleAssets, record.ID, io.KeyCtrl, io.KeyShift);
             }
 
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 pendingDetailsAssetID = record.ID;
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-                selectedContentFolder.clear();
-
+            {
+                if (!IsAssetSelected(state, record.ID))
+                {
+                    SelectSingleAsset(state, record.ID);
+                }
+                else
+                {
+                    selectedDetailsAssetID = record.ID;
+                    selectedContentFolder.clear();
+                }
+            }
             DrawAssetContextMenu(
                 hitID.c_str(),
                 projectContext,
@@ -520,5 +531,16 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         ImGui::EndTable();
+
+        const bool emptyContentClicked =
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+            && !ImGui::IsAnyItemHovered();
+
+        if (emptyContentClicked)
+        {
+            ClearAssetSelection(state);
+            selectedContentFolder.clear();
+        }
     }
 }

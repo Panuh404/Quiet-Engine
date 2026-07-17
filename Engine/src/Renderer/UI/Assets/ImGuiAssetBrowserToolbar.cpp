@@ -97,6 +97,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,
         AssetBrowserViewMode& viewMode,
         AssetBrowserThumbnailSize& thumbnailSize,
+        std::size_t selectedAssetCount,
         bool& openImportPopup)
     {
         const Project::AssetRegistry& registry = projectContext.GetAssetRegistry();
@@ -118,6 +119,15 @@ namespace Quiet::Renderer::UI::Assets
 
         if (EditorButton("Reload", SZ::Px(ImVec2(86.0f, 0.0f))))
             editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+
+        if (selectedAssetCount > 0)
+        {
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
+            ImGui::Text("%zu selected", selectedAssetCount);
+            ImGui::PopStyleColor();
+        }
 
         ImGui::SameLine();
 

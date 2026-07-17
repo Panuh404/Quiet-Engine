@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 #include <string>
-
 #include <glm/vec3.hpp>
 
 #include "Quiet/Project/ProjectContext.h"
@@ -32,5 +32,11 @@ namespace Quiet::Renderer::UI::Assets
         const Vulkan::TextureLibrary& textureLibrary,
         const std::string& selectedAssetID,
         float uiScale
+    );
+
+    void DrawAssetSelectionSummaryInline(
+        const Project::ProjectContext& projectContext,
+        const std::vector<std::string>& selectedAssetIDs,
+        const std::string& primaryAssetID
     );
 }

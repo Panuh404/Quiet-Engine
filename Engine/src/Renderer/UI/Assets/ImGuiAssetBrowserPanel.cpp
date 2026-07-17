@@ -236,6 +236,7 @@ namespace Quiet::Renderer::UI::Assets
                 assetDiagnosticsFilter,
                 assetViewMode,
                 assetThumbnailSize,
+                state.SelectedAssetIDs.size(),
                 openImportPopup
             );
 
@@ -323,20 +324,7 @@ namespace Quiet::Renderer::UI::Assets
 
                     const std::vector<const Project::AssetRecord*> folderAssets = BuildAssetFolderList(projectContext, registry, currentAssetFolder);
 
-                    if (!selectedDetailsAssetID.empty())
-                    {
-                        const bool selectedAssetIsInCurrentFolder =
-                            std::any_of(
-                                folderAssets.begin(),
-                                folderAssets.end(),
-                                [&](const Project::AssetRecord* record)
-                                {
-                                    return record && record->ID == selectedDetailsAssetID;
-                                }
-                            );
-
-                        if (!selectedAssetIsInCurrentFolder) selectedDetailsAssetID.clear();
-                    }
+                    RepairAssetSelection(state, folderAssets);
 
                     const std::vector<const Project::AssetRecord*> visibleAssets =
                         BuildVisibleAssetList(
@@ -386,8 +374,7 @@ namespace Quiet::Renderer::UI::Assets
                             editorState,
                             scene,
                             textureLibrary,
-                            selectedContentFolder,
-                            selectedDetailsAssetID,
+                            state,
                             pendingNavigateFolder,
                             folderActionRequest,
                             assetMoveRequest,
@@ -408,8 +395,7 @@ namespace Quiet::Renderer::UI::Assets
                             scene,
                             meshLibrary,
                             textureLibrary,
-                            selectedContentFolder,
-                            selectedDetailsAssetID,
+                            state,
                             pendingNavigateFolder,
                             folderActionRequest,
                             assetMoveRequest,
@@ -462,8 +448,7 @@ namespace Quiet::Renderer::UI::Assets
                         }
                         else
                         {
-                            if (selectedDetailsAssetID == removedAssetID)
-                                selectedDetailsAssetID.clear();
+                            RemoveAssetFromSelection(state, removedAssetID);
 
                             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                                 "Asset removed",
@@ -489,7 +474,14 @@ namespace Quiet::Renderer::UI::Assets
                     const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
                     if (!selectedAssetStillExists) selectedDetailsAssetID.clear();
 
-                    DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, scene, selectedDetailsAssetID, context.UIScale);
+                    if (state.SelectedAssetIDs.size() > 1)
+                    {
+                        DrawAssetSelectionSummaryInline(projectContext, state.SelectedAssetIDs, selectedDetailsAssetID);
+                    }
+                    else
+                    {
+                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, scene, selectedDetailsAssetID, context.UIScale);
+                    }
                     if (useSplitDetailsLayout) ImGui::EndChild();
                 }
                 ImGui::EndChild();

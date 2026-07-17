@@ -16,6 +16,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,
         AssetBrowserViewMode& viewMode,
         AssetBrowserThumbnailSize& thumbnailSize,
+        std::size_t selectedAssetCount,
         bool& openImportPopup
     );
 }

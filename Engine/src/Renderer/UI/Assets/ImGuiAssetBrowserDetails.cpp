@@ -463,4 +463,81 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
+    void DrawAssetSelectionSummaryInline(const Project::ProjectContext &projectContext,
+                                         const std::vector<std::string> &selectedAssetIDs,
+                                         const std::string &primaryAssetID)
+    {
+        if (selectedAssetIDs.size() < 2)
+        {
+            DrawAssetSelectionEmptyState();
+            return;
+        }
+
+        std::uint32_t validCount = 0;
+        std::uint32_t meshCount = 0;
+        std::uint32_t textureCount = 0;
+        std::uint32_t builtInCount = 0;
+        std::uint32_t issueCount = 0;
+        std::uint32_t missingCount = 0;
+        std::uint32_t externalCount = 0;
+
+        for (const std::string& assetID : selectedAssetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record) continue;
+
+            ++validCount;
+            if (record->Type == Project::AssetType::Mesh) ++meshCount;
+            else if (record->Type == Project::AssetType::Texture) ++textureCount;
+
+            if (record->BuiltIn) ++builtInCount;
+
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
+            if (diagnostics.HasIssue()) ++issueCount;
+            if (diagnostics.IsMissing()) ++missingCount;
+            if (diagnostics.External) ++externalCount;
+        }
+
+        const float labelWidth = SZ::Px(112.0f);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(14.0f, 12.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
+
+        const float availableHeight = ImGui::GetContentRegionAvail().y;
+        const float panelHeight = std::max(availableHeight, SZ::Px(260.0f));
+
+        ImGui::BeginChild("##AssetMultiSelectionDetails", ImVec2(0.0f, panelHeight), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+            ImGui::Text("%zu assets selected", selectedAssetIDs.size());
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            DrawDetailRowUInt("Valid", validCount, labelWidth);
+            DrawDetailRowUInt("Meshes", meshCount, labelWidth);
+            DrawDetailRowUInt("Textures", textureCount, labelWidth);
+            DrawDetailRowUInt("Built In", builtInCount, labelWidth);
+            DrawDetailRowUInt("Issues", issueCount, labelWidth);
+            DrawDetailRowUInt("Missing", missingCount, labelWidth);
+            DrawDetailRowUInt("External", externalCount, labelWidth);
+            DrawDetailRowWrapped("Primary", primaryAssetID, labelWidth);
+
+            DrawDetailsSectionTitle("Selected Assets" );
+            for (const std::string& assetID : selectedAssetIDs)
+            {
+                const bool primary = assetID == primaryAssetID;
+                ImGui::PushStyleColor(ImGuiCol_Text, primary ? EditorColor::Accent : EditorColor::Text);
+                ImGui::BulletText("%s%s", assetID.c_str(), primary ? "  (Primary)" : "");
+                ImGui::PopStyleColor();
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
 }

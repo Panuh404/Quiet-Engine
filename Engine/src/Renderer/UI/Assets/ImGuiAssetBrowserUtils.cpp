@@ -10,6 +10,31 @@ namespace
 {
     namespace Assets = Quiet::Renderer::UI::Assets;
 
+    bool ContainsAssetID(const std::vector<std::string>& assetIDs, const std::string& assetID)
+    {
+        return std::find(
+            assetIDs.begin(),
+            assetIDs.end(),
+            assetID) != assetIDs.end();
+    }
+
+    bool ContainsAssetRecordID(const std::vector<const Quiet::Project::AssetRecord*>& records, const std::string& assetID)
+    {
+        return std::any_of(
+            records.begin(),
+            records.end(),
+            [&](const Quiet::Project::AssetRecord* record)
+            {
+                return record && record->ID == assetID;
+            }
+        );
+    }
+
+    void AddAssetIDIfMissing(std::vector<std::string>& assetIDs, const std::string& assetID)
+    {
+        if (!ContainsAssetID(assetIDs, assetID)) assetIDs.push_back(assetID);
+    }
+
     bool IsSameOrDescendantFolder(const std::string& candidateFolder, const std::string& parentFolder)
     {
         if (candidateFolder == parentFolder) return true;
@@ -33,7 +58,7 @@ namespace
     void ClearContentSelection(Assets::AssetBrowserState& state)
     {
         state.SelectedContentFolder.clear();
-        state.SelectedDetailsAssetID.clear();
+        Assets::ClearAssetSelection(state);
     }
 
     void CollapseAdjacentHistoryEntries(Assets::AssetBrowserState& state)
@@ -443,13 +468,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (currentEntry != history.end())
             {
-                state.FolderHistoryIndex =
-                    static_cast<std::size_t>(
-                        std::distance(
-                            history.begin(),
-                            currentEntry
-                        )
-                    );
+                state.FolderHistoryIndex = static_cast<std::size_t>(std::distance(history.begin(), currentEntry));
             }
             else
             {
@@ -460,10 +479,7 @@ namespace Quiet::Renderer::UI::Assets
 
         if (history[state.FolderHistoryIndex] == state.CurrentAssetFolder) return;
         history.erase(
-            history.begin() +
-                static_cast<std::ptrdiff_t>(
-                    state.FolderHistoryIndex + 1
-                ),
+            history.begin() + static_cast<std::ptrdiff_t>(state.FolderHistoryIndex + 1),
             history.end()
         );
 
@@ -549,6 +565,161 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         CollapseAdjacentHistoryEntries(state);
+    }
+
+    bool IsAssetSelected(const AssetBrowserState &state, const std::string &assetID)
+    {
+        return ContainsAssetID(state.SelectedAssetIDs, assetID);
+    }
+
+    void ClearAssetSelection(AssetBrowserState &state)
+    {
+        state.SelectedAssetIDs.clear();
+        state.SelectionAnchorAssetID.clear();
+        state.SelectedDetailsAssetID.clear();
+    }
+
+    void SelectSingleAsset(AssetBrowserState &state, const std::string &assetID)
+    {
+        state.SelectedAssetIDs.clear();
+
+        if (assetID.empty())
+        {
+            state.SelectionAnchorAssetID.clear();
+            state.SelectedDetailsAssetID.clear();
+            return;
+        }
+
+        state.SelectedAssetIDs.push_back(assetID);
+        state.SelectionAnchorAssetID = assetID;
+        state.SelectedDetailsAssetID = assetID;
+        state.SelectedContentFolder.clear();
+    }
+
+    void HandleAssetSelectionClick(AssetBrowserState &state, const std::vector<const Project::AssetRecord *> &orderedAssets,
+        const std::string &assetID, bool toggleModifier, bool rangeModifier)
+    {
+        if (assetID.empty()) return;
+
+        const auto clickedIterator = std::find_if(
+            orderedAssets.begin(),
+            orderedAssets.end(),
+            [&](const Project::AssetRecord* record)
+            {
+                return record && record->ID == assetID;
+            }
+        );
+
+        if (clickedIterator == orderedAssets.end()) return;
+        if (rangeModifier && !state.SelectionAnchorAssetID.empty())
+        {
+            const auto anchorIterator = std::find_if(
+                orderedAssets.begin(),
+                orderedAssets.end(),
+                [&](const Project::AssetRecord* record)
+                {
+                    return record && record->ID == state.SelectionAnchorAssetID;
+                }
+            );
+
+            if (anchorIterator != orderedAssets.end())
+            {
+                const std::size_t clickedIndex = static_cast<std::size_t>(std::distance(orderedAssets.begin(), clickedIterator));
+                const std::size_t anchorIndex = static_cast<std::size_t>(std::distance(orderedAssets.begin(), anchorIterator));
+
+                const std::size_t rangeStart = std::min(clickedIndex, anchorIndex);
+                const std::size_t rangeEnd = std::max(clickedIndex, anchorIndex);
+
+                if (!toggleModifier) state.SelectedAssetIDs.clear();
+
+                for (std::size_t index = rangeStart; index <= rangeEnd; ++index)
+                {
+                    const Project::AssetRecord* record = orderedAssets[index];
+                    if (record)
+                    {
+                        AddAssetIDIfMissing(state.SelectedAssetIDs, record->ID);
+                    }
+                }
+
+                state.SelectedDetailsAssetID = assetID;
+                state.SelectedContentFolder.clear();
+                return;
+            }
+        }
+
+        if (!toggleModifier)
+        {
+            SelectSingleAsset(state, assetID);
+            return;
+        }
+
+        const auto selectedIterator = std::find(
+                state.SelectedAssetIDs.begin(),
+                state.SelectedAssetIDs.end(),
+                assetID
+            );
+
+        if (selectedIterator == state.SelectedAssetIDs.end())
+        {
+            state.SelectedAssetIDs.push_back(assetID);
+            state.SelectedDetailsAssetID = assetID;
+        }
+        else
+        {
+            const bool removedPrimary = state.SelectedDetailsAssetID == assetID;
+            state.SelectedAssetIDs.erase(selectedIterator);
+
+            if (removedPrimary)
+            {
+                state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+            }
+        }
+
+        state.SelectionAnchorAssetID = state.SelectedDetailsAssetID;
+        state.SelectedContentFolder.clear();
+    }
+
+    void RemoveAssetFromSelection(AssetBrowserState &state, const std::string &assetID)
+    {
+        state.SelectedAssetIDs.erase(std::remove(state.SelectedAssetIDs.begin(), state.SelectedAssetIDs.end(), assetID),state.SelectedAssetIDs.end());
+        if (state.SelectionAnchorAssetID == assetID)
+        {
+            state.SelectionAnchorAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+        }
+
+        if (state.SelectedDetailsAssetID == assetID)
+        {
+            state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+        }
+    }
+
+    void RepairAssetSelection(AssetBrowserState &state, const std::vector<const Project::AssetRecord *> &folderAssets)
+    {
+        state.SelectedAssetIDs.erase(std::remove_if(
+            state.SelectedAssetIDs.begin(),
+            state.SelectedAssetIDs.end(),
+            [&](const std::string& assetID)
+            {
+                return !ContainsAssetRecordID(folderAssets, assetID);
+            }),
+           state.SelectedAssetIDs.end()
+        );
+
+        if (state.SelectedAssetIDs.empty())
+        {
+            ClearAssetSelection(state);
+            return;
+        }
+
+        if (!IsAssetSelected(state, state.SelectedDetailsAssetID))
+        {
+            state.SelectedDetailsAssetID = state.SelectedAssetIDs.back();
+        }
+
+        if (!ContainsAssetRecordID(folderAssets, state.SelectionAnchorAssetID))
+        {
+            state.SelectionAnchorAssetID = state.SelectedDetailsAssetID;
+        }
     }
 
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath)

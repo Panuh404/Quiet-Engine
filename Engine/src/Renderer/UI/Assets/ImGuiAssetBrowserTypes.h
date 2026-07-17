@@ -79,6 +79,9 @@ namespace Quiet::Renderer::UI::Assets
         std::string CurrentAssetFolder{};
         std::string SelectedContentFolder{};
 
+        std::vector<std::string> SelectedAssetIDs{};
+        std::string SelectionAnchorAssetID{};
+
         std::vector<std::string> FolderHistory{};
         std::size_t FolderHistoryIndex = 0;
 
