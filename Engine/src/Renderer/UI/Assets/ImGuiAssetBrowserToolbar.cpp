@@ -97,9 +97,11 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,
         AssetBrowserViewMode& viewMode,
         AssetBrowserThumbnailSize& thumbnailSize,
-        std::size_t selectedAssetCount,
+        const AssetBrowserState& state,
+        AssetBrowserOperationRequest& operationRequest,
         bool& openImportPopup)
     {
+        const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
         const Project::AssetRegistry& registry = projectContext.GetAssetRegistry();
         const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh);
         const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture);
@@ -127,6 +129,32 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
             ImGui::Text("%zu selected", selectedAssetCount);
             ImGui::PopStyleColor();
+        }
+
+        if (selectedAssetCount > 0)
+        {
+            ImGui::SameLine();
+
+            if (DrawAssetToolbarDropdownButton("Actions", "##AssetSelectionActions", SZ::Px(ImVec2(104.0f, 0.0f))))
+            {
+                const bool canDuplicate = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                if (EditorMenuItem(
+                        selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection",
+                        nullptr,
+                        false,
+                        canDuplicate))
+                {
+                    operationRequest.Action = AssetBrowserOperationAction::Duplicate;
+                    operationRequest.AssetIDs = state.SelectedAssetIDs;
+                    operationRequest.TargetFolder = state.CurrentAssetFolder;
+                }
+
+                if (!canDuplicate && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                {
+                    ImGui::SetTooltip("Assets cannot be duplicated while runtime mode is active.");
+                }
+                ImGui::EndPopup();
+            }
         }
 
         ImGui::SameLine();

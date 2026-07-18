@@ -228,6 +228,7 @@ namespace Quiet::Renderer::UI::Assets
         {
             const auto& registry = projectContext.GetAssetRegistry();
             bool openImportPopup = false;
+            AssetBrowserOperationRequest operationRequest{};
 
             DrawAssetBrowserToolbar(
                 editorState,
@@ -237,7 +238,8 @@ namespace Quiet::Renderer::UI::Assets
                 assetDiagnosticsFilter,
                 assetViewMode,
                 assetThumbnailSize,
-                state.SelectedAssetIDs.size(),
+                state,
+                operationRequest,
                 openImportPopup
             );
 
@@ -498,6 +500,20 @@ namespace Quiet::Renderer::UI::Assets
                 if (assetMoveRequest.IsValid())
                 {
                     ExecuteAssetMoveOperation(projectContext, editorState, state, assetMoveRequest);
+                }
+
+                if (operationRequest.IsValid())
+                {
+                    switch (operationRequest.Action)
+                    {
+                        case AssetBrowserOperationAction::Duplicate:
+                            ExecuteAssetDuplicateOperation(projectContext, editorState, state, operationRequest);
+                            break;
+
+                        case AssetBrowserOperationAction::None:
+                        default:
+                            break;
+                    }
                 }
 
                 DrawAssetFolderActionPopup(projectContext, editorState, state);

@@ -21,6 +21,21 @@ namespace
         std::filesystem::path DestinationPath{};
     };
 
+    struct PlannedAssetDuplicate
+    {
+        std::string NewAssetID{};
+
+        Quiet::Project::AssetType Type = Quiet::Project::AssetType::Unknown;
+        std::filesystem::path SourcePath{};
+        std::filesystem::path DestinationPath{};
+    };
+
+    struct CompletedAssetDuplicate
+    {
+        std::string AssetID{};
+        std::filesystem::path Path{};
+    };
+
     std::vector<std::string> NormalizeAssetIDs(const std::vector<std::string>& assetIDs)
     {
         std::vector<std::string> normalized;
@@ -64,6 +79,86 @@ namespace
         }
 
         return false;
+    }
+
+    bool IsAssetPathRegistered(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& candidatePath)
+    {
+        const std::filesystem::path normalizedCandidate = candidatePath.lexically_normal();
+
+        for (const Quiet::Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
+        {
+            if (record.BuiltIn || record.Path.empty()) continue;
+
+            const std::filesystem::path registeredPath = Assets::ResolveDisplayPath(projectContext, record.Path).lexically_normal();
+            if (registeredPath == normalizedCandidate) return true;
+        }
+        return false;
+    }
+
+    std::string MakeUniqueDuplicateAssetID(
+        const Quiet::Project::ProjectContext& projectContext,
+        const std::string& sourceAssetID,
+        const std::unordered_set<std::string>& plannedAssetIDs)
+    {
+        for (std::size_t index = 1; index < 100000; ++index)
+        {
+            const std::string suffix = index == 1 ? "_Copy" : "_Copy" + std::to_string(index);
+            const std::string candidate = sourceAssetID + suffix;
+
+            if (plannedAssetIDs.contains(candidate)) continue;
+            if (!Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), candidate)) return candidate;
+        }
+        return {};
+    }
+
+    bool TryMakeUniqueDuplicatePath(
+        const Quiet::Project::ProjectContext& projectContext,
+        const std::filesystem::path& targetFolder,
+        const std::filesystem::path& sourceFilename,
+        const std::unordered_set<std::string>& plannedPaths,
+        std::filesystem::path& outPath,
+        std::string& outErrorMessage)
+    {
+        outPath.clear();
+        outErrorMessage.clear();
+
+        const std::string sourceStem = sourceFilename.stem().string();
+        const std::string sourceExtension = sourceFilename.extension().string();
+
+        if (sourceStem.empty())
+        {
+            outErrorMessage = "The source file has no valid filename.";
+            return false;
+        }
+
+        for (std::size_t index = 1; index < 100000; ++index)
+        {
+            const std::string suffix = index == 1 ? "_Copy" : "_Copy" + std::to_string(index);
+            const std::filesystem::path candidate = (targetFolder / (sourceStem + suffix + sourceExtension)).lexically_normal();
+            const std::string candidateKey = candidate.generic_string();
+
+            if (plannedPaths.contains(candidateKey)) continue;
+
+            std::error_code ec;
+            const bool pathExists = std::filesystem::exists(candidate, ec);
+            if (ec)
+            {
+                outErrorMessage = "Failed to inspect duplicate destination '" + candidate.generic_string() + "': " + ec.message();
+                return false;
+            }
+
+            if (pathExists || IsAssetPathRegistered(projectContext, candidate)) continue;
+            outPath = candidate;
+            return true;
+        }
+
+        outErrorMessage = "Quiet could not generate a unique duplicate filename.";
+        return false;
+    }
+
+    std::string MakeDuplicateCountLabel(const std::size_t count)
+    {
+        return count == 1 ? "1 asset" : std::to_string(count) + " assets";
     }
 
     std::string MakeMoveCountLabel(const std::size_t count)
@@ -267,6 +362,226 @@ namespace Quiet::Renderer::UI::Assets
             plan.size() == 1 ? "Asset moved" : "Assets moved",
             "Moved " + MakeMoveCountLabel(plan.size()) + " to '" + targetFolder + "'.");
 
+        return true;
+    }
+
+    bool ExecuteAssetDuplicateOperation(
+        Project::ProjectContext &projectContext,
+        Editor::EditorState &editorState,
+        AssetBrowserState &state,
+        const AssetBrowserOperationRequest &request)
+    {
+        if (!request.IsValid() || request.Action != AssetBrowserOperationAction::Duplicate) return false;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Duplicate rejected",
+                "Assets cannot be duplicated while runtime mode is active.");
+            return false;
+        }
+
+        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        if (assetIDs.empty()) return false;
+
+        const std::string targetFolder = NormalizeProjectRelativePathString(request.TargetFolder);
+        if (!DoesAssetFolderExist(projectContext, targetFolder))
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Duplicate failed",
+                "The destination folder no longer exists.");
+            return false;
+        }
+
+        const std::filesystem::path resolvedTargetFolder = ResolveAssetFolderPath(projectContext, targetFolder).lexically_normal();
+        std::vector<PlannedAssetDuplicate> plan;
+        plan.reserve(assetIDs.size());
+
+        std::unordered_set<std::string> plannedAssetIDs;
+        std::unordered_set<std::string> plannedDestinationPaths;
+
+        for (const std::string& assetID : assetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    "Asset '" + assetID + "' is no longer registered.");
+                return false;
+            }
+            if (record->BuiltIn)
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    "Built-in asset '" + record->ID + "' has no physical source file to duplicate.");
+                return false;
+            }
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
+            if (diagnostics.IsMissing())
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    "Asset '" + record->ID + "' does not have a valid physical source file.");
+                return false;
+            }
+
+            const std::filesystem::path sourcePath = diagnostics.ResolvedPath.lexically_normal();
+            const std::filesystem::path sourceFilename = sourcePath.filename();
+            if (sourceFilename.empty())
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    "Asset '" + record->ID + "' has no valid source filename.");
+                return false;
+            }
+
+            const std::string newAssetID = MakeUniqueDuplicateAssetID(projectContext, record->ID, plannedAssetIDs);
+            if (newAssetID.empty())
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    "Quiet could not generate a unique asset ID for '" + record->ID + "'.");
+                return false;
+            }
+
+            std::filesystem::path destinationPath;
+            std::string pathErrorMessage;
+
+            if (!TryMakeUniqueDuplicatePath(projectContext, resolvedTargetFolder, sourceFilename, plannedDestinationPaths, destinationPath, pathErrorMessage))
+            {
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    pathErrorMessage);
+                return false;
+            }
+
+            plannedAssetIDs.insert(newAssetID);
+            plannedDestinationPaths.insert(destinationPath.generic_string());
+
+            plan.push_back(PlannedAssetDuplicate
+                {
+                    newAssetID,
+                    record->Type,
+                    sourcePath,
+                    destinationPath
+                }
+            );
+        }
+
+        std::vector<CompletedAssetDuplicate> completedDuplicates;
+        completedDuplicates.reserve(plan.size());
+
+        for (const PlannedAssetDuplicate& duplicate : plan)
+        {
+            std::error_code copyError;
+
+            const bool copied = std::filesystem::copy_file(
+                    duplicate.SourcePath,
+                    duplicate.DestinationPath,
+                    std::filesystem::copy_options::none,
+                    copyError);
+
+            if (!copied || copyError)
+            {
+                std::string feedbackMessage = "Failed to copy '" + duplicate.SourcePath.generic_string() + "'";
+                if (copyError)
+                {
+                    feedbackMessage += ": " + copyError.message();
+                }
+
+                for (auto iterator = completedDuplicates.rbegin(); iterator != completedDuplicates.rend(); ++iterator)
+                {
+                    if (!projectContext.RemoveAssetByID(iterator->AssetID))
+                    {
+                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + iterator->AssetID + "'.";
+                        continue;
+                    }
+
+                    std::error_code removeError;
+                    std::filesystem::remove(iterator->Path, removeError);
+                    if (removeError)
+                    {
+                        feedbackMessage += "\n• Failed to remove rolled-back file '" + iterator->Path.generic_string() + "': " + removeError.message();
+                    }
+                }
+
+                editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    feedbackMessage);
+                return false;
+            }
+
+            bool registered = false;
+            switch (duplicate.Type)
+            {
+                case Project::AssetType::Mesh:
+                    registered = projectContext.RegisterMeshAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    break;
+
+                case Project::AssetType::Texture:
+                    registered = projectContext.RegisterTextureAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    break;
+
+                case Project::AssetType::Unknown:
+                default:
+                    registered = false;
+                    break;
+            }
+
+            if (!registered)
+            {
+                std::error_code currentRemoveError;
+                std::filesystem::remove(duplicate.DestinationPath, currentRemoveError);
+                std::string feedbackMessage = "The copied file could not be registered as asset '" + duplicate.NewAssetID + "'.";
+
+                for (auto iterator = completedDuplicates.rbegin(); iterator != completedDuplicates.rend(); ++iterator)
+                {
+                    if (!projectContext.RemoveAssetByID(iterator->AssetID))
+                    {
+                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + iterator->AssetID + "'.";
+                        continue;
+                    }
+
+                    std::error_code rollbackRemoveError;
+                    std::filesystem::remove(iterator->Path, rollbackRemoveError);
+                    if (rollbackRemoveError)
+                    {
+                        feedbackMessage += "\n• Failed to remove rolled-back file '" + iterator->Path.generic_string() + "': " + rollbackRemoveError.message();
+                    }
+                }
+
+                editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Duplicate failed",
+                    feedbackMessage);
+                return false;
+            }
+
+            completedDuplicates.push_back(
+                CompletedAssetDuplicate{
+                    duplicate.NewAssetID,
+                    duplicate.DestinationPath
+                }
+            );
+        }
+
+        state.SelectedAssetIDs.clear();
+        state.SelectedAssetIDs.reserve(plan.size());
+
+        for (const PlannedAssetDuplicate& duplicate : plan)
+        {
+            state.SelectedAssetIDs.push_back(duplicate.NewAssetID);
+        }
+
+        state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.front();
+        state.SelectionAnchorAssetID = state.SelectedDetailsAssetID;
+        state.SelectedContentFolder.clear();
+
+        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+            plan.size() == 1 ? "Asset duplicated" : "Assets duplicated",
+            "Duplicated " + MakeDuplicateCountLabel(plan.size()) + " into '" + targetFolder + "'.");
         return true;
     }
 }

@@ -65,6 +65,39 @@ namespace Quiet::Renderer::UI::Assets
         }
     };
 
+    enum class AssetBrowserOperationAction
+    {
+        None,
+        Duplicate
+    };
+
+    struct AssetBrowserOperationRequest
+    {
+        AssetBrowserOperationAction Action = AssetBrowserOperationAction::None;
+        std::vector<std::string> AssetIDs{};
+        std::string TargetFolder{};
+
+        [[nodiscard]] bool IsValid() const
+        {
+            switch (Action)
+            {
+                case AssetBrowserOperationAction::Duplicate:
+                    return !AssetIDs.empty() && !TargetFolder.empty();
+
+                case AssetBrowserOperationAction::None:
+                default:
+                    return false;
+            }
+        }
+
+        void Clear()
+        {
+            Action = AssetBrowserOperationAction::None;
+            AssetIDs.clear();
+            TargetFolder.clear();
+        }
+    };
+
     struct AssetBrowserState
     {
         std::array<char, 128> AssetIDBuffer{};

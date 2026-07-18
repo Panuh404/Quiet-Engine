@@ -92,8 +92,11 @@ namespace
         return firstSegment != relativePath.end() && *firstSegment != "..";
     }
 
-    bool ResolveExistingAssetFolder(const Quiet::Project::ProjectContext& projectContext, const std::filesystem::path& requestedFolder,
-        std::filesystem::path& outResolvedFolder, std::string& outErrorMessage)
+    bool ResolveExistingAssetFolder(
+        const Quiet::Project::ProjectContext& projectContext,
+        const std::filesystem::path& requestedFolder,
+        std::filesystem::path& outResolvedFolder,
+        std::string& outErrorMessage)
     {
         outResolvedFolder.clear();
         outErrorMessage.clear();
@@ -207,11 +210,18 @@ namespace Quiet::Project
         record.Path = builtIn ? std::string{} : assetPath.generic_string();
         record.BuiltIn = builtIn;
 
-        if (!AssetRegistryIO::AddOrUpdate(m_AssetRegistry, std::move(record)))
-            return false;
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
 
-        AssetRegistryIO::EnsureBuiltInAssets(m_AssetRegistry);
-        return SaveAssetRegistry();
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+
+        if (SaveAssetRegistry()) return true;
+        m_AssetRegistry = previousRegistry;
+
+        (void)SaveAssetRegistry();
+        return false;
     }
 
     bool ProjectContext::RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
@@ -228,22 +238,37 @@ namespace Quiet::Project
         record.Path = builtIn ? std::string{} : assetPath.generic_string();
         record.BuiltIn = builtIn;
 
-        if (!AssetRegistryIO::AddOrUpdate(m_AssetRegistry, std::move(record)))
-            return false;
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
 
-        AssetRegistryIO::EnsureBuiltInAssets(m_AssetRegistry);
-        return SaveAssetRegistry();
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+
+        m_AssetRegistry = std::move(updatedRegistry);
+        if (SaveAssetRegistry()) return true;
+
+        m_AssetRegistry = previousRegistry;
+        (void)SaveAssetRegistry();
+        return false;
     }
 
     bool ProjectContext::RemoveAssetByID(std::string_view assetID)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
-        if (!record) return false;
-        if (record->BuiltIn) return false;
-        if (!AssetRegistryIO::RemoveByID(m_AssetRegistry, assetID)) return false;
+        if (!record || record->BuiltIn) return false;
 
-        AssetRegistryIO::EnsureBuiltInAssets(m_AssetRegistry);
-        return SaveAssetRegistry();
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        if (!AssetRegistryIO::RemoveByID(updatedRegistry, assetID)) return false;
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+
+        if (SaveAssetRegistry()) return true;
+
+        m_AssetRegistry = previousRegistry;
+        (void)SaveAssetRegistry();
+        return false;
     }
 
     bool ProjectContext::CreateAssetFolder(const std::filesystem::path &parentFolder, std::string folderName,
@@ -466,8 +491,11 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectContext::MoveAssetToFolder(std::string_view assetID, const std::filesystem::path &destinationFolder,
-        std::filesystem::path &outMovedAssetPath, std::string &outErrorMessage)
+    bool ProjectContext::MoveAssetToFolder(
+        std::string_view assetID,
+        const std::filesystem::path &destinationFolder,
+        std::filesystem::path &outMovedAssetPath,
+        std::string &outErrorMessage)
     {
         outMovedAssetPath.clear();
         outErrorMessage.clear();

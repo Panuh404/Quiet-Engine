@@ -12,4 +12,12 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserState& state,
         const AssetBrowserAssetMoveRequest& request
     );
+
+    [[nodiscard]] bool ExecuteAssetDuplicateOperation(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        AssetBrowserState& state,
+        const AssetBrowserOperationRequest& request
+    );
+
 }
