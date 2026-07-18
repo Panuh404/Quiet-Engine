@@ -20,6 +20,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -350,22 +351,11 @@ namespace Quiet::Renderer::UI::Assets
                     std::string pendingNavigateFolder;
                     
                     const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
-                    const float detailsPanelWidth = useSplitDetailsLayout
-                            ? CalculateAssetDetailsPanelWidth(assetBrowserWidth)
-                            : 0.0f;
-
-                    const float tablePanelWidth = useSplitDetailsLayout
-                            ? std::max(
-                                SZ::Px(520.0f),
-                                assetBrowserWidth -
-                                detailsPanelWidth -
-                                ImGui::GetStyle().ItemSpacing.x
-                            )
-                            : 0.0f;
+                    const float detailsPanelWidth = useSplitDetailsLayout ? CalculateAssetDetailsPanelWidth(assetBrowserWidth) : 0.0f;
+                    const float tablePanelWidth = useSplitDetailsLayout ? std::max(SZ::Px(520.0f), assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x) : 0.0f;
 
                     if (useSplitDetailsLayout)
-                        ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f),
-                            ImGuiChildFlags_None, ImGuiWindowFlags_None);
+                        ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
                     const bool hasVisibleItems = !visibleFolders.empty() || !visibleAssets.empty();
                     const bool folderHasItems = !childFolders.empty() || !folderAssets.empty();
@@ -373,6 +363,18 @@ namespace Quiet::Renderer::UI::Assets
                     if (!hasVisibleItems)
                     {
                         DrawAssetBrowserEmptyState(currentAssetFolder, folderHasItems);
+
+                        // EndChild() inside DrawAssetBrowserEmptyState leaves the
+                        // complete empty-state panel as the active ImGui item.
+                        const std::string emptyFolderContextMenuID = "##AssetBrowserEmptyFolderContext_" + currentAssetFolder;
+                        DrawAssetFolderContextMenu(
+                            emptyFolderContextMenuID.c_str(),
+                            projectContext,
+                            currentAssetFolder,
+                            editorState.Scene.Mode != Editor::SceneMode::Edit,
+                            state,
+                            operationRequest,
+                            folderActionRequest);
                     }
                     else if (assetViewMode == AssetBrowserViewMode::Browser)
                     {
@@ -392,8 +394,7 @@ namespace Quiet::Renderer::UI::Assets
                             pendingReimportAssetID,
                             pendingRemoveAssetID,
                             assetThumbnailSize,
-                            context.UIScale
-                        );
+                            context.UIScale);
                     }
                     else if (assetViewMode == AssetBrowserViewMode::List)
                     {
@@ -412,8 +413,7 @@ namespace Quiet::Renderer::UI::Assets
                             operationRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
-                            pendingRemoveAssetID
-                        );
+                            pendingRemoveAssetID);
                     }
 
                     if (!pendingNavigateFolder.empty())
