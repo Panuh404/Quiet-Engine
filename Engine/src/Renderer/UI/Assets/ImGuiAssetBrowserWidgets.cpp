@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <utility>
+#include <vector>
 
-#include "ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -320,17 +322,6 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::EndDragDropTarget();
         return outPayload.IsValid();
-    }
-
-    bool AcceptAssetBrowserDrop(std::string& outAssetID)
-    {
-        outAssetID.clear();
-
-        AssetBrowserDragPayload payload{};
-        if (!ReadAssetBrowserDrop(payload) || !payload.Delivered) return false;
-
-        outAssetID = std::move(payload.AssetID);
-        return !outAssetID.empty();
     }
 
     bool AcceptAssetBrowserDrop(std::vector<std::string>& outAssetIDs)

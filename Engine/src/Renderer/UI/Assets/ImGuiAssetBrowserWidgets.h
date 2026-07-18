@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <imgui.h>
 
 #include "Quiet/Project/AssetRegistry.h"

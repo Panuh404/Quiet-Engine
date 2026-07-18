@@ -1,7 +1,8 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserListView.h"
 
 #include <utility>
-#include <vector>#include <string>
+#include <vector>
+#include <string>
 #include <imgui.h>
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
@@ -287,14 +288,25 @@ namespace Quiet::Renderer::UI::Assets
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
                     {
-                        selectedDetailsAssetID = record.ID;
-                        selectedContentFolder.clear();
+                        const ImGuiIO& io = ImGui::GetIO();
+                        HandleAssetSelectionClick(state, visibleAssets, record.ID, io.KeyCtrl, io.KeyShift);
                     }
-
                     rowHovered |= ImGui::IsItemHovered();
 
                     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-                        selectedContentFolder.clear();
+                    {
+                        if (!IsAssetSelected(state, record.ID))
+                        {
+                            SelectSingleAsset(state, record.ID);
+                        }
+                        else
+                        {
+                            selectedDetailsAssetID =
+                                record.ID;
+
+                            selectedContentFolder.clear();
+                        }
+                    }
 
                     DrawAssetContextMenu(
                         hitID.c_str(),
