@@ -531,9 +531,15 @@ namespace Quiet::Renderer::UI::Assets
 
             if (!registered)
             {
+                std::string feedbackMessage = "The copied file could not be registered as asset '" + duplicate.NewAssetID + "'.";
                 std::error_code currentRemoveError;
                 std::filesystem::remove(duplicate.DestinationPath, currentRemoveError);
-                std::string feedbackMessage = "The copied file could not be registered as asset '" + duplicate.NewAssetID + "'.";
+
+                if (currentRemoveError)
+                {
+                    feedbackMessage += "\n• Failed to remove the unregistered copied file '" +
+                        duplicate.DestinationPath.generic_string() + "': " + currentRemoveError.message();
+                }
 
                 for (auto iterator = completedDuplicates.rbegin(); iterator != completedDuplicates.rend(); ++iterator)
                 {
