@@ -1,5 +1,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserGridView.h"
 
+#include <utility>
+#include <vector>
 #include <algorithm>
 #include <string>
 
@@ -301,10 +303,10 @@ namespace Quiet::Renderer::UI::Assets
                 pendingNavigateFolder = folder.RelativePath;
             }
 
-            std::string droppedAssetID;
-            if (AcceptAssetBrowserDrop(droppedAssetID))
+            std::vector<std::string> droppedAssetIDs;
+            if (AcceptAssetBrowserDrop(droppedAssetIDs))
             {
-                assetMoveRequest.AssetID = droppedAssetID;
+                assetMoveRequest.AssetIDs = std::move(droppedAssetIDs);
                 assetMoveRequest.TargetFolder = folder.RelativePath;
             }
 
@@ -440,7 +442,7 @@ namespace Quiet::Renderer::UI::Assets
                 pendingRemoveAssetID
             );
 
-            DrawAssetBrowserDragSource(record, !runtimeModeActive);
+            DrawAssetBrowserDragSource(record, state, !runtimeModeActive);
             ImDrawList* drawList = ImGui::GetWindowDrawList();
 
             const ImVec4 cardColor =

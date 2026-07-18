@@ -1,6 +1,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserListView.h"
 
-#include <string>
+#include <utility>
+#include <vector>#include <string>
 #include <imgui.h>
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
@@ -95,10 +96,10 @@ namespace Quiet::Renderer::UI::Assets
                         pendingNavigateFolder = folder.RelativePath;
                     }
 
-                    std::string droppedAssetID;
-                    if (AcceptAssetBrowserDrop(droppedAssetID))
+                    std::vector<std::string> droppedAssetIDs;
+                    if (AcceptAssetBrowserDrop(droppedAssetIDs))
                     {
-                        assetMoveRequest.AssetID = droppedAssetID;
+                        assetMoveRequest.AssetIDs = std::move(droppedAssetIDs);
                         assetMoveRequest.TargetFolder = folder.RelativePath;
                     }
 
@@ -211,7 +212,7 @@ namespace Quiet::Renderer::UI::Assets
                         pendingRemoveAssetID
                     );
 
-                    DrawAssetBrowserDragSource(record, !runtimeModeActive);
+                    DrawAssetBrowserDragSource(record, state, !runtimeModeActive);
 
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
                     ImGui::PushStyleColor(ImGuiCol_Text, isSelectedAsset ? EditorColor::Accent : EditorColor::Text);
@@ -243,14 +244,24 @@ namespace Quiet::Renderer::UI::Assets
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
                     {
-                        selectedDetailsAssetID = record.ID;
-                        selectedContentFolder.clear();
+                        const ImGuiIO& io = ImGui::GetIO();
+                        HandleAssetSelectionClick(state, visibleAssets, record.ID, io.KeyCtrl, io.KeyShift);
                     }
 
                     rowHovered |= ImGui::IsItemHovered();
 
                     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-                        selectedContentFolder.clear();
+                    {
+                        if (!IsAssetSelected(state, record.ID))
+                        {
+                            SelectSingleAsset(state, record.ID);
+                        }
+                        else
+                        {
+                            selectedDetailsAssetID = record.ID;
+                            selectedContentFolder.clear();
+                        }
+                    }
 
                     DrawAssetContextMenu(
                         hitID.c_str(),

@@ -19,6 +19,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserToolbar.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -496,22 +497,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (assetMoveRequest.IsValid())
                 {
-                    std::filesystem::path movedAssetPath;
-                    std::string moveErrorMessage;
-
-                    if (projectContext.MoveAssetToFolder(assetMoveRequest.AssetID, assetMoveRequest.TargetFolder, movedAssetPath, moveErrorMessage))
-                    {
-                        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
-                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
-                            "Asset moved",
-                            "Moved asset '" + assetMoveRequest.AssetID + "' to '" + movedAssetPath.generic_string() + "'.");
-                    }
-                    else
-                    {
-                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
-                            "Move failed",
-                            moveErrorMessage.empty() ? "The asset could not be moved." : moveErrorMessage);
-                    }
+                    ExecuteAssetMoveOperation(projectContext, editorState, state, assetMoveRequest);
                 }
 
                 DrawAssetFolderActionPopup(projectContext, editorState, state);

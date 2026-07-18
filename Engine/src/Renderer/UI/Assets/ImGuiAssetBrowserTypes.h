@@ -56,12 +56,12 @@ namespace Quiet::Renderer::UI::Assets
 
     struct AssetBrowserAssetMoveRequest
     {
-        std::string AssetID{};
+        std::vector<std::string> AssetIDs{};
         std::string TargetFolder{};
 
         [[nodiscard]] bool IsValid() const
         {
-            return !AssetID.empty() && !TargetFolder.empty();
+            return !AssetIDs.empty() && !TargetFolder.empty();
         }
     };
 
@@ -87,7 +87,6 @@ namespace Quiet::Renderer::UI::Assets
 
         std::string FolderOperationTarget{};
         std::string FolderOperationErrorMessage{};
-
 
         bool ReopenImportPopupAfterFileDialog = false;
 

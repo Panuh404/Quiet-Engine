@@ -4,25 +4,97 @@
 #include <cstddef>
 #include <utility>
 
+#include "ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
 {
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
+    namespace Assets = Quiet::Renderer::UI::Assets;
 
     constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_ASSET_ID";
 
-    bool TryReadAssetBrowserPayload(const ImGuiPayload* payload, std::string& outAssetID)
+    std::vector<std::string> BuildDragAssetIDs(const Quiet::Project::AssetRecord& record, const Quiet::Renderer::UI::Assets::AssetBrowserState& state)
     {
-        outAssetID.clear();
+        std::vector<std::string> assetIDs;
+        assetIDs.push_back(record.ID);
 
-        if (!payload || !payload->Data || payload->DataSize <= 1) return false;
-        const char* payloadAssetID = static_cast<const char*>(payload->Data);
+        if (!Assets::IsAssetSelected(state, record.ID))
+        {
+            return assetIDs;
+        }
+
+        assetIDs.reserve(state.SelectedAssetIDs.size() );
+        for (const std::string& selectedAssetID : state.SelectedAssetIDs)
+        {
+            if (selectedAssetID.empty() || selectedAssetID == record.ID) continue;
+            assetIDs.push_back(selectedAssetID);
+        }
+
+        return assetIDs;
+    }
+
+    std::vector<char> BuildAssetBrowserPayloadData(const std::vector<std::string>& assetIDs)
+    {
+        std::size_t requiredSize = 1;
+
+        for (const std::string& assetID : assetIDs)
+        {
+            requiredSize += assetID.size() + 1;
+        }
+
+        std::vector<char> payloadData;
+        payloadData.reserve(requiredSize);
+
+        for (const std::string& assetID : assetIDs)
+        {
+            payloadData.insert(
+                payloadData.end(),
+                assetID.begin(),
+                assetID.end()
+            );
+
+            payloadData.push_back('\0');
+        }
+
+        // Double-null terminator marks the end of the list.
+        payloadData.push_back('\0');
+        return payloadData;
+    }
+
+    bool TryReadAssetBrowserPayload(const ImGuiPayload* payload, std::vector<std::string>& outAssetIDs)
+    {
+        outAssetIDs.clear();
+        if (!payload || !payload->Data || payload->DataSize <= 2) return false;
+
+        const char* payloadData = static_cast<const char*>(payload->Data);
         const std::size_t payloadSize = static_cast<std::size_t>(payload->DataSize);
 
-        if (payloadAssetID[payloadSize - 1] != '\0') return false;
-        outAssetID = payloadAssetID;
-        return !outAssetID.empty();
+        if (payloadData[payloadSize - 1] != '\0') return false;
+
+        std::size_t offset = 0;
+        while (offset < payloadSize)
+        {
+            std::size_t end = offset;
+            while (end < payloadSize && payloadData[end] != '\0')
+            {
+                ++end;
+            }
+
+            if (end >= payloadSize)
+            {
+                outAssetIDs.clear();
+                return false;
+            }
+
+            // Empty entry is the final list terminator.
+            if (end == offset) break;
+
+            outAssetIDs.emplace_back(payloadData + offset, end - offset);
+            offset = end + 1;
+        }
+
+        return !outAssetIDs.empty();
     }
 
 }
@@ -165,7 +237,7 @@ namespace Quiet::Renderer::UI::Assets
         return ImGui::IsItemClicked(ImGuiMouseButton_Left);
     }
 
-    void DrawAssetBrowserDragSource(const Project::AssetRecord& record, const bool enabled)
+    void DrawAssetBrowserDragSource(const Project::AssetRecord& record, const AssetBrowserState& state, const bool enabled)
     {
         if (!enabled || (!record.BuiltIn && record.Path.empty())) return;
 
@@ -186,11 +258,23 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        ImGui::SetDragDropPayload(kAssetBrowserPayloadType, record.ID.c_str(), record.ID.size() + 1);
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + SZ::Px(280.0f));
+        const std::vector<std::string> dragAssetIDs = BuildDragAssetIDs(record, state);
+        const std::vector<char> payloadData = BuildAssetBrowserPayloadData(dragAssetIDs);
 
+        ImGui::SetDragDropPayload(kAssetBrowserPayloadType, payloadData.data(), payloadData.size());
+
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + SZ::Px(280.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-        ImGui::TextUnformatted("Asset");
+
+        if (dragAssetIDs.size() == 1)
+        {
+            ImGui::TextUnformatted("Asset");
+        }
+        else
+        {
+            ImGui::Text("%zu Assets", dragAssetIDs.size());
+        }
+
         ImGui::PopStyleColor();
 
         ImGui::Spacing();
@@ -200,11 +284,17 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-        ImGui::TextWrapped("%s", record.BuiltIn ? "<built-in>" : record.Path.c_str());
+        if (dragAssetIDs.size() > 1)
+        {
+            ImGui::Text("+ %zu more selected", dragAssetIDs.size() - 1);
+        }
+        else
+        {
+            ImGui::TextWrapped("%s", record.BuiltIn ? "<built-in>" : record.Path.c_str());
+        }
         ImGui::PopStyleColor();
 
         ImGui::PopTextWrapPos();
-
         ImGui::EndDragDropSource();
 
         ImGui::PopStyleColor(2);
@@ -216,11 +306,16 @@ namespace Quiet::Renderer::UI::Assets
         outPayload = {};
 
         if (!ImGui::BeginDragDropTarget()) return false;
+
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetBrowserPayloadType, flags);
         if (payload)
         {
             outPayload.Delivered = payload->IsDelivery();
-            TryReadAssetBrowserPayload(payload, outPayload.AssetID);
+            TryReadAssetBrowserPayload(payload, outPayload.AssetIDs);
+            if (!outPayload.AssetIDs.empty())
+            {
+                outPayload.AssetID = outPayload.AssetIDs.front();
+            }
         }
 
         ImGui::EndDragDropTarget();
@@ -236,6 +331,17 @@ namespace Quiet::Renderer::UI::Assets
 
         outAssetID = std::move(payload.AssetID);
         return !outAssetID.empty();
+    }
+
+    bool AcceptAssetBrowserDrop(std::vector<std::string>& outAssetIDs)
+    {
+        outAssetIDs.clear();
+
+        AssetBrowserDragPayload payload{};
+        if (!ReadAssetBrowserDrop(payload) || !payload.Delivered) return false;
+
+        outAssetIDs = std::move(payload.AssetIDs);
+        return !outAssetIDs.empty();
     }
 
     AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(const AssetBrowserThumbnailSize thumbnailSize)
