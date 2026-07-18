@@ -6,6 +6,7 @@
 
 #include "Quiet/Platform/Shell.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -46,6 +47,8 @@ namespace Quiet::Renderer::UI::Assets
         const Project::AssetRecord& record,
         const bool runtimeModeActive,
         const std::uint32_t referenceCount,
+        AssetBrowserState& state,
+        AssetBrowserOperationRequest& operationRequest,
         std::string& selectedDetailsAssetID,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
@@ -63,8 +66,38 @@ namespace Quiet::Renderer::UI::Assets
 
         selectedDetailsAssetID = record.ID;
 
+        const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
+        const bool canModifySelection = !runtimeModeActive && selectedAssetCount > 0;
+
         if (EditorMenuItem("Inspect"))
             pendingDetailsAssetID = record.ID;
+
+        ImGui::Separator();
+
+        const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
+        if (EditorMenuItem(copyLabel, nullptr, false, canModifySelection))
+        {
+            operationRequest.Clear();
+            operationRequest.Action = AssetBrowserOperationAction::CopySelection;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+        }
+
+        const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
+        if (EditorMenuItem(cutLabel, nullptr, false, canModifySelection))
+        {
+            operationRequest.Clear();
+            operationRequest.Action = AssetBrowserOperationAction::CutSelection;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+        }
+
+        const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
+        if (EditorMenuItem(duplicateLabel, nullptr, false, canModifySelection))
+        {
+            operationRequest.Clear();
+            operationRequest.Action = AssetBrowserOperationAction::Duplicate;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+            operationRequest.TargetFolder = state.CurrentAssetFolder;
+        }
 
         ImGui::Separator();
 
@@ -119,6 +152,9 @@ namespace Quiet::Renderer::UI::Assets
         const char* popupID,
         const Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
+        bool runtimeModeActive,
+        const AssetBrowserState& state,
+        AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
@@ -134,19 +170,33 @@ namespace Quiet::Renderer::UI::Assets
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
         const bool isAssetsRoot = relativeFolderPath == assetsRoot;
 
-        if (EditorMenuItem("Create Folder"))
+        const bool clipboardAvailable = IsAssetClipboardAvailable(projectContext, state);
+        const bool canPaste = !runtimeModeActive && clipboardAvailable;
+        const bool copying = state.Clipboard.Mode == AssetBrowserClipboardMode::Copy;
+        const char* pasteLabel = copying ? "Paste Copies Here" : "Move Assets Here";
+
+        if (EditorMenuItem(pasteLabel, nullptr, false, canPaste))
+        {
+            operationRequest.Clear();
+            operationRequest.Action = AssetBrowserOperationAction::Paste;
+            operationRequest.TargetFolder = relativeFolderPath;
+        }
+
+        ImGui::Separator();
+
+        if (EditorMenuItem("Create Folder", nullptr, false, !runtimeModeActive))
         {
             RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create, relativeFolderPath);
         }
 
         ImGui::Separator();
 
-        if (EditorMenuItem("Rename", nullptr, false, !isAssetsRoot))
+        if (EditorMenuItem("Rename", nullptr, false, !runtimeModeActive && !isAssetsRoot))
         {
             RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Rename, relativeFolderPath);
         }
 
-        if (EditorMenuItem("Delete Empty Folder", nullptr, false, !isAssetsRoot))
+        if (EditorMenuItem("Delete Empty Folder", nullptr, false, !runtimeModeActive && !isAssetsRoot))
         {
             RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Delete, relativeFolderPath);
         }

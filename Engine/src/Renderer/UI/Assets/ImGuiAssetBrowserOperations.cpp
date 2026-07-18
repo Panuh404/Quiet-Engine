@@ -166,6 +166,83 @@ namespace
         if (count == 1) return "1 asset";
         return std::to_string(count) + " assets";
     }
+
+    std::string MakeAssetClipboardProjectKey(const Quiet::Project::ProjectContext& projectContext)
+    {
+        return projectContext.GetRootPath().lexically_normal().generic_string();
+    }
+
+    bool StoreAssetClipboard(
+        const Quiet::Project::ProjectContext& projectContext,
+        Quiet::Editor::EditorState& editorState,
+        Assets::AssetBrowserState& state,
+        const Assets::AssetBrowserClipboardMode mode,
+        const std::vector<std::string>& requestedAssetIDs)
+    {
+        if (mode == Assets::AssetBrowserClipboardMode::None) return false;
+
+        if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit)
+        {
+            editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Warning,
+                "Clipboard operation rejected",
+                "Asset operations are unavailable while runtime mode is active.");
+            return false;
+        }
+
+        const std::vector<std::string> assetIDs = NormalizeAssetIDs(requestedAssetIDs);
+        if (assetIDs.empty()) return false;
+
+        for (const std::string& assetID : assetIDs)
+        {
+            const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
+                    "Clipboard operation failed",
+                    "Asset '" + assetID + "' is no longer registered.");
+                return false;
+            }
+
+            if (record->BuiltIn)
+            {
+                editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
+                    "Clipboard operation failed",
+                    "Built-in asset '" + record->ID + "' has no physical source file to copy or move.");
+                return false;
+            }
+
+            const Assets::AssetPathDiagnostics diagnostics = Assets::InspectAssetPath(projectContext, *record);
+            if (diagnostics.IsMissing())
+            {
+                editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
+                    "Clipboard operation failed",
+                    "Asset '" + record->ID + "' does not have a valid physical source file.");
+                return false;
+            }
+
+            if (mode == Assets::AssetBrowserClipboardMode::Move && diagnostics.External)
+            {
+                editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
+                    "Move preparation failed",
+                    "External asset '" + record->ID + "' cannot be moved through the project Assets browser.");
+                return false;
+            }
+        }
+
+        state.Clipboard.Mode = mode;
+        state.Clipboard.AssetIDs = assetIDs;
+        state.Clipboard.ProjectRoot = MakeAssetClipboardProjectKey(projectContext);
+
+        const bool copyMode = mode == Assets::AssetBrowserClipboardMode::Copy;
+        editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Success,
+            copyMode
+                ? (assetIDs.size() == 1 ? "Asset copied" : "Assets copied")
+                : (assetIDs.size() == 1 ? "Asset ready to move" : "Assets ready to move"),
+            copyMode
+                ? ("Copied " + MakeMoveCountLabel(assetIDs.size()) + " to the Asset Browser clipboard.")
+                : ("Marked " + MakeMoveCountLabel(assetIDs.size()) + " for moving. Navigate to a destination folder and use Paste."));
+        return true;
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -589,5 +666,101 @@ namespace Quiet::Renderer::UI::Assets
             plan.size() == 1 ? "Asset duplicated" : "Assets duplicated",
             "Duplicated " + MakeDuplicateCountLabel(plan.size()) + " into '" + targetFolder + "'.");
         return true;
+    }
+
+    bool IsAssetClipboardAvailable(
+        const Project::ProjectContext& projectContext,
+        const AssetBrowserState& state)
+    {
+        return state.Clipboard.IsValid() && state.Clipboard.ProjectRoot == MakeAssetClipboardProjectKey(projectContext);
+    }
+
+    void SynchronizeAssetClipboard(
+        const Project::ProjectContext& projectContext,
+        AssetBrowserState& state)
+    {
+        if (!state.Clipboard.IsValid())
+        {
+            state.Clipboard.Clear();
+            return;
+        }
+
+        if (state.Clipboard.ProjectRoot != MakeAssetClipboardProjectKey(projectContext))
+        {
+            state.Clipboard.Clear();
+            return;
+        }
+
+        state.Clipboard.AssetIDs.erase(
+            std::remove_if(
+                state.Clipboard.AssetIDs.begin(),
+                state.Clipboard.AssetIDs.end(),
+                [&](const std::string& assetID)
+                {
+                    return Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID) == nullptr;
+                }
+            ),
+            state.Clipboard.AssetIDs.end()
+        );
+
+        if (state.Clipboard.AssetIDs.empty())
+            state.Clipboard.Clear();
+    }
+
+    bool ExecuteAssetBrowserOperation(Project::ProjectContext &projectContext, Editor::EditorState &editorState,
+        AssetBrowserState &state, const AssetBrowserOperationRequest &request)
+    {
+        if (!request.IsValid()) return false;
+
+        switch (request.Action)
+        {
+            case AssetBrowserOperationAction::CopySelection:
+                return StoreAssetClipboard(projectContext, editorState, state, AssetBrowserClipboardMode::Copy,request.AssetIDs);
+
+            case AssetBrowserOperationAction::CutSelection:
+                return StoreAssetClipboard(projectContext, editorState, state, AssetBrowserClipboardMode::Move, request.AssetIDs);
+
+            case AssetBrowserOperationAction::Duplicate:
+                return ExecuteAssetDuplicateOperation(projectContext, editorState, state, request);
+
+            case AssetBrowserOperationAction::Paste:
+            {
+                SynchronizeAssetClipboard(projectContext, state);
+                if (!IsAssetClipboardAvailable(projectContext, state))
+                {
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                        "Paste unavailable",
+                        "The Asset Browser clipboard is empty.");
+                    return false;
+                }
+
+                if (state.Clipboard.Mode == AssetBrowserClipboardMode::Copy)
+                {
+                    AssetBrowserOperationRequest duplicateRequest{};
+                    duplicateRequest.Action = AssetBrowserOperationAction::Duplicate;
+                    duplicateRequest.AssetIDs = state.Clipboard.AssetIDs;
+                    duplicateRequest.TargetFolder = request.TargetFolder;
+
+                    // Copy remains in the clipboard so it can be pasted into more than one destination.
+                    return ExecuteAssetDuplicateOperation(projectContext, editorState, state, duplicateRequest);
+                }
+
+                if (state.Clipboard.Mode == AssetBrowserClipboardMode::Move)
+                {
+                    AssetBrowserAssetMoveRequest moveRequest{};
+                    moveRequest.AssetIDs = state.Clipboard.AssetIDs;
+                    moveRequest.TargetFolder = request.TargetFolder;
+
+                    const bool moved = ExecuteAssetMoveOperation(projectContext, editorState, state, moveRequest);
+                    if (moved) state.Clipboard.Clear();
+                    return moved;
+                }
+                return false;
+            }
+
+            case AssetBrowserOperationAction::None:
+            default:
+                return false;
+        }
     }
 }

@@ -30,6 +30,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string& pendingNavigateFolder,
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
+        AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
         std::string& pendingRemoveAssetID)
@@ -104,7 +105,15 @@ namespace Quiet::Renderer::UI::Assets
                         assetMoveRequest.TargetFolder = folder.RelativePath;
                     }
 
-                    DrawAssetFolderContextMenu(hitID.c_str(), projectContext, folder.RelativePath, folderActionRequest);
+                    DrawAssetFolderContextMenu(
+                        hitID.c_str(),
+                        projectContext,
+                        folder.RelativePath,
+                        runtimeModeActive,
+                        state,
+                        operationRequest,
+                        folderActionRequest
+                    );
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + contentOffsetY));
                     ImGui::PushStyleColor(ImGuiCol_Text, isSelectedFolder ? EditorColor::Accent : EditorColor::Text);
                     ImGui::TextUnformatted(folder.Name.c_str());
@@ -207,6 +216,8 @@ namespace Quiet::Renderer::UI::Assets
                         record,
                         runtimeModeActive,
                         referenceCount,
+                        state,
+                        operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
                         pendingReimportAssetID,
@@ -270,6 +281,8 @@ namespace Quiet::Renderer::UI::Assets
                         record,
                         runtimeModeActive,
                         referenceCount,
+                        state,
+                        operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
                         pendingReimportAssetID,
@@ -314,6 +327,8 @@ namespace Quiet::Renderer::UI::Assets
                         record,
                         runtimeModeActive,
                         referenceCount,
+                        state,
+                        operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
                         pendingReimportAssetID,

@@ -35,8 +35,11 @@ namespace
         const Quiet::Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
         std::string& currentAssetFolder,
+        const bool runtimeModeActive,
+        const Assets::AssetBrowserState& state,
         Assets::AssetBrowserFolderActionRequest& folderActionRequest,
-        Assets::AssetBrowserAssetMoveRequest& assetMoveRequest)
+        Assets::AssetBrowserAssetMoveRequest& assetMoveRequest,
+        Assets::AssetBrowserOperationRequest& operationRequest)
     {
         const std::vector<Assets::AssetBrowserFolderEntry>childFolders = Assets::BuildAssetChildFolderList(projectContext, relativeFolderPath);
 
@@ -77,13 +80,28 @@ namespace
 
         const std::string contextMenuID = "##AssetSourceContext_" + relativeFolderPath;
 
-        Assets::DrawAssetFolderContextMenu(contextMenuID.c_str(), projectContext, relativeFolderPath, folderActionRequest);
+        Assets::DrawAssetFolderContextMenu(
+            contextMenuID.c_str(),
+            projectContext,
+            relativeFolderPath,
+            runtimeModeActive,
+            state,
+            operationRequest,
+            folderActionRequest);
 
         if (open && hasChildren)
         {
             for (const Assets::AssetBrowserFolderEntry& child : childFolders)
             {
-                DrawFolderNode(projectContext, child.RelativePath, currentAssetFolder, folderActionRequest, assetMoveRequest);
+                DrawFolderNode(
+                    projectContext,
+                    child.RelativePath,
+                    currentAssetFolder,
+                    runtimeModeActive,
+                    state,
+                    folderActionRequest,
+                    assetMoveRequest,
+                    operationRequest);
             }
 
             ImGui::TreePop();
@@ -96,9 +114,12 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetBrowserSourcesPanel(
         const Project::ProjectContext& projectContext,
         std::string& currentAssetFolder,
-        const float width,
+        float width,
+        bool runtimeModeActive,
+        const AssetBrowserState& state,
         AssetBrowserFolderActionRequest& folderActionRequest,
-        AssetBrowserAssetMoveRequest& assetMoveRequest)
+        AssetBrowserAssetMoveRequest& assetMoveRequest,
+        AssetBrowserOperationRequest& operationRequest)
     {
         ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
 
@@ -152,7 +173,15 @@ namespace Quiet::Renderer::UI::Assets
             }
             else
             {
-                DrawFolderNode(projectContext, GetAssetsRootRelativePath(projectContext), currentAssetFolder, folderActionRequest, assetMoveRequest);
+                DrawFolderNode(
+                    projectContext,
+                    GetAssetsRootRelativePath(projectContext),
+                    currentAssetFolder,
+                    runtimeModeActive,
+                    state,
+                    folderActionRequest,
+                    assetMoveRequest,
+                    operationRequest);
             }
 
             ImGui::PopStyleColor(3);

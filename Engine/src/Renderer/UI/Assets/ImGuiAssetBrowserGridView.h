@@ -23,6 +23,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string& pendingNavigateFolder,
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
+        AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
         std::string& pendingRemoveAssetID,

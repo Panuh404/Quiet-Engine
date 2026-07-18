@@ -96,6 +96,7 @@ namespace
         using namespace Quiet::Renderer::UI::Assets;
 
         SynchronizeAssetFolderHistory(projectContext, state);
+        SynchronizeAssetClipboard(projectContext, state);
 
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
         const bool canGoBack = CanNavigateAssetFolderBack(state);
@@ -223,6 +224,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& selectedContentFolder = state.SelectedContentFolder;
 
         SynchronizeAssetFolderHistory(projectContext, state);
+        SynchronizeAssetClipboard(projectContext, state);
 
         ImGui::Begin("Assets");
         {
@@ -291,11 +293,15 @@ namespace Quiet::Renderer::UI::Assets
                     projectContext,
                     currentAssetFolder,
                     sourcesPanelWidth,
+                    editorState.Scene.Mode != Editor::SceneMode::Edit,
+                    state,
                     folderActionRequest,
-                    assetMoveRequest
+                    assetMoveRequest,
+                    operationRequest
                 );
 
                 SynchronizeAssetFolderHistory(projectContext, state);
+                SynchronizeAssetClipboard(projectContext, state);
 
                 ImGui::SameLine();
 
@@ -381,6 +387,7 @@ namespace Quiet::Renderer::UI::Assets
                             pendingNavigateFolder,
                             folderActionRequest,
                             assetMoveRequest,
+                            operationRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
                             pendingRemoveAssetID,
@@ -402,6 +409,7 @@ namespace Quiet::Renderer::UI::Assets
                             pendingNavigateFolder,
                             folderActionRequest,
                             assetMoveRequest,
+                            operationRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
                             pendingRemoveAssetID
@@ -504,16 +512,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (operationRequest.IsValid())
                 {
-                    switch (operationRequest.Action)
-                    {
-                        case AssetBrowserOperationAction::Duplicate:
-                            ExecuteAssetDuplicateOperation(projectContext, editorState, state, operationRequest);
-                            break;
-
-                        case AssetBrowserOperationAction::None:
-                        default:
-                            break;
-                    }
+                    ExecuteAssetBrowserOperation(projectContext, editorState, state, operationRequest);
                 }
 
                 DrawAssetFolderActionPopup(projectContext, editorState, state);

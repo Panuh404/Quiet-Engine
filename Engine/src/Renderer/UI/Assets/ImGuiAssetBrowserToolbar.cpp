@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
@@ -102,6 +103,7 @@ namespace Quiet::Renderer::UI::Assets
         bool& openImportPopup)
     {
         const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
+        const bool clipboardAvailable = IsAssetClipboardAvailable(projectContext, state);
         const Project::AssetRegistry& registry = projectContext.GetAssetRegistry();
         const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh);
         const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture);
@@ -131,28 +133,64 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PopStyleColor();
         }
 
-        if (selectedAssetCount > 0)
+        if (selectedAssetCount > 0 || clipboardAvailable)
         {
             ImGui::SameLine();
 
             if (DrawAssetToolbarDropdownButton("Actions", "##AssetSelectionActions", SZ::Px(ImVec2(104.0f, 0.0f))))
             {
-                const bool canDuplicate = editorState.Scene.Mode == Editor::SceneMode::Edit;
-                if (EditorMenuItem(
-                        selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection",
-                        nullptr,
-                        false,
-                        canDuplicate))
+                const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+
+                if (selectedAssetCount > 0)
                 {
-                    operationRequest.Action = AssetBrowserOperationAction::Duplicate;
-                    operationRequest.AssetIDs = state.SelectedAssetIDs;
-                    operationRequest.TargetFolder = state.CurrentAssetFolder;
+                    const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
+
+                    if (EditorMenuItem(copyLabel, nullptr, false, editMode))
+                    {
+                        operationRequest.Clear();
+                        operationRequest.Action = AssetBrowserOperationAction::CopySelection;
+                        operationRequest.AssetIDs = state.SelectedAssetIDs;
+                    }
+
+                    const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
+
+                    if (EditorMenuItem(cutLabel, nullptr, false, editMode))
+                    {
+                        operationRequest.Clear();
+                        operationRequest.Action = AssetBrowserOperationAction::CutSelection;
+                        operationRequest.AssetIDs = state.SelectedAssetIDs;
+                    }
+
+                    const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
+                    if (EditorMenuItem(duplicateLabel, nullptr, false, editMode))
+                    {
+                        operationRequest.Clear();
+                        operationRequest.Action = AssetBrowserOperationAction::Duplicate;
+                        operationRequest.AssetIDs = state.SelectedAssetIDs;
+                        operationRequest.TargetFolder = state.CurrentAssetFolder;
+                    }
                 }
 
-                if (!canDuplicate && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                if (selectedAssetCount > 0 && clipboardAvailable)
                 {
-                    ImGui::SetTooltip("Assets cannot be duplicated while runtime mode is active.");
+                    ImGui::Separator();
                 }
+
+                if (clipboardAvailable)
+                {
+                    const bool copying = state.Clipboard.Mode == AssetBrowserClipboardMode::Copy;
+                    const std::string pasteLabel = copying
+                        ? (state.Clipboard.AssetIDs.size() == 1 ? "Paste Copy" : "Paste Copies")
+                        : (state.Clipboard.AssetIDs.size() == 1 ? "Move Here" : "Move Selection Here");
+
+                    if (EditorMenuItem(pasteLabel.c_str(), nullptr, false, editMode))
+                    {
+                        operationRequest.Clear();
+                        operationRequest.Action = AssetBrowserOperationAction::Paste;
+                        operationRequest.TargetFolder = state.CurrentAssetFolder;
+                    }
+                }
+
                 ImGui::EndPopup();
             }
         }

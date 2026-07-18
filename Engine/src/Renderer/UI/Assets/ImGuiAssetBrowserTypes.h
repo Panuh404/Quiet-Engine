@@ -65,9 +65,38 @@ namespace Quiet::Renderer::UI::Assets
         }
     };
 
+    enum class AssetBrowserClipboardMode
+    {
+        None,
+        Copy,
+        Move
+    };
+
+    struct AssetBrowserClipboardState
+    {
+        AssetBrowserClipboardMode Mode = AssetBrowserClipboardMode::None;
+        std::vector<std::string> AssetIDs{};
+        std::string ProjectRoot{};
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return Mode != AssetBrowserClipboardMode::None && !AssetIDs.empty() && !ProjectRoot.empty();
+        }
+
+        void Clear()
+        {
+            Mode = AssetBrowserClipboardMode::None;
+            AssetIDs.clear();
+            ProjectRoot.clear();
+        }
+    };
+
     enum class AssetBrowserOperationAction
     {
         None,
+        CopySelection,
+        CutSelection,
+        Paste,
         Duplicate
     };
 
@@ -81,6 +110,13 @@ namespace Quiet::Renderer::UI::Assets
         {
             switch (Action)
             {
+                case AssetBrowserOperationAction::CopySelection:
+                case AssetBrowserOperationAction::CutSelection:
+                    return !AssetIDs.empty();
+
+                case AssetBrowserOperationAction::Paste:
+                    return !TargetFolder.empty();
+
                 case AssetBrowserOperationAction::Duplicate:
                     return !AssetIDs.empty() && !TargetFolder.empty();
 
@@ -114,6 +150,7 @@ namespace Quiet::Renderer::UI::Assets
 
         std::vector<std::string> SelectedAssetIDs{};
         std::string SelectionAnchorAssetID{};
+        AssetBrowserClipboardState Clipboard{};
 
         std::vector<std::string> FolderHistory{};
         std::size_t FolderHistoryIndex = 0;

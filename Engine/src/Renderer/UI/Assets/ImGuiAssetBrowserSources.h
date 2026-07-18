@@ -11,7 +11,10 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         std::string& currentAssetFolder,
         float width,
+        bool runtimeModeActive,
+        const AssetBrowserState& state,
         AssetBrowserFolderActionRequest& folderActionRequest,
-        AssetBrowserAssetMoveRequest& assetMoveRequest
+        AssetBrowserAssetMoveRequest& assetMoveRequest,
+        AssetBrowserOperationRequest& operationRequest
     );
 }
