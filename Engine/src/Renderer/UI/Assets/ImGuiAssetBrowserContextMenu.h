@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
@@ -14,13 +13,11 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Project::AssetRecord& record,
         bool runtimeModeActive,
-        std::uint32_t referenceCount,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         std::string& selectedDetailsAssetID,
         std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
-        std::string& pendingRemoveAssetID
+        std::string& pendingReimportAssetID
     );
 
 

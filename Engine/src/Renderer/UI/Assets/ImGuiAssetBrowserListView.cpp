@@ -32,8 +32,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
-        std::string& pendingRemoveAssetID)
+        std::string& pendingReimportAssetID)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
         auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
@@ -162,7 +161,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 if (!recordPtr) continue;
                 const Project::AssetRecord& record = *recordPtr;
-                const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
+                const std::uint32_t referenceCount = CountAssetReferences(scene, record);
                 const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
                 const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary);
                 const std::string browserState = MakeAssetBrowserStateLabel(diagnostics, record, status, runtimeModeActive, referenceCount);
@@ -215,13 +214,11 @@ namespace Quiet::Renderer::UI::Assets
                         projectContext,
                         record,
                         runtimeModeActive,
-                        referenceCount,
                         state,
                         operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
-                        pendingReimportAssetID,
-                        pendingRemoveAssetID
+                        pendingReimportAssetID
                     );
 
                     DrawAssetBrowserDragSource(record, state, !runtimeModeActive);
@@ -280,13 +277,11 @@ namespace Quiet::Renderer::UI::Assets
                         projectContext,
                         record,
                         runtimeModeActive,
-                        referenceCount,
                         state,
                         operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
-                        pendingReimportAssetID,
-                        pendingRemoveAssetID
+                        pendingReimportAssetID
                     );
 
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
@@ -326,13 +321,11 @@ namespace Quiet::Renderer::UI::Assets
                         projectContext,
                         record,
                         runtimeModeActive,
-                        referenceCount,
                         state,
                         operationRequest,
                         selectedDetailsAssetID,
                         pendingDetailsAssetID,
-                        pendingReimportAssetID,
-                        pendingRemoveAssetID
+                        pendingReimportAssetID
                     );
 
                     ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));

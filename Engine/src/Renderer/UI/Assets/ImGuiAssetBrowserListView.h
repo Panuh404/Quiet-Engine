@@ -27,7 +27,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
-        std::string& pendingRemoveAssetID
+        std::string& pendingReimportAssetID
     );
 }

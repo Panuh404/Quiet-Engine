@@ -148,5 +148,5 @@ namespace Quiet::Renderer::UI::Assets
         const std::string& status, bool runtimeModeActive, std::uint32_t referenceCount);
 
     // Scene usage helpers
-    std::uint32_t CountMeshReferences(const Scene::Scene& scene, const std::string& meshID);
+    std::uint32_t CountAssetReferences(const Scene::Scene& scene, const Project::AssetRecord& record);
 }

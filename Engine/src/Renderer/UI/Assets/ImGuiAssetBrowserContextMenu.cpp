@@ -14,14 +14,6 @@ namespace
 {
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
 
-    std::string MakeAssetRemoveDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const std::uint32_t referenceCount)
-    {
-        if (record.BuiltIn)         return "Built-in assets cannot be removed.";
-        if (runtimeModeActive)      return "Assets cannot be removed while runtime mode is active.";
-        if (referenceCount > 0)     return "This asset is referenced by actors in the current scene.";
-        return {};
-    }
-
     std::string MakeAssetReimportDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const bool resolvedPathExists)
     {
         if (record.BuiltIn)         return "Built-in assets cannot be reimported.";
@@ -47,13 +39,11 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Project::AssetRecord& record,
         const bool runtimeModeActive,
-        const std::uint32_t referenceCount,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         std::string& selectedDetailsAssetID,
         std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
-        std::string& pendingRemoveAssetID)
+        std::string& pendingReimportAssetID)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
@@ -159,14 +149,11 @@ namespace Quiet::Renderer::UI::Assets
         if (!canReimport && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
             ImGui::SetTooltip("%s", reimportDisabledReason.c_str());
 
-        const std::string removeDisabledReason = MakeAssetRemoveDisabledReason(record, runtimeModeActive, referenceCount);
-        const bool canRemove = removeDisabledReason.empty();
-
-        if (EditorMenuItem("Remove", nullptr, false, canRemove))
-            pendingRemoveAssetID = record.ID;
-
-        if (!canRemove && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-            ImGui::SetTooltip("%s", removeDisabledReason.c_str());
+        const char* removeLabel = selectedAssetCount == 1 ? "Remove from Registry..." : "Remove Selection from Registry...";
+        if (EditorMenuItem(removeLabel, nullptr, false, canModifySelection))
+        {
+            RequestAssetRegistryRemoval(state, state.SelectedAssetIDs);
+        }
 
         ImGui::EndPopup();
         ImGui::PopStyleVar(3);

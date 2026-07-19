@@ -907,14 +907,47 @@ namespace Quiet::Renderer::UI::Assets
         if (runtimeModeActive)      return readiness + " · Runtime";
         return readiness + " · Removable";
     }
-    std::uint32_t CountMeshReferences(const Scene::Scene& scene, const std::string& meshID)
+
+    std::uint32_t CountAssetReferences(const Scene::Scene& scene, const Project::AssetRecord& record)
     {
         std::uint32_t count = 0;
-        for (const auto& actor : scene.GetActors())
+
+        for (const Scene::Actor& actor : scene.GetActors())
         {
-            if (!actor.StaticMesh.has_value()) continue;
-            if (actor.StaticMesh->MeshResourceID == meshID) ++count;
+            bool referenced = false;
+            switch (record.Type)
+            {
+                case Project::AssetType::Mesh:
+                {
+                    referenced = actor.StaticMesh.has_value() && actor.StaticMesh->MeshResourceID == record.ID;
+                    break;
+                }
+
+                case Project::AssetType::Texture:
+                {
+                    referenced = actor.Material.has_value() && actor.Material->BaseColorTextureAssetID == record.ID;
+                    if (!referenced && actor.StaticMesh.has_value())
+                    {
+                        for (const Scene::MaterialComponent& slot : actor.StaticMesh->MaterialSlots)
+                        {
+                            if (slot.BaseColorTextureAssetID == record.ID)
+                            {
+                                referenced = true;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case Project::AssetType::Unknown:
+                default:
+                    break;
+            }
+
+            if (referenced) ++count;
         }
+
         return count;
     }
 }

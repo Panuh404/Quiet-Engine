@@ -40,14 +40,8 @@ namespace Quiet::Project
         [[nodiscard]] std::filesystem::path GetAssetRegistryPath() const { return m_RootPath / "AssetRegistry.json"; }
         [[nodiscard]] const AssetRegistry& GetAssetRegistry() const { return m_AssetRegistry; }
         [[nodiscard]] AssetRegistry& GetAssetRegistry() { return m_AssetRegistry; }
-        [[nodiscard]] std::vector<std::string> EnumerateMeshAssetIDs() const
-        {
-            return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh);
-        }
-        [[nodiscard]] std::vector<std::string> EnumerateTextureAssetIDs() const
-        {
-            return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Texture);
-        }
+        [[nodiscard]] std::vector<std::string> EnumerateMeshAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh); }
+        [[nodiscard]] std::vector<std::string> EnumerateTextureAssetIDs() const {return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Texture); }
 
         void SetActiveScenePath(std::filesystem::path path)
         {
@@ -120,6 +114,7 @@ namespace Quiet::Project
         [[nodiscard]] bool RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
+        [[nodiscard]] bool RemoveAssetsByID(const std::vector<std::string>& assetIDs, std::string& outErrorMessage);
         [[nodiscard]] bool RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path& outRenamedAssetPath, std::string& outErrorMessage);
 
         // Folders

@@ -706,6 +706,87 @@ namespace Quiet::Renderer::UI::Assets
         return true;
     }
 
+    bool ExecuteAssetRemoveFromRegistryOperation(
+        Project::ProjectContext &projectContext,
+        Editor::EditorState &editorState,
+        AssetBrowserState &state,
+        const Scene::Scene &scene,
+        const AssetBrowserOperationRequest &request)
+    {
+        if (!request.IsValid() || request.Action != AssetBrowserOperationAction::RemoveFromRegistry) return false;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            state.RemoveErrorMessage = "Assets cannot be removed while runtime mode is active.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Remove rejected",
+                state.RemoveErrorMessage);
+            return false;
+        }
+
+        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        if (assetIDs.empty()) return false;
+        for (const std::string& assetID : assetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                state.RemoveErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Remove failed",
+                    state.RemoveErrorMessage);
+                return false;
+            }
+
+            if (record->BuiltIn)
+            {
+                state.RemoveErrorMessage = "Built-in asset '" + record->ID + "' cannot be removed.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Remove failed",
+                    state.RemoveErrorMessage);
+                return false;
+            }
+
+            const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
+            if (referenceCount > 0)
+            {
+                state.RemoveErrorMessage = "Asset '" + record->ID + "' is referenced by " + std::to_string(referenceCount)
+                    + (referenceCount == 1 ? " actor" : " actors") + " in the current scene.";
+
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Remove failed",
+                    state.RemoveErrorMessage);
+                return false;
+            }
+        }
+
+        std::string removeErrorMessage;
+
+        if (!projectContext.RemoveAssetsByID(assetIDs, removeErrorMessage))
+        {
+            state.RemoveErrorMessage = removeErrorMessage.empty() ? "The selected assets could not be removed from the registry." : removeErrorMessage;
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Remove failed",
+                state.RemoveErrorMessage);
+            return false;
+        }
+
+        for (const std::string& assetID : assetIDs)
+        {
+            RemoveAssetFromSelection(state, assetID);
+        }
+
+        SynchronizeAssetClipboard(projectContext, state);
+
+        state.SelectedContentFolder.clear();
+        state.RemoveErrorMessage.clear();
+
+        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+            assetIDs.size() == 1 ? "Asset removed" : "Assets removed",
+            "Removed " + MakeMoveCountLabel(assetIDs.size()) + " from the registry. Source files were not deleted.");
+        return true;
+    }
+
     bool IsAssetClipboardAvailable(
         const Project::ProjectContext& projectContext,
         const AssetBrowserState& state)
@@ -746,10 +827,11 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     bool ExecuteAssetBrowserOperation(
-        Project::ProjectContext &projectContext,
-        Editor::EditorState &editorState,
-        AssetBrowserState &state,
-        const AssetBrowserOperationRequest &request)
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        AssetBrowserState& state,
+        const AssetBrowserOperationRequest& request,
+        const Scene::Scene* scene)
     {
         if (!request.IsValid()) return false;
 
@@ -766,6 +848,20 @@ namespace Quiet::Renderer::UI::Assets
 
             case AssetBrowserOperationAction::Rename:
                 return ExecuteAssetRenameOperation(projectContext, editorState, state, request);
+
+            case AssetBrowserOperationAction::RemoveFromRegistry:
+            {
+                if (!scene)
+                {
+                    state.RemoveErrorMessage = "The active scene is required to validate asset references.";
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                        "Remove failed",
+                        state.RemoveErrorMessage);
+                    return false;
+                }
+
+                return ExecuteAssetRemoveFromRegistryOperation(projectContext, editorState, state, *scene, request);
+            }
 
             case AssetBrowserOperationAction::Paste:
             {

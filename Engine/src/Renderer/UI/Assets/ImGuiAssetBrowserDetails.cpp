@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 
+#include <glm/vec3.hpp>
 #include <imgui.h>
 
 #include "Quiet/Project/AssetRegistry.h"
@@ -232,7 +233,7 @@ namespace Quiet::Renderer::UI::Assets
             DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
             DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
 
-            const std::uint32_t referenceCount = CountMeshReferences(scene, record->ID);
+            const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
             DrawDetailRowUInt("References", referenceCount, labelWidth);
             DrawAssetSourceDiagnostics(projectContext, *record, labelWidth);
 

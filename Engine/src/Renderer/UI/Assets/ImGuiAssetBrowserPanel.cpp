@@ -270,9 +270,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& assetIDBuffer = state.AssetIDBuffer;
         auto& assetPathBuffer = state.AssetPathBuffer;
         auto& registerErrorMessage = state.ImportErrorMessage;
-        auto& removeErrorMessage = state.RemoveErrorMessage;
         auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
-        auto& confirmRemoveAssetID = state.ConfirmRemoveAssetID;
         auto& currentAssetFolder = state.CurrentAssetFolder;
         auto& reopenImportPopupAfterFileDialog = state.ReopenImportPopupAfterFileDialog;
         auto& assetSearchBuffer = state.SearchBuffer;
@@ -406,7 +404,6 @@ namespace Quiet::Renderer::UI::Assets
                             assetSearchBuffer.data()
                         );
 
-                    std::string pendingRemoveAssetID;
                     std::string pendingDetailsAssetID;
                     std::string pendingReimportAssetID;
                     std::string pendingNavigateFolder;
@@ -453,7 +450,6 @@ namespace Quiet::Renderer::UI::Assets
                             operationRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
-                            pendingRemoveAssetID,
                             assetThumbnailSize,
                             context.UIScale);
                     }
@@ -473,8 +469,7 @@ namespace Quiet::Renderer::UI::Assets
                             assetMoveRequest,
                             operationRequest,
                             pendingDetailsAssetID,
-                            pendingReimportAssetID,
-                            pendingRemoveAssetID);
+                            pendingReimportAssetID);
                     }
 
                     if (!pendingNavigateFolder.empty())
@@ -493,44 +488,6 @@ namespace Quiet::Renderer::UI::Assets
                         selectedDetailsAssetID = pendingReimportAssetID;
                         editorState.QueueRequest(Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
                     }
-
-                    if (!pendingRemoveAssetID.empty())
-                    {
-                        selectedDetailsAssetID = pendingRemoveAssetID;
-                        confirmRemoveAssetID = pendingRemoveAssetID;
-                        ImGui::OpenPopup("Remove Asset");
-                    }
-
-                    bool removeAssetConfirmed = false;
-                    bool removeAssetCancelled = false;
-
-                    DrawRemoveAssetConfirmationPopup(projectContext, confirmRemoveAssetID, removeAssetConfirmed, removeAssetCancelled, context.UIScale);
-
-                    if (removeAssetConfirmed && !confirmRemoveAssetID.empty())
-                    {
-                        const std::string removedAssetID = confirmRemoveAssetID;
-                        const bool removed = projectContext.RemoveAssetByID(removedAssetID);
-
-                        confirmRemoveAssetID.clear();
-                        if (!removed)
-                        {
-                            removeErrorMessage = "Failed to remove the selected asset from the registry.";
-                            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error, "Remove failed", removeErrorMessage);
-                            ImGui::OpenPopup("Remove Asset Failed");
-                        }
-                        else
-                        {
-                            RemoveAssetFromSelection(state, removedAssetID);
-
-                            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
-                                "Asset removed",
-                                "Asset '" + removedAssetID +
-                                "' was removed from the registry. The source file was not deleted."
-                            );
-                        }
-                    }
-                    else if (removeAssetCancelled)
-                        confirmRemoveAssetID.clear();
 
                     if (useSplitDetailsLayout)
                     {
@@ -592,8 +549,19 @@ namespace Quiet::Renderer::UI::Assets
                 context.UIScale
             );
 
-            DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
-            DrawAssetRenamePopup(projectContext, editorState, state);
+            DrawRemoveAssetConfirmationPopup(
+                projectContext,
+                editorState,
+                scene,
+                state,
+                context.UIScale
+            );
+
+            DrawAssetRenamePopup(
+                projectContext,
+                editorState,
+                state
+            );
         }
         ImGui::End();
     }

@@ -6,9 +6,9 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include "ImGuiAssetBrowserDialogs.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -187,6 +187,15 @@ namespace Quiet::Renderer::UI::Assets
                         operationRequest.Action = AssetBrowserOperationAction::Duplicate;
                         operationRequest.AssetIDs = state.SelectedAssetIDs;
                         operationRequest.TargetFolder = state.CurrentAssetFolder;
+                    }
+
+                    ImGui::Separator();
+
+                    // REMOVE
+                    const char* removeLabel = selectedAssetCount == 1 ? "Remove from Registry..." : "Remove Selection from Registry...";
+                    if (EditorMenuItem(removeLabel, nullptr, false, editMode))
+                    {
+                        RequestAssetRegistryRemoval(state, state.SelectedAssetIDs);
                     }
                 }
 

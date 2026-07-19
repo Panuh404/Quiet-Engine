@@ -237,7 +237,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
-        std::string& pendingRemoveAssetID,
         AssetBrowserThumbnailSize thumbnailSize,
         float uiScale)
     {
@@ -397,7 +396,7 @@ namespace Quiet::Renderer::UI::Assets
             const Project::AssetRecord& record = *recordPtr;
             ImGui::TableNextColumn();
 
-            const std::uint32_t referenceCount = CountMeshReferences(scene, record.ID);
+            const std::uint32_t referenceCount = CountAssetReferences(scene, record);
             const std::string displayName = MakeAssetDisplayName(record);
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
             const bool isSelectedAsset = IsAssetSelected(state, record.ID);
@@ -439,18 +438,17 @@ namespace Quiet::Renderer::UI::Assets
                     selectedContentFolder.clear();
                 }
             }
+
             DrawAssetContextMenu(
                 hitID.c_str(),
                 projectContext,
                 record,
                 runtimeModeActive,
-                referenceCount,
                 state,
                 operationRequest,
                 selectedDetailsAssetID,
                 pendingDetailsAssetID,
-                pendingReimportAssetID,
-                pendingRemoveAssetID
+                pendingReimportAssetID
             );
 
             DrawAssetBrowserDragSource(record, state, !runtimeModeActive);

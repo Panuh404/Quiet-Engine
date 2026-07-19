@@ -271,6 +271,68 @@ namespace Quiet::Project
         return false;
     }
 
+    bool ProjectContext::RemoveAssetsByID(const std::vector<std::string> &assetIDs, std::string &outErrorMessage)
+    {
+        outErrorMessage.clear();
+        std::vector<std::string> normalizedAssetIDs;
+        normalizedAssetIDs.reserve(assetIDs.size());
+
+        for (const std::string& assetID : assetIDs)
+        {
+            if (assetID.empty()) continue;
+            if (std::find(
+                normalizedAssetIDs.begin(),
+                normalizedAssetIDs.end(),
+                assetID) == normalizedAssetIDs.end())
+            {
+                normalizedAssetIDs.push_back(assetID);
+            }
+        }
+
+        if (normalizedAssetIDs.empty())
+        {
+            outErrorMessage = "No assets were selected for removal.";
+            return false;
+        }
+
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        for (const std::string& assetID : normalizedAssetIDs)
+        {
+            const AssetRecord* record = AssetRegistryIO::FindByID(updatedRegistry, assetID);
+            if (!record)
+            {
+                outErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                return false;
+            }
+
+            if (record->BuiltIn)
+            {
+                outErrorMessage = "Built-in asset '" + record->ID + "' cannot be removed.";
+                return false;
+            }
+
+            if (!AssetRegistryIO::RemoveByID(updatedRegistry, assetID))
+            {
+                outErrorMessage = "Failed to remove asset '" + assetID + "' from the pending registry update.";
+                return false;
+            }
+        }
+
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+
+        if (SaveAssetRegistry()) return true;
+        m_AssetRegistry = previousRegistry;
+
+        const bool registryRestored = SaveAssetRegistry();
+        outErrorMessage = registryRestored
+            ? "The registry update could not be saved. The previous registry was restored."
+            : "The registry update could not be saved, and the previous registry could not be restored on disk.";
+
+        return false;
+    }
+
     bool ProjectContext::RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path &outRenamedAssetPath, std::string &outErrorMessage)
     {
         outRenamedAssetPath.clear();

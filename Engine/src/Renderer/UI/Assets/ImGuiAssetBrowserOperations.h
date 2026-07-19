@@ -3,6 +3,7 @@
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
+#include "Scene/Scene.h"
 
 namespace Quiet::Renderer::UI::Assets
 {
@@ -27,6 +28,14 @@ namespace Quiet::Renderer::UI::Assets
         const AssetBrowserOperationRequest& request
     );
 
+    [[nodiscard]] bool ExecuteAssetRemoveFromRegistryOperation(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        AssetBrowserState& state,
+        const Scene::Scene& scene,
+        const AssetBrowserOperationRequest& request
+    );
+
     [[nodiscard]] bool IsAssetClipboardAvailable(
         const Project::ProjectContext& projectContext,
         const AssetBrowserState& state
@@ -41,6 +50,7 @@ namespace Quiet::Renderer::UI::Assets
         Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         AssetBrowserState& state,
-        const AssetBrowserOperationRequest& request
+        const AssetBrowserOperationRequest& request,
+        const Scene::Scene* scene = nullptr
     );
 }
