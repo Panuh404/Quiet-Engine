@@ -75,7 +75,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::Separator();
 
         const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
-        if (EditorMenuItem(copyLabel, nullptr, false, canModifySelection))
+        if (EditorMenuItem(copyLabel,  "Ctrl+C", false, canModifySelection))
         {
             operationRequest.Clear();
             operationRequest.Action = AssetBrowserOperationAction::CopySelection;
@@ -83,7 +83,7 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
-        if (EditorMenuItem(cutLabel, nullptr, false, canModifySelection))
+        if (EditorMenuItem(cutLabel, "Ctrl+X", false, canModifySelection))
         {
             operationRequest.Clear();
             operationRequest.Action = AssetBrowserOperationAction::CutSelection;
@@ -91,7 +91,7 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
-        if (EditorMenuItem(duplicateLabel, nullptr, false, canModifySelection))
+        if (EditorMenuItem(duplicateLabel, "Ctrl+D", false, canModifySelection))
         {
             operationRequest.Clear();
             operationRequest.Action = AssetBrowserOperationAction::Duplicate;
@@ -175,7 +175,7 @@ namespace Quiet::Renderer::UI::Assets
         const bool copying = state.Clipboard.Mode == AssetBrowserClipboardMode::Copy;
         const char* pasteLabel = copying ? "Paste Copies Here" : "Move Assets Here";
 
-        if (EditorMenuItem(pasteLabel, nullptr, false, canPaste))
+        if (EditorMenuItem(pasteLabel, "Ctrl+V", false, canPaste))
         {
             operationRequest.Clear();
             operationRequest.Action = AssetBrowserOperationAction::Paste;

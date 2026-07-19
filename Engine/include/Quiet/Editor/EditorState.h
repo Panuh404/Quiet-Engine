@@ -150,6 +150,11 @@ namespace Quiet::Editor
         std::array<char, 260> ProjectScenePathBuffer{};
     };
 
+    struct EditorPanelFocusState
+    {
+        bool AssetBrowser = false;
+    };
+
     struct EditorState
     {
         EditorSelectionState Selection{};
@@ -158,6 +163,7 @@ namespace Quiet::Editor
         EditorSceneState Scene{};
         EditorHistoryState History{};
         EditorProjectManagerState ProjectManager{};
+        EditorPanelFocusState PanelFocus{};
         EditorFeedbackMessage AssetOperationFeedback{};
 
         std::deque<EditorRequest> PendingRequests{};

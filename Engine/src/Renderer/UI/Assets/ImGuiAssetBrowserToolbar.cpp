@@ -145,7 +145,7 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
 
-                    if (EditorMenuItem(copyLabel, nullptr, false, editMode))
+                    if (EditorMenuItem(copyLabel, "Ctrl+C", false, editMode))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::CopySelection;
@@ -154,7 +154,7 @@ namespace Quiet::Renderer::UI::Assets
 
                     const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
 
-                    if (EditorMenuItem(cutLabel, nullptr, false, editMode))
+                    if (EditorMenuItem(cutLabel, "Ctrl+X", false, editMode))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::CutSelection;
@@ -162,7 +162,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
 
                     const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
-                    if (EditorMenuItem(duplicateLabel, nullptr, false, editMode))
+                    if (EditorMenuItem(duplicateLabel, "Ctrl+D", false, editMode))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::Duplicate;
@@ -183,7 +183,7 @@ namespace Quiet::Renderer::UI::Assets
                         ? (state.Clipboard.AssetIDs.size() == 1 ? "Paste Copy" : "Paste Copies")
                         : (state.Clipboard.AssetIDs.size() == 1 ? "Move Here" : "Move Selection Here");
 
-                    if (EditorMenuItem(pasteLabel.c_str(), nullptr, false, editMode))
+                    if (EditorMenuItem(pasteLabel.c_str(), "Ctrl+V", false, editMode))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::Paste;

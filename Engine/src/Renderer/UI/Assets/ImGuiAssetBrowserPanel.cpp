@@ -197,6 +197,54 @@ namespace
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
     }
+
+    void QueueAssetBrowserShortcutOperation(
+        const Quiet::Project::ProjectContext& projectContext,
+        const Quiet::Editor::EditorState& editorState,
+        Quiet::Renderer::UI::Assets::AssetBrowserState& state,
+        Quiet::Renderer::UI::Assets::AssetBrowserOperationRequest& operationRequest)
+    {
+        namespace Assets = Quiet::Renderer::UI::Assets;
+
+        if (!editorState.PanelFocus.AssetBrowser) return;
+        if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit) return;
+
+        const ImGuiIO& io = ImGui::GetIO();
+
+        // Preserve normal text-editing shortcuts in Search fields,
+        // rename dialogs, import fields, and other text controls.
+        if (io.WantTextInput || !io.KeyCtrl) return;
+
+        const bool hasSelection = !state.SelectedAssetIDs.empty();
+        if (ImGui::IsKeyPressed(ImGuiKey_C, false) && hasSelection)
+        {
+            operationRequest.Clear();
+            operationRequest.Action = Assets::AssetBrowserOperationAction::CopySelection;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+            return;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_X, false) && hasSelection)
+        {
+            operationRequest.Clear();
+            operationRequest.Action = Assets::AssetBrowserOperationAction::CutSelection;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+            return;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_V, false) && Assets::IsAssetClipboardAvailable(projectContext, state))
+        {
+            operationRequest.Clear();
+            operationRequest.Action = Assets::AssetBrowserOperationAction::Paste;
+            operationRequest.TargetFolder = state.CurrentAssetFolder;
+            return;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_D, false) && hasSelection)
+        {
+            operationRequest.Clear();
+            operationRequest.Action = Assets::AssetBrowserOperationAction::Duplicate;
+            operationRequest.AssetIDs = state.SelectedAssetIDs;
+            operationRequest.TargetFolder = state.CurrentAssetFolder;
+        }
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -229,10 +277,14 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::Begin("Assets");
         {
+            editorState.PanelFocus.AssetBrowser = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
             const auto& registry = projectContext.GetAssetRegistry();
             bool openImportPopup = false;
+
             AssetBrowserOperationRequest operationRequest{};
 
+            QueueAssetBrowserShortcutOperation(projectContext, editorState, state, operationRequest);
             DrawAssetBrowserToolbar(
                 editorState,
                 projectContext,

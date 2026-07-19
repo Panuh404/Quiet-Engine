@@ -13,10 +13,7 @@ namespace Quiet::Editor
                                  Scene::Scene& scene,
                                  EditorCommands& commands,
                                  EditorState& state)
-        : m_Input(input)
-        , m_Scene(scene)
-        , m_Commands(commands)
-        , m_State(state)
+        : m_Input(input), m_Scene(scene), m_Commands(commands), m_State(state)
     {
     }
 
@@ -217,14 +214,8 @@ namespace Quiet::Editor
 
         if (ctrlDown && m_Input.IsKeyPressed(KeyCode::Z))
         {
-            if (shiftDown)
-            {
-                Execute(EditorActionID::Redo);
-            }
-            else
-            {
-                Execute(EditorActionID::Undo);
-            }
+            if (shiftDown) { Execute(EditorActionID::Redo); }
+            else { Execute(EditorActionID::Undo); }
             return;
         }
 
@@ -233,6 +224,10 @@ namespace Quiet::Editor
             Execute(EditorActionID::Redo);
             return;
         }
+
+        // Selection-sensitive shortcuts belong to the Asset Browser while that panel has keyboard focus.
+        // Global project and history shortcuts above remain available.
+        if (m_State.PanelFocus.AssetBrowser) return;
 
         if (ctrlDown && m_Input.IsKeyPressed(KeyCode::D))
         {
