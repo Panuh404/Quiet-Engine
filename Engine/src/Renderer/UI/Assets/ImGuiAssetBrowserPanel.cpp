@@ -450,8 +450,7 @@ namespace Quiet::Renderer::UI::Assets
                             operationRequest,
                             pendingDetailsAssetID,
                             pendingReimportAssetID,
-                            assetThumbnailSize,
-                            context.UIScale);
+                            assetThumbnailSize);
                     }
                     else if (assetViewMode == AssetBrowserViewMode::List)
                     {

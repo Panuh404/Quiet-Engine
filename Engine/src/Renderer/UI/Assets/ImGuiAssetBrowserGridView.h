@@ -26,7 +26,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserOperationRequest& operationRequest,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID,
-        AssetBrowserThumbnailSize thumbnailSize,
-        float uiScale
+        AssetBrowserThumbnailSize thumbnailSize
     );
 }

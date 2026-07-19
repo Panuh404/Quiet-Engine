@@ -339,32 +339,100 @@ namespace Quiet::Renderer::UI::Assets
     {
         switch (thumbnailSize)
         {
+            case AssetBrowserThumbnailSize::Tiny:
+                return {
+                    SZ::Px(108.0f),     // TargetCardWidth
+                    SZ::Px(98.0f),      // CardHeight
+                    SZ::Px(6.0f),       // Padding
+                    SZ::Px(48.0f),      // PreviewHeight
+                    SZ::Px(4.0f),       // PreviewInnerPadding
+                    SZ::Px(6.0f),       // GridSpacing
+                    SZ::Px(8.0f),       // CardRounding
+                    SZ::Px(6.0f),       // PreviewRounding
+                    SZ::Px(5.0f),       // ContentGap
+                    SZ::Px(2.0f),       // SecondaryGap
+                    SZ::Px(5.0f),       // MetadataGap
+                    false,                   // ShowMetadataPill
+                    false,                   // ShowSecondaryLine
+                    false,                   // ShowDiagnosticPill
+                    true                     // CompactPreview
+                };
+
             case AssetBrowserThumbnailSize::Small:
                 return {
                     SZ::Px(142.0f),
-                    SZ::Px(120.0f),
-                    SZ::Px(132.0f),
+                    SZ::Px(136.0f),
                     SZ::Px(8.0f),
-                    SZ::Px(62.0f)
+                    SZ::Px(68.0f),
+                    SZ::Px(6.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(9.0f),
+                    SZ::Px(7.0f),
+                    SZ::Px(6.0f),
+                    SZ::Px(2.0f),
+                    SZ::Px(6.0f),
+                    true,
+                    false,
+                    false,
+                    true
                 };
 
             case AssetBrowserThumbnailSize::Large:
                 return {
-                    SZ::Px(230.0f),
-                    SZ::Px(190.0f),
-                    SZ::Px(218.0f),
+                    SZ::Px(246.0f),
+                    SZ::Px(250.0f),
                     SZ::Px(12.0f),
-                    SZ::Px(126.0f)
+                    SZ::Px(148.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(12.0f),
+                    SZ::Px(12.0f),
+                    SZ::Px(9.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(3.0f),
+                    SZ::Px(8.0f),
+                    true,
+                    true,
+                    true,
+                    false
+                };
+
+            case AssetBrowserThumbnailSize::ExtraLarge:
+                return {
+                    SZ::Px(322.0f),
+                    SZ::Px(322.0f),
+                    SZ::Px(14.0f),
+                    SZ::Px(210.0f),
+                    SZ::Px(12.0f),
+                    SZ::Px(14.0f),
+                    SZ::Px(14.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(4.0f),
+                    SZ::Px(8.0f),
+                    true,
+                    true,
+                    true,
+                    false
                 };
 
             case AssetBrowserThumbnailSize::Medium:
             default:
                 return {
+                    SZ::Px(184.0f),
                     SZ::Px(178.0f),
-                    SZ::Px(150.0f),
-                    SZ::Px(166.0f),
                     SZ::Px(10.0f),
-                    SZ::Px(86.0f)
+                    SZ::Px(96.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(10.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(8.0f),
+                    SZ::Px(3.0f),
+                    SZ::Px(7.0f),
+                    true,
+                    false,
+                    true,
+                    false
                 };
         }
     }

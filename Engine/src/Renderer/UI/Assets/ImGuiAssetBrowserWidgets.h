@@ -45,11 +45,25 @@ namespace Quiet::Renderer::UI::Assets
 
     struct AssetBrowserCardMetrics
     {
-        float DesiredColumnWidth = 178.0f;
-        float MinimumCardWidth = 150.0f;
-        float CardHeight = 166.0f;
+        float TargetCardWidth = 184.0f;
+        float CardHeight = 178.0f;
+
         float Padding = 10.0f;
-        float PreviewHeight = 86.0f;
+        float PreviewHeight = 96.0f;
+        float PreviewInnerPadding = 8.0f;
+
+        float GridSpacing = 10.0f;
+        float CardRounding = 10.0f;
+        float PreviewRounding = 8.0f;
+
+        float ContentGap = 8.0f;
+        float SecondaryGap = 3.0f;
+        float MetadataGap = 7.0f;
+
+        bool ShowMetadataPill = true;
+        bool ShowSecondaryLine = false;
+        bool ShowDiagnosticPill = true;
+        bool CompactPreview = false;
     };
 
     AssetBrowserCardMetrics MakeAssetBrowserCardMetrics(AssetBrowserThumbnailSize thumbnailSize);

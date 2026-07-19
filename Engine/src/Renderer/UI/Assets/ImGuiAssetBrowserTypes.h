@@ -21,9 +21,11 @@ namespace Quiet::Renderer::UI::Assets
 
     enum class AssetBrowserThumbnailSize
     {
+        Tiny,
         Small,
         Medium,
-        Large
+        Large,
+        ExtraLarge
     };
 
     enum class AssetBrowserFolderAction

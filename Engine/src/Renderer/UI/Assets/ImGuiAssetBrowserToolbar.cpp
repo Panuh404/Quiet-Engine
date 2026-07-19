@@ -44,13 +44,15 @@ namespace
 
     const char* ToAssetBrowserThumbnailSizeLabel(const Quiet::Renderer::UI::Assets::AssetBrowserThumbnailSize thumbnailSize)
     {
-        using Quiet::Renderer::UI::Assets::AssetBrowserThumbnailSize;
+        using Quiet::Renderer::UI::Assets:: AssetBrowserThumbnailSize;
         switch (thumbnailSize)
         {
-            case AssetBrowserThumbnailSize::Small:  return "Small";
-            case AssetBrowserThumbnailSize::Large:  return "Large";
+            case AssetBrowserThumbnailSize::Tiny:       return "Tiny";
+            case AssetBrowserThumbnailSize::Small:      return "Small";
+            case AssetBrowserThumbnailSize::Large:      return "Large";
+            case AssetBrowserThumbnailSize::ExtraLarge: return "Extra Large";
             case AssetBrowserThumbnailSize::Medium:
-            default:                                return "Medium";
+            default:                                    return "Medium";
         }
     }
 
@@ -309,22 +311,30 @@ namespace Quiet::Renderer::UI::Assets
         if (viewMode == AssetBrowserViewMode::Browser)
         {
             ImGui::SameLine();
+
             const std::string sizeDropdownLabel = std::string("Size: ") + ToAssetBrowserThumbnailSizeLabel(thumbnailSize);
-
-            if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(142.0f, 0.0f))))
+            if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
             {
-                // Small
+                if (EditorMenuItem("Tiny", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Tiny))
+                {
+                    thumbnailSize = AssetBrowserThumbnailSize::Tiny;
+                }
                 if (EditorMenuItem("Small", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Small))
+                {
                     thumbnailSize = AssetBrowserThumbnailSize::Small;
-
-                // Medium
+                }
                 if (EditorMenuItem("Medium", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Medium))
+                {
                     thumbnailSize = AssetBrowserThumbnailSize::Medium;
-
-                // Large
+                }
                 if (EditorMenuItem("Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Large))
+                {
                     thumbnailSize = AssetBrowserThumbnailSize::Large;
-
+                }
+                if (EditorMenuItem("Extra Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::ExtraLarge))
+                {
+                    thumbnailSize = AssetBrowserThumbnailSize::ExtraLarge;
+                }
                 ImGui::EndPopup();
             }
         }
