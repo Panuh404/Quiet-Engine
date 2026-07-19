@@ -7,6 +7,7 @@
 #include "Quiet/Platform/Shell.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -88,6 +89,29 @@ namespace Quiet::Renderer::UI::Assets
             operationRequest.Clear();
             operationRequest.Action = AssetBrowserOperationAction::CutSelection;
             operationRequest.AssetIDs = state.SelectedAssetIDs;
+        }
+
+        const AssetPathDiagnostics renameDiagnostics = InspectAssetPath(projectContext, record);
+        const bool canRename = !runtimeModeActive && selectedAssetCount == 1 && !record.BuiltIn && !renameDiagnostics.IsMissing() && !renameDiagnostics.External;
+
+        if (EditorMenuItem("Rename", "F2", false, canRename))
+        {
+            RequestAssetRename(state, record);
+        }
+
+        if (!canRename && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            if (selectedAssetCount != 1)
+                ImGui::SetTooltip("Rename requires exactly one selected asset.");
+
+            else if (record.BuiltIn)
+                ImGui::SetTooltip("Built-in assets cannot be renamed.");
+
+            else if (renameDiagnostics.External)
+                ImGui::SetTooltip("External assets cannot be renamed through the project Assets browser.");
+
+            else
+                ImGui::SetTooltip("The asset source file is unavailable.");
         }
 
         const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";

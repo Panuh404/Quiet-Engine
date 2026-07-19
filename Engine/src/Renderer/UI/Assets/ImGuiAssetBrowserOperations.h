@@ -20,6 +20,13 @@ namespace Quiet::Renderer::UI::Assets
         const AssetBrowserOperationRequest& request
     );
 
+    [[nodiscard]] bool ExecuteAssetRenameOperation(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        AssetBrowserState& state,
+        const AssetBrowserOperationRequest& request
+    );
+
     [[nodiscard]] bool IsAssetClipboardAvailable(
         const Project::ProjectContext& projectContext,
         const AssetBrowserState& state

@@ -120,6 +120,7 @@ namespace Quiet::Project
         [[nodiscard]] bool RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
+        [[nodiscard]] bool RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path& outRenamedAssetPath, std::string& outErrorMessage);
 
         // Folders
         [[nodiscard]] bool CreateAssetFolder(

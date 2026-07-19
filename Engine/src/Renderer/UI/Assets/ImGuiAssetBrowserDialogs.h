@@ -5,6 +5,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Project/AssetRecord.h"
 
 namespace Quiet::Renderer::UI::Assets
 {
@@ -17,5 +18,8 @@ namespace Quiet::Renderer::UI::Assets
     [[nodiscard]] const char* GetAssetFolderActionPopupTitle(AssetBrowserFolderAction action);
     void BeginAssetFolderAction(AssetBrowserState& state, const AssetBrowserFolderActionRequest& request);
     void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
+
+    void RequestAssetRename(AssetBrowserState& state, const Project::AssetRecord& record);
+    void DrawAssetRenamePopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
 
 }

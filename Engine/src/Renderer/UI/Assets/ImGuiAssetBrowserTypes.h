@@ -97,7 +97,8 @@ namespace Quiet::Renderer::UI::Assets
         CopySelection,
         CutSelection,
         Paste,
-        Duplicate
+        Duplicate,
+        Rename
     };
 
     struct AssetBrowserOperationRequest
@@ -105,6 +106,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserOperationAction Action = AssetBrowserOperationAction::None;
         std::vector<std::string> AssetIDs{};
         std::string TargetFolder{};
+        std::string NewName{};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -120,6 +122,9 @@ namespace Quiet::Renderer::UI::Assets
                 case AssetBrowserOperationAction::Duplicate:
                     return !AssetIDs.empty() && !TargetFolder.empty();
 
+                case AssetBrowserOperationAction::Rename:
+                    return AssetIDs.size() == 1 && !NewName.empty();
+
                 case AssetBrowserOperationAction::None:
                 default:
                     return false;
@@ -131,6 +136,7 @@ namespace Quiet::Renderer::UI::Assets
             Action = AssetBrowserOperationAction::None;
             AssetIDs.clear();
             TargetFolder.clear();
+            NewName.clear();
         }
     };
 
@@ -140,9 +146,13 @@ namespace Quiet::Renderer::UI::Assets
         std::array<char, 1024> AssetPathBuffer{};
         std::array<char, 128> FolderNameBuffer{};
         std::array<char, 128> SearchBuffer{};
+        std::array<char, 128> AssetRenameBuffer{};
 
         std::string ImportErrorMessage{};
         std::string RemoveErrorMessage{};
+        std::string AssetRenameErrorMessage{};
+        std::string RenameAssetID{};
+
         std::string SelectedDetailsAssetID{};
         std::string ConfirmRemoveAssetID{};
         std::string CurrentAssetFolder{};
@@ -159,6 +169,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string FolderOperationErrorMessage{};
 
         bool ReopenImportPopupAfterFileDialog = false;
+        bool RequestOpenAssetRenamePopup = false;
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;

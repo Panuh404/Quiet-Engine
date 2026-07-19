@@ -668,6 +668,44 @@ namespace Quiet::Renderer::UI::Assets
         return true;
     }
 
+    bool ExecuteAssetRenameOperation(
+        Project::ProjectContext &projectContext,
+        Editor::EditorState &editorState,
+        AssetBrowserState &state,
+        const AssetBrowserOperationRequest &request)
+    {
+        if (!request.IsValid() || request.Action != AssetBrowserOperationAction::Rename) return false;
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            state.AssetRenameErrorMessage = "Assets cannot be renamed while runtime mode is active.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Rename rejected",
+                state.AssetRenameErrorMessage);
+            return false;
+        }
+
+        const std::string& assetID = request.AssetIDs.front();
+        std::filesystem::path renamedAssetPath;
+        std::string renameErrorMessage;
+
+        if (!projectContext.RenameAssetFile(assetID, request.NewName, renamedAssetPath, renameErrorMessage))
+        {
+            state.AssetRenameErrorMessage = renameErrorMessage.empty() ? "The selected asset could not be renamed." : renameErrorMessage;
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Rename failed",
+                state.AssetRenameErrorMessage);
+            return false;
+        }
+
+        state.AssetRenameErrorMessage.clear();
+
+        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+            "Asset renamed",
+            "Renamed the source file for asset '" + assetID + "' to '" + renamedAssetPath.generic_string() + "'. The stable asset ID was preserved.");
+        return true;
+    }
+
     bool IsAssetClipboardAvailable(
         const Project::ProjectContext& projectContext,
         const AssetBrowserState& state)
@@ -707,8 +745,11 @@ namespace Quiet::Renderer::UI::Assets
             state.Clipboard.Clear();
     }
 
-    bool ExecuteAssetBrowserOperation(Project::ProjectContext &projectContext, Editor::EditorState &editorState,
-        AssetBrowserState &state, const AssetBrowserOperationRequest &request)
+    bool ExecuteAssetBrowserOperation(
+        Project::ProjectContext &projectContext,
+        Editor::EditorState &editorState,
+        AssetBrowserState &state,
+        const AssetBrowserOperationRequest &request)
     {
         if (!request.IsValid()) return false;
 
@@ -722,6 +763,9 @@ namespace Quiet::Renderer::UI::Assets
 
             case AssetBrowserOperationAction::Duplicate:
                 return ExecuteAssetDuplicateOperation(projectContext, editorState, state, request);
+
+            case AssetBrowserOperationAction::Rename:
+                return ExecuteAssetRenameOperation(projectContext, editorState, state, request);
 
             case AssetBrowserOperationAction::Paste:
             {

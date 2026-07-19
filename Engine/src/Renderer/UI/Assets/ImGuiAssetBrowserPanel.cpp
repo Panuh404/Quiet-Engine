@@ -213,9 +213,19 @@ namespace
 
         // Preserve normal text-editing shortcuts in Search fields,
         // rename dialogs, import fields, and other text controls.
-        if (io.WantTextInput || !io.KeyCtrl) return;
-
+        if (io.WantTextInput) return;
         const bool hasSelection = !state.SelectedAssetIDs.empty();
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F2, false) && state.SelectedAssetIDs.size() == 1)
+        {
+            const Quiet::Project::AssetRecord* record =
+                Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.SelectedAssetIDs.front());
+            if (record) RequestAssetRename(state, *record);
+            return;
+        }
+
+        if (!io.KeyCtrl) return;
+
         if (ImGui::IsKeyPressed(ImGuiKey_C, false) && hasSelection)
         {
             operationRequest.Clear();
@@ -376,8 +386,7 @@ namespace Quiet::Renderer::UI::Assets
                                 childFolders.end(),
                                 [&](const AssetBrowserFolderEntry& folder)
                                 {
-                                    return folder.RelativePath ==
-                                           selectedContentFolder;
+                                    return folder.RelativePath == selectedContentFolder;
                                 }
                             );
 
@@ -584,6 +593,7 @@ namespace Quiet::Renderer::UI::Assets
             );
 
             DrawFailurePopup("Remove Asset Failed", removeErrorMessage);
+            DrawAssetRenamePopup(projectContext, editorState, state);
         }
         ImGui::End();
     }

@@ -8,6 +8,7 @@
 
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
+#include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/ImGuiTheme.h"
 
 namespace
@@ -78,6 +79,14 @@ namespace
         state.FolderOperationTarget.clear();
         state.FolderOperationErrorMessage.clear();
         state.FolderNameBuffer.fill('\0');
+    }
+
+    void ClearAssetRename(Assets::AssetBrowserState& state)
+    {
+        state.RenameAssetID.clear();
+        state.AssetRenameErrorMessage.clear();
+        state.AssetRenameBuffer.fill('\0');
+        state.RequestOpenAssetRenamePopup = false;
     }
 
     void DrawFolderPath(const char* label, const std::string& folderPath)
@@ -573,6 +582,159 @@ namespace Quiet::Renderer::UI::Assets
         {
             ClearFolderAction(state);
             ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void RequestAssetRename(AssetBrowserState &state, const Project::AssetRecord &record)
+    {
+        if (record.ID.empty() || record.BuiltIn || record.Path.empty()) return;
+
+        const std::filesystem::path sourcePath = record.Path;
+        std::string currentBaseName = sourcePath.stem().string();
+
+        if (currentBaseName.empty()) currentBaseName = record.ID;
+        state.RenameAssetID = record.ID;
+        state.AssetRenameErrorMessage.clear();
+
+        CopyToBuffer(state.AssetRenameBuffer, currentBaseName);
+
+        state.RequestOpenAssetRenamePopup = true;
+    }
+
+    void DrawAssetRenamePopup(Project::ProjectContext &projectContext, Editor::EditorState &editorState, AssetBrowserState &state)
+    {
+        if (state.RequestOpenAssetRenamePopup)
+        {
+            ImGui::OpenPopup("Rename Asset");
+            state.RequestOpenAssetRenamePopup = false;
+        }
+
+        if (state.RenameAssetID.empty()) return;
+        ImGui::SetNextWindowSize(SZ::Px(ImVec2(500.0f, 0.0f)), ImGuiCond_Appearing);
+        bool popupOpen = true;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(18.0f, 16.0f)));
+        const bool popupVisible =
+            EditorBeginPopupModal("Rename Asset", popupOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::PopStyleVar();
+
+        if (!popupVisible)
+        {
+            if (!popupOpen) ClearAssetRename(state);
+            return;
+        }
+
+        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.RenameAssetID);
+        if (!record)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("The selected asset is no longer registered.");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            if (EditorButton("Close", SZ::Px(ImVec2(120.0f, 0.0f))))
+            {
+                ClearAssetRename(state);
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+            return;
+        }
+
+        const std::filesystem::path currentPath = record->Path;
+        const std::string extension = currentPath.extension().string();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextUnformatted("Stable Asset ID");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+        ImGui::TextWrapped("%s", record->ID.c_str());
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextUnformatted("Current File");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+        ImGui::TextWrapped("%s", currentPath.filename().string().c_str());
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextUnformatted("New File Name");
+        ImGui::PopStyleColor();
+
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+
+        ImGui::SetNextItemWidth(-1.0f);
+
+        const bool submittedByEnter =
+            ImGui::InputText("##RenameAssetFileName", state.AssetRenameBuffer.data(), state.AssetRenameBuffer.size(),
+                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+
+        if (!extension.empty())
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+            ImGui::Text("The existing extension %s will be preserved.", extension.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        if (!state.AssetRenameErrorMessage.empty())
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("%s", state.AssetRenameErrorMessage.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextWrapped("The stable Asset ID will not change, so existing scene and Inspector references remain valid.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const std::string newName =  TrimCopy(state.AssetRenameBuffer.data());
+        const bool canRename = !newName.empty();
+        const float buttonWidth = SZ::Px(120.0f);
+        const float totalWidth = buttonWidth * 2.0f + ImGui::GetStyle().ItemSpacing.x;
+
+        AlignFolderActionButtons(totalWidth);
+
+        if (EditorButton("Cancel", ImVec2(buttonWidth, 0.0f)))
+        {
+            ClearAssetRename(state);
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (EditorButton("Rename", ImVec2(buttonWidth, 0.0f), canRename) || (submittedByEnter && canRename))
+        {
+            AssetBrowserOperationRequest request{};
+            request.Action = AssetBrowserOperationAction::Rename;
+            request.AssetIDs = { state.RenameAssetID };
+            request.NewName = newName;
+
+            if (ExecuteAssetBrowserOperation(projectContext, editorState, state, request))
+            {
+                ClearAssetRename(state);
+                ImGui::CloseCurrentPopup();
+            }
         }
 
         ImGui::EndPopup();

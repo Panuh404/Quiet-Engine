@@ -271,8 +271,164 @@ namespace Quiet::Project
         return false;
     }
 
+    bool ProjectContext::RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path &outRenamedAssetPath, std::string &outErrorMessage)
+    {
+        outRenamedAssetPath.clear();
+        outErrorMessage.clear();
+
+        newBaseName = TrimCopy(std::move(newBaseName));
+        if (!IsValidAssetFolderName(newBaseName))
+        {
+            outErrorMessage = "Enter a valid asset name. Names cannot contain \\ / : * ? \" < > |, end with a period, or use a reserved system name.";
+            return false;
+        }
+
+        const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
+        if (!record)
+        {
+            outErrorMessage = "The selected asset is no longer registered.";
+            return false;
+        }
+        if (record->BuiltIn)
+        {
+            outErrorMessage = "Built-in assets cannot be renamed.";
+            return false;
+        }
+        if (record->Path.empty())
+        {
+            outErrorMessage = "The selected asset has no physical source path.";
+            return false;
+        }
+
+        const std::filesystem::path sourcePath = ResolveAssetRecordPath(*this, record->Path).lexically_normal();
+        std::error_code ec;
+        if (!std::filesystem::exists(sourcePath, ec) || ec)
+        {
+            outErrorMessage = "The asset source file does not exist.";
+            return false;
+        }
+
+        ec.clear();
+        if (!std::filesystem::is_regular_file(sourcePath, ec) || ec)
+        {
+            outErrorMessage = "The registered asset path is not a regular file.";
+            return false;
+        }
+
+        ec.clear();
+        const std::filesystem::path assetsRoot = std::filesystem::weakly_canonical(GetAssetsPath(), ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to resolve the project Assets folder: " + ec.message();
+            return false;
+        }
+
+        ec.clear();
+        const std::filesystem::path canonicalSourcePath = std::filesystem::weakly_canonical(sourcePath, ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to resolve the asset source path: " + ec.message();
+            return false;
+        }
+
+        if (!IsPathInsideOrEqual(canonicalSourcePath, assetsRoot))
+        {
+            outErrorMessage = "External assets cannot be renamed through the project Assets browser.";
+            return false;
+        }
+
+        const std::string currentBaseName = sourcePath.stem().string();
+        if (currentBaseName == newBaseName)
+        {
+            outErrorMessage = "The asset already uses this name.";
+            return false;
+        }
+
+        const std::filesystem::path renamedFilename = newBaseName + sourcePath.extension().string();
+        const std::filesystem::path renamedPath = (sourcePath.parent_path() / renamedFilename).lexically_normal();
+
+        ec.clear();
+        const bool destinationExists = std::filesystem::exists(renamedPath, ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to inspect the rename destination: " + ec.message();
+            return false;
+        }
+
+        if (destinationExists)
+        {
+            outErrorMessage = "A file named '" + renamedFilename.string() + "' already exists in this folder.";
+            return false;
+        }
+
+        for (const AssetRecord& existingRecord : m_AssetRegistry.Records)
+        {
+            if (existingRecord.ID == assetID || existingRecord.BuiltIn || existingRecord.Path.empty()) continue;
+            const std::filesystem::path existingPath = ResolveAssetRecordPath(*this, existingRecord.Path).lexically_normal();
+            if (existingPath == renamedPath)
+            {
+                outErrorMessage = "The destination path is already registered as asset '" + existingRecord.ID + "'.";
+                return false;
+            }
+        }
+
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+
+        const auto updatedRecord =
+            std::find_if(
+                updatedRegistry.Records.begin(),
+                updatedRegistry.Records.end(),
+                [&](const AssetRecord& candidate)
+                {
+                    return candidate.ID == assetID;
+                }
+            );
+
+        if (updatedRecord == updatedRegistry.Records.end())
+        {
+            outErrorMessage = "The selected asset disappeared from the registry.";
+            return false;
+        }
+        updatedRecord->Path = NormalizeAssetPath(renamedPath).generic_string();
+
+        ec.clear();
+        std::filesystem::rename(sourcePath, renamedPath, ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to rename the asset file: " + ec.message();
+            return false;
+        }
+
+        m_AssetRegistry = std::move(updatedRegistry);
+        if (!SaveAssetRegistry())
+        {
+            m_AssetRegistry = previousRegistry;
+            std::error_code rollbackError;
+            std::filesystem::rename(renamedPath, sourcePath, rollbackError);
+
+            const bool registryRestored = SaveAssetRegistry();
+            if (rollbackError)
+            {
+                outErrorMessage = "The asset file was renamed, but the registry could not be saved and the filesystem rollback also failed: " + rollbackError.message();
+            }
+            else if (!registryRestored)
+            {
+                outErrorMessage = "The asset rename was rolled back, but the original registry could not be restored on disk.";
+            }
+            else
+            {
+                outErrorMessage = "The asset rename was rolled back because the registry could not be saved.";
+            }
+            return false;
+        }
+
+        outRenamedAssetPath = NormalizeAssetPath(renamedPath);
+        return true;
+    }
+
     bool ProjectContext::CreateAssetFolder(const std::filesystem::path &parentFolder, std::string folderName,
-        std::filesystem::path &outCreatedFolder, std::string &outErrorMessage)
+                                           std::filesystem::path &outCreatedFolder, std::string &outErrorMessage)
     {
         outCreatedFolder.clear();
         outErrorMessage.clear();

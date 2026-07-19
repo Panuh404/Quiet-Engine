@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "ImGuiAssetBrowserDialogs.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/ImGuiTheme.h"
@@ -98,7 +99,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,
         AssetBrowserViewMode& viewMode,
         AssetBrowserThumbnailSize& thumbnailSize,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         bool& openImportPopup)
     {
@@ -143,8 +144,8 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (selectedAssetCount > 0)
                 {
+                    // COPY
                     const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
-
                     if (EditorMenuItem(copyLabel, "Ctrl+C", false, editMode))
                     {
                         operationRequest.Clear();
@@ -152,8 +153,8 @@ namespace Quiet::Renderer::UI::Assets
                         operationRequest.AssetIDs = state.SelectedAssetIDs;
                     }
 
+                    // CUT
                     const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
-
                     if (EditorMenuItem(cutLabel, "Ctrl+X", false, editMode))
                     {
                         operationRequest.Clear();
@@ -161,6 +162,24 @@ namespace Quiet::Renderer::UI::Assets
                         operationRequest.AssetIDs = state.SelectedAssetIDs;
                     }
 
+                    // RENAME
+                    const Project::AssetRecord* renameRecord = selectedAssetCount == 1
+                        ? Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.SelectedAssetIDs.front())
+                        : nullptr;
+
+                    bool canRename = editMode && renameRecord && !renameRecord->BuiltIn && !renameRecord->Path.empty();
+                    if (canRename)
+                    {
+                        const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *renameRecord);
+                        canRename = !diagnostics.IsMissing() && !diagnostics.External;
+                    }
+
+                    if (EditorMenuItem("Rename", "F2", false, canRename))
+                    {
+                        RequestAssetRename(state, *renameRecord);
+                    }
+
+                    // DUPLICATE
                     const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
                     if (EditorMenuItem(duplicateLabel, "Ctrl+D", false, editMode))
                     {
