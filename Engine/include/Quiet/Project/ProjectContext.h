@@ -115,6 +115,7 @@ namespace Quiet::Project
         [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
         [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
         [[nodiscard]] bool RemoveAssetsByID(const std::vector<std::string>& assetIDs, std::string& outErrorMessage);
+        [[nodiscard]] bool DeleteAssetsFromProject(const std::vector<std::string>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage);
         [[nodiscard]] bool RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path& outRenamedAssetPath, std::string& outErrorMessage);
 
         // Folders

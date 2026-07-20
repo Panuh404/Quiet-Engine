@@ -14,6 +14,16 @@ namespace Quiet::Renderer::UI::Assets
     void DrawFailurePopup(const char* popupTitle, std::string& errorMessage);
     void DrawAssetOperationFeedback(Editor::EditorState& editorState);
 
+    // Folder Stuff
+    [[nodiscard]] const char* GetAssetFolderActionPopupTitle(AssetBrowserFolderAction action);
+    void BeginAssetFolderAction(AssetBrowserState& state, const AssetBrowserFolderActionRequest& request);
+    void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
+
+    // Rename Popup
+    void RequestAssetRename(AssetBrowserState& state, const Project::AssetRecord& record);
+    void DrawAssetRenamePopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
+
+    // Remove Popup
     void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<std::string>& assetIDs);
     void DrawRemoveAssetConfirmationPopup(
         Project::ProjectContext& projectContext,
@@ -22,12 +32,14 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserState& state,
         float uiScale
     );
-    // Folder Stuff
-    [[nodiscard]] const char* GetAssetFolderActionPopupTitle(AssetBrowserFolderAction action);
-    void BeginAssetFolderAction(AssetBrowserState& state, const AssetBrowserFolderActionRequest& request);
-    void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
 
-    void RequestAssetRename(AssetBrowserState& state, const Project::AssetRecord& record);
-    void DrawAssetRenamePopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
-
+    // Delete Popup
+    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<std::string>& assetIDs);
+    void DrawDeleteAssetConfirmationPopup(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        const Scene::Scene& scene,
+        AssetBrowserState& state,
+        float uiScale
+    );
 }

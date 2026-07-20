@@ -98,6 +98,14 @@ namespace
         state.RequestOpenRemovePopup = false;
     }
 
+    void ClearAssetProjectDeletion(Assets::AssetBrowserState& state)
+    {
+        state.ConfirmDeleteAssetIDs.clear();
+        state.DeleteErrorMessage.clear();
+        state.RequestOpenDeletePopup = false;
+        state.ConfirmPermanentAssetDelete = false;
+    }
+
     void DrawFolderPath(const char* label, const std::string& folderPath)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
@@ -221,215 +229,6 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
-    }
-
-    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<std::string>& assetIDs)
-    {
-        state.ConfirmRemoveAssetIDs.clear();
-
-        for (const std::string& assetID : assetIDs)
-        {
-            if (assetID.empty()) continue;
-            if (std::find(
-                state.ConfirmRemoveAssetIDs.begin(),
-                state.ConfirmRemoveAssetIDs.end(),
-                assetID) == state.ConfirmRemoveAssetIDs.end())
-            {
-                state.ConfirmRemoveAssetIDs.push_back(assetID );
-            }
-        }
-
-        if (state.ConfirmRemoveAssetIDs.empty()) return;
-        state.RemoveErrorMessage.clear();
-        state.RequestOpenRemovePopup = true;
-    }
-
-    void DrawRemoveAssetConfirmationPopup(
-        Project::ProjectContext& projectContext,
-        Editor::EditorState& editorState,
-        const Scene::Scene& scene,
-        AssetBrowserState& state,
-        const float uiScale)
-    {
-        if (state.RequestOpenRemovePopup)
-        {
-            ImGui::OpenPopup("Remove Assets from Registry");
-            state.RequestOpenRemovePopup = false;
-        }
-        if (state.ConfirmRemoveAssetIDs.empty()) return;
-
-        ImGui::SetNextWindowSize(ImVec2(620.0f * uiScale, 0.0f), ImGuiCond_Appearing);
-        bool popupOpen = true;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(16.0f, 16.0f)));
-        const bool popupVisible = EditorBeginPopupModal(
-                "Remove Assets from Registry",
-                popupOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
-        ImGui::PopStyleVar();
-
-        if (!popupVisible)
-        {
-            if (!popupOpen) ClearAssetRegistryRemoval(state);
-            return;
-        }
-
-        std::uint32_t removableCount = 0;
-        std::uint32_t builtInCount = 0;
-        std::uint32_t referencedCount = 0;
-        std::uint32_t missingCount = 0;
-
-        for (const std::string& assetID :
-             state.ConfirmRemoveAssetIDs)
-        {
-            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
-            if (!record)
-            {
-                ++missingCount;
-                continue;
-            }
-            if (record->BuiltIn)
-            {
-                ++builtInCount;
-                continue;
-            }
-            if (CountAssetReferences(scene, *record) > 0)
-            {
-                ++referencedCount;
-                continue;
-            }
-            ++removableCount;
-        }
-
-        const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
-        const bool canRemove = editMode && missingCount == 0 && builtInCount == 0 && referencedCount == 0 && removableCount == state.ConfirmRemoveAssetIDs.size();
-
-        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
-        ImGui::Text(state.ConfirmRemoveAssetIDs.size() == 1
-                ? "Remove asset from registry?"
-                : "Remove %zu assets from registry?", state.ConfirmRemoveAssetIDs.size() );
-        ImGui::PopStyleColor();
-
-        ImGui::Spacing();
-
-        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-        ImGui::TextWrapped("This removes the selected registry records from the current project. Physical source files will remain on disk.");
-
-        ImGui::Spacing();
-
-        ImGui::TextWrapped("References in the active scene are validated. Other scene files are not scanned by this operation.");
-        ImGui::PopStyleColor();
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        const float labelWidth = SZ::Px(118.0f);
-
-        DrawDetailRowUInt("Selected", static_cast<std::uint32_t>(state.ConfirmRemoveAssetIDs.size()), labelWidth);
-        DrawDetailRowUInt("Removable", removableCount, labelWidth);
-        DrawDetailRowUInt("Built In", builtInCount, labelWidth);
-        DrawDetailRowUInt("In Use", referencedCount, labelWidth);
-        DrawDetailRowUInt("Missing", missingCount, labelWidth);
-
-        ImGui::Spacing();
-
-        ImGui::BeginChild("##RemoveRegistryAssetList", ImVec2(0.0f, SZ::Px(180.0f)), ImGuiChildFlags_Borders);
-        {
-            for (const std::string& assetID : state.ConfirmRemoveAssetIDs)
-            {
-                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
-                std::string status;
-                ImVec4 statusColor = EditorColor::Success;
-                if (!record)
-                {
-                    status = "No longer registered";
-                    statusColor = EditorColor::Error;
-                }
-                else if (record->BuiltIn)
-                {
-                    status = "Built-in";
-                    statusColor = EditorColor::Error;
-                }
-                else
-                {
-                    const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
-                    if (referenceCount > 0)
-                    {
-                        status = "In use by " + std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors");
-                        statusColor = EditorColor::Warning;
-                    }
-                    else
-                    {
-                        status = "Ready";
-                    }
-                }
-
-                ImGui::BulletText("%s", assetID.c_str());
-                ImGui::SameLine();
-                ImGui::TextColored(statusColor, "— %s", status.c_str());
-            }
-        }
-        ImGui::EndChild();
-
-        if (!state.RemoveErrorMessage.empty())
-        {
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
-            ImGui::TextWrapped("%s", state.RemoveErrorMessage.c_str());
-            ImGui::PopStyleColor();
-        }
-
-        if (!canRemove)
-        {
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
-            ImGui::TextWrapped(editMode
-                ? "Every selected asset must be removable before the batch can continue."
-                : "Assets cannot be removed while runtime mode is active.");
-            ImGui::PopStyleColor();
-        }
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        const float cancelWidth = SZ::Px(130.0f);
-        const float removeWidth = SZ::Px(190.0f);
-        const float totalWidth = cancelWidth + removeWidth + ImGui::GetStyle().ItemSpacing.x;
-
-        AlignFolderActionButtons(totalWidth);
-
-        if (EditorButton("Cancel", ImVec2(cancelWidth, 0.0f)))
-        {
-            ClearAssetRegistryRemoval(state);
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::SameLine();
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.360f, 0.070f, 0.080f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
-
-        const char* removeLabel = state.ConfirmRemoveAssetIDs.size() == 1 ? "Remove from Registry" : "Remove Selection";
-
-        if (EditorButton(removeLabel, ImVec2(removeWidth, 0.0f), canRemove))
-        {
-            AssetBrowserOperationRequest request{};
-            request.Action = AssetBrowserOperationAction::RemoveFromRegistry;
-            request.AssetIDs = state.ConfirmRemoveAssetIDs;
-
-            if (ExecuteAssetBrowserOperation(projectContext, editorState, state, request, &scene))
-            {
-                ClearAssetRegistryRemoval(state);
-                ImGui::CloseCurrentPopup();
-            }
-        }
-
-        ImGui::PopStyleColor(3);
-        ImGui::EndPopup();
     }
 
     const char* GetAssetFolderActionPopupTitle(const AssetBrowserFolderAction action)
@@ -683,6 +482,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::EndPopup();
     }
 
+    // Rename
     void RequestAssetRename(AssetBrowserState &state, const Project::AssetRecord &record)
     {
         if (record.ID.empty() || record.BuiltIn || record.Path.empty()) return;
@@ -832,6 +632,473 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::CloseCurrentPopup();
             }
         }
+
+        ImGui::EndPopup();
+    }
+
+    // Remove
+    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<std::string>& assetIDs)
+    {
+        state.ConfirmRemoveAssetIDs.clear();
+
+        for (const std::string& assetID : assetIDs)
+        {
+            if (assetID.empty()) continue;
+            if (std::find(
+                state.ConfirmRemoveAssetIDs.begin(),
+                state.ConfirmRemoveAssetIDs.end(),
+                assetID) == state.ConfirmRemoveAssetIDs.end())
+            {
+                state.ConfirmRemoveAssetIDs.push_back(assetID );
+            }
+        }
+
+        if (state.ConfirmRemoveAssetIDs.empty()) return;
+        state.RemoveErrorMessage.clear();
+        state.RequestOpenRemovePopup = true;
+    }
+
+    void DrawRemoveAssetConfirmationPopup(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        const Scene::Scene& scene,
+        AssetBrowserState& state,
+        const float uiScale)
+    {
+        if (state.RequestOpenRemovePopup)
+        {
+            ImGui::OpenPopup("Remove Assets from Registry");
+            state.RequestOpenRemovePopup = false;
+        }
+        if (state.ConfirmRemoveAssetIDs.empty()) return;
+
+        ImGui::SetNextWindowSize(ImVec2(620.0f * uiScale, 0.0f), ImGuiCond_Appearing);
+        bool popupOpen = true;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(16.0f, 16.0f)));
+        const bool popupVisible = EditorBeginPopupModal(
+                "Remove Assets from Registry",
+                popupOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::PopStyleVar();
+
+        if (!popupVisible)
+        {
+            if (!popupOpen) ClearAssetRegistryRemoval(state);
+            return;
+        }
+
+        std::uint32_t removableCount = 0;
+        std::uint32_t builtInCount = 0;
+        std::uint32_t referencedCount = 0;
+        std::uint32_t missingCount = 0;
+
+        for (const std::string& assetID :
+             state.ConfirmRemoveAssetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                ++missingCount;
+                continue;
+            }
+            if (record->BuiltIn)
+            {
+                ++builtInCount;
+                continue;
+            }
+            if (CountAssetReferences(scene, *record) > 0)
+            {
+                ++referencedCount;
+                continue;
+            }
+            ++removableCount;
+        }
+
+        const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+        const bool canRemove = editMode && missingCount == 0 && builtInCount == 0 && referencedCount == 0 && removableCount == state.ConfirmRemoveAssetIDs.size();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+        ImGui::Text(state.ConfirmRemoveAssetIDs.size() == 1
+                ? "Remove asset from registry?"
+                : "Remove %zu assets from registry?", state.ConfirmRemoveAssetIDs.size() );
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextWrapped("This removes the selected registry records from the current project. Physical source files will remain on disk.");
+
+        ImGui::Spacing();
+
+        ImGui::TextWrapped("References in the active scene are validated. Other scene files are not scanned by this operation.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const float labelWidth = SZ::Px(118.0f);
+
+        DrawDetailRowUInt("Selected", static_cast<std::uint32_t>(state.ConfirmRemoveAssetIDs.size()), labelWidth);
+        DrawDetailRowUInt("Removable", removableCount, labelWidth);
+        DrawDetailRowUInt("Built In", builtInCount, labelWidth);
+        DrawDetailRowUInt("In Use", referencedCount, labelWidth);
+        DrawDetailRowUInt("Missing", missingCount, labelWidth);
+
+        ImGui::Spacing();
+
+        ImGui::BeginChild("##RemoveRegistryAssetList", ImVec2(0.0f, SZ::Px(180.0f)), ImGuiChildFlags_Borders);
+        {
+            for (const std::string& assetID : state.ConfirmRemoveAssetIDs)
+            {
+                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+                std::string status;
+                ImVec4 statusColor = EditorColor::Success;
+                if (!record)
+                {
+                    status = "No longer registered";
+                    statusColor = EditorColor::Error;
+                }
+                else if (record->BuiltIn)
+                {
+                    status = "Built-in";
+                    statusColor = EditorColor::Error;
+                }
+                else
+                {
+                    const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
+                    if (referenceCount > 0)
+                    {
+                        status = "In use by " + std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors");
+                        statusColor = EditorColor::Warning;
+                    }
+                    else
+                    {
+                        status = "Ready";
+                    }
+                }
+
+                ImGui::BulletText("%s", assetID.c_str());
+                ImGui::SameLine();
+                ImGui::TextColored(statusColor, "— %s", status.c_str());
+            }
+        }
+        ImGui::EndChild();
+
+        if (!state.RemoveErrorMessage.empty())
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("%s", state.RemoveErrorMessage.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        if (!canRemove)
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+            ImGui::TextWrapped(editMode
+                ? "Every selected asset must be removable before the batch can continue."
+                : "Assets cannot be removed while runtime mode is active.");
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const float cancelWidth = SZ::Px(130.0f);
+        const float removeWidth = SZ::Px(190.0f);
+        const float totalWidth = cancelWidth + removeWidth + ImGui::GetStyle().ItemSpacing.x;
+
+        AlignFolderActionButtons(totalWidth);
+
+        if (EditorButton("Cancel", ImVec2(cancelWidth, 0.0f)))
+        {
+            ClearAssetRegistryRemoval(state);
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.360f, 0.070f, 0.080f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
+
+        const char* removeLabel = state.ConfirmRemoveAssetIDs.size() == 1 ? "Remove from Registry" : "Remove Selection";
+
+        if (EditorButton(removeLabel, ImVec2(removeWidth, 0.0f), canRemove))
+        {
+            AssetBrowserOperationRequest request{};
+            request.Action = AssetBrowserOperationAction::RemoveFromRegistry;
+            request.AssetIDs = state.ConfirmRemoveAssetIDs;
+
+            if (ExecuteAssetBrowserOperation(projectContext, editorState, state, request, &scene))
+            {
+                ClearAssetRegistryRemoval(state);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
+        ImGui::PopStyleColor(3);
+        ImGui::EndPopup();
+    }
+
+    // Delete
+    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<std::string>& assetIDs)
+    {
+        state.ConfirmDeleteAssetIDs.clear();
+
+        for (const std::string& assetID : assetIDs)
+        {
+            if (assetID.empty()) continue;
+            if (std::find(state.ConfirmDeleteAssetIDs.begin(), state.ConfirmDeleteAssetIDs.end(), assetID) == state.ConfirmDeleteAssetIDs.end())
+            {
+                state.ConfirmDeleteAssetIDs.push_back(assetID);
+            }
+        }
+
+        if (state.ConfirmDeleteAssetIDs.empty()) return;
+
+        state.DeleteErrorMessage.clear();
+        state.ConfirmPermanentAssetDelete = false;
+        state.RequestOpenDeletePopup = true;
+    }
+
+    void DrawDeleteAssetConfirmationPopup(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        const Scene::Scene& scene,
+        AssetBrowserState& state,
+        const float uiScale)
+    {
+        if (state.RequestOpenDeletePopup)
+        {
+            ImGui::OpenPopup("Delete Assets from Project");
+            state.RequestOpenDeletePopup = false;
+        }
+
+        if (state.ConfirmDeleteAssetIDs.empty()) return;
+        ImGui::SetNextWindowSize(ImVec2(660.0f * uiScale, 0.0f), ImGuiCond_Appearing);
+
+        bool popupOpen = true;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(16.0f, 16.0f)));
+        const bool popupVisible = EditorBeginPopupModal("Delete Assets from Project", popupOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::PopStyleVar();
+
+        if (!popupVisible)
+        {
+            if (!popupOpen) ClearAssetProjectDeletion(state);
+            return;
+        }
+
+        std::uint32_t deletableCount = 0;
+        std::uint32_t builtInCount = 0;
+        std::uint32_t referencedCount = 0;
+        std::uint32_t missingSourceCount = 0;
+        std::uint32_t externalCount = 0;
+        std::uint32_t missingRegistryCount = 0;
+
+        for (const std::string& assetID : state.ConfirmDeleteAssetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                ++missingRegistryCount;
+                continue;
+            }
+            if (record->BuiltIn)
+            {
+                ++builtInCount;
+                continue;
+            }
+
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
+            if (diagnostics.IsMissing())
+            {
+                ++missingSourceCount;
+                continue;
+            }
+            if (diagnostics.External)
+            {
+                ++externalCount;
+                continue;
+            }
+
+            if (CountAssetReferences(scene, *record) > 0)
+            {
+                ++referencedCount;
+                continue;
+            }
+
+            ++deletableCount;
+        }
+
+        const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+
+        const bool selectionIsDeletable =
+            editMode &&
+            builtInCount == 0 &&
+            referencedCount == 0 &&
+            missingSourceCount == 0 &&
+            externalCount == 0 &&
+            missingRegistryCount == 0 &&
+            deletableCount == state.ConfirmDeleteAssetIDs.size();
+
+        const bool canDelete = selectionIsDeletable && state.ConfirmPermanentAssetDelete;
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+        ImGui::Text(state.ConfirmDeleteAssetIDs.size() == 1
+            ? "Permanently delete this asset?"
+            : "Permanently delete %zu assets?",
+            state.ConfirmDeleteAssetIDs.size());
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+        ImGui::TextWrapped("This permanently deletes the physical source files from the project Assets directory and removes their registry records.");
+
+        ImGui::Spacing();
+
+        ImGui::TextWrapped("This operation cannot be undone. References in the active scene are validated, but other saved scene files are not scanned.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const float labelWidth = SZ::Px(126.0f);
+
+        DrawDetailRowUInt("Selected", static_cast<std::uint32_t>(state.ConfirmDeleteAssetIDs.size()), labelWidth);
+        DrawDetailRowUInt("Deletable", deletableCount, labelWidth);
+        DrawDetailRowUInt("Built In", builtInCount, labelWidth);
+        DrawDetailRowUInt("In Use", referencedCount, labelWidth);
+        DrawDetailRowUInt("Missing Source", missingSourceCount, labelWidth);
+        DrawDetailRowUInt("External", externalCount, labelWidth);
+        DrawDetailRowUInt("Not Registered", missingRegistryCount, labelWidth);
+
+        ImGui::Spacing();
+
+        ImGui::BeginChild("##DeleteProjectAssetList", ImVec2(0.0f, SZ::Px(190.0f)), ImGuiChildFlags_Borders);
+        {
+            for (const std::string& assetID : state.ConfirmDeleteAssetIDs)
+            {
+                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+
+                std::string status;
+                ImVec4 statusColor = EditorColor::Success;
+
+                if (!record)
+                {
+                    status = "No longer registered";
+                    statusColor = EditorColor::Error;
+                }
+                else if (record->BuiltIn)
+                {
+                    status = "Built-in";
+                    statusColor = EditorColor::Error;
+                }
+                else
+                {
+                    const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
+                    if (diagnostics.IsMissing())
+                    {
+                        status = MakeAssetPathDiagnosticLabel(diagnostics);
+                        statusColor = EditorColor::Error;
+                    }
+                    else if (diagnostics.External)
+                    {
+                        status = "External";
+                        statusColor = EditorColor::Error;
+                    }
+                    else
+                    {
+                        const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
+                        if (referenceCount > 0)
+                        {
+                            status = "In use by " + std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors");
+                            statusColor = EditorColor::Warning;
+                        }
+                        else
+                        {
+                            status = "Ready";
+                        }
+                    }
+                }
+
+                ImGui::BulletText("%s", assetID.c_str());
+
+                ImGui::SameLine();
+
+                ImGui::TextColored(statusColor, "— %s", status.c_str());
+            }
+        }
+        ImGui::EndChild();
+
+        if (!state.DeleteErrorMessage.empty())
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextWrapped("%s", state.DeleteErrorMessage.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        if (!selectionIsDeletable)
+        {
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+            ImGui::TextWrapped(editMode
+                ? "Every selected asset must have an unreferenced physical source file inside Project/Assets."
+                : "Assets cannot be deleted while runtime mode is active.");
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Spacing();
+
+        ImGui::Checkbox("I understand that these files will be permanently deleted.", &state.ConfirmPermanentAssetDelete);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const float cancelWidth = SZ::Px(130.0f);
+        const float deleteWidth = SZ::Px(190.0f);
+        const float totalWidth = cancelWidth + deleteWidth + ImGui::GetStyle().ItemSpacing.x;
+
+        AlignFolderActionButtons(totalWidth);
+
+        if (EditorButton("Cancel", ImVec2(cancelWidth, 0.0f)))
+        {
+            ClearAssetProjectDeletion(state);
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.360f, 0.070f, 0.080f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
+
+        if (EditorButton("Delete Permanently", ImVec2(deleteWidth, 0.0f), canDelete))
+        {
+            AssetBrowserOperationRequest request{};
+            request.Action = AssetBrowserOperationAction::DeleteFromProject;
+            request.AssetIDs = state.ConfirmDeleteAssetIDs;
+
+            if (ExecuteAssetBrowserOperation(projectContext, editorState, state, request, &scene))
+            {
+                ClearAssetProjectDeletion(state);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
+        ImGui::PopStyleColor(3);
 
         ImGui::EndPopup();
     }

@@ -101,7 +101,8 @@ namespace Quiet::Renderer::UI::Assets
         Paste,
         Duplicate,
         Rename,
-        RemoveFromRegistry
+        RemoveFromRegistry,
+        DeleteFromProject
     };
 
     struct AssetBrowserOperationRequest
@@ -131,6 +132,9 @@ namespace Quiet::Renderer::UI::Assets
                 case AssetBrowserOperationAction::RemoveFromRegistry:
                     return !AssetIDs.empty();
 
+                case AssetBrowserOperationAction::DeleteFromProject:
+                    return !AssetIDs.empty();
+
                 case AssetBrowserOperationAction::None:
                 default:
                     return false;
@@ -156,11 +160,13 @@ namespace Quiet::Renderer::UI::Assets
 
         std::string ImportErrorMessage{};
         std::string RemoveErrorMessage{};
+        std::string DeleteErrorMessage{};
         std::string AssetRenameErrorMessage{};
         std::string RenameAssetID{};
 
         std::string SelectedDetailsAssetID{};
         std::vector<std::string> ConfirmRemoveAssetIDs{};
+        std::vector<std::string> ConfirmDeleteAssetIDs{};
         std::string CurrentAssetFolder{};
         std::string SelectedContentFolder{};
 
@@ -177,6 +183,8 @@ namespace Quiet::Renderer::UI::Assets
         bool ReopenImportPopupAfterFileDialog = false;
         bool RequestOpenAssetRenamePopup = false;
         bool RequestOpenRemovePopup = false;
+        bool RequestOpenDeletePopup = false;
+        bool ConfirmPermanentAssetDelete = false;
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;

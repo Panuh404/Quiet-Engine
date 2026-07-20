@@ -199,6 +199,13 @@ namespace Quiet::Renderer::UI::Assets
                     {
                         RequestAssetRegistryRemoval(state, state.SelectedAssetIDs);
                     }
+
+                    // DELETE
+                    const char* deleteLabel = selectedAssetCount == 1 ? "Delete from Project..." : "Delete Selection from Project...";
+                    if (EditorMenuItem(deleteLabel, "Delete", false, editMode))
+                    {
+                        RequestAssetProjectDeletion(state, state.SelectedAssetIDs);
+                    }
                 }
 
                 if (selectedAssetCount > 0 && clipboardAvailable)

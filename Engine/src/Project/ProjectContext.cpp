@@ -5,7 +5,11 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <vector>
+
+#include "Quiet/Core/UUID.h"
 
 namespace
 {
@@ -331,6 +335,246 @@ namespace Quiet::Project
             : "The registry update could not be saved, and the previous registry could not be restored on disk.";
 
         return false;
+    }
+
+    bool ProjectContext::DeleteAssetsFromProject(const std::vector<std::string>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage)
+    {
+        outErrorMessage.clear();
+        outWarningMessage.clear();
+
+        std::vector<std::string> normalizedAssetIDs;
+        normalizedAssetIDs.reserve(assetIDs.size());
+
+        for (const std::string& assetID : assetIDs)
+        {
+            if (assetID.empty()) continue;
+            if (std::find(normalizedAssetIDs.begin(), normalizedAssetIDs.end(), assetID) == normalizedAssetIDs.end())
+            {
+                normalizedAssetIDs.push_back(assetID);
+            }
+        }
+
+        if (normalizedAssetIDs.empty())
+        {
+            outErrorMessage = "No assets were selected for deletion.";
+            return false;
+        }
+
+        std::error_code ec;
+        const std::filesystem::path assetsRoot = std::filesystem::weakly_canonical(GetAssetsPath(), ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to resolve the project Assets folder: " + ec.message();
+            return false;
+        }
+
+        struct PlannedAssetDelete
+        {
+            std::string AssetID{};
+            std::filesystem::path SourcePath{};
+            std::filesystem::path StagedPath{};
+        };
+
+        const std::unordered_set<std::string> selectedAssetIDs(normalizedAssetIDs.begin(), normalizedAssetIDs.end());
+        const std::filesystem::path stagingParent = assetsRoot / ".quiet-delete-staging";
+        const std::filesystem::path stagingRoot = stagingParent / Quiet::Core::UUIDToString(Core::UUIDGenerator::New());
+
+        std::vector<PlannedAssetDelete> deletionPlan;
+        deletionPlan.reserve(normalizedAssetIDs.size());
+
+        std::unordered_set<std::string> plannedSourcePaths;
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+
+        std::size_t stagingIndex = 0;
+
+        for (const std::string& assetID : normalizedAssetIDs)
+        {
+            const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
+            if (!record)
+            {
+                outErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                return false;
+            }
+
+            if (record->BuiltIn)
+            {
+                outErrorMessage = "Built-in asset '" + record->ID + "' cannot be deleted.";
+                return false;
+            }
+
+            if (record->Path.empty())
+            {
+                outErrorMessage = "Asset '" + record->ID + "' has no physical source path. Use Remove from Registry instead.";
+                return false;
+            }
+
+            const std::filesystem::path sourcePath = ResolveAssetRecordPath(*this, record->Path);
+            ec.clear();
+            if (!std::filesystem::exists(sourcePath, ec) || ec)
+            {
+                outErrorMessage = "The source file for asset '" + record->ID + "' does not exist. Use Remove from Registry instead.";
+                return false;
+            }
+
+            ec.clear();
+            if (!std::filesystem::is_regular_file(sourcePath, ec) || ec)
+            {
+                outErrorMessage = "The registered source for asset '" + record->ID + "' is not a regular file.";
+                return false;
+            }
+
+            ec.clear();
+            const std::filesystem::path canonicalSourcePath = std::filesystem::weakly_canonical(sourcePath, ec);
+            if (ec)
+            {
+                outErrorMessage = "Failed to resolve the source file for asset '" + record->ID + "': " + ec.message();
+                return false;
+            }
+
+            if (!IsPathInsideOrEqual(canonicalSourcePath, assetsRoot))
+            {
+                outErrorMessage = "External asset '" + record->ID + "' cannot be deleted through the project Assets browser. Use Remove from Registry instead.";
+                return false;
+            }
+
+            const std::string sourcePathKey = canonicalSourcePath.generic_string();
+
+            if (!plannedSourcePaths .insert(sourcePathKey).second)
+            {
+                outErrorMessage = "Multiple selected registry records reference the same physical source file: '" + canonicalSourcePath.generic_string() + "'.";
+                return false;
+            }
+
+            for (const AssetRecord& otherRecord : m_AssetRegistry.Records)
+            {
+                if (otherRecord.ID == record->ID || selectedAssetIDs.contains(otherRecord.ID) || otherRecord.BuiltIn || otherRecord.Path.empty())
+                    continue;
+
+                const std::filesystem::path otherPath = MakeAbsoluteNormalizedPath(ResolveAssetRecordPath(*this, otherRecord.Path));
+                if (otherPath == canonicalSourcePath)
+                {
+                    outErrorMessage = "The source file for asset '" + record->ID + "' is also registered as asset '" + otherRecord.ID + "'. Remove the duplicate registry record first.";
+                    return false;
+                }
+            }
+
+            const std::string stagedFilename = std::to_string(stagingIndex++) + "_" + canonicalSourcePath.filename().string();
+
+            deletionPlan.push_back(
+                PlannedAssetDelete{
+                    record->ID,
+                    canonicalSourcePath,
+                    stagingRoot / stagedFilename
+                }
+            );
+
+            if (!AssetRegistryIO::RemoveByID(updatedRegistry, record->ID))
+            {
+                outErrorMessage = "Failed to remove asset '" + record->ID + "' from the pending registry update.";
+                return false;
+            }
+        }
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+
+        ec.clear();
+        std::filesystem::create_directories(stagingRoot,ec);
+        if (ec)
+        {
+            outErrorMessage = "Failed to create the temporary deletion staging folder: " + ec.message();
+            return false;
+        }
+
+        std::vector<PlannedAssetDelete> stagedFiles;
+        stagedFiles.reserve(deletionPlan.size());
+
+        const auto restoreStagedFiles = [](const std::vector<PlannedAssetDelete>& files)
+            {
+                std::string failures;
+
+                for (auto iterator = files.rbegin(); iterator != files.rend(); ++iterator)
+                {
+                    std::error_code rollbackError;
+                    std::filesystem::rename(iterator->StagedPath, iterator->SourcePath, rollbackError);
+
+                    if (!rollbackError) continue;
+                    if (!failures.empty()) failures += "\n";
+
+                    failures += "• Failed to restore '" + iterator->SourcePath.generic_string() + "': " + rollbackError.message();
+                }
+
+                return failures;
+            };
+
+        for (const PlannedAssetDelete& plannedDelete : deletionPlan)
+        {
+            ec.clear();
+            std::filesystem::rename(plannedDelete.SourcePath, plannedDelete.StagedPath, ec);
+            if (!ec)
+            {
+                stagedFiles.push_back(plannedDelete);
+                continue;
+            }
+
+            const std::string rollbackFailures = restoreStagedFiles(stagedFiles);
+            std::error_code cleanupError;
+            std::filesystem::remove_all(stagingRoot, cleanupError);
+
+            outErrorMessage = "Failed to stage asset '" + plannedDelete.AssetID + "' for deletion: " + ec.message();
+            if (!rollbackFailures.empty())
+            {
+                outErrorMessage += "\nThe rollback was incomplete:\n" + rollbackFailures;
+            }
+
+            if (cleanupError)
+            {
+                outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
+            }
+
+            return false;
+        }
+
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+
+        if (!SaveAssetRegistry())
+        {
+            m_AssetRegistry = previousRegistry;
+
+            const std::string rollbackFailures = restoreStagedFiles(stagedFiles);
+            const bool registryRestored = SaveAssetRegistry();
+
+            std::error_code cleanupError;
+            std::filesystem::remove_all(stagingRoot, cleanupError);
+
+            outErrorMessage =
+                registryRestored
+                    ? "The deletion was rolled back because the asset registry could not be saved."
+                    : "The deletion was rolled back, but the previous asset registry could not be restored on disk.";
+
+            if (!rollbackFailures.empty())
+            {
+                outErrorMessage += "\nThe filesystem rollback was incomplete:\n" + rollbackFailures;
+            }
+
+            if (cleanupError)
+            {
+                outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
+            }
+
+            return false;
+        }
+
+        ec.clear();
+        std::filesystem::remove_all(stagingRoot, ec);
+        if (ec)
+        {
+            outWarningMessage = "The assets were removed from the project and registry, but their staged files could not be permanently erased. "
+                "Clean this folder manually:\n" + stagingRoot.generic_string() + "\n\n" + ec.message();
+        }
+
+        std::error_code parentCleanupError;
+        std::filesystem::remove(stagingParent, parentCleanupError);
+        return true;
     }
 
     bool ProjectContext::RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path &outRenamedAssetPath, std::string &outErrorMessage)

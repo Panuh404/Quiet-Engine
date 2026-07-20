@@ -787,6 +787,117 @@ namespace Quiet::Renderer::UI::Assets
         return true;
     }
 
+    bool ExecuteAssetDeleteFromProjectOperation(
+        Project::ProjectContext &projectContext,
+        Editor::EditorState &editorState,
+        AssetBrowserState &state,
+        const Scene::Scene &scene,
+        const AssetBrowserOperationRequest &request)
+    {
+        if (!request.IsValid() || request.Action != AssetBrowserOperationAction::DeleteFromProject) return false;
+
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            state.DeleteErrorMessage = "Assets cannot be deleted while runtime mode is active.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Delete rejected",
+                state.DeleteErrorMessage);
+            return false;
+        }
+
+        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        if (assetIDs.empty()) return false;
+        for (const std::string& assetID : assetIDs)
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+            if (!record)
+            {
+                state.DeleteErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Delete failed",
+                    state.DeleteErrorMessage);
+                return false;
+            }
+
+            if (record->BuiltIn)
+            {
+                state.DeleteErrorMessage = "Built-in asset '" + record->ID + "' cannot be deleted.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Delete failed",
+                    state.DeleteErrorMessage);
+                return false;
+            }
+
+            const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
+            if (diagnostics.IsMissing())
+            {
+                state.DeleteErrorMessage = "Asset '" + record->ID + "' does not have a valid physical source file. Use Remove from Registry instead.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Delete failed",
+                    state.DeleteErrorMessage);
+                return false;
+            }
+
+            if (diagnostics.External)
+            {
+                state.DeleteErrorMessage = "External asset '" + record->ID + "' cannot be physically deleted through the project Assets browser. Use Remove from Registry instead.";
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Delete failed",
+                    state.DeleteErrorMessage);
+                return false;
+            }
+
+            const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
+            if (referenceCount > 0)
+            {
+                state.DeleteErrorMessage = "Asset '" + record->ID + "' is referenced by " +
+                    std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors") + " in the current scene.";
+
+                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                    "Delete failed",
+                    state.DeleteErrorMessage);
+                return false;
+            }
+        }
+
+        std::string deleteErrorMessage;
+        std::string deleteWarningMessage;
+
+        if (!projectContext.DeleteAssetsFromProject(assetIDs, deleteErrorMessage, deleteWarningMessage))
+        {
+            state.DeleteErrorMessage = deleteErrorMessage.empty() ? "The selected assets could not be deleted." : deleteErrorMessage;
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Delete failed",
+                state.DeleteErrorMessage);
+            return false;
+        }
+
+        for (const std::string& assetID : assetIDs)
+        {
+            RemoveAssetFromSelection(state, assetID);
+        }
+
+        SynchronizeAssetClipboard(projectContext, state);
+
+        state.SelectedContentFolder.clear();
+        state.DeleteErrorMessage.clear();
+
+        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+        if (!deleteWarningMessage.empty())
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                assetIDs.size() == 1 ? "Asset deleted with warning" : "Assets deleted with warning",
+                deleteWarningMessage);
+        }
+        else
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                assetIDs.size() == 1 ? "Asset deleted" : "Assets deleted",
+                "Permanently deleted " + MakeMoveCountLabel(assetIDs.size()) + " from the project.");
+        }
+        return true;
+    }
+
     bool IsAssetClipboardAvailable(
         const Project::ProjectContext& projectContext,
         const AssetBrowserState& state)
@@ -861,6 +972,20 @@ namespace Quiet::Renderer::UI::Assets
                 }
 
                 return ExecuteAssetRemoveFromRegistryOperation(projectContext, editorState, state, *scene, request);
+            }
+
+            case AssetBrowserOperationAction::DeleteFromProject:
+            {
+                if (!scene)
+                {
+                    state.DeleteErrorMessage = "The active scene is required to validate asset references.";
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                        "Delete failed",
+                        state.DeleteErrorMessage);
+                    return false;
+                }
+
+                return ExecuteAssetDeleteFromProjectOperation(projectContext, editorState, state, *scene, request);
             }
 
             case AssetBrowserOperationAction::Paste:

@@ -218,9 +218,14 @@ namespace
 
         if (ImGui::IsKeyPressed(ImGuiKey_F2, false) && state.SelectedAssetIDs.size() == 1)
         {
-            const Quiet::Project::AssetRecord* record =
-                Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.SelectedAssetIDs.front());
+            const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.SelectedAssetIDs.front());
             if (record) RequestAssetRename(state, *record);
+            return;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) && hasSelection)
+        {
+            RequestAssetProjectDeletion(state, state.SelectedAssetIDs);
             return;
         }
 
@@ -538,29 +543,12 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::EndChild();
             ImGui::PopStyleVar();
 
+            // POPUPS
             if (openAssetDetailsPopup) ImGui::OpenPopup("Asset Details");
-
-            DrawAssetDetailsPopup(
-                projectContext,
-                meshLibrary,
-                textureLibrary,
-                selectedDetailsAssetID,
-                context.UIScale
-            );
-
-            DrawRemoveAssetConfirmationPopup(
-                projectContext,
-                editorState,
-                scene,
-                state,
-                context.UIScale
-            );
-
-            DrawAssetRenamePopup(
-                projectContext,
-                editorState,
-                state
-            );
+            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, selectedDetailsAssetID,context.UIScale);
+            DrawRemoveAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
+            DrawDeleteAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
+            DrawAssetRenamePopup(projectContext, editorState, state);
         }
         ImGui::End();
     }

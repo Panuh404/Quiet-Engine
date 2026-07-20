@@ -155,6 +155,12 @@ namespace Quiet::Renderer::UI::Assets
             RequestAssetRegistryRemoval(state, state.SelectedAssetIDs);
         }
 
+        const char* deleteLabel = selectedAssetCount == 1 ? "Delete from Project..." : "Delete Selection from Project...";
+        if (EditorMenuItem(deleteLabel, "Delete", false, canModifySelection))
+        {
+            RequestAssetProjectDeletion(state, state.SelectedAssetIDs);
+        }
+
         ImGui::EndPopup();
         ImGui::PopStyleVar(3);
     }
