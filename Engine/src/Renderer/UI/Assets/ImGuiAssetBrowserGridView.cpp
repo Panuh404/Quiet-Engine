@@ -382,7 +382,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::ColorConvertFloat4ToU32(
                     EditorColor::Background3
                 ),
-                SZ::Px(8.0f)
+                metrics.PreviewRounding
             );
 
             drawList->AddRect(
@@ -391,7 +391,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::ColorConvertFloat4ToU32(
                     EditorColor::BorderSoft
                 ),
-                SZ::Px(8.0f)
+                metrics.PreviewRounding
             );
 
             DrawAssetFolderGlyph(drawList, previewMin, previewMax);
