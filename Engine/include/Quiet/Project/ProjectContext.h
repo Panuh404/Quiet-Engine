@@ -131,9 +131,11 @@ namespace Quiet::Project
             std::filesystem::path& outRenamedFolder,
             std::string& outErrorMessage);
 
-        [[nodiscard]] bool DeleteEmptyAssetFolder(
+        [[nodiscard]] bool DeleteAssetFolderFromProject(
             const std::filesystem::path& folder,
-            std::string& outErrorMessage);
+            std::vector<std::string>& outRemovedAssetIDs,
+            std::string& outErrorMessage,
+            std::string& outWarningMessage);
 
         [[nodiscard]] bool MoveAssetToFolder(
             std::string_view assetID,

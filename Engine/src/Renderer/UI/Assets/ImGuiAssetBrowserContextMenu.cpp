@@ -213,7 +213,7 @@ namespace Quiet::Renderer::UI::Assets
             RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Rename, relativeFolderPath);
         }
 
-        if (EditorMenuItem("Delete Empty Folder", nullptr, false, !runtimeModeActive && !isAssetsRoot))
+        if (EditorMenuItem("Delete Folder...", nullptr, false, !runtimeModeActive && !isAssetsRoot))
         {
             RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Delete, relativeFolderPath);
         }

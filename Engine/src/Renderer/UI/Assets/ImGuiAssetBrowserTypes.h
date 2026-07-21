@@ -185,6 +185,7 @@ namespace Quiet::Renderer::UI::Assets
         bool RequestOpenRemovePopup = false;
         bool RequestOpenDeletePopup = false;
         bool ConfirmPermanentAssetDelete = false;
+        bool ConfirmPermanentFolderDelete = false;
 
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;

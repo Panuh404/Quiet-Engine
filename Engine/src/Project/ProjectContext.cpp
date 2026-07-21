@@ -895,12 +895,17 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectContext::DeleteEmptyAssetFolder(const std::filesystem::path &folder, std::string &outErrorMessage)
+    bool ProjectContext::DeleteAssetFolderFromProject(
+        const std::filesystem::path &folder,
+        std::vector<std::string> &outRemovedAssetIDs,
+        std::string &outErrorMessage,
+        std::string &outWarningMessage)
     {
+        outRemovedAssetIDs.clear();
         outErrorMessage.clear();
+        outWarningMessage.clear();
 
         std::filesystem::path resolvedFolder;
-
         if (!ResolveExistingAssetFolder(*this, folder, resolvedFolder, outErrorMessage)) return false;
 
         std::error_code ec;
@@ -917,42 +922,142 @@ namespace Quiet::Project
             return false;
         }
 
-        for (const AssetRecord& record : m_AssetRegistry.Records)
+        const std::filesystem::path stagingParent = assetsRoot / ".quiet-delete-staging";
+        if (IsPathInsideOrEqual(resolvedFolder, stagingParent))
         {
-            if (record.BuiltIn || record.Path.empty()) continue;
-            const std::filesystem::path assetPath = ResolveAssetRecordPath(*this, record.Path);
+            outErrorMessage = "Quiet's internal deletion staging folder cannot be deleted through the Asset Browser.";
+            return false;
+        }
 
-            if (IsPathInsideOrEqual(assetPath, resolvedFolder))
+        // Recursive folder deletion must never follow or remove
+        // filesystem links that may reference data outside the project.
+        for (std::filesystem::recursive_directory_iterator iterator(resolvedFolder, std::filesystem::directory_options::none, ec), end; iterator != end; iterator.increment(ec))
+        {
+            if (ec)
             {
-                outErrorMessage =
-                    "The folder still contains the registered asset '" +
-                    record.ID +
-                    "'.";
+                outErrorMessage = "Failed to inspect the folder contents: " + ec.message();
+                return false;
+            }
+
+            const std::filesystem::file_status status = iterator->symlink_status(ec);
+            if (ec)
+            {
+                outErrorMessage = "Failed to inspect '" + iterator->path().generic_string() + "': " + ec.message();
+                return false;
+            }
+
+            if (std::filesystem::is_symlink(status))
+            {
+                outErrorMessage = "The folder contains a symbolic link and cannot be deleted safely:\n" + iterator->path().generic_string();
                 return false;
             }
         }
 
-        const bool folderIsEmpty = std::filesystem::is_empty(resolvedFolder, ec);
         if (ec)
         {
             outErrorMessage = "Failed to inspect the folder contents: " + ec.message();
             return false;
         }
-        if (!folderIsEmpty)
+
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        for (const AssetRecord& record : m_AssetRegistry.Records)
         {
-            outErrorMessage =
-                "Only empty folders can be deleted. Remove or move every "
-                "file and subfolder first.";
+            if (record.BuiltIn || record.Path.empty()) continue;
+            const std::filesystem::path assetPath = MakeAbsoluteNormalizedPath(ResolveAssetRecordPath(*this, record.Path));
+            if (!IsPathInsideOrEqual(assetPath, resolvedFolder)) continue;
+
+            outRemovedAssetIDs.push_back(record.ID);
+
+            if (!AssetRegistryIO::RemoveByID(updatedRegistry, record.ID))
+            {
+                outRemovedAssetIDs.clear();
+                outErrorMessage = "Failed to remove asset '" + record.ID + "' from the pending registry update.";
+                return false;
+            }
+        }
+
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+
+        const std::filesystem::path stagingRoot = stagingParent / Quiet::Core::UUIDToString(Core::UUIDGenerator::New());
+        const std::filesystem::path stagedFolder = stagingRoot / resolvedFolder.filename();
+
+        ec.clear();
+        std::filesystem::create_directories(stagingRoot, ec);
+        if (ec)
+        {
+            outRemovedAssetIDs.clear();
+            outErrorMessage = "Failed to create the temporary deletion staging folder: " + ec.message();
             return false;
         }
 
-        const bool removed = std::filesystem::remove(resolvedFolder, ec);
-        if (!removed || ec)
+        ec.clear();
+        std::filesystem::rename(resolvedFolder, stagedFolder, ec);
+        if (ec)
         {
-            outErrorMessage = "Failed to delete the folder";
-            if (ec) outErrorMessage += ": " + ec.message();
+            outRemovedAssetIDs.clear();
+            std::error_code cleanupError;
+            std::filesystem::remove_all(stagingRoot, cleanupError);
+
+            outErrorMessage = "Failed to stage the folder for deletion: " + ec.message();
+            if (cleanupError)
+            {
+                outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
+            }
             return false;
         }
+
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        if (!outRemovedAssetIDs.empty())
+        {
+            m_AssetRegistry = std::move(updatedRegistry);
+            if (!SaveAssetRegistry())
+            {
+                m_AssetRegistry = previousRegistry;
+
+                std::error_code rollbackError;
+                std::filesystem::rename(stagedFolder, resolvedFolder, rollbackError);
+                const bool registryRestored = SaveAssetRegistry();
+
+                if (!rollbackError)
+                {
+                    std::error_code cleanupError;
+                    std::filesystem::remove_all(stagingRoot, cleanupError);
+
+                    outErrorMessage = registryRestored
+                            ? "The folder deletion was rolled back because the asset registry could not be saved."
+                            : "The folder deletion was rolled back, but the previous registry could not be restored on disk.";
+
+                    if (cleanupError)
+                    {
+                        outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
+                    }
+                }
+                else
+                {
+                    outErrorMessage = "The asset registry could not be saved, and the folder could not be restored:\n" +
+                        rollbackError.message() + "\n\nRecovery data was preserved at:\n" + stagingRoot.generic_string();
+
+                    if (!registryRestored)
+                    {
+                        outErrorMessage += "\n\nThe previous registry could not be restored on disk.";
+                    }
+                }
+
+                outRemovedAssetIDs.clear();
+                return false;
+            }
+        }
+
+        ec.clear();
+        std::filesystem::remove_all(stagingRoot, ec);
+        if (ec)
+        {
+            outWarningMessage = "The folder and registry records were removed from the project, but the staged folder could not be "
+                "permanently erased. Clean this folder manually:\n" + stagingRoot.generic_string() + "\n\n" + ec.message();
+        }
+
+        std::error_code parentCleanupError;
+        std::filesystem::remove(stagingParent, parentCleanupError);
 
         return true;
     }

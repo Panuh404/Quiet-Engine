@@ -58,7 +58,7 @@ namespace
         }
     }
 
-     std::string TrimCopy(std::string value)
+    std::string TrimCopy(std::string value)
     {
         const auto isSpace = [](const unsigned char character)
         {
@@ -81,6 +81,7 @@ namespace
         state.FolderOperationTarget.clear();
         state.FolderOperationErrorMessage.clear();
         state.FolderNameBuffer.fill('\0');
+        state.ConfirmPermanentFolderDelete = false;
     }
 
     void ClearAssetRename(Assets::AssetBrowserState& state)
@@ -247,9 +248,9 @@ namespace Quiet::Renderer::UI::Assets
     {
         state.PendingFolderAction = request.Action;
         state.FolderOperationTarget = request.TargetFolder;
-
         state.FolderOperationErrorMessage.clear();
         state.FolderNameBuffer.fill('\0');
+        state.ConfirmPermanentFolderDelete = false;
 
         switch (request.Action)
         {
@@ -268,7 +269,11 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
-    void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state)
+    void DrawAssetFolderActionPopup(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        const Scene::Scene& scene,
+        AssetBrowserState& state)
     {
         const AssetBrowserFolderAction action = state.PendingFolderAction;
         if (action == AssetBrowserFolderAction::None) return;
@@ -413,30 +418,120 @@ namespace Quiet::Renderer::UI::Assets
         }
         else if (action == AssetBrowserFolderAction::Delete)
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
-            ImGui::TextUnformatted("Delete empty folder?");
+            const AssetFolderDeleteSummary summary = InspectAssetFolderForDeletion(projectContext, scene, state.FolderOperationTarget);
+
+            const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+            const bool selectionCanBeDeleted = editMode && summary.CanDelete();
+            const bool canDelete = selectionCanBeDeleted && state.ConfirmPermanentFolderDelete;
+
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+            ImGui::TextUnformatted("Permanently delete this folder?");
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
             ImGui::TextWrapped(
-                "Only a completely empty physical folder can be deleted. "
-                "Registered assets are never removed by this operation."
-            );
+                "This recursively deletes the physical folder, every "
+                "nested file and subfolder, and all registry records "
+                "whose paths belong to it.");
+
+            ImGui::Spacing();
+
+            ImGui::TextWrapped(
+                "Unregistered files are also deleted. This operation "
+                "cannot be undone. References in the active scene are "
+                "validated, but other saved scenes are not scanned.");
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
 
             DrawFolderPath("Folder", state.FolderOperationTarget);
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            const float labelWidth = SZ::Px(152.0f);
+
+            DrawDetailRowUInt("Registered Assets", static_cast<std::uint32_t>(summary.RegisteredAssetIDs.size()), labelWidth);
+            DrawDetailRowUInt("Physical Files", summary.PhysicalFileCount, labelWidth);
+            DrawDetailRowUInt("Unregistered Files", summary.UnregisteredFileCount, labelWidth);
+            DrawDetailRowUInt("Nested Folders", summary.NestedFolderCount, labelWidth);
+            DrawDetailRowUInt("Missing Sources", summary.MissingRegisteredAssetCount, labelWidth);
+            DrawDetailRowUInt("Assets In Use", summary.ReferencedAssetCount, labelWidth);
+            DrawDetailRowUInt("Scene References", summary.SceneReferenceCount, labelWidth);
+            DrawDetailRowUInt("Symbolic Links", summary.SymbolicLinkCount, labelWidth);
+            DrawDetailRowUInt("Unsupported Entries", summary.UnsupportedEntryCount, labelWidth);
+
+            if (!summary.RegisteredAssetIDs.empty())
+            {
+                ImGui::Spacing();
+
+                ImGui::BeginChild("##DeleteFolderAssetList", ImVec2(0.0f, SZ::Px(170.0f)), ImGuiChildFlags_Borders);
+                {
+                    for (const std::string& assetID : summary.RegisteredAssetIDs)
+                    {
+                        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
+                        const std::uint32_t referenceCount = record ? CountAssetReferences(scene, *record) : 0;
+
+                        const bool sourceMissing = record && InspectAssetPath(projectContext, *record).IsMissing();
+                        ImVec4 statusColor = EditorColor::Success;
+                        std::string status = "Ready";
+
+                        if (referenceCount > 0)
+                        {
+                            status = "In use by " + std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors");
+                            statusColor = EditorColor::Warning;
+                        }
+                        else if (sourceMissing)
+                        {
+                            status = "Stale registry record";
+                            statusColor = EditorColor::Warning;
+                        }
+
+                        ImGui::BulletText("%s", assetID.c_str());
+
+                        ImGui::SameLine();
+
+                        ImGui::TextColored(statusColor, "— %s", status.c_str());
+                    }
+                }
+                ImGui::EndChild();
+            }
+
+            if (!summary.ErrorMessage.empty())
+            {
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
+                ImGui::TextWrapped("%s", summary.ErrorMessage.c_str());
+                ImGui::PopStyleColor();
+            }
+
             DrawFolderOperationError(state.FolderOperationErrorMessage);
+
+            if (!selectionCanBeDeleted)
+            {
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
+                ImGui::TextWrapped(editMode
+                    ? "The folder must be fully inspectable, contain no active-scene references, symbolic links, or unsupported filesystem entries."
+                    : "Folders cannot be deleted while runtime mode is active.");
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::Spacing();
+
+            ImGui::Checkbox("I understand that this folder and all of its contents will be permanently deleted.", &state.ConfirmPermanentFolderDelete);
 
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
 
             const float cancelWidth = SZ::Px(120.0f);
-            const float deleteWidth = SZ::Px(150.0f);
+            const float deleteWidth = SZ::Px(190.0f);
             const float totalWidth = cancelWidth + deleteWidth + ImGui::GetStyle().ItemSpacing.x;
 
             AlignFolderActionButtons(totalWidth);
@@ -453,21 +548,10 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.520f, 0.100f, 0.120f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.620f, 0.120f, 0.140f, 1.0f));
 
-            if (EditorButton("Delete Folder", ImVec2(deleteWidth, 0.0f)))
+            if (EditorButton("Delete Permanently", ImVec2(deleteWidth, 0.0f), canDelete))
             {
-                const std::string deletedFolder = state.FolderOperationTarget;
-                const std::string parentFolder = GetParentAssetFolder(projectContext, deletedFolder);
-
                 state.FolderOperationErrorMessage.clear();
-
-                if (projectContext.DeleteEmptyAssetFolder(deletedFolder, state.FolderOperationErrorMessage))
-                {
-                    RepairAssetFolderHistoryAfterDelete(state, deletedFolder, parentFolder);
-                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
-                        "Folder deleted",
-                        "Deleted the empty folder '" + deletedFolder + "'." );
-                    operationSucceeded = true;
-                }
+                operationSucceeded = ExecuteAssetFolderDeleteOperation(projectContext, editorState, state, scene, state.FolderOperationTarget);
             }
 
             ImGui::PopStyleColor(3);

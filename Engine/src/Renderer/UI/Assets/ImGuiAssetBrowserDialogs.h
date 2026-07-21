@@ -17,7 +17,11 @@ namespace Quiet::Renderer::UI::Assets
     // Folder Stuff
     [[nodiscard]] const char* GetAssetFolderActionPopupTitle(AssetBrowserFolderAction action);
     void BeginAssetFolderAction(AssetBrowserState& state, const AssetBrowserFolderActionRequest& request);
-    void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
+    void DrawAssetFolderActionPopup(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        const Scene::Scene& scene,
+        AssetBrowserState& state);
 
     // Rename Popup
     void RequestAssetRename(AssetBrowserState& state, const Project::AssetRecord& record);
@@ -30,8 +34,7 @@ namespace Quiet::Renderer::UI::Assets
         Editor::EditorState& editorState,
         const Scene::Scene& scene,
         AssetBrowserState& state,
-        float uiScale
-    );
+        float uiScale);
 
     // Delete Popup
     void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<std::string>& assetIDs);
@@ -40,6 +43,5 @@ namespace Quiet::Renderer::UI::Assets
         Editor::EditorState& editorState,
         const Scene::Scene& scene,
         AssetBrowserState& state,
-        float uiScale
-    );
+        float uiScale);
 }

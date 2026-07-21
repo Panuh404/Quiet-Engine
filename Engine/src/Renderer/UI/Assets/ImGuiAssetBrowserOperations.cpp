@@ -243,6 +243,36 @@ namespace
                 : ("Marked " + MakeMoveCountLabel(assetIDs.size()) + " for moving. Navigate to a destination folder and use Paste."));
         return true;
     }
+
+    std::filesystem::path NormalizeOperationPath(std::filesystem::path path)
+    {
+        if (path.empty()) return {};
+
+        std::error_code ec;
+        if (path.is_relative())
+        {
+            const std::filesystem::path absolutePath = std::filesystem::absolute(path, ec);
+            if (!ec) path = absolutePath;
+            ec.clear();
+        }
+
+        const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(path, ec);
+        if (!ec) return canonicalPath.lexically_normal();
+        return path.lexically_normal();
+    }
+
+    bool IsOperationPathInsideOrEqual(const std::filesystem::path& candidatePath, const std::filesystem::path& rootPath)
+    {
+        const std::filesystem::path candidate = candidatePath.lexically_normal();
+        const std::filesystem::path root = rootPath.lexically_normal();
+        if (candidate == root) return true;
+
+        const std::filesystem::path relative = candidate.lexically_relative(root);
+        if (relative.empty() || relative.is_absolute()) return false;
+
+        const auto firstSegment = relative.begin();
+        return firstSegment != relative.end() && *firstSegment != "..";
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -784,6 +814,230 @@ namespace Quiet::Renderer::UI::Assets
         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
             assetIDs.size() == 1 ? "Asset removed" : "Assets removed",
             "Removed " + MakeMoveCountLabel(assetIDs.size()) + " from the registry. Source files were not deleted.");
+        return true;
+    }
+
+    AssetFolderDeleteSummary InspectAssetFolderForDeletion(
+        const Project::ProjectContext& projectContext,
+        const Scene::Scene& scene,
+        const std::string& folder)
+    {
+        AssetFolderDeleteSummary summary{};
+        summary.Folder = NormalizeProjectRelativePathString(folder);
+
+        const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+        if (summary.Folder.empty() || summary.Folder == assetsRoot)
+        {
+            summary.ErrorMessage = "The project Assets root cannot be deleted.";
+            return summary;
+        }
+
+        if (!DoesAssetFolderExist(projectContext, summary.Folder))
+        {
+            summary.ErrorMessage = "The selected folder no longer exists.";
+            return summary;
+        }
+
+        std::error_code ec;
+        const std::filesystem::path resolvedFolder = NormalizeOperationPath(ResolveAssetFolderPath(projectContext, summary.Folder));
+        std::unordered_set<std::string> registeredPhysicalPaths;
+
+        for (const Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
+        {
+            if (record.BuiltIn || record.Path.empty()) continue;
+
+            const std::filesystem::path assetPath = NormalizeOperationPath(ResolveDisplayPath(projectContext, record.Path));
+            if (!IsOperationPathInsideOrEqual(assetPath, resolvedFolder)) continue;
+
+            summary.RegisteredAssetIDs.push_back(record.ID);
+
+            ec.clear();
+            const bool sourceExists = std::filesystem::exists(assetPath, ec);
+            if (ec)
+            {
+                summary.ErrorMessage = "Failed to inspect registered asset '" + record.ID + "': " + ec.message();
+                return summary;
+            }
+
+            if (!sourceExists)
+            {
+                ++summary.MissingRegisteredAssetCount;
+            }
+            else
+            {
+                ec.clear();
+                if (std::filesystem::is_regular_file(assetPath, ec) && !ec)
+                {
+                    registeredPhysicalPaths.insert(assetPath.generic_string());
+                }
+            }
+
+            const std::uint32_t referenceCount = CountAssetReferences(scene, record);
+            if (referenceCount > 0)
+            {
+                ++summary.ReferencedAssetCount;
+                summary.SceneReferenceCount += referenceCount;
+            }
+        }
+
+        std::sort(summary.RegisteredAssetIDs.begin(), summary.RegisteredAssetIDs.end());
+        for (std::filesystem::recursive_directory_iterator iterator(resolvedFolder, std::filesystem::directory_options::none, ec), end;
+            iterator != end; iterator.increment(ec))
+        {
+            if (ec)
+            {
+                summary.ErrorMessage = "Failed to inspect the folder contents: " + ec.message();
+                return summary;
+            }
+
+            const std::filesystem::file_status status = iterator->symlink_status(ec);
+            if (ec)
+            {
+                summary.ErrorMessage = "Failed to inspect '" + iterator->path().generic_string() + "': " + ec.message();
+                return summary;
+            }
+
+            if (std::filesystem::is_symlink(status))
+            {
+                ++summary.SymbolicLinkCount;
+                continue;
+            }
+
+            if (std::filesystem::is_directory(status))
+            {
+                ++summary.NestedFolderCount;
+                continue;
+            }
+
+            if (std::filesystem::is_regular_file(status))
+            {
+                ++summary.PhysicalFileCount;
+                const std::filesystem::path filePath = NormalizeOperationPath(iterator->path());
+
+                if (!registeredPhysicalPaths.contains(filePath.generic_string()))
+                {
+                    ++summary.UnregisteredFileCount;
+                }
+                continue;
+            }
+            ++summary.UnsupportedEntryCount;
+        }
+
+        if (ec)
+        {
+            summary.ErrorMessage = "Failed to inspect the folder contents: " + ec.message();
+        }
+        return summary;
+    }
+
+    bool ExecuteAssetFolderDeleteOperation(
+        Project::ProjectContext& projectContext,
+        Editor::EditorState& editorState,
+        AssetBrowserState& state,
+        const Scene::Scene& scene,
+        const std::string& folder)
+    {
+        if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+        {
+            state.FolderOperationErrorMessage = "Folders cannot be deleted while runtime mode is active.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Folder deletion rejected",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        const AssetFolderDeleteSummary summary = InspectAssetFolderForDeletion(projectContext, scene, folder);
+        if (!summary.IsValid())
+        {
+            state.FolderOperationErrorMessage = summary.ErrorMessage.empty()
+                ? "The folder could not be inspected."
+                : summary.ErrorMessage;
+
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Folder deletion failed",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        if (summary.ReferencedAssetCount > 0)
+        {
+            state.FolderOperationErrorMessage = std::to_string(summary.ReferencedAssetCount) +
+                (summary.ReferencedAssetCount == 1 ? " registered asset is" : " registered assets are") +
+                " referenced by the active scene.";
+
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Folder deletion blocked",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        if (summary.SymbolicLinkCount > 0)
+        {
+            state.FolderOperationErrorMessage = "The folder contains symbolic links and cannot be deleted safely.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Folder deletion blocked",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        if (summary.UnsupportedEntryCount > 0)
+        {
+            state.FolderOperationErrorMessage = "The folder contains unsupported filesystem entries.";
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Folder deletion blocked",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        const std::string deletedFolder = summary.Folder;
+        const std::string parentFolder = GetParentAssetFolder(projectContext, deletedFolder);
+        std::vector<std::string> removedAssetIDs;
+
+        std::string deleteErrorMessage;
+        std::string deleteWarningMessage;
+
+        if (!projectContext.DeleteAssetFolderFromProject(deletedFolder, removedAssetIDs, deleteErrorMessage, deleteWarningMessage))
+        {
+            state.FolderOperationErrorMessage = deleteErrorMessage.empty()
+                ? "The folder could not be deleted."
+                : deleteErrorMessage;
+
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                "Folder deletion failed",
+                state.FolderOperationErrorMessage);
+            return false;
+        }
+
+        for (const std::string& assetID : removedAssetIDs)
+        {
+            RemoveAssetFromSelection(state, assetID);
+        }
+
+        SynchronizeAssetClipboard(projectContext, state);
+
+        RepairAssetFolderHistoryAfterDelete(state, deletedFolder, parentFolder);
+
+        state.SelectedContentFolder.clear();
+        state.FolderOperationErrorMessage.clear();
+        editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
+
+        const std::string resultMessage = "Deleted folder '" + deletedFolder + "' with " +
+            std::to_string(summary.PhysicalFileCount) + (summary.PhysicalFileCount == 1 ? " file, " : " files, ") +
+            std::to_string(summary.NestedFolderCount) + (summary.NestedFolderCount == 1 ? " nested folder, and " : " nested folders, and ") +
+            std::to_string(removedAssetIDs.size()) + (removedAssetIDs.size() == 1 ? " registry record." : " registry records.");
+
+        if (!deleteWarningMessage.empty())
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                "Folder deleted with warning",
+                resultMessage + "\n\n" + deleteWarningMessage);
+        }
+        else
+        {
+            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                "Folder deleted",
+                resultMessage);
+        }
         return true;
     }
 

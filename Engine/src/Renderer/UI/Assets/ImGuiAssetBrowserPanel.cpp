@@ -537,7 +537,7 @@ namespace Quiet::Renderer::UI::Assets
                     ExecuteAssetBrowserOperation(projectContext, editorState, state, operationRequest);
                 }
 
-                DrawAssetFolderActionPopup(projectContext, editorState, state);
+                DrawAssetFolderActionPopup(projectContext, editorState, scene, state);
             }
 
             ImGui::EndChild();
