@@ -517,15 +517,17 @@ namespace Quiet::Project
 
             const std::string rollbackFailures = restoreStagedFiles(stagedFiles);
             std::error_code cleanupError;
-            std::filesystem::remove_all(stagingRoot, cleanupError);
+            if (rollbackFailures.empty())
+            {
+                std::filesystem::remove_all(stagingRoot, cleanupError);
+            }
 
             outErrorMessage = "Failed to stage asset '" + plannedDelete.AssetID + "' for deletion: " + ec.message();
             if (!rollbackFailures.empty())
             {
-                outErrorMessage += "\nThe rollback was incomplete:\n" + rollbackFailures;
+                outErrorMessage += "\nThe rollback was incomplete:\n" + rollbackFailures + "\n\nRecovery files were preserved at:\n" + stagingRoot.generic_string();
             }
-
-            if (cleanupError)
+            else if (cleanupError)
             {
                 outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
             }
@@ -544,8 +546,11 @@ namespace Quiet::Project
             const bool registryRestored = SaveAssetRegistry();
 
             std::error_code cleanupError;
-            std::filesystem::remove_all(stagingRoot, cleanupError);
 
+            if (rollbackFailures.empty())
+            {
+                std::filesystem::remove_all(stagingRoot, cleanupError);
+            }
             outErrorMessage =
                 registryRestored
                     ? "The deletion was rolled back because the asset registry could not be saved."
@@ -553,10 +558,9 @@ namespace Quiet::Project
 
             if (!rollbackFailures.empty())
             {
-                outErrorMessage += "\nThe filesystem rollback was incomplete:\n" + rollbackFailures;
+                outErrorMessage += "\nThe filesystem rollback was incomplete:\n" + rollbackFailures + "\n\nRecovery files were preserved at:\n" + stagingRoot.generic_string();
             }
-
-            if (cleanupError)
+            else if (cleanupError)
             {
                 outErrorMessage += "\n• Failed to clean the staging folder: " + cleanupError.message();
             }
