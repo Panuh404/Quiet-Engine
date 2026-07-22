@@ -315,7 +315,7 @@ namespace Quiet::Renderer::UI::Assets
                 selectedContentFolder = folder.RelativePath;
             }
 
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+            if (IsAssetBrowserContextMenuRequestedForLastItem())
             {
                 ClearAssetSelection(state);
                 selectedContentFolder = folder.RelativePath;
@@ -464,7 +464,7 @@ namespace Quiet::Renderer::UI::Assets
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 pendingDetailsAssetID = record.ID;
 
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+            if (IsAssetBrowserContextMenuRequestedForLastItem())
             {
                 if (!IsAssetSelected(state, record.ID))
                 {
@@ -472,8 +472,8 @@ namespace Quiet::Renderer::UI::Assets
                 }
                 else
                 {
-                    selectedDetailsAssetID = record.ID;
-                    selectedContentFolder.clear();
+                    state.SelectedDetailsAssetID = record.ID;
+                    state.SelectedContentFolder.clear();
                 }
             }
 
@@ -484,7 +484,6 @@ namespace Quiet::Renderer::UI::Assets
                 runtimeModeActive,
                 state,
                 operationRequest,
-                selectedDetailsAssetID,
                 pendingDetailsAssetID,
                 pendingReimportAssetID
             );
@@ -589,6 +588,16 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::EndTable();
         ImGui::PopStyleVar();
+
+        DrawAssetBrowserBackgroundContextMenu(
+            "##AssetBrowserGridBackgroundContext",
+            projectContext,
+            state.CurrentAssetFolder,
+            runtimeModeActive,
+            state,
+            operationRequest,
+            folderActionRequest
+        );
 
         const bool emptyContentClicked =
             ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)

@@ -68,8 +68,10 @@ namespace
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             currentAssetFolder = relativeFolderPath;
 
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+        if (Assets::IsAssetBrowserContextMenuRequestedForLastItem())
+        {
             currentAssetFolder = relativeFolderPath;
+        }
 
         std::vector<std::string> droppedAssetIDs;
         if (Assets::AcceptAssetBrowserDrop(droppedAssetIDs))

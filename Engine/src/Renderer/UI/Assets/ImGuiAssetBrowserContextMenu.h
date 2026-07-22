@@ -8,6 +8,8 @@
 
 namespace Quiet::Renderer::UI::Assets
 {
+    [[nodiscard]] bool IsAssetBrowserContextMenuRequestedForLastItem();
+
     void DrawAssetContextMenu(
         const char* popupID,
         const Project::ProjectContext& projectContext,
@@ -15,16 +17,24 @@ namespace Quiet::Renderer::UI::Assets
         bool runtimeModeActive,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& selectedDetailsAssetID,
         std::string& pendingDetailsAssetID,
         std::string& pendingReimportAssetID
     );
-
 
     void DrawAssetFolderContextMenu(
         const char* popupID,
         const Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
+        bool runtimeModeActive,
+        const AssetBrowserState& state,
+        AssetBrowserOperationRequest& operationRequest,
+        AssetBrowserFolderActionRequest& folderActionRequest
+    );
+
+    void DrawAssetBrowserBackgroundContextMenu(
+        const char* popupID,
+        const Project::ProjectContext& projectContext,
+        const std::string& currentAssetFolder,
         bool runtimeModeActive,
         const AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
