@@ -734,7 +734,10 @@ namespace Quiet::Core
         const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-        const bool isUsingEditorFlyControls = (isEditMode || isSimulateMode) && m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        const bool isUsingEditorFlyControls =
+            (isEditMode || isSimulateMode) &&
+            editorState.Viewport.ImageHovered &&
+            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
 
         if (!isPilotingEditCamera && isUsingEditorFlyControls)
         {
@@ -807,7 +810,7 @@ namespace Quiet::Core
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
 
-        const bool isUsingEditorFlyControls = m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        const bool isUsingEditorFlyControls = editorState.Viewport.ImageHovered && m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
         if (isUsingEditorFlyControls)
         {
             Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
