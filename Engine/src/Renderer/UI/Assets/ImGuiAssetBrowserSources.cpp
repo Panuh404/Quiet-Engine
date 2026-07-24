@@ -42,6 +42,32 @@ namespace
         Assets::SetAssetBrowserSource(state, Assets::AssetBrowserSource::EngineBuiltIn);
     }
 
+    void DrawSourceSectionHeader(const char* label)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted(label);
+        ImGui::PopStyleColor();
+
+        const ImVec2 labelMin = ImGui::GetItemRectMin();
+        const ImVec2 labelMax = ImGui::GetItemRectMax();
+
+        const float lineStartX = labelMax.x + SZ::Px(8.0f);
+        const float lineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+
+        if (lineEndX > lineStartX)
+        {
+            const float lineY = labelMin.y + (labelMax.y - labelMin.y) * 0.5f;
+            ImGui::GetWindowDrawList()->AddLine(
+                ImVec2(lineStartX, lineY),
+                ImVec2(lineEndX, lineY),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+                SZ::Px(1.0f)
+            );
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, SZ::Px(3.0f)));
+    }
+
     void DrawFolderNode(
         const Quiet::Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
@@ -187,6 +213,8 @@ namespace Quiet::Renderer::UI::Assets
             const bool projectAssetsAvailable = std::filesystem::exists(assetsRootPath, ec) && !ec &&
                 std::filesystem::is_directory(assetsRootPath, ec) && !ec;
 
+            DrawSourceSectionHeader("PROJECT CONTENT");
+
             if (projectAssetsAvailable)
             {
                 // The physical Assets root is represented directly by the
@@ -232,6 +260,9 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::Unindent(SZ::Px(18.0f));
             }
+
+            ImGui::Dummy(ImVec2(0.0f, SZ::Px(10.0f)));
+            DrawSourceSectionHeader("ENGINE CONTENT");
 
             ImGuiTreeNodeFlags engineFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
             if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
