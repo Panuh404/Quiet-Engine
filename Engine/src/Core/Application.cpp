@@ -36,6 +36,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 #include "Scene/Scene.h"
@@ -440,6 +441,71 @@ namespace Quiet::Core
                     if (!request->Argument.empty())
                         m_ProjectWorkflow->SetStartupScene(request->Argument);
                     break;
+
+                case Editor::EditorRequestType::CreatePrimitiveActor:
+                {
+                    const std::string& primitiveID = request->Argument;
+                    if (editorState.Scene.Mode != Editor::SceneMode::Edit)
+                    {
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
+                            "Primitive creation rejected",
+                            "Primitive actors can only be created in Edit mode.");
+                        break;
+                    }
+
+                    if (primitiveID.empty() || !Renderer::Vulkan::MeshPrimitives::IsBuiltInAssetID(primitiveID))
+                    {
+                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not a valid built-in primitive.", primitiveID);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Primitive creation failed",
+                            "The requested built-in primitive is invalid.");
+                        break;
+                    }
+
+                    if (!m_EditorController || !m_Renderer || !m_Scene)
+                    {
+                        QUIET_CORE_WARN("Cannot create primitive actor because the editor dependencies are unavailable.");
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Primitive creation failed",
+                            "The editor scene dependencies are not available.");
+                        break;
+                    }
+
+                    const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), primitiveID);
+                    if (!record || !record->BuiltIn || record->Type != Project::AssetType::Mesh)
+                    {
+                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not registered as a built-in Mesh asset.", primitiveID);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Primitive creation failed",
+                            "Primitive '" + primitiveID + "' is not registered as a built-in Mesh asset.");
+                        break;
+                    }
+
+                    if (!m_Renderer->GetMeshLibrary().Has(primitiveID))
+                    {
+                        QUIET_CORE_WARN("Cannot create primitive actor because mesh '{}' is not loaded.", primitiveID);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Primitive creation failed",
+                            "Primitive mesh '" + primitiveID + "' is registered but not loaded.");
+                        break;
+                    }
+
+                    Editor::EditorCommands commands(*m_EditorController);
+
+                    if (!commands.CreateStaticMeshActor(*m_Scene, primitiveID, primitiveID, m_ProjectContext, m_Renderer->GetMeshLibrary()))
+                    {
+                        QUIET_CORE_WARN("Failed to create primitive actor '{}'.", primitiveID);
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
+                            "Primitive creation failed",
+                            "Quiet could not create the '" + primitiveID + "' actor.");
+                        break;
+                    }
+
+                    editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
+                        "Primitive created",
+                        "Created and selected a '" + primitiveID + "' actor at the world origin.");
+                    break;
+                }
 
                 case Editor::EditorRequestType::ReloadAssets:
                 {

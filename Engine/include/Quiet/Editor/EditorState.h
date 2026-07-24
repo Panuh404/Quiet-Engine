@@ -40,6 +40,7 @@ namespace Quiet::Editor
         Undo, Redo,
         OpenProject, CreateProject,
         OpenProjectScene, SetStartupScene,
+        CreatePrimitiveActor,
         ReloadAssets, ReimportAsset
     };
 

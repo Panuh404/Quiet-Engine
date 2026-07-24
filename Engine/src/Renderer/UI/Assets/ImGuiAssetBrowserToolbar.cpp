@@ -6,6 +6,9 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "Quiet/Project/AssetRegistry.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
@@ -15,6 +18,10 @@ namespace
 {
     namespace QUI = Quiet::Renderer::UI;
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
+    namespace Assets = Quiet::Renderer::UI::Assets;
+    namespace Editor = Quiet::Editor;
+    namespace Project = Quiet::Project;
+    namespace Vulkan = Quiet::Renderer::Vulkan;
 
     std::string MakeAssetTypeFilterDropdownLabel(
          const Quiet::Renderer::UI::Assets::AssetBrowserTypeFilter filter,
@@ -89,6 +96,49 @@ namespace
         }
     }
 
+    void DrawPrimitiveCreationPopup(
+        Editor::EditorState& editorState,
+        const Project::ProjectContext& projectContext,
+        const Vulkan::MeshLibrary& meshLibrary)
+    {
+        if (!ImGui::BeginPopup("##AssetBrowserCreatePrimitive")) return;
+        QUI::DrawMutedText("Create a primitive actor at the world origin.");
+
+        ImGui::Separator();
+
+        const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+        for (const std::string& primitiveID : Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveID);
+            const bool registered = record && record->BuiltIn && record->Type == Project::AssetType::Mesh;
+            const bool loaded = registered && meshLibrary.Has(primitiveID);
+            const bool canCreate = editMode && loaded;
+
+            if (QUI::EditorMenuItem(primitiveID.c_str(), nullptr, false, canCreate))
+            {
+                editorState.QueueRequest(Editor::EditorRequestType::CreatePrimitiveActor, primitiveID);
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (!canCreate && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+                if (!editMode)
+                {
+                    ImGui::SetTooltip("Primitive actors can only be created in Edit mode.");
+                }
+                else if (!registered)
+                {
+                    ImGui::SetTooltip("Primitive '%s' is not registered as a built-in mesh.", primitiveID.c_str());
+                }
+                else
+                {
+                    ImGui::SetTooltip("Primitive '%s' is registered but not loaded.", primitiveID.c_str());
+                }
+            }
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -96,6 +146,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetBrowserToolbar(
         Editor::EditorState& editorState,
         const Project::ProjectContext& projectContext,
+        const Vulkan::MeshLibrary& meshLibrary,
         std::array<char, 128>& searchBuffer,
         AssetBrowserTypeFilter& typeFilter,
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,
@@ -120,12 +171,31 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
 
-        if (EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f)), projectSourceActive))
-            openImportPopup = true;
-
-        if (!projectSourceActive && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        if (projectSourceActive)
         {
-            ImGui::SetTooltip("Engine is a read-only virtual source.");
+            if (EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f)))) openImportPopup = true;
+        }
+        else
+        {
+            const bool canCreatePrimitive = editorState.Scene.Mode == Editor::SceneMode::Edit;
+            if (EditorButton("Create Primitive", SZ::Px(ImVec2(132.0f, 0.0f)), canCreatePrimitive))
+            {
+                ImGui::OpenPopup("##AssetBrowserCreatePrimitive");
+            }
+
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+                if (canCreatePrimitive)
+                {
+                    ImGui::SetTooltip("Create a built-in primitive actor at the world origin.");
+                }
+                else
+                {
+                    ImGui::SetTooltip("Primitive actors can only be created in Edit mode.");
+                }
+            }
+
+            DrawPrimitiveCreationPopup(editorState, projectContext, meshLibrary);
         }
 
         ImGui::SameLine();

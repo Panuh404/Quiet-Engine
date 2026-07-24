@@ -355,6 +355,7 @@ namespace Quiet::Renderer::UI::Assets
             DrawAssetBrowserToolbar(
                 editorState,
                 projectContext,
+                meshLibrary,
                 assetSearchBuffer,
                 assetTypeFilter,
                 assetDiagnosticsFilter,

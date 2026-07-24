@@ -252,8 +252,7 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest)
     {
-        // Engine/Built-In is a virtual read-only source. It must not
-        // expose physical project-folder operations.
+        // Engine is a virtual read-only source. It must not expose physical project-folder operations.
         if (state.CurrentSource != AssetBrowserSource::Project) return;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
