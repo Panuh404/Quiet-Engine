@@ -37,7 +37,7 @@ namespace
         currentAssetFolder = relativeFolderPath;
     }
 
-    void ActivateBuiltInSource(Assets::AssetBrowserState& state)
+    void ActivateEngineSource(Assets::AssetBrowserState& state)
     {
         Assets::SetAssetBrowserSource(state, Assets::AssetBrowserSource::EngineBuiltIn);
     }
@@ -69,7 +69,7 @@ namespace
             ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
         const std::string assetsRoot = Assets::GetAssetsRootRelativePath(projectContext);
-        const std::string label = relativeFolderPath == assetsRoot ? assetsRoot : std::filesystem::path(relativeFolderPath).filename().string();
+        const std::string label = relativeFolderPath == assetsRoot ? "Project" : std::filesystem::path(relativeFolderPath).filename().string();
         const std::string nodeID = "##AssetSourceFolder_" + relativeFolderPath;
         const bool open = ImGui::TreeNodeEx(nodeID.c_str(), flags, "%s", label.c_str());
 
@@ -179,92 +179,77 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
 
-            const ImGuiTreeNodeFlags groupFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+            const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+            const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
 
-            const bool projectGroupOpen = ImGui::TreeNodeEx("##AssetSourceProject", groupFlags, "Project");
-            if (projectGroupOpen)
+            std::error_code ec;
+
+            const bool projectAssetsAvailable = std::filesystem::exists(assetsRootPath, ec) && !ec &&
+                std::filesystem::is_directory(assetsRootPath, ec) && !ec;
+
+            if (projectAssetsAvailable)
             {
-                const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
-                std::error_code ec;
-
-                if (!std::filesystem::exists(assetsRootPath, ec) || !std::filesystem::is_directory(assetsRootPath, ec))
-                {
-                    DrawMutedText("Project Assets folder is missing.");
-                    ImGui::Spacing();
-
-                    ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
-                    ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
-                    ImGui::PopStyleColor();
-                }
-                else
-                {
-                    DrawFolderNode(
-                        projectContext,
-                        GetAssetsRootRelativePath(projectContext),
-                        currentAssetFolder,
-                        runtimeModeActive,
-                        state,
-                        folderActionRequest,
-                        assetMoveRequest,
-                        operationRequest
-                    );
-                }
-
-                ImGui::TreePop();
+                // The physical Assets root is represented directly by the
+                // top-level Project source. Its child folders appear beneath it.
+                DrawFolderNode(
+                    projectContext,
+                    assetsRoot,
+                    currentAssetFolder,
+                    runtimeModeActive,
+                    state,
+                    folderActionRequest,
+                    assetMoveRequest,
+                    operationRequest
+                );
             }
-
-            ImGui::SetNextItemOpen(
-                true,
-                ImGuiCond_Once
-            );
-
-            const bool engineGroupOpen =
-                ImGui::TreeNodeEx(
-                    "##AssetSourceEngine",
-                    groupFlags,
-                    "Engine"
-                );
-
-            if (engineGroupOpen)
+            else
             {
-                ImGuiTreeNodeFlags builtInFlags =
-                    ImGuiTreeNodeFlags_Leaf |
-                    ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                    ImGuiTreeNodeFlags_SpanAvailWidth;
-
-                const bool builtInSelected =
-                    state.CurrentSource ==
-                    AssetBrowserSource::EngineBuiltIn;
-
-                if (builtInSelected)
+                ImGuiTreeNodeFlags projectFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (state.CurrentSource == AssetBrowserSource::Project)
                 {
-                    builtInFlags |=
-                        ImGuiTreeNodeFlags_Selected;
+                    projectFlags |= ImGuiTreeNodeFlags_Selected;
                 }
 
-                ImGui::TreeNodeEx(
-                    "##AssetSourceBuiltIn",
-                    builtInFlags,
-                    "Built-In"
-                );
+                ImGui::TreeNodeEx("##AssetSourceProjectUnavailable", projectFlags, "Project");
 
                 if (ImGui::IsItemHovered())
                 {
-                    ImGui::SetMouseCursor(
-                        ImGuiMouseCursor_Hand
-                    );
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                 }
 
-                if (ImGui::IsItemClicked(
-                        ImGuiMouseButton_Left))
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                 {
-                    ActivateBuiltInSource(
-                        state
-                    );
+                    ActivateProjectFolder(state, currentAssetFolder,assetsRoot);
                 }
 
-                ImGui::TreePop();
+                ImGui::Indent(SZ::Px(18.0f));
+
+                DrawMutedText("Project Assets folder is missing.");
+
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+                ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
+                ImGui::PopStyleColor();
+
+                ImGui::Unindent(SZ::Px(18.0f));
+            }
+
+            ImGuiTreeNodeFlags engineFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
+            {
+                engineFlags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            ImGui::TreeNodeEx("##AssetSourceEngine", engineFlags, "Engine");
+
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::SetTooltip("Read-only built-in engine assets.");
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                ActivateEngineSource(state);
             }
 
             ImGui::PopStyleColor(3);

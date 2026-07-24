@@ -125,7 +125,7 @@ namespace Quiet::Renderer::UI::Assets
 
         if (!projectSourceActive && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
         {
-            ImGui::SetTooltip("Engine/Built-In is a read-only virtual source.");
+            ImGui::SetTooltip("Engine is a read-only virtual source.");
         }
 
         ImGui::SameLine();

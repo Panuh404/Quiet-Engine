@@ -86,7 +86,7 @@ namespace
 
     std::string MakeBreadcrumbLabel(const std::string& breadcrumbPath, const std::string& assetsRoot)
     {
-        if (breadcrumbPath == assetsRoot) return assetsRoot;
+        if (breadcrumbPath == assetsRoot) return "Project";
 
         const std::string label = std::filesystem::path(breadcrumbPath).filename().string();
         return label.empty() ? breadcrumbPath : label;
@@ -122,20 +122,8 @@ namespace
 
             ImGui::SameLine();
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextUnformatted("Engine");
-            ImGui::PopStyleColor();
-
-            ImGui::SameLine();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-            ImGui::TextUnformatted(">");
-            ImGui::PopStyleColor();
-
-            ImGui::SameLine();
-
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Accent);
-            ImGui::TextUnformatted("Built-In");
+            ImGui::TextUnformatted("Engine");
             ImGui::PopStyleColor();
 
             ImGui::SameLine();
@@ -505,7 +493,11 @@ namespace Quiet::Renderer::UI::Assets
 
                     if (!hasVisibleItems)
                     {
-                        DrawAssetBrowserEmptyState(projectSourceActive ? currentAssetFolder : std::string("Engine/Built-In"), folderHasItems);
+                        const std::string contentLocation = !projectSourceActive
+                            ? std::string("Engine") : currentAssetFolder == GetAssetsRootRelativePath(projectContext)
+                            ? std::string("Project") : currentAssetFolder;
+
+                        DrawAssetBrowserEmptyState(contentLocation, folderHasItems);
                         // EndChild() inside DrawAssetBrowserEmptyState leaves the
                         // complete empty-state panel as the active ImGui item.
                         if (projectSourceActive)

@@ -343,7 +343,7 @@ namespace Quiet::Renderer::UI::Assets
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
 
         // Pathless and external project records remain accessible from the physical Assets root.
-        // Built-ins are displayed through the virtual Engine/Built-In source and only reach this fallback during validation.
+        // Built-ins are displayed through the virtual Engine source and only reach this physical-folder fallback during validation.
         if (record.BuiltIn || record.Path.empty()) return assetsRoot;
 
         const std::filesystem::path resolvedAssetPath = ResolveDisplayPath(projectContext, record.Path);
