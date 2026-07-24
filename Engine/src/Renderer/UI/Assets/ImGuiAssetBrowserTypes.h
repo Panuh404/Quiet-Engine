@@ -19,6 +19,12 @@ namespace Quiet::Renderer::UI::Assets
         Browser
     };
 
+    enum class AssetBrowserSource
+    {
+        Project,
+        EngineBuiltIn
+    };
+
     enum class AssetBrowserThumbnailSize
     {
         Tiny,
@@ -192,5 +198,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserThumbnailSize ThumbnailSize = AssetBrowserThumbnailSize::Medium;
         AssetBrowserFolderAction PendingFolderAction = AssetBrowserFolderAction::None;
         AssetBrowserDiagnosticsFilter DiagnosticsFilter = AssetBrowserDiagnosticsFilter::All;
+        AssetBrowserSource CurrentSource = AssetBrowserSource::Project;
     };
 }

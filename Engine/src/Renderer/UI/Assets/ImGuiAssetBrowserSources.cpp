@@ -31,19 +31,30 @@ namespace
         return selectedFolderPath.rfind(folderPath + "/", 0) == 0;
     }
 
+    void ActivateProjectFolder(Assets::AssetBrowserState& state, std::string& currentAssetFolder, const std::string& relativeFolderPath)
+    {
+        Assets::SetAssetBrowserSource(state, Assets::AssetBrowserSource::Project);
+        currentAssetFolder = relativeFolderPath;
+    }
+
+    void ActivateBuiltInSource(Assets::AssetBrowserState& state)
+    {
+        Assets::SetAssetBrowserSource(state, Assets::AssetBrowserSource::EngineBuiltIn);
+    }
+
     void DrawFolderNode(
         const Quiet::Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
         std::string& currentAssetFolder,
         const bool runtimeModeActive,
-        const Assets::AssetBrowserState& state,
+        Assets::AssetBrowserState& state,
         Assets::AssetBrowserFolderActionRequest& folderActionRequest,
         Assets::AssetBrowserAssetMoveRequest& assetMoveRequest,
         Assets::AssetBrowserOperationRequest& operationRequest)
     {
         const std::vector<Assets::AssetBrowserFolderEntry>childFolders = Assets::BuildAssetChildFolderList(projectContext, relativeFolderPath);
 
-        const bool selected = currentAssetFolder == relativeFolderPath;
+        const bool selected = state.CurrentSource == Assets::AssetBrowserSource::Project && currentAssetFolder == relativeFolderPath;
         const bool hasChildren = !childFolders.empty();
 
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -54,7 +65,7 @@ namespace
         if (!hasChildren)
             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-        if (IsFolderOpenForSelection(relativeFolderPath, currentAssetFolder))
+        if (state.CurrentSource == Assets::AssetBrowserSource::Project && IsFolderOpenForSelection(relativeFolderPath, currentAssetFolder))
             ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
         const std::string assetsRoot = Assets::GetAssetsRootRelativePath(projectContext);
@@ -66,12 +77,10 @@ namespace
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-            currentAssetFolder = relativeFolderPath;
+            ActivateProjectFolder(state, currentAssetFolder, relativeFolderPath);
 
         if (Assets::IsAssetBrowserContextMenuRequestedForLastItem())
-        {
-            currentAssetFolder = relativeFolderPath;
-        }
+            ActivateProjectFolder(state, currentAssetFolder,relativeFolderPath);
 
         std::vector<std::string> droppedAssetIDs;
         if (Assets::AcceptAssetBrowserDrop(droppedAssetIDs))
@@ -118,7 +127,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string& currentAssetFolder,
         float width,
         bool runtimeModeActive,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest)
@@ -145,8 +154,17 @@ namespace Quiet::Renderer::UI::Assets
             const float createButtonX = ImGui::GetWindowContentRegionMax().x - createButtonWidth;
             if (createButtonX > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(createButtonX);
 
-            if (EditorButton("+ Folder", ImVec2(createButtonWidth, 0.0f)))
-                RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create, currentAssetFolder);
+            const bool canCreateFolder = !runtimeModeActive && state.CurrentSource == AssetBrowserSource::Project;
+
+            if (EditorButton("+ Folder", ImVec2(createButtonWidth, 0.0f), canCreateFolder))
+                RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create,currentAssetFolder);
+
+            if (!canCreateFolder && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+                ImGui::SetTooltip(state.CurrentSource == AssetBrowserSource::EngineBuiltIn
+                    ? "The Engine source is read-only."
+                    : "Folders cannot be created during runtime mode.");
+            }
 
             ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
             ImGui::Separator();
@@ -161,29 +179,92 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
 
-            const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
+            const ImGuiTreeNodeFlags groupFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
-            std::error_code ec;
-            if (!std::filesystem::exists(assetsRootPath, ec) || !std::filesystem::is_directory(assetsRootPath, ec))
+            const bool projectGroupOpen = ImGui::TreeNodeEx("##AssetSourceProject", groupFlags, "Project");
+            if (projectGroupOpen)
             {
-                DrawMutedText("Project Assets folder is missing.");
-                ImGui::Spacing();
+                const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
+                std::error_code ec;
 
-                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
-                ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
-                ImGui::PopStyleColor();
+                if (!std::filesystem::exists(assetsRootPath, ec) || !std::filesystem::is_directory(assetsRootPath, ec))
+                {
+                    DrawMutedText("Project Assets folder is missing.");
+                    ImGui::Spacing();
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+                    ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
+                    ImGui::PopStyleColor();
+                }
+                else
+                {
+                    DrawFolderNode(
+                        projectContext,
+                        GetAssetsRootRelativePath(projectContext),
+                        currentAssetFolder,
+                        runtimeModeActive,
+                        state,
+                        folderActionRequest,
+                        assetMoveRequest,
+                        operationRequest
+                    );
+                }
+
+                ImGui::TreePop();
             }
-            else
+
+            ImGui::SetNextItemOpen(
+                true,
+                ImGuiCond_Once
+            );
+
+            const bool engineGroupOpen =
+                ImGui::TreeNodeEx(
+                    "##AssetSourceEngine",
+                    groupFlags,
+                    "Engine"
+                );
+
+            if (engineGroupOpen)
             {
-                DrawFolderNode(
-                    projectContext,
-                    GetAssetsRootRelativePath(projectContext),
-                    currentAssetFolder,
-                    runtimeModeActive,
-                    state,
-                    folderActionRequest,
-                    assetMoveRequest,
-                    operationRequest);
+                ImGuiTreeNodeFlags builtInFlags =
+                    ImGuiTreeNodeFlags_Leaf |
+                    ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                    ImGuiTreeNodeFlags_SpanAvailWidth;
+
+                const bool builtInSelected =
+                    state.CurrentSource ==
+                    AssetBrowserSource::EngineBuiltIn;
+
+                if (builtInSelected)
+                {
+                    builtInFlags |=
+                        ImGuiTreeNodeFlags_Selected;
+                }
+
+                ImGui::TreeNodeEx(
+                    "##AssetSourceBuiltIn",
+                    builtInFlags,
+                    "Built-In"
+                );
+
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetMouseCursor(
+                        ImGuiMouseCursor_Hand
+                    );
+                }
+
+                if (ImGui::IsItemClicked(
+                        ImGuiMouseButton_Left))
+                {
+                    ActivateBuiltInSource(
+                        state
+                    );
+                }
+
+                ImGui::TreePop();
             }
 
             ImGui::PopStyleColor(3);

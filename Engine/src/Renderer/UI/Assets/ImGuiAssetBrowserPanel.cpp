@@ -92,9 +92,73 @@ namespace
         return label.empty() ? breadcrumbPath : label;
     }
 
+    void DrawAssetBrowserVirtualBreadcrumb()
+    {
+        const ImVec2 navigationPadding = SZ::Px(ImVec2(6.0f, 5.0f));
+        const float navigationHeight = ImGui::GetFrameHeight() + navigationPadding.y * 2.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, navigationPadding);
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##AssetBrowserVirtualNavigationBar", ImVec2(0.0f, navigationHeight),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+        );
+        {
+            QUI::EditorButton("<##AssetVirtualBack", SZ::Px(ImVec2(34.0f, 0.0f)), false);
+            ImGui::SameLine();
+
+            QUI::EditorButton(">##AssetVirtualForward", SZ::Px(ImVec2(34.0f, 0.0f)), false);
+            ImGui::SameLine();
+
+            QUI::EditorButton("Up##AssetVirtualUp", SZ::Px(ImVec2(52.0f, 0.0f)), false);
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("|");
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextUnformatted("Engine");
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted(">");
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Accent);
+            ImGui::TextUnformatted("Built-In");
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("Read Only");
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
     void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, Quiet::Renderer::UI::Assets::AssetBrowserState& state)
     {
         using namespace Quiet::Renderer::UI::Assets;
+
+        if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
+        {
+            DrawAssetBrowserVirtualBreadcrumb();
+            return;
+        }
 
         SynchronizeAssetFolderHistory(projectContext, state);
         SynchronizeAssetClipboard(projectContext, state);
@@ -207,6 +271,7 @@ namespace
         namespace Assets = Quiet::Renderer::UI::Assets;
 
         if (!editorState.PanelFocus.AssetBrowser) return;
+        if (state.CurrentSource != Assets::AssetBrowserSource::Project) return;
         if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit) return;
 
         const ImGuiIO& io = ImGui::GetIO();
@@ -264,6 +329,7 @@ namespace
 
 namespace Quiet::Renderer::UI::Assets
 {
+
     void DrawAssetBrowserPanel(AssetBrowserContext& context, AssetBrowserState& state)
     {
         auto& projectContext = context.ProjectContext;
@@ -378,10 +444,19 @@ namespace Quiet::Renderer::UI::Assets
                     DrawAssetBrowserBreadcrumb(projectContext, state);
                     ImGui::Spacing();
 
-                    const std::vector<AssetBrowserFolderEntry> childFolders = BuildAssetChildFolderList(projectContext, currentAssetFolder);
+                    const bool projectSourceActive = state.CurrentSource == AssetBrowserSource::Project;
+
+                    const std::vector<AssetBrowserFolderEntry> childFolders = projectSourceActive
+                        ? BuildAssetChildFolderList(projectContext, currentAssetFolder)
+                        : std::vector<AssetBrowserFolderEntry>{};
+
                     const std::vector<AssetBrowserFolderEntry> visibleFolders = BuildVisibleAssetFolderList(childFolders, assetSearchBuffer.data());
 
-                    if (!selectedContentFolder.empty())
+                    if (!projectSourceActive)
+                    {
+                        selectedContentFolder.clear();
+                    }
+                    else if (!selectedContentFolder.empty())
                     {
                         const bool selectedFolderStillExists =
                             std::any_of(
@@ -393,21 +468,26 @@ namespace Quiet::Renderer::UI::Assets
                                 }
                             );
 
-                        if (!selectedFolderStillExists) selectedContentFolder.clear();
+                        if (!selectedFolderStillExists)
+                        {
+                            selectedContentFolder.clear();
+                        }
                     }
 
-                    const std::vector<const Project::AssetRecord*> folderAssets = BuildAssetFolderList(projectContext, registry, currentAssetFolder);
+                    const std::vector<const Project::AssetRecord*> sourceAssets = projectSourceActive
+                        ? BuildAssetFolderList(projectContext, registry, currentAssetFolder)
+                        : BuildBuiltInAssetList(registry);
 
-                    RepairAssetSelection(state, folderAssets);
+                    RepairAssetSelection(state, sourceAssets);
 
                     const std::vector<const Project::AssetRecord*> visibleAssets =
                         BuildVisibleAssetList(
-                            projectContext,
-                            folderAssets,
-                            assetTypeFilter,
-                            assetDiagnosticsFilter,
-                            assetSearchBuffer.data()
-                        );
+                                projectContext,
+                                sourceAssets,
+                                assetTypeFilter,
+                                assetDiagnosticsFilter,
+                                assetSearchBuffer.data()
+                            );
 
                     std::string pendingDetailsAssetID;
                     std::string pendingReimportAssetID;
@@ -421,23 +501,26 @@ namespace Quiet::Renderer::UI::Assets
                         ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
                     const bool hasVisibleItems = !visibleFolders.empty() || !visibleAssets.empty();
-                    const bool folderHasItems = !childFolders.empty() || !folderAssets.empty();
+                    const bool folderHasItems = !childFolders.empty() || !sourceAssets.empty();
 
                     if (!hasVisibleItems)
                     {
-                        DrawAssetBrowserEmptyState(currentAssetFolder, folderHasItems);
-
+                        DrawAssetBrowserEmptyState(projectSourceActive ? currentAssetFolder : std::string("Engine/Built-In"), folderHasItems);
                         // EndChild() inside DrawAssetBrowserEmptyState leaves the
                         // complete empty-state panel as the active ImGui item.
-                        const std::string emptyFolderContextMenuID = "##AssetBrowserEmptyFolderContext_" + currentAssetFolder;
-                        DrawAssetFolderContextMenu(
-                            emptyFolderContextMenuID.c_str(),
-                            projectContext,
-                            currentAssetFolder,
-                            editorState.Scene.Mode != Editor::SceneMode::Edit,
-                            state,
-                            operationRequest,
-                            folderActionRequest);
+                        if (projectSourceActive)
+                        {
+                            const std::string emptyFolderContextMenuID = "##AssetBrowserEmptyFolderContext_" + currentAssetFolder;
+                            DrawAssetFolderContextMenu(
+                                emptyFolderContextMenuID.c_str(),
+                                projectContext,
+                                currentAssetFolder,
+                                editorState.Scene.Mode != Editor::SceneMode::Edit,
+                                state,
+                                operationRequest,
+                                folderActionRequest
+                            );
+                        }
                     }
                     else if (assetViewMode == AssetBrowserViewMode::Browser)
                     {

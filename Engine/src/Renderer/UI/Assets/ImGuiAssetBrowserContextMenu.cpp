@@ -111,7 +111,7 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
-        const bool canModifySelection = !runtimeModeActive && selectedAssetCount > 0;
+        const bool canModifySelection = !runtimeModeActive && state.CurrentSource == AssetBrowserSource::Project && selectedAssetCount > 0;
 
         if (EditorMenuItem("Inspect"))
             pendingDetailsAssetID = record.ID;
@@ -243,14 +243,19 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleVar(3);
     }
 
-    void DrawAssetBrowserBackgroundContextMenu(const char *popupID,
-        const Project::ProjectContext &projectContext,
-        const std::string &currentAssetFolder,
-        bool runtimeModeActive,
-        const AssetBrowserState &state,
-        AssetBrowserOperationRequest &operationRequest,
-        AssetBrowserFolderActionRequest &folderActionRequest)
+    void DrawAssetBrowserBackgroundContextMenu(
+        const char* popupID,
+        const Project::ProjectContext& projectContext,
+        const std::string& currentAssetFolder,
+        const bool runtimeModeActive,
+        const AssetBrowserState& state,
+        AssetBrowserOperationRequest& operationRequest,
+        AssetBrowserFolderActionRequest& folderActionRequest)
     {
+        // Engine/Built-In is a virtual read-only source. It must not
+        // expose physical project-folder operations.
+        if (state.CurrentSource != AssetBrowserSource::Project) return;
+
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 5.0f)));
@@ -263,7 +268,14 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        DrawFolderContextMenuContents(projectContext, currentAssetFolder, runtimeModeActive, state, operationRequest, folderActionRequest);
+        DrawFolderContextMenuContents(
+            projectContext,
+            currentAssetFolder,
+            runtimeModeActive,
+            state,
+            operationRequest,
+            folderActionRequest
+        );
 
         ImGui::EndPopup();
         ImGui::PopStyleVar(3);

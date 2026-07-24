@@ -108,10 +108,11 @@ namespace Quiet::Renderer::UI::Assets
         const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
         const bool clipboardAvailable = IsAssetClipboardAvailable(projectContext, state);
         const Project::AssetRegistry& registry = projectContext.GetAssetRegistry();
-        const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh);
-        const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture);
-        const AssetDiagnosticsCounts diagnosticsCounts = CountAssetDiagnostics(projectContext);
 
+        const bool projectSourceActive = state.CurrentSource == AssetBrowserSource::Project;
+        const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh, state.CurrentSource);
+        const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture, state.CurrentSource);
+        const AssetDiagnosticsCounts diagnosticsCounts = CountAssetDiagnostics(projectContext, state.CurrentSource);
         const std::size_t issueCount = diagnosticsCounts.Issues;
         const std::size_t missingCount = diagnosticsCounts.Missing;
         const std::size_t externalCount = diagnosticsCounts.External;
@@ -119,8 +120,13 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
 
-        if (EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f))))
+        if (EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f)), projectSourceActive))
             openImportPopup = true;
+
+        if (!projectSourceActive && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("Engine/Built-In is a read-only virtual source.");
+        }
 
         ImGui::SameLine();
 
@@ -136,19 +142,21 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PopStyleColor();
         }
 
-        if (selectedAssetCount > 0 || clipboardAvailable)
+        const bool clipboardCanPasteHere = projectSourceActive && clipboardAvailable;
+        if (projectSourceActive && (selectedAssetCount > 0 || clipboardCanPasteHere))
         {
             ImGui::SameLine();
 
             if (DrawAssetToolbarDropdownButton("Actions", "##AssetSelectionActions", SZ::Px(ImVec2(104.0f, 0.0f))))
             {
                 const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                const bool canEditProjectAssets = editMode && projectSourceActive;
 
                 if (selectedAssetCount > 0)
                 {
                     // COPY
                     const char* copyLabel = selectedAssetCount == 1 ? "Copy Asset" : "Copy Selection";
-                    if (EditorMenuItem(copyLabel, "Ctrl+C", false, editMode))
+                    if (EditorMenuItem(copyLabel, "Ctrl+C", false, canEditProjectAssets))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::CopySelection;
@@ -157,7 +165,7 @@ namespace Quiet::Renderer::UI::Assets
 
                     // CUT
                     const char* cutLabel = selectedAssetCount == 1 ? "Cut Asset" : "Cut Selection";
-                    if (EditorMenuItem(cutLabel, "Ctrl+X", false, editMode))
+                    if (EditorMenuItem(cutLabel, "Ctrl+X", false, canEditProjectAssets))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::CutSelection;
@@ -169,7 +177,7 @@ namespace Quiet::Renderer::UI::Assets
                         ? Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), state.SelectedAssetIDs.front())
                         : nullptr;
 
-                    bool canRename = editMode && renameRecord && !renameRecord->BuiltIn && !renameRecord->Path.empty();
+                    bool canRename = canEditProjectAssets && renameRecord && !renameRecord->BuiltIn && !renameRecord->Path.empty();
                     if (canRename)
                     {
                         const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *renameRecord);
@@ -183,7 +191,7 @@ namespace Quiet::Renderer::UI::Assets
 
                     // DUPLICATE
                     const char* duplicateLabel = selectedAssetCount == 1 ? "Duplicate" : "Duplicate Selection";
-                    if (EditorMenuItem(duplicateLabel, "Ctrl+D", false, editMode))
+                    if (EditorMenuItem(duplicateLabel, "Ctrl+D", false, canEditProjectAssets))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::Duplicate;
@@ -195,14 +203,14 @@ namespace Quiet::Renderer::UI::Assets
 
                     // REMOVE
                     const char* removeLabel = selectedAssetCount == 1 ? "Remove from Registry..." : "Remove Selection from Registry...";
-                    if (EditorMenuItem(removeLabel, nullptr, false, editMode))
+                    if (EditorMenuItem(removeLabel, nullptr, false, canEditProjectAssets))
                     {
                         RequestAssetRegistryRemoval(state, state.SelectedAssetIDs);
                     }
 
                     // DELETE
                     const char* deleteLabel = selectedAssetCount == 1 ? "Delete from Project..." : "Delete Selection from Project...";
-                    if (EditorMenuItem(deleteLabel, "Delete", false, editMode))
+                    if (EditorMenuItem(deleteLabel, "Delete", false, canEditProjectAssets))
                     {
                         RequestAssetProjectDeletion(state, state.SelectedAssetIDs);
                     }
@@ -220,7 +228,7 @@ namespace Quiet::Renderer::UI::Assets
                         ? (state.Clipboard.AssetIDs.size() == 1 ? "Paste Copy" : "Paste Copies")
                         : (state.Clipboard.AssetIDs.size() == 1 ? "Move Here" : "Move Selection Here");
 
-                    if (EditorMenuItem(pasteLabel.c_str(), "Ctrl+V", false, editMode))
+                    if (EditorMenuItem(pasteLabel.c_str(), "Ctrl+V", false, canEditProjectAssets))
                     {
                         operationRequest.Clear();
                         operationRequest.Action = AssetBrowserOperationAction::Paste;
@@ -248,7 +256,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        const std::size_t totalAssetCount = registry.Records.size();
+        const std::size_t totalAssetCount = meshCount + textureCount;
         const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount);
         if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
         {

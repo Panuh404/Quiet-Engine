@@ -137,11 +137,22 @@ namespace Quiet::Renderer::UI::Assets
         return ContainsCaseInsensitive(typeLabel, query);
     }
 
-    bool MatchesAssetFolder(
-        const Project::ProjectContext& projectContext,
-        const Project::AssetRecord& record,
-        const std::string& currentAssetFolder)
+    bool MatchesAssetSource(const Project::AssetRecord& record, const AssetBrowserSource source)
     {
+        switch (source)
+        {
+            case AssetBrowserSource::EngineBuiltIn:
+                return record.BuiltIn;
+            case AssetBrowserSource::Project:
+            default:
+                return !record.BuiltIn;
+        }
+    }
+
+    bool MatchesAssetFolder(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const std::string& currentAssetFolder)
+    {
+        if (record.BuiltIn) return false;
+
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
         const std::string normalizedFolder = currentAssetFolder.empty()
             ? assetsRoot
@@ -162,10 +173,25 @@ namespace Quiet::Renderer::UI::Assets
         for (const Project::AssetRecord& record : registry.Records)
         {
             if (!record.IsValid()) continue;
+            if (!MatchesAssetSource(record, AssetBrowserSource::Project)) continue;
             if (!MatchesAssetFolder(projectContext, record, currentAssetFolder)) continue;
             folderAssets.push_back(&record);
         }
         return folderAssets;
+    }
+
+    std::vector<const Project::AssetRecord*> BuildBuiltInAssetList(const Project::AssetRegistry& registry)
+    {
+        std::vector<const Project::AssetRecord*> builtInAssets;
+        builtInAssets.reserve(registry.Records.size());
+
+        for (const Project::AssetRecord& record : registry.Records)
+        {
+            if (!record.IsValid()) continue;
+            if (!MatchesAssetSource(record, AssetBrowserSource::EngineBuiltIn)) continue;
+            builtInAssets.push_back(&record);
+        }
+        return builtInAssets;
     }
 
     std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
@@ -190,12 +216,15 @@ namespace Quiet::Renderer::UI::Assets
         return visibleAssets;
     }
 
-    std::size_t CountAssetByType(const Project::AssetRegistry& registry, const Project::AssetType type)
+    std::size_t CountAssetByType(const Project::AssetRegistry& registry, const Project::AssetType type, const AssetBrowserSource source)
     {
         std::size_t count = 0;
+
         for (const Project::AssetRecord& record : registry.Records)
         {
-            if (record.IsValid() && record.Type == type) ++count;
+            if (!record.IsValid()) continue;
+            if (!MatchesAssetSource(record, source)) continue;
+            if (record.Type == type) ++count;
         }
         return count;
     }
@@ -313,17 +342,14 @@ namespace Quiet::Renderer::UI::Assets
     {
         const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
 
-        // Built-in, pathless, and external records do not belong to a physical
-        // project subfolder, so they remain accessible from the Assets root.
+        // Pathless and external project records remain accessible from the physical Assets root.
+        // Built-ins are displayed through the virtual Engine/Built-In source and only reach this fallback during validation.
         if (record.BuiltIn || record.Path.empty()) return assetsRoot;
 
         const std::filesystem::path resolvedAssetPath = ResolveDisplayPath(projectContext, record.Path);
         if (resolvedAssetPath.empty()) return assetsRoot;
 
-        const std::filesystem::path relativeParentPath =
-            resolvedAssetPath
-                .parent_path()
-                .lexically_relative(projectContext.GetRootPath());
+        const std::filesystem::path relativeParentPath = resolvedAssetPath.parent_path() .lexically_relative(projectContext.GetRootPath());
 
         const std::string relativeFolder = NormalizeProjectRelativePathString(relativeParentPath);
         if (!relativeFolder.empty() && IsAssetFolderInsideAssetsRoot(relativeFolder, assetsRoot))
@@ -722,6 +748,23 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
+    void SetAssetBrowserSource(AssetBrowserState& state, const AssetBrowserSource source)
+    {
+        if (state.CurrentSource == source) return;
+
+        state.CurrentSource = source;
+        state.SelectedContentFolder.clear();
+
+        ClearAssetSelection(state);
+
+        if (source == AssetBrowserSource::EngineBuiltIn)
+        {
+            // Built-in assets cannot have missing, external, or
+            // pathless project-source diagnostics.
+            state.DiagnosticsFilter = AssetBrowserDiagnosticsFilter::All;
+        }
+    }
+
     std::filesystem::path ResolveDisplayPath(const Project::ProjectContext& projectContext, const std::string& assetPath)
     {
         std::filesystem::path path = assetPath;
@@ -804,13 +847,14 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
-    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext)
+    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext, const AssetBrowserSource source)
     {
         AssetDiagnosticsCounts counts{};
 
         for (const Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
         {
             if (!record.IsValid()) continue;
+            if (!MatchesAssetSource(record, source)) continue;
 
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
             if (diagnostics.HasIssue()) ++counts.Issues;

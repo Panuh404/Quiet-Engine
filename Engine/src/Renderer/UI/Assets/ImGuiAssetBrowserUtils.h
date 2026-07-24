@@ -33,6 +33,7 @@ namespace Quiet::Renderer::UI::Assets
     // Registry search / filtering
     bool MatchesTypeFilter(const Project::AssetRecord& record, AssetBrowserTypeFilter filter);
     bool MatchesAssetSearch(const Project::AssetRecord& record, const std::string& query);
+    bool MatchesAssetSource(const Project::AssetRecord& record, AssetBrowserSource source);
     bool MatchesAssetFolder(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const std::string& currentAssetFolder);
 
     std::vector<const Project::AssetRecord*> BuildAssetFolderList(
@@ -40,6 +41,8 @@ namespace Quiet::Renderer::UI::Assets
         const Project::AssetRegistry& registry,
         const std::string& currentAssetFolder
     );
+
+    std::vector<const Project::AssetRecord*> BuildBuiltInAssetList(const Project::AssetRegistry& registry);
 
     std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
         const Project::ProjectContext& projectContext,
@@ -49,7 +52,7 @@ namespace Quiet::Renderer::UI::Assets
         const std::string& searchQuery
     );
 
-    std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type);
+    std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type, AssetBrowserSource source);
 
     // File/path helpers
     std::string NormalizeProjectRelativePathString(const std::filesystem::path& path);
@@ -94,6 +97,7 @@ namespace Quiet::Renderer::UI::Assets
 
     void RemoveAssetFromSelection(AssetBrowserState& state, const std::string& assetID);
     void RepairAssetSelection(AssetBrowserState& state, const std::vector<const Project::AssetRecord*>& folderAssets);
+    void SetAssetBrowserSource(AssetBrowserState& state, AssetBrowserSource source);
 
     // Path diagnostics
     struct AssetPathDiagnostics
@@ -133,7 +137,7 @@ namespace Quiet::Renderer::UI::Assets
 
     bool MatchesDiagnosticsFilter(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, AssetBrowserDiagnosticsFilter filter);
 
-    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext);
+    AssetDiagnosticsCounts CountAssetDiagnostics(const Project::ProjectContext& projectContext, AssetBrowserSource source);
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext,const std::string& assetPath);
 
     // Asset display/status helpers
