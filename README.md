@@ -23,7 +23,7 @@ Implemented foundations:
 * scene viewport with picking, overlays, camera controls, and ImGuizmo editing
 * project manager with `.quiet` project descriptors
 * scene save/load workflow
-* physical project Assets workflow backed by a project-local asset registry
+* dual-source Asset Browser with editable physical Project content, read-only Engine resources, and a project-local asset registry
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
 * dedicated Scene Settings panel for scene-wide lighting and ambient controls
@@ -82,7 +82,7 @@ The editor target is currently the primary development target.
 * local/world gizmo mode
 * snapping support
 * focus selected actor
-* drag mesh assets from the Content Browser into the Viewport
+* drag mesh assets from the Asset Browser into the Viewport
 * cursor-ray actor placement with ground-plane fallback
 * undoable Static Mesh actor creation from asset drops
 
@@ -109,7 +109,9 @@ Folders are editor organization nodes only. They do not change runtime transform
 * actor header
 * transform editing
 * static mesh editing
-* material editing
+* material editing with fallback material controls
+* imported material-slot overrides with source names and submesh usage
+* compact material-slot texture previews
 * directional light component editing
 * rotator component editing
 * camera component editing
@@ -141,45 +143,48 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 ### Assets
 
 * project-local asset registry
-* mesh and texture asset records
-* built-in resources
-* asset reload action
-* automatic asset import and registration UI
+* Mesh and Texture asset records
+* editable physical Project source
+* read-only virtual Engine source for built-in resources
+* separated Project Content and Engine Content source groups
+* source-aware asset counts, filters, and diagnostics
+* automatic asset import and registration
+* import into the currently selected physical folder
 * asset file dialog
-* search assets by ID, path, or type and folders by name or path
+* asset reload and reimport workflows
+* searchable assets and folders by ID, name, path, or type
 * All / Meshes / Textures filters
-* compact asset table
-* selected row highlight
-* persistent asset details panel
-* responsive split layout for wide panels
-* texture preview support
-* asset details modal
-* grid/browser asset view with small, medium, and large thumbnail sizes
+* Issues / Missing / External diagnostics filters
+* Browser and List content views
+* Tiny / Small / Medium / Large / Extra Large thumbnail presets
 * texture thumbnail previews and mesh glyph fallback
-* asset reimport workflow
-* remove confirmation and asset operation feedback
-* physical `Project/Assets` Sources tree
-* breadcrumb and parent-folder navigation
-* non-recursive current-folder List and Browser views
-* import into the selected physical folder with automatic registration
-* create, rename, and delete empty physical folders
-* drag/drop asset moves between physical folders
-* project-relative registry paths for project assets
-* missing, invalid, pathless, and external source diagnostics
-* diagnostics filters for Issues, Missing, and External assets
-* physical child folders in Browser and List content views
-* folder cards and rows with navigation, context menus, and drop targets
-* Back and Forward folder navigation history
-* typed asset drag payloads shared with the Inspector and Viewport
-* asset context menu:
-
-  * Inspect
-  * Copy ID
-  * Copy Path
-  * Copy Absolute Path
-  * Reveal in File Manager
-  * Reimport
-  * Remove when allowed
+* persistent asset details panel
+* responsive content and details split layout
+* texture previews and source diagnostics
+* physical project-folder Sources tree
+* breadcrumb, parent-folder, Back, and Forward navigation
+* non-recursive current-folder content views
+* physical child-folder cards and rows
+* create and rename physical folders
+* recursive physical-folder deletion with validation and rollback
+* folder navigation, context menus, and asset drop targets
+* multi-selection with Ctrl, Shift, and Ctrl+Shift
+* shared Browser/List selection state
+* centralized asset operation command layer
+* project-scoped Copy / Cut / Paste clipboard
+* single and batch asset duplication
+* physical asset-file rename with registry updates
+* remove single or multiple assets from the registry
+* transactional project-file deletion with rollback protection
+* active-scene reference validation before destructive deletion
+* selection, history, and clipboard repair after destructive operations
+* item and empty-content context menus
+* typed Mesh and Texture drag payloads
+* drag/drop assignment into Inspector asset pickers
+* drag/drop Static Mesh actor creation in the Viewport
+* built-in primitive actor creation from the Engine source
+* Undo/Redo integration for created primitive and dropped mesh actors
+* operation confirmation, validation, and feedback modals
 
 ### Console / Diagnostics
 
@@ -263,11 +268,14 @@ The editor can:
 * open project scenes
 * set a startup scene
 * reload project assets
-* navigate real project asset folders
-* import and automatically register assets in the selected folder
-* create, rename, and delete empty asset folders
+* navigate editable physical Project content and read-only Engine resources
+* import and automatically register assets in the selected physical folder
+* create, rename, and recursively delete physical asset folders
 * move registered assets between folders with drag/drop
-* diagnose missing and external source paths
+* multi-select, copy, cut, paste, duplicate, rename, remove, and delete project assets
+* protect destructive operations with validation, confirmation, staging, and rollback
+* diagnose missing, invalid, pathless, and external source paths
+* create built-in primitive actors from the Engine source
 
 ---
 
@@ -463,9 +471,13 @@ Ctrl+O              Load Scene
 Ctrl+Z              Undo
 Ctrl+Y              Redo
 Ctrl+Shift+Z        Redo
-Ctrl+D              Duplicate Selected
-Delete              Delete Selected
-F                   Focus Selected
+Ctrl+D              Duplicate selected actor or focused Asset selection
+Delete              Delete selected actor or focused Asset selection
+Ctrl+C              Copy focused Project Asset selection
+Ctrl+X              Cut focused Project Asset selection
+Ctrl+V              Paste Project Assets into the current folder
+F2                  Rename the selected Project Asset
+F                   Focus selected actor
 F5                  Play / Stop Play
 F6                  Simulate / Stop Simulate
 ```
@@ -486,26 +498,22 @@ F6                  Simulate / Stop Simulate
 * hierarchy metadata validation
 * Scene Settings panel
 * scene render settings dirty-state and undo/redo support
-* asset browser search and type filters
-* persistent asset details panel
-* responsive asset details split layout
-* asset context menu
-* asset browser list/grid view split
-* asset import, reload, reimport, remove confirmation, and operation feedback
-* physical `Project/Assets` folder tree as the primary asset organization model
-* Sources panel for navigating real project folders
-* breadcrumb/current folder navigation
-* import assets into the selected physical folder
-* show only current-folder contents in list/browser views
-* create, rename, and delete empty folders
-* move assets between folders
-* project-relative asset paths by default
-* missing, invalid, pathless, and external asset diagnostics
-* Content Browser child-folder cards and rows
-* Back and Forward asset-folder navigation history
-* searchable Inspector asset pickers
+* Asset Browser search, type filters, and diagnostics filters
+* persistent and responsive asset details region
+* Browser/List content views with five thumbnail presets
+* physical Project source and read-only virtual Engine source
+* separated Project Content and Engine Content source groups
+* physical folder tree, breadcrumbs, Back/Forward history, and child-folder content
+* multi-selection shared between Browser and List views
+* centralized asset operations and project-scoped clipboard
+* single and batch Copy, Cut, Paste, Duplicate, Rename, Remove, and Delete workflows
+* transactional asset and recursive folder deletion with validation and rollback
+* stable item and background context-menu targeting
+* searchable Inspector Mesh and Texture asset pickers
 * drag/drop Mesh and Texture assignment in the Inspector
 * drag/drop Static Mesh actor creation in the Viewport
+* built-in primitive creation from the Engine source
+* imported material-slot Inspector presentation and compact texture previews
 
 ### Upcoming Areas
 

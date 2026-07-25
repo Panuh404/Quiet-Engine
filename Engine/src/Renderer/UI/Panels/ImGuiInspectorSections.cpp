@@ -642,7 +642,7 @@ namespace
         ImGui::BeginChild("##MaterialSlotCard", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY |
             ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        const bool open =DrawMaterialSlotHeader(actor, materialSlot, slotIndex, defaultOpen);
+        const bool open = DrawMaterialSlotHeader(actor, materialSlot, slotIndex, defaultOpen);
         if (open)
         {
             ImGui::Spacing();
