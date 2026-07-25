@@ -184,6 +184,12 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Shader/ShaderModule.cpp
         src/Renderer/Vulkan/Shader/ShaderModule.h
 
+        # Renderer - Vulkan - Editor
+        src/Renderer/Vulkan/Editor/EditorGridPipeline.h
+        src/Renderer/Vulkan/Editor/EditorGridPipeline.cpp
+        src/Renderer/Vulkan/Editor/EditorGridRenderSystem.h
+        src/Renderer/Vulkan/Editor/EditorGridRenderSystem.cpp
+
         # Renderer - Vulkan
         src/Renderer/Vulkan/RenderTypes.h
         src/Renderer/Vulkan/VulkanRenderer.cpp

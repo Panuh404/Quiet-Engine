@@ -17,7 +17,8 @@ namespace Quiet::Renderer::UI
         inline constexpr const char* Stop      = "\xef\x81\x8d"; // U+F04D stop
         inline constexpr const char* Simulate  = "\xef\x80\xa1"; // U+F021 rotate/sync
 
-        inline constexpr const char* Gear =     "\xef\x80\x93"; // U+F013 cog
+        inline constexpr const char* Gear      = "\xef\x80\x93"; // U+F013 cog
+        inline constexpr const char* Grid      = "\xef\x80\x8a"; // U+F00A grid
 
         inline constexpr const char* Translate = "\xef\x81\x87"; // U+F047 arrows
         inline constexpr const char* Rotate    = "\xef\x80\xa1"; // U+F021 rotate/sync

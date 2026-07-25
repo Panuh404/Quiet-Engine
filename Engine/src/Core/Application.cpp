@@ -687,7 +687,9 @@ namespace Quiet::Core
 
         Scene::Scene& renderScene = GetActiveScene();
         const auto activeCameraData = BuildActiveRenderCameraData(renderScene);
-        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer);
+        const bool drawEditorGrid = editorState.Viewport.ShowGrid && editorState.Scene.Mode != Editor::SceneMode::Play;
+
+        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer, drawEditorGrid);
     }
 
     bool Application::RunSandboxFrame(const FrameContext& frame)
@@ -711,7 +713,7 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
-        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer);
+        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer, false);
     }
 
     void Application::FinalizePlatformWindows(const bool frameCompleted) const

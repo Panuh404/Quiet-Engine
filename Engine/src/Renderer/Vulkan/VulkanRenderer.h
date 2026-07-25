@@ -51,6 +51,8 @@ namespace Quiet::Renderer::Vulkan
     class FrameSync;
     class StaticMeshRenderSystem;
     class StaticMeshMaterialResources;
+    class EditorGridPipeline;
+    class EditorGridRenderSystem;
 
     class VulkanRenderer
     {
@@ -61,9 +63,7 @@ namespace Quiet::Renderer::Vulkan
         VulkanRenderer(const VulkanRenderer&) = delete;
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
-        bool DrawFrame(Scene::Scene& scene,
-                       const CameraUniformData& cameraData,
-                       UI::ImGuiLayer& imguiLayer);
+        bool DrawFrame(Scene::Scene& scene, const CameraUniformData& cameraData, UI::ImGuiLayer& imguiLayer, bool drawEditorGrid);
 
         void WaitIdle() const;
         void RecreateSwapchain();
@@ -85,7 +85,7 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] const LogicalDevice& GetLogicalDevice() const { return *m_LogicalDevice; }
         [[nodiscard]] const GraphicsCommands& GetGraphicsCommands() const { return *m_GraphicsCommands; }
 
-        [[nodiscard]] StaticMeshMaterialResources& GetStaticMeshMaterialResources() { return *m_StaticMeshMaterialResources; }
+        [[nodiscard]] StaticMeshMaterialResources& GetStaticMeshMaterialResources() const { return *m_StaticMeshMaterialResources; }
 
         [[nodiscard]] VkExtent2D GetSwapchainExtent() const;
         [[nodiscard]] VkExtent2D GetSceneViewportExtent() const;
@@ -99,9 +99,7 @@ namespace Quiet::Renderer::Vulkan
         void LoadEditorTextures();
 
         void EnsureSceneViewportSize();
-        void RecordFrameCommandBuffer(std::uint32_t imageIndex,
-                                      Scene::Scene& scene,
-                                      UI::ImGuiLayer& imguiLayer);
+        void RecordFrameCommandBuffer(std::uint32_t imageIndex, Scene::Scene& scene, UI::ImGuiLayer& imguiLayer, bool drawEditorGrid);
 
     private:
         Platform::Window* m_Window = nullptr;
@@ -122,11 +120,14 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<FrameSync> m_FrameSync;
         std::unique_ptr<StaticMeshRenderSystem> m_StaticMeshRenderSystem;
         std::unique_ptr<StaticMeshMaterialResources> m_StaticMeshMaterialResources;
+        std::unique_ptr<EditorGridPipeline> m_EditorGridPipeline;
+        std::unique_ptr<EditorGridRenderSystem> m_EditorGridRenderSystem;
 
         std::uint32_t m_PendingViewportWidth = 0;
         std::uint32_t m_PendingViewportHeight = 0;
         std::uint32_t m_ViewportResizeStableFrames = 0;
         bool m_ViewportResizePending = false;
         bool m_SceneViewportReady = false;
+        bool m_EditorMode = false;
     };
 }

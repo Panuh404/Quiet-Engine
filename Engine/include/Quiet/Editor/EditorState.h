@@ -110,6 +110,7 @@ namespace Quiet::Editor
         bool Hovered = false;
         bool ImageHovered = false;
 
+        bool ShowGrid = true;
         bool ShowDebugIcons = true;
 
         float ScreenX = 0.0f;

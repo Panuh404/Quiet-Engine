@@ -247,6 +247,11 @@ namespace
         if (editorState.Gizmo.SnapEnabled)
             statusText += "  |  Snap";
 
+        if (editorState.Viewport.ShowGrid && editorState.Scene.Mode != Quiet::Editor::SceneMode::Play)
+        {
+            statusText += "  |  Grid";
+        }
+
         if (editorState.Viewport.ShowDebugIcons)
             statusText += "  |  Icons";
 
@@ -541,6 +546,21 @@ namespace Quiet::Renderer::UI
                 const ViewportAssetDropVisual assetDropVisual = HandleViewportMeshAssetDrop(editorState, projectContext, meshLibrary);
                 if (viewportOverlayCallback) viewportOverlayCallback();
                 BuildViewportToolbar(editorState, imageMin);
+
+                ImGui::SameLine();
+
+                if (DrawToolbarButton(
+                        m_Fonts,
+                        "ViewportGrid",
+                        Icons::Grid,
+                        "Grid",
+                        editorState.Viewport.ShowGrid ? "Hide viewport grid" : "Show viewport grid",
+                        editorState.Viewport.ShowGrid,
+                        true,
+                        ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
+                {
+                    editorState.Viewport.ShowGrid = !editorState.Viewport.ShowGrid;
+                }
 
                 DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
                 DrawViewportAssetDropOverlay(assetDropVisual, imageMin, imageSize, m_UIScale);

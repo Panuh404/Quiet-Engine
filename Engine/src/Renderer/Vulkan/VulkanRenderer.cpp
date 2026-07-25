@@ -31,6 +31,9 @@
 #include "Renderer/Vulkan/Texture/TextureImporter.h"
 #include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
+#include "Renderer/Vulkan/Editor/EditorGridPipeline.h"
+#include "Renderer/Vulkan/Editor/EditorGridRenderSystem.h"
+
 namespace
 {
     #ifndef QUIET_ENGINE_RESOURCES_PATH
@@ -40,10 +43,10 @@ namespace
     constexpr const char* kEditorTopbarLogoTextureID = "Editor.TopbarLogo";
 
      void TransitionImageLayout(VkCommandBuffer commandBuffer,
-                               VkImage image,
-                               VkImageAspectFlags aspectMask,
-                               VkImageLayout oldLayout,
-                               VkImageLayout newLayout)
+                                VkImage image,
+                                VkImageAspectFlags aspectMask,
+                                VkImageLayout oldLayout,
+                                VkImageLayout newLayout)
     {
         if (oldLayout == newLayout) return;
 
@@ -143,9 +146,8 @@ namespace
 
 namespace Quiet::Renderer::Vulkan
 {
-    VulkanRenderer::VulkanRenderer(const Core::AppSpec &spec,
-                                   Platform::Window &window)
-        : m_Window(&window)
+    VulkanRenderer::VulkanRenderer(const Core::AppSpec &spec, Platform::Window &window)
+        : m_Window(&window), m_EditorMode(spec.IsEditor())
     {
         CreateRenderResources(window, spec);
     }
@@ -228,6 +230,17 @@ namespace Quiet::Renderer::Vulkan
             m_CameraResources->GetDescriptorSetLayout(),
             m_StaticMeshMaterialResources->GetDescriptorSetLayout());
 
+        if (m_EditorMode)
+        {
+            m_EditorGridPipeline = std::make_unique<EditorGridPipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetColorFormat(),
+                m_SceneViewportTarget->GetDepthFormat(),
+                m_CameraResources->GetDescriptorSetLayout());
+
+            m_EditorGridRenderSystem = std::make_unique<EditorGridRenderSystem>();
+        }
+
         m_FrameSync = std::make_unique<FrameSync>(
             *m_LogicalDevice,
             *m_Swapchain);
@@ -244,6 +257,8 @@ namespace Quiet::Renderer::Vulkan
 
         m_FrameSync.reset();
         m_StaticMeshRenderSystem.reset();
+        m_EditorGridRenderSystem.reset();
+        m_EditorGridPipeline.reset();
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
         m_StaticMeshMaterialResources.reset();
@@ -319,9 +334,7 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 
-    bool VulkanRenderer::DrawFrame(Scene::Scene &scene,
-                                   const CameraUniformData &cameraData,
-                                   UI::ImGuiLayer &imguiLayer)
+    bool VulkanRenderer::DrawFrame(Scene::Scene &scene, const CameraUniformData &cameraData, UI::ImGuiLayer &imguiLayer, const bool drawEditorGrid)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -357,8 +370,7 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to acquire swapchain image.");
 
         m_CameraResources->Update(imageIndex, cameraData);
-
-        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer);
+        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer, drawEditorGrid);
 
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
@@ -421,6 +433,8 @@ namespace Quiet::Renderer::Vulkan
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
 
+        m_EditorGridRenderSystem.reset();
+        m_EditorGridPipeline.reset();
         m_SceneViewportTarget.reset();
         m_ImGuiLayer.reset();
         m_FrameSync.reset();
@@ -471,6 +485,17 @@ namespace Quiet::Renderer::Vulkan
             m_SceneViewportTarget->GetDepthFormat(),
             m_CameraResources->GetDescriptorSetLayout(),
             m_StaticMeshMaterialResources->GetDescriptorSetLayout());
+
+        if (m_EditorMode)
+        {
+            m_EditorGridPipeline = std::make_unique<EditorGridPipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetColorFormat(),
+                m_SceneViewportTarget->GetDepthFormat(),
+                m_CameraResources->GetDescriptorSetLayout());
+
+            m_EditorGridRenderSystem = std::make_unique<EditorGridRenderSystem>();
+        }
 
         m_FrameSync = std::make_unique<FrameSync>(
             *m_LogicalDevice,
@@ -575,9 +600,7 @@ namespace Quiet::Renderer::Vulkan
         m_SceneViewportReady = false;
     }
 
-    void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
-                                                  Scene::Scene &scene,
-                                                  UI::ImGuiLayer& imguiLayer)
+    void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex, Scene::Scene &scene, UI::ImGuiLayer& imguiLayer, const bool drawEditorGrid)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         vkResetCommandBuffer(commandBuffer, 0);
@@ -656,6 +679,19 @@ namespace Quiet::Renderer::Vulkan
             renderContext.Extent = m_SceneViewportTarget->GetExtent();
 
             m_StaticMeshRenderSystem->Record(renderContext);
+
+            if (drawEditorGrid && m_EditorGridPipeline && m_EditorGridRenderSystem)
+            {
+                EditorGridRenderContext gridContext{};
+                gridContext.CommandBuffer = commandBuffer;
+                gridContext.ImageIndex = imageIndex;
+                gridContext.Pipeline = m_EditorGridPipeline.get();
+                gridContext.Camera = m_CameraResources.get();
+                gridContext.Extent = m_SceneViewportTarget->GetExtent();
+
+                m_EditorGridRenderSystem->Record(gridContext);
+            }
+
             vkCmdEndRendering(commandBuffer);
 
             TransitionImageLayout(
