@@ -1,6 +1,7 @@
 #include "ImGuiInspectorSections.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstdint>
 #include <string>
@@ -376,27 +377,254 @@ namespace
         return changed;
     }
 
-    void DrawMaterialSlotEditor(Quiet::Scene::Scene& scene,
-                                Quiet::Scene::Actor& actor,
-                                Quiet::Editor::EditorCommands& commands,
-                                const Quiet::Project::ProjectContext& projectContext,
-                                Quiet::Scene::MaterialComponent& materialSlot,
-                                const std::uint32_t slotIndex,
-                                const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
-                                const Quiet::Renderer::UI::TrackedInspectorInteraction& tracked,
-                                const float uiScale)
+    std::string GetMaterialSlotSourceName(const Quiet::Scene::Actor& actor, const std::uint32_t slotIndex)
+    {
+        if (!actor.StaticMesh.has_value()) return {};
+        if (!actor.StaticMesh->Mesh) return {};
+
+        const auto& importedSlots = actor.StaticMesh->Mesh->GetImportedMaterialSlots();
+        if (slotIndex >= importedSlots.size()) return {};
+        return importedSlots[slotIndex].Name;
+    }
+
+    std::size_t CountSubmeshesUsingMaterialSlot(const Quiet::Scene::Actor& actor, const std::uint32_t slotIndex)
+    {
+        if (!actor.StaticMesh.has_value()) return 0;
+        if (!actor.StaticMesh->Mesh) return 0;
+
+        const auto& submeshes = actor.StaticMesh->Mesh->GetSubmeshes();
+        return static_cast<std::size_t>(
+            std::count_if(
+                submeshes.begin(),
+                submeshes.end(),
+                [slotIndex](const Quiet::Renderer::Vulkan::StaticSubmesh& submesh)
+                {
+                    return submesh.MaterialSlot == slotIndex;
+                }
+            )
+        );
+    }
+
+    std::string MakeMaterialSlotUsageLabel(const std::size_t submeshCount)
+    {
+        if (submeshCount == 1) return "1 submesh";
+        return std::to_string(submeshCount) + " submeshes";
+    }
+
+    void DrawCompactMaterialTexturePreview(const std::string& textureAssetID, const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
+    {
+        if (textureAssetID.empty()) return;
+        const auto textureStats = textureLibrary.GetStats(textureAssetID);
+        if (!textureStats.has_value())
+        {
+            DrawInspectorWarning("Texture is not loaded. Press Reload in the Assets panel." );
+            return;
+        }
+        if (!textureStats->GpuReady)
+        {
+            DrawInspectorWarning("Texture metadata is loaded, but the GPU texture is not ready.");
+            return;
+        }
+
+        const ImTextureID previewID = QUI::GetOrCreateTexturePreviewID(textureAssetID, textureLibrary);
+        if (!previewID)
+        {
+            DrawInspectorWarning("Texture preview is unavailable.");
+            return;
+        }
+
+        BeginInspectorPropertyRow("Preview");
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const float frameSide = std::clamp(availableWidth, SZ::Px(44.0f), SZ::Px(76.0f));
+        const float framePadding = SZ::Px(6.0f);
+
+        const float maxImageSide = std::max(SZ::Px(1.0f), frameSide - framePadding * 2.0f);
+        const ImVec2 imageSize = QUI::CalculateTexturePreviewSize(textureStats->Width, textureStats->Height, maxImageSide);
+
+        const ImVec2 frameMin = ImGui::GetCursorScreenPos();
+        const ImVec2 frameMax(frameMin.x + frameSide, frameMin.y + frameSide);
+
+        const ImVec2 imageMin(
+            frameMin.x + (frameSide - imageSize.x) * 0.5f,
+            frameMin.y + (frameSide - imageSize.y) * 0.5f);
+
+        const ImVec2 imageMax(
+            imageMin.x + imageSize.x,
+            imageMin.y + imageSize.y
+        );
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddRectFilled(
+            frameMin,
+            frameMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Background1),
+            SZ::Px(4.0f)
+        );
+
+        drawList->AddRect(
+            frameMin,
+            frameMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Border),
+            SZ::Px(4.0f),
+            0,
+            SZ::Px(1.0f)
+        );
+
+        // Texture pixels are flipped during import to match mesh UVs.
+        drawList->AddImage(
+            previewID,
+            imageMin,
+            imageMax,
+            ImVec2(0.0f, 1.0f),
+            ImVec2(1.0f, 0.0f),
+            IM_COL32_WHITE
+        );
+
+        ImGui::Dummy(ImVec2(frameSide, frameSide));
+    }
+
+    bool DrawMaterialSlotHeader(const Quiet::Scene::Actor& actor, const Quiet::Scene::MaterialComponent& materialSlot, const std::uint32_t slotIndex, const bool defaultOpen)
+    {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap;
+        if (defaultOpen)
+        {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(8.0f, 7.0f)));
+
+        ImGui::PushStyleColor(ImGuiCol_Header, QUI::EditorColor::Background3);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, QUI::EditorColor::Background4);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, QUI::EditorColor::AccentDim);
+
+        const bool open = ImGui::TreeNodeEx("##MaterialSlotHeader", flags);
+
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
+
+        const ImVec2 headerMin = ImGui::GetItemRectMin();
+        const ImVec2 headerMax = ImGui::GetItemRectMax();
+        const float headerHeight = headerMax.y - headerMin.y;
+
+        const float swatchSize = std::max(SZ::Px(12.0f), std::min(SZ::Px(17.0f), headerHeight - SZ::Px(8.0f)));
+
+        const float labelStartX = headerMin.x + ImGui::GetTreeNodeToLabelSpacing();
+
+        const ImVec2 swatchMin(labelStartX, headerMin.y + (headerHeight - swatchSize) * 0.5f);
+        const ImVec2 swatchMax(swatchMin.x + swatchSize, swatchMin.y + swatchSize);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->AddRectFilled(
+            swatchMin,
+            swatchMax,
+            ImGui::ColorConvertFloat4ToU32(ImVec4(materialSlot.BaseColor.r, materialSlot.BaseColor.g, materialSlot.BaseColor.b, materialSlot.BaseColor.a)),
+            SZ::Px(3.0f)
+        );
+
+        drawList->AddRect(
+            swatchMin,
+            swatchMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Border),
+            SZ::Px(3.0f),
+            0,
+            SZ::Px(1.0f)
+        );
+
+        const float textY = headerMin.y + (headerHeight - ImGui::GetTextLineHeight()) * 0.5f;
+        const float titleX = swatchMax.x + SZ::Px(8.0f);
+
+        const std::string slotTitle = "Slot " + std::to_string(slotIndex);
+
+        drawList->AddText(
+            ImVec2(titleX, textY),
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Text),
+            slotTitle.c_str()
+        );
+
+        const std::size_t submeshCount = CountSubmeshesUsingMaterialSlot(actor, slotIndex);
+
+        const std::string metadata = MakeMaterialSlotUsageLabel(submeshCount) + " | " + (materialSlot.HasBaseColorTexture() ? "Texture" : "Color only");
+        const float metadataWidth = ImGui::CalcTextSize(metadata.c_str()).x;
+        const float metadataX = headerMax.x - metadataWidth - SZ::Px(10.0f);
+
+        const bool showMetadata = metadataX > titleX + SZ::Px(110.0f);
+        if (showMetadata)
+        {
+            drawList->AddText(
+                ImVec2(metadataX, textY),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextDim),
+                metadata.c_str()
+            );
+        }
+
+        const std::string sourceName = GetMaterialSlotSourceName(actor, slotIndex);
+        if (!sourceName.empty())
+        {
+            const float titleWidth = ImGui::CalcTextSize(slotTitle.c_str()).x;
+
+            const float sourceNameX = titleX + titleWidth + SZ::Px(10.0f);
+            const float sourceNameMaxX = showMetadata
+                ? metadataX - SZ::Px(10.0f)
+                : headerMax.x - SZ::Px(10.0f);
+
+            if (sourceNameMaxX > sourceNameX)
+            {
+                drawList->PushClipRect(
+                    ImVec2(sourceNameX, headerMin.y),
+                    ImVec2(sourceNameMaxX, headerMax.y),
+                    true
+                );
+
+                drawList->AddText(
+                    ImVec2(sourceNameX, textY),
+                    ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                    sourceName.c_str()
+                );
+
+                drawList->PopClipRect();
+            }
+        }
+
+        return open;
+    }
+
+    void DrawMaterialSlotEditor(
+        Quiet::Scene::Scene& scene,
+        Quiet::Scene::Actor& actor,
+        Quiet::Editor::EditorCommands& commands,
+        const Quiet::Project::ProjectContext& projectContext,
+        Quiet::Scene::MaterialComponent& materialSlot,
+        const std::uint32_t slotIndex,
+        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
+        const Quiet::Renderer::UI::TrackedInspectorInteraction& tracked,
+        const bool hasTextureAssets,
+        const bool defaultOpen)
     {
         ImGui::PushID(static_cast<int>(slotIndex));
 
-        const std::string slotLabel = "Slot " + std::to_string(slotIndex);
-        if (ImGui::TreeNodeEx(slotLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            glm::vec4 baseColor = materialSlot.BaseColor;
-            if (ImGui::ColorEdit4("Base Color", &baseColor.x))
-                commands.SetStaticMeshMaterialSlotBaseColor(scene, actor.ID, slotIndex, baseColor);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(9.0f, 8.0f)));
 
-            tracked.Begin();
-            tracked.End();
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+        ImGui::BeginChild("##MaterialSlotCard", ImVec2(0.0f, 0.0f),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+        );
+
+        const bool open = DrawMaterialSlotHeader(actor, materialSlot, slotIndex, defaultOpen);
+        if (open)
+        {
+            ImGui::Spacing();
+
+            glm::vec4 baseColor = materialSlot.BaseColor;
+            if (DrawColor4PropertyRow("Base Color", baseColor, tracked))
+            {
+                commands.SetStaticMeshMaterialSlotBaseColor(scene, actor.ID, slotIndex, baseColor);
+            }
 
             ASSETS::AssetPickerOptions texturePickerOptions{};
             texturePickerOptions.Type = Quiet::Project::AssetType::Texture;
@@ -405,20 +633,37 @@ namespace
 
             std::string selectedTextureAssetID;
 
-            if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, materialSlot.BaseColorTextureAssetID, selectedTextureAssetID))
+            if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, materialSlot .BaseColorTextureAssetID, selectedTextureAssetID))
             {
                 commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(scene, actor.ID, slotIndex, selectedTextureAssetID);
             }
+
             if (!materialSlot.HasBaseColorTexture())
             {
-                DrawInspectorHint("No texture assigned to this slot.");
+                if (!hasTextureAssets)
+                {
+                    DrawInspectorHint("No texture assets are registered.");
+                }
+                else
+                {
+                    DrawInspectorHint("This slot uses its base color only.");
+                }
             }
             else
             {
-                DrawMaterialTexturePreviewIfAvailable(materialSlot.BaseColorTextureAssetID, textureLibrary, uiScale, 96.0f);
+                DrawCompactMaterialTexturePreview(materialSlot.BaseColorTextureAssetID, textureLibrary);
             }
+
             ImGui::TreePop();
         }
+
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+
+        ImGui::Dummy(ImVec2(0.0f, SZ::Px(5.0f)));
+
         ImGui::PopID();
     }
 
@@ -656,6 +901,13 @@ namespace Quiet::Renderer::UI
         }
         if (!header.Open) return;
 
+        const bool hasMaterialSlots = !actor.StaticMesh->MaterialSlots.empty();
+        if (hasMaterialSlots)
+        {
+            DrawInspectorHint("The component material is used as a fallback when a submesh has no matching material slot.");
+            ImGui::Spacing();
+        }
+
         glm::vec4 baseColor = actor.Material->BaseColor;
         if (DrawColor4PropertyRow("Base Color", baseColor, tracked))
             commands.SetMaterialBaseColor(scene, actor.ID, baseColor);
@@ -695,26 +947,25 @@ namespace Quiet::Renderer::UI
             else
             {
                 DrawInspectorHint("Texture is sampled by the static mesh material.");
-
-                DrawTexturePreview(
-                    textureAssetID,
-                    textureLibrary,
-                    textureStats.value(),
-                    uiScale,
-                    128.0f
-                );
+                DrawTexturePreview(textureAssetID, textureLibrary, textureStats.value(), uiScale, 128.0f);
             }
         }
 
-        if (actor.StaticMesh.has_value() &&  !actor.StaticMesh->MaterialSlots.empty())
+        if (hasMaterialSlots)
         {
             ImGui::Spacing();
 
-            if (ImGui::CollapsingHeader("Material Slots", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                DrawInspectorHint("Imported submeshes use these slots by their source material index.");
+            const std::size_t slotCount = actor.StaticMesh->MaterialSlots.size();
+            const std::string slotsHeaderLabel = "Material Slots (" + std::to_string(slotCount) + ")##MaterialSlots";
 
-                for (std::size_t slotIndex = 0; slotIndex < actor.StaticMesh->MaterialSlots.size(); ++slotIndex)
+            if (ImGui::CollapsingHeader(slotsHeaderLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                DrawInspectorHint("Imported submeshes resolve these slots by source material index. Expand a slot to edit its override." );
+                ImGui::Spacing();
+
+                const bool openSingleSlotByDefault = slotCount == 1;
+
+                for (std::size_t slotIndex = 0; slotIndex < slotCount; ++slotIndex)
                 {
                     DrawMaterialSlotEditor(
                         scene,
@@ -725,7 +976,8 @@ namespace Quiet::Renderer::UI
                         static_cast<std::uint32_t>(slotIndex),
                         textureLibrary,
                         tracked,
-                        uiScale
+                        hasTextureAssets,
+                        openSingleSlotByDefault
                     );
                 }
             }
