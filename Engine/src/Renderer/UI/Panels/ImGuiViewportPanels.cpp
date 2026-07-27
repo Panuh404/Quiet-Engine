@@ -471,6 +471,21 @@ namespace Quiet::Renderer::UI
 
             if (DrawToolbarButton(
                     m_Fonts,
+                    "ViewportGrid",
+                    Icons::Grid,
+                    "Grid",
+                    editorState.Viewport.ShowGrid ? "Hide viewport grid" : "Show viewport grid",
+                    editorState.Viewport.ShowGrid,
+                    true,
+                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
+            {
+                editorState.Viewport.ShowGrid = !editorState.Viewport.ShowGrid;
+            }
+
+            ImGui::SameLine();
+
+            if (DrawToolbarButton(
+                    m_Fonts,
                     "ViewportFocus",
                     Icons::Focus,
                     "Focus",
@@ -545,22 +560,8 @@ namespace Quiet::Renderer::UI
                 // must remain the active ImGui drag/drop target item.
                 const ViewportAssetDropVisual assetDropVisual = HandleViewportMeshAssetDrop(editorState, projectContext, meshLibrary);
                 if (viewportOverlayCallback) viewportOverlayCallback();
+
                 BuildViewportToolbar(editorState, imageMin);
-
-                ImGui::SameLine();
-
-                if (DrawToolbarButton(
-                        m_Fonts,
-                        "ViewportGrid",
-                        Icons::Grid,
-                        "Grid",
-                        editorState.Viewport.ShowGrid ? "Hide viewport grid" : "Show viewport grid",
-                        editorState.Viewport.ShowGrid,
-                        true,
-                        ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
-                {
-                    editorState.Viewport.ShowGrid = !editorState.Viewport.ShowGrid;
-                }
 
                 DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
                 DrawViewportAssetDropOverlay(assetDropVisual, imageMin, imageSize, m_UIScale);
