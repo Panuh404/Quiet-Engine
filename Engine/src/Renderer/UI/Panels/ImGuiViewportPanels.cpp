@@ -1,6 +1,8 @@
 #include "Renderer/UI/ImGuiLayer.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -21,6 +23,118 @@ namespace
 {
     namespace QUI = Quiet::Renderer::UI;
     namespace ASSETS = Quiet::Renderer::UI::Assets;
+
+    constexpr float kMinimumViewportCameraSpeed = 0.1f;
+    constexpr float kMaximumViewportCameraSpeed = 100.0f;
+    constexpr float kViewportCameraWheelMultiplier = 1.25f;
+
+    constexpr std::array<float, 8> kViewportCameraSpeedPresets =
+        {
+            0.5f,
+            1.0f,
+            2.5f,
+            5.0f,
+            10.0f,
+            25.0f,
+            50.0f,
+            100.0f
+        };
+
+    std::string FormatViewportCameraSpeed(const float speed)
+    {
+        char buffer[32]{};
+
+        if (speed < 10.0f)
+        {
+            std::snprintf(buffer, sizeof(buffer), "%.1f u/s", speed);
+        }
+        else
+        {
+            std::snprintf(buffer, sizeof(buffer), "%.0f u/s", speed);
+        }
+
+        return buffer;
+    }
+
+    void UpdateViewportNavigationState(Quiet::Editor::EditorState& editorState)
+    {
+        const bool navigationAllowed =
+            editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit ||
+            editorState.Scene.Mode == Quiet::Editor::SceneMode::Simulate;
+
+        const bool rightMouseHeld = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+
+        editorState.Viewport.FlyNavigationActive = navigationAllowed && editorState.Viewport.ImageHovered && rightMouseHeld;
+        editorState.Viewport.FlySpeedBoostActive = editorState.Viewport.FlyNavigationActive && ImGui::GetIO().KeyShift;
+    }
+
+    void UpdateViewportCameraSpeedFromWheel(Quiet::Editor::EditorState& editorState)
+    {
+        if (!editorState.Viewport.FlyNavigationActive) return;
+
+        const float wheelDelta = ImGui::GetIO().MouseWheel;
+        if (std::abs(wheelDelta) <= 0.001f) return;
+
+        const float multiplier = std::pow(kViewportCameraWheelMultiplier, wheelDelta);
+        editorState.Viewport.CameraMoveSpeed = std::clamp(
+            editorState.Viewport.CameraMoveSpeed * multiplier,
+            kMinimumViewportCameraSpeed,
+            kMaximumViewportCameraSpeed);
+    }
+
+    void DrawViewportCameraSpeedPopup(Quiet::Editor::EditorState& editorState)
+    {
+        if (!ImGui::BeginPopup("##ViewportCameraSpeedPopup")) return;
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::TextUnformatted("Camera Speed");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextWrapped("Hold RMB over the Viewport and use the mouse wheel to adjust the speed.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+
+        ImGui::SetNextItemWidth(QUI::EditorSizing::Px(220.0f));
+
+        float speed = editorState.Viewport.CameraMoveSpeed;
+
+        if (ImGui::SliderFloat(
+                "##ViewportCameraMoveSpeed",
+                &speed,
+                kMinimumViewportCameraSpeed,
+                kMaximumViewportCameraSpeed,
+                "%.1f u/s",
+                ImGuiSliderFlags_Logarithmic))
+        {
+            editorState.Viewport.CameraMoveSpeed = std::clamp(
+                speed,
+                kMinimumViewportCameraSpeed,
+                kMaximumViewportCameraSpeed);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted("PRESETS");
+        ImGui::PopStyleColor();
+
+        for (const float preset : kViewportCameraSpeedPresets)
+        {
+            const std::string label = FormatViewportCameraSpeed(preset);
+
+            const bool selected = std::abs(editorState.Viewport.CameraMoveSpeed - preset) <= 0.001f;
+            if (ImGui::Selectable(label.c_str(), selected))
+            {
+                editorState.Viewport.CameraMoveSpeed = preset;
+            }
+        }
+
+        ImGui::EndPopup();
+    }
 
     const char* GetViewportModeLabel(const Quiet::Editor::SceneMode mode)
     {
@@ -255,6 +369,24 @@ namespace
         if (editorState.Viewport.ShowDebugIcons)
             statusText += "  |  Icons";
 
+        if (editorState.Viewport.FlyNavigationActive)
+        {
+            const float effectiveSpeed = editorState.Viewport .CameraMoveSpeed * (editorState.Viewport.FlySpeedBoostActive ? 2.0f : 1.0f);
+            statusText += "  |  ";
+
+            const bool pilotingCamera =
+                editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit &&
+                editorState.Selection.PilotedCameraActorID.has_value();
+
+            statusText += pilotingCamera ? "Pilot " : "Fly ";
+            statusText += FormatViewportCameraSpeed(effectiveSpeed);
+
+            if (editorState.Viewport.FlySpeedBoostActive)
+            {
+                statusText += "  Boost";
+            }
+        }
+
         const ImVec2 padding = ImVec2(9.0f * uiScale, 6.0f * uiScale);
         const ImVec2 textSize = ImGui::CalcTextSize(statusText.c_str());
 
@@ -420,11 +552,8 @@ namespace Quiet::Renderer::UI
 
             ImGui::SameLine();
 
-            const bool canToggleGizmoMode =
-                editorState.Gizmo.Operation != Editor::GizmoOperation::Scale;
-
-            const bool isLocalMode =
-                editorState.Gizmo.Mode == Editor::GizmoMode::Local;
+            const bool canToggleGizmoMode = editorState.Gizmo.Operation != Editor::GizmoOperation::Scale;
+            const bool isLocalMode = editorState.Gizmo.Mode == Editor::GizmoMode::Local;
 
             if (DrawToolbarButton(
                     m_Fonts,
@@ -484,6 +613,21 @@ namespace Quiet::Renderer::UI
 
             ImGui::SameLine();
 
+            const std::string cameraSpeedLabel = FormatViewportCameraSpeed(editorState.Viewport.CameraMoveSpeed) + "##ViewportCameraSpeed";
+            if (EditorButton(cameraSpeedLabel.c_str(), ImVec2(QUI::EditorSizing::Px(88.0f), ToolbarStyle::ButtonHeight())))
+            {
+                ImGui::OpenPopup("##ViewportCameraSpeedPopup");
+            }
+
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+                ImGui::SetTooltip("Camera speed\n Hold RMB and use the mouse wheel to adjust.");
+            }
+
+            DrawViewportCameraSpeedPopup(editorState);
+
+            ImGui::SameLine();
+
             if (DrawToolbarButton(
                     m_Fonts,
                     "ViewportFocus",
@@ -540,6 +684,8 @@ namespace Quiet::Renderer::UI
         {
             editorState.Viewport.Focused = ImGui::IsWindowFocused();
             editorState.Viewport.Hovered = ImGui::IsWindowHovered();
+            editorState.Viewport.FlyNavigationActive = false;
+            editorState.Viewport.FlySpeedBoostActive = false;
 
             const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
@@ -553,6 +699,8 @@ namespace Quiet::Renderer::UI
 
                 ImGui::Image(sceneViewportTexture, imageSize);
                 editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
+                UpdateViewportNavigationState(editorState);
+                UpdateViewportCameraSpeedFromWheel(editorState);
                 editorState.Viewport.ScreenX = imageMin.x;
                 editorState.Viewport.ScreenY = imageMin.y;
 

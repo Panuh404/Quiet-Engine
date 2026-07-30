@@ -1,5 +1,6 @@
 #include "Scene/Camera/FreeCamera.h"
 
+#include <algorithm>
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "Scene/Camera/CameraController.h"
@@ -50,6 +51,11 @@ namespace Quiet::Scene
     glm::vec3 FreeCamera::GetRightVector() const
     {
         return Math::GetRightVector(GetForwardVector());
+    }
+
+    void FreeCamera::SetMoveSpeed(float moveSpeed)
+    {
+        m_MoveSpeed = std::clamp(moveSpeed, 0.1f, 100.0f);
     }
 
     void FreeCamera::SetPose(const glm::vec3 &position, float yawDegrees, float pitchDegrees)

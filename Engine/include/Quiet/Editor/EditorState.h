@@ -113,6 +113,11 @@ namespace Quiet::Editor
         bool ShowGrid = true;
         bool ShowDebugIcons = true;
 
+        float CameraMoveSpeed = 2.5f;
+
+        bool FlyNavigationActive = false;
+        bool FlySpeedBoostActive = false;
+
         float ScreenX = 0.0f;
         float ScreenY = 0.0f;
 

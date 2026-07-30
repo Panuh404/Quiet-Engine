@@ -801,6 +801,8 @@ namespace Quiet::Core
         const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
         const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
+        m_FreeCamera->SetMoveSpeed(editorState.Viewport.CameraMoveSpeed);
+
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
         const bool isUsingEditorFlyControls =
             (isEditMode || isSimulateMode) &&

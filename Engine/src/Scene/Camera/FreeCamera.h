@@ -32,6 +32,7 @@ namespace Quiet::Scene
         [[nodiscard]] glm::vec3 GetRightVector() const;
 
         void SetPosition(const glm::vec3& position) { m_Position = position; }
+        void SetMoveSpeed(float moveSpeed);
         void SetPose(const glm::vec3& position, float yawDegrees, float pitchDegrees);
         void FocusOnTarget(const glm::vec3& target, float distance);
 
