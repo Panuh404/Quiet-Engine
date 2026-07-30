@@ -14,10 +14,10 @@ namespace Quiet::Renderer::Vulkan
         alignas(16) glm::vec4 XAxisColor{};
         alignas(16) glm::vec4 ZAxisColor{};
 
-        // x = minor spacing
-        // y = major spacing
-        // z = fade start
-        // w = fade end
+        // x = base minor spacing
+        // y = camera-height LOD reference
+        // z = base fade-start distance
+        // w = base fade-end distance
         alignas(16) glm::vec4 Parameters{};
     };
 

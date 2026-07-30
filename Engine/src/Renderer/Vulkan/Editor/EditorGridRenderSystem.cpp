@@ -52,6 +52,9 @@ namespace Quiet::Renderer::Vulkan
         push.MajorColor = glm::vec4(0.48f, 0.53f, 0.62f, 0.42f);
         push.XAxisColor = glm::vec4(0.85f, 0.24f, 0.24f, 0.88f);
         push.ZAxisColor = glm::vec4(0.20f, 0.44f, 0.92f, 0.88f);
+        // Base spacing starts at one world unit. Each camera-height
+        // decade promotes the next grid level:
+        // 1/10, 10/100, 100/1000, and so on.
         push.Parameters = glm::vec4(1.0f, 10.0f, 35.0f, 140.0f);
 
         vkCmdPushConstants(context.CommandBuffer, context.Pipeline->GetLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(EditorGridPushConstants), &push);
