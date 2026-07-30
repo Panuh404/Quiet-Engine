@@ -135,6 +135,7 @@ namespace Quiet::Platform
     }
 
     bool Window::ShouldClose() const { return glfwWindowShouldClose(m_Handle) == GLFW_TRUE; }
+    bool Window::IsFocused() const { return glfwGetWindowAttrib(m_Handle, GLFW_FOCUSED) == GLFW_TRUE; }
     bool Window::IsVulkanSupported() const { return glfwVulkanSupported() == GLFW_TRUE; }
     void* Window::GetNativeHandle() const  { return m_Handle; }
 

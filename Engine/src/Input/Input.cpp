@@ -84,6 +84,23 @@ namespace Quiet::Input
         return { m_MouseDeltaX, m_MouseDeltaY };
     }
 
+    void Input::SetMousePosition(double x, double y)
+    {
+        auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());
+        glfwSetCursorPos(handle, x, y);
+
+        m_MouseX = x;
+        m_MouseY = y;
+
+        m_LastMouseX = x;
+        m_LastMouseY = y;
+
+        m_MouseDeltaX = 0.0;
+        m_MouseDeltaY = 0.0;
+
+        m_FirstMouseSample = false;
+    }
+
     void Input::SetCursorDisabled(bool disabled)
     {
         auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());

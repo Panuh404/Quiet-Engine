@@ -34,6 +34,7 @@ namespace Quiet::Platform
         void WaitEvents();
 
         [[nodiscard]] bool ShouldClose() const;
+        [[nodiscard]] bool IsFocused() const;
 
         [[nodiscard]] bool IsVulkanSupported() const;
         [[nodiscard]] std::vector<const char*> GetRequiredVulkanInstanceExtensions() const;

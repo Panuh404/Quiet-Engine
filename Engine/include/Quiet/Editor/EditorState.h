@@ -115,6 +115,7 @@ namespace Quiet::Editor
 
         float CameraMoveSpeed = 2.5f;
 
+        bool FlyNavigationCaptureRequested = false;
         bool FlyNavigationActive = false;
         bool FlySpeedBoostActive = false;
 

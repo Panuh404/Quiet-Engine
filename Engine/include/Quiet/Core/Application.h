@@ -76,6 +76,10 @@ namespace Quiet::Core
         void ToggleMouseCapture();
         void SetMouseCaptureEnabled(bool enabled);
 
+        void BeginEditorViewportNavigationCapture(Editor::EditorState& editorState);
+        void EndEditorViewportNavigationCapture(Editor::EditorState& editorState);
+        void UpdateEditorViewportNavigationCapture(Editor::EditorState& editorState);
+
         void InitializeCommonStartup();
         void InitializeEditorStartup();
         void InitializeSandboxStartup();
@@ -121,6 +125,11 @@ namespace Quiet::Core
         AppSpec m_Spec;
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
+
+        bool m_ViewportNavigationCaptureActive = false;
+        bool m_MouseCaptureBeforeViewportNavigation = false;
+        double m_ViewportNavigationCursorX = 0.0;
+        double m_ViewportNavigationCursorY = 0.0;
 
         Project::ProjectContext m_ProjectContext;
         Project::ProjectRegistry m_ProjectRegistry{};

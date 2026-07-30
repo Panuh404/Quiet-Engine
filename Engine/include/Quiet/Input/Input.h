@@ -30,6 +30,7 @@ namespace Quiet::Input
         [[nodiscard]] std::pair<double, double> GetMousePosition() const;
         [[nodiscard]] std::pair<double, double> GetMouseDelta() const;
 
+        void SetMousePosition(double x, double y);
         void SetCursorDisabled(bool disabled);
         void EnableRawMouseMotionIfSupported(bool enabled);
         void ResetMouseDelta();

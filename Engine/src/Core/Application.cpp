@@ -165,7 +165,72 @@ namespace Quiet::Core
         m_Input->EnableRawMouseMotionIfSupported(enabled);
         m_Input->ResetMouseDelta();
 
-        QUIET_CORE_TRACE("Mouse capture: {}. Toggle with Shift+F1.", enabled ? "enabled" : "disabled");
+        QUIET_CORE_TRACE("Mouse capture: {}.", enabled ? "enabled" : "disabled");
+    }
+
+    void Application::BeginEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    {
+        if (m_ViewportNavigationCaptureActive) return;
+        const auto [cursorX, cursorY] = m_Input->GetMousePosition();
+
+        m_ViewportNavigationCursorX = cursorX;
+        m_ViewportNavigationCursorY = cursorY;
+        m_MouseCaptureBeforeViewportNavigation = m_MouseCaptureEnabled;
+        m_ViewportNavigationCaptureActive = true;
+
+        editorState.Viewport.FlyNavigationCaptureRequested = false;
+        editorState.Viewport.FlyNavigationActive = true;
+
+        SetMouseCaptureEnabled(true);
+    }
+
+    void Application::EndEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    {
+        editorState.Viewport.FlyNavigationCaptureRequested = false;
+        editorState.Viewport.FlyNavigationActive = false;
+        editorState.Viewport.FlySpeedBoostActive = false;
+
+        if (!m_ViewportNavigationCaptureActive) return;
+        m_ViewportNavigationCaptureActive = false;
+
+        SetMouseCaptureEnabled(m_MouseCaptureBeforeViewportNavigation);
+        if (!m_MouseCaptureBeforeViewportNavigation)
+        {
+            m_Input->SetMousePosition(m_ViewportNavigationCursorX, m_ViewportNavigationCursorY);
+        }
+    }
+
+    void Application::UpdateEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    {
+        const bool navigationAllowed =
+            editorState.Scene.Mode == Editor::SceneMode::Edit ||
+            editorState.Scene.Mode == Editor::SceneMode::Simulate;
+
+        const bool rightMouseDown = m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        const bool windowFocused = m_Window->IsFocused();
+
+        if (m_ViewportNavigationCaptureActive)
+        {
+            if (!navigationAllowed || !rightMouseDown || !windowFocused)
+            {
+                EndEditorViewportNavigationCapture(editorState);
+            }
+        }
+        else if (navigationAllowed && windowFocused && rightMouseDown && editorState.Viewport.FlyNavigationCaptureRequested)
+        {
+            BeginEditorViewportNavigationCapture(editorState);
+        }
+
+        // A request belongs only to the frame in which RMB began
+        // on the Viewport image.
+        editorState.Viewport.FlyNavigationCaptureRequested = false;
+        editorState.Viewport.FlyNavigationActive = m_ViewportNavigationCaptureActive;
+
+        const bool shiftDown =
+            m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
+            m_Input->IsKeyDown(Input::KeyCode::RightShift);
+
+        editorState.Viewport.FlySpeedBoostActive = m_ViewportNavigationCaptureActive && shiftDown;
     }
 
     void Application::InitializeCommonStartup()
@@ -270,7 +335,7 @@ namespace Quiet::Core
     void Application::ProcessGlobalShortcuts()
     {
         const bool shiftDown = m_Input->IsKeyDown(Input::KeyCode::LeftShift) || m_Input->IsKeyDown(Input::KeyCode::RightShift);
-        if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1))
+        if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1) && !m_ViewportNavigationCaptureActive)
         {
             ToggleMouseCapture();
         }
@@ -403,6 +468,7 @@ namespace Quiet::Core
                     break;
 
                 case Editor::EditorRequestType::EnterPlay:
+                    EndEditorViewportNavigationCapture(editorState);
                     m_EditorRuntimeController->EnterPlayMode();
                     break;
 
@@ -801,13 +867,11 @@ namespace Quiet::Core
         const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
         const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
+        UpdateEditorViewportNavigationCapture(editorState);
         m_FreeCamera->SetMoveSpeed(editorState.Viewport.CameraMoveSpeed);
 
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-        const bool isUsingEditorFlyControls =
-            (isEditMode || isSimulateMode) &&
-            editorState.Viewport.ImageHovered &&
-            m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
+        const bool isUsingEditorFlyControls = (isEditMode || isSimulateMode) && m_ViewportNavigationCaptureActive;
 
         if (!isPilotingEditCamera && isUsingEditorFlyControls)
         {
@@ -880,8 +944,7 @@ namespace Quiet::Core
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
 
-        const bool isUsingEditorFlyControls = editorState.Viewport.ImageHovered && m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
-        if (isUsingEditorFlyControls)
+        if (const bool isUsingEditorFlyControls = m_ViewportNavigationCaptureActive)
         {
             Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
             Scene::ApplyPilotStateToCameraTransform(state, actor->Transform.WorldTransform);

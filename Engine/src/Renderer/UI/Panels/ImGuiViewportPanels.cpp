@@ -56,18 +56,6 @@ namespace
         return buffer;
     }
 
-    void UpdateViewportNavigationState(Quiet::Editor::EditorState& editorState)
-    {
-        const bool navigationAllowed =
-            editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit ||
-            editorState.Scene.Mode == Quiet::Editor::SceneMode::Simulate;
-
-        const bool rightMouseHeld = ImGui::IsMouseDown(ImGuiMouseButton_Right);
-
-        editorState.Viewport.FlyNavigationActive = navigationAllowed && editorState.Viewport.ImageHovered && rightMouseHeld;
-        editorState.Viewport.FlySpeedBoostActive = editorState.Viewport.FlyNavigationActive && ImGui::GetIO().KeyShift;
-    }
-
     void UpdateViewportCameraSpeedFromWheel(Quiet::Editor::EditorState& editorState)
     {
         if (!editorState.Viewport.FlyNavigationActive) return;
@@ -684,8 +672,6 @@ namespace Quiet::Renderer::UI
         {
             editorState.Viewport.Focused = ImGui::IsWindowFocused();
             editorState.Viewport.Hovered = ImGui::IsWindowHovered();
-            editorState.Viewport.FlyNavigationActive = false;
-            editorState.Viewport.FlySpeedBoostActive = false;
 
             const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
@@ -699,7 +685,10 @@ namespace Quiet::Renderer::UI
 
                 ImGui::Image(sceneViewportTexture, imageSize);
                 editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
-                UpdateViewportNavigationState(editorState);
+                if (editorState.Viewport.ImageHovered && ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                {
+                    editorState.Viewport.FlyNavigationCaptureRequested = true;
+                }
                 UpdateViewportCameraSpeedFromWheel(editorState);
                 editorState.Viewport.ScreenX = imageMin.x;
                 editorState.Viewport.ScreenY = imageMin.y;
@@ -716,6 +705,7 @@ namespace Quiet::Renderer::UI
             }
             else
             {
+                editorState.Viewport.FlyNavigationCaptureRequested = false;
                 editorState.Viewport.ImageHovered = false;
                 DrawViewportUnavailableState(m_UIScale);
             }
