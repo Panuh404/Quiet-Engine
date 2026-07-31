@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -21,6 +22,7 @@ namespace Quiet::Editor
     class EditorSceneWorkflow;
     class EditorRuntimeController;
     struct EditorState;
+    enum class ViewportNavigationMode : std::uint8_t;
 }
 
 namespace Quiet::Input
@@ -76,9 +78,9 @@ namespace Quiet::Core
         void ToggleMouseCapture();
         void SetMouseCaptureEnabled(bool enabled);
 
-        void BeginEditorViewportNavigationCapture(Editor::EditorState& editorState);
+        void BeginEditorViewportNavigationCapture(Scene::Scene& activeScene, Editor::EditorState& editorState, Editor::ViewportNavigationMode mode);
         void EndEditorViewportNavigationCapture(Editor::EditorState& editorState);
-        void UpdateEditorViewportNavigationCapture(Editor::EditorState& editorState);
+        void UpdateEditorViewportNavigationCapture(Scene::Scene& activeScene, Editor::EditorState& editorState);
 
         void InitializeCommonStartup();
         void InitializeEditorStartup();
@@ -126,7 +128,9 @@ namespace Quiet::Core
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
 
-        bool m_ViewportNavigationCaptureActive = false;
+        Editor::ViewportNavigationMode m_ViewportNavigationMode{};
+        glm::vec3 m_ViewportNavigationPivot{0.0f};
+
         bool m_MouseCaptureBeforeViewportNavigation = false;
         double m_ViewportNavigationCursorX = 0.0;
         double m_ViewportNavigationCursorY = 0.0;

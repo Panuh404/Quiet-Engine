@@ -106,6 +106,71 @@ namespace
         position.y -= mesh.GetLocalBoundsMin().y;
         return position;
     }
+
+    bool IsViewportNavigationButtonDown(const Quiet::Editor::ViewportNavigationMode mode, const Quiet::Input::Input& input)
+    {
+        using Quiet::Editor::ViewportNavigationMode;
+        using Quiet::Input::MouseCode;
+
+        switch (mode)
+        {
+            case ViewportNavigationMode::Fly:
+                return input.IsMouseButtonDown(MouseCode::ButtonRight);
+
+            case ViewportNavigationMode::Orbit:
+                return input.IsMouseButtonDown(MouseCode::ButtonLeft);
+
+            case ViewportNavigationMode::Pan:
+                return input.IsMouseButtonDown(MouseCode::ButtonMiddle);
+
+            case ViewportNavigationMode::None:
+            default:
+                return false;
+        }
+    }
+
+    glm::vec3 ResolveViewportNavigationPivot(const Quiet::Scene::Scene& scene, const Quiet::Editor::EditorState& editorState, const Quiet::Scene::FreeCamera& camera)
+    {
+        const bool selectedActorIsPilotedCamera =
+            editorState.Selection.SelectedActorID.has_value() &&
+            editorState.Selection.PilotedCameraActorID.has_value() &&
+            editorState.Selection.SelectedActorID.value() ==
+            editorState.Selection.PilotedCameraActorID.value();
+
+        if (!selectedActorIsPilotedCamera && editorState.Selection.SelectedActorID.has_value())
+        {
+            const Quiet::Scene::Actor* actor = scene.FindActorByID(editorState.Selection.SelectedActorID.value());
+            if (actor)
+            {
+                glm::vec3 pivot = actor->Transform.WorldTransform.Position;
+
+                if (actor->StaticMesh.has_value() && actor->StaticMesh->IsValid())
+                {
+                    const auto& mesh = actor->StaticMesh->Mesh;
+                    const auto localBounds = mesh->GetLocalBounds();
+
+                    const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(actor->Transform.WorldTransform.ToMatrix(), localBounds.Min, localBounds.Max);
+                    pivot = (worldBounds.Min + worldBounds.Max) * 0.5f;
+                }
+
+                return pivot;
+            }
+        }
+
+        const glm::vec3 cameraPosition = camera.GetPosition();
+        const glm::vec3 cameraForward = camera.GetForwardVector();
+
+        if (std::abs(cameraForward.y) > 0.00001f)
+        {
+            const float groundDistance = -cameraPosition.y / cameraForward.y;
+            if (groundDistance >= 0.25f && groundDistance <= 1000.0f)
+            {
+                return cameraPosition + cameraForward * groundDistance;
+            }
+        }
+
+        return cameraPosition + cameraForward * 10.0f;
+    }
 }
 
 namespace Quiet::Core
@@ -168,30 +233,41 @@ namespace Quiet::Core
         QUIET_CORE_TRACE("Mouse capture: {}.", enabled ? "enabled" : "disabled");
     }
 
-    void Application::BeginEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    void Application::BeginEditorViewportNavigationCapture(Scene::Scene& activeScene, Editor::EditorState& editorState, const Editor::ViewportNavigationMode mode)
     {
-        if (m_ViewportNavigationCaptureActive) return;
-        const auto [cursorX, cursorY] = m_Input->GetMousePosition();
+        if (m_ViewportNavigationMode != Editor::ViewportNavigationMode::None || mode == Editor::ViewportNavigationMode::None)
+        {
+            return;
+        }
 
+        const auto [cursorX, cursorY] = m_Input->GetMousePosition();
         m_ViewportNavigationCursorX = cursorX;
         m_ViewportNavigationCursorY = cursorY;
+
         m_MouseCaptureBeforeViewportNavigation = m_MouseCaptureEnabled;
-        m_ViewportNavigationCaptureActive = true;
+        m_ViewportNavigationMode = mode;
 
-        editorState.Viewport.FlyNavigationCaptureRequested = false;
-        editorState.Viewport.FlyNavigationActive = true;
+        if (mode == Editor::ViewportNavigationMode::Orbit || mode == Editor::ViewportNavigationMode::Pan)
+        {
+            m_ViewportNavigationPivot = ResolveViewportNavigationPivot(activeScene, editorState, *m_FreeCamera);
+        }
 
+        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::None;
+        editorState.Viewport.NavigationMode = mode;
         SetMouseCaptureEnabled(true);
     }
 
-    void Application::EndEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    void Application::EndEditorViewportNavigationCapture(Editor::EditorState& editorState)
     {
-        editorState.Viewport.FlyNavigationCaptureRequested = false;
-        editorState.Viewport.FlyNavigationActive = false;
+        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::None;
+        editorState.Viewport.NavigationMode = Editor::ViewportNavigationMode::None;
         editorState.Viewport.FlySpeedBoostActive = false;
 
-        if (!m_ViewportNavigationCaptureActive) return;
-        m_ViewportNavigationCaptureActive = false;
+        if (m_ViewportNavigationMode == Editor::ViewportNavigationMode::None)
+        {
+            return;
+        }
+        m_ViewportNavigationMode = Editor::ViewportNavigationMode::None;
 
         SetMouseCaptureEnabled(m_MouseCaptureBeforeViewportNavigation);
         if (!m_MouseCaptureBeforeViewportNavigation)
@@ -200,37 +276,39 @@ namespace Quiet::Core
         }
     }
 
-    void Application::UpdateEditorViewportNavigationCapture(Editor::EditorState &editorState)
+    void Application::UpdateEditorViewportNavigationCapture(Scene::Scene& activeScene, Editor::EditorState& editorState)
     {
         const bool navigationAllowed =
             editorState.Scene.Mode == Editor::SceneMode::Edit ||
             editorState.Scene.Mode == Editor::SceneMode::Simulate;
 
-        const bool rightMouseDown = m_Input->IsMouseButtonDown(Input::MouseCode::ButtonRight);
         const bool windowFocused = m_Window->IsFocused();
 
-        if (m_ViewportNavigationCaptureActive)
+        const bool navigationActive = m_ViewportNavigationMode != Editor::ViewportNavigationMode::None;
+        if (navigationActive)
         {
-            if (!navigationAllowed || !rightMouseDown || !windowFocused)
+            if (!navigationAllowed || !windowFocused || !IsViewportNavigationButtonDown(m_ViewportNavigationMode, *m_Input))
             {
                 EndEditorViewportNavigationCapture(editorState);
             }
         }
-        else if (navigationAllowed && windowFocused && rightMouseDown && editorState.Viewport.FlyNavigationCaptureRequested)
+        else
         {
-            BeginEditorViewportNavigationCapture(editorState);
+            const Editor::ViewportNavigationMode requestedMode = editorState.Viewport.NavigationCaptureRequested;
+
+            if (navigationAllowed && windowFocused && requestedMode !=
+                Editor::ViewportNavigationMode::None &&
+                IsViewportNavigationButtonDown(requestedMode, *m_Input))
+            {
+                BeginEditorViewportNavigationCapture(activeScene, editorState, requestedMode);
+            }
         }
 
-        // A request belongs only to the frame in which RMB began
-        // on the Viewport image.
-        editorState.Viewport.FlyNavigationCaptureRequested = false;
-        editorState.Viewport.FlyNavigationActive = m_ViewportNavigationCaptureActive;
+        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::None;
+        editorState.Viewport.NavigationMode = m_ViewportNavigationMode;
 
-        const bool shiftDown =
-            m_Input->IsKeyDown(Input::KeyCode::LeftShift) ||
-            m_Input->IsKeyDown(Input::KeyCode::RightShift);
-
-        editorState.Viewport.FlySpeedBoostActive = m_ViewportNavigationCaptureActive && shiftDown;
+        const bool shiftDown = m_Input->IsKeyDown(Input::KeyCode::LeftShift) || m_Input->IsKeyDown(Input::KeyCode::RightShift);
+        editorState.Viewport.FlySpeedBoostActive = m_ViewportNavigationMode == Editor::ViewportNavigationMode::Fly && shiftDown;
     }
 
     void Application::InitializeCommonStartup()
@@ -335,7 +413,7 @@ namespace Quiet::Core
     void Application::ProcessGlobalShortcuts()
     {
         const bool shiftDown = m_Input->IsKeyDown(Input::KeyCode::LeftShift) || m_Input->IsKeyDown(Input::KeyCode::RightShift);
-        if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1) && !m_ViewportNavigationCaptureActive)
+        if (shiftDown && m_Input->IsKeyPressed(Input::KeyCode::F1) && m_ViewportNavigationMode == Editor::ViewportNavigationMode::None)
         {
             ToggleMouseCapture();
         }
@@ -867,15 +945,44 @@ namespace Quiet::Core
         const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
         const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
 
-        UpdateEditorViewportNavigationCapture(editorState);
+        UpdateEditorViewportNavigationCapture(activeScene, editorState);
         m_FreeCamera->SetMoveSpeed(editorState.Viewport.CameraMoveSpeed);
 
         const bool isPilotingEditCamera = isEditMode && UpdatePilotedEditorCamera(deltaTime);
-        const bool isUsingEditorFlyControls = (isEditMode || isSimulateMode) && m_ViewportNavigationCaptureActive;
-
-        if (!isPilotingEditCamera && isUsingEditorFlyControls)
+        if (!isPilotingEditCamera && (isEditMode || isSimulateMode))
         {
-            m_FreeCamera->Update(*m_Input, deltaTime);
+            switch (m_ViewportNavigationMode)
+            {
+                case Editor::ViewportNavigationMode::Fly:
+                {
+                    m_FreeCamera->Update(*m_Input, deltaTime);
+                    break;
+                }
+
+                case Editor::ViewportNavigationMode::Orbit:
+                case Editor::ViewportNavigationMode::Pan:
+                {
+                    Scene::CameraPilotState state = m_FreeCamera->BuildPilotState();
+                    const auto [deltaX, deltaY] = m_Input->GetMouseDelta();
+
+                    if (m_ViewportNavigationMode == Editor::ViewportNavigationMode::Orbit)
+                    {
+                        Scene::CameraController::OrbitAround(state, m_ViewportNavigationPivot, deltaX, deltaY);
+                    }
+                    else
+                    {
+                        Scene::CameraController::Pan(state, m_ViewportNavigationPivot, deltaX, deltaY,
+                            static_cast<float>(editorState.Viewport.Height), m_FreeCamera->GetFovDegrees());
+                    }
+
+                    m_FreeCamera->ApplyPilotState(state);
+                    break;
+                }
+
+                case Editor::ViewportNavigationMode::None:
+                default:
+                    break;
+            }
         }
 
         if (isSimulateMode || isPlayMode)
@@ -943,14 +1050,45 @@ namespace Quiet::Core
         Scene::CameraPilotState state = Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
+        bool cameraChanged = false;
 
-        if (const bool isUsingEditorFlyControls = m_ViewportNavigationCaptureActive)
+        switch (m_ViewportNavigationMode)
         {
-            Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
+            case Editor::ViewportNavigationMode::Fly:
+            {
+                Scene::CameraController::UpdateFromInput(state, *m_Input, deltaTime);
+                cameraChanged = true;
+                break;
+            }
+
+            case Editor::ViewportNavigationMode::Orbit:
+            {
+                const auto [deltaX, deltaY] = m_Input->GetMouseDelta();
+                Scene::CameraController::OrbitAround(state, m_ViewportNavigationPivot, deltaX, deltaY);
+                cameraChanged = true;
+                break;
+            }
+
+            case Editor::ViewportNavigationMode::Pan:
+            {
+                const auto [deltaX, deltaY] = m_Input->GetMouseDelta();
+                Scene::CameraController::Pan(state, m_ViewportNavigationPivot, deltaX, deltaY,
+                    static_cast<float>(editorState.Viewport.Height), actor->Camera->FieldOfViewDegrees);
+                cameraChanged = true;
+                break;
+            }
+
+            case Editor::ViewportNavigationMode::None:
+            default:
+                break;
+        }
+
+        if (cameraChanged)
+        {
             Scene::ApplyPilotStateToCameraTransform(state, actor->Transform.WorldTransform);
         }
 
-        m_FreeCamera->SetPose(state.Position, state.YawDegrees, state.PitchDegrees);
+        m_FreeCamera->ApplyPilotState(state);
         return true;
     }
 

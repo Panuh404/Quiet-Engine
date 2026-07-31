@@ -12,18 +12,9 @@ namespace Quiet::Scene
 {
     void FreeCamera::Update(const Input::Input& input, float deltaTime)
     {
-        CameraPilotState state{};
-        state.Position = m_Position;
-        state.YawDegrees = m_Yaw;
-        state.PitchDegrees = m_Pitch;
-        state.MoveSpeed = m_MoveSpeed;
-        state.LookSensitivity = m_LookSensitivity;
-
+        CameraPilotState state = BuildPilotState();
         CameraController::UpdateFromInput(state, input, deltaTime);
-
-        m_Position = state.Position;
-        m_Yaw = state.YawDegrees;
-        m_Pitch = state.PitchDegrees;
+        ApplyPilotState(state);
     }
 
     Renderer::Vulkan::CameraUniformData FreeCamera::BuildUniformData(float aspect, bool flipY) const
@@ -51,6 +42,24 @@ namespace Quiet::Scene
     glm::vec3 FreeCamera::GetRightVector() const
     {
         return Math::GetRightVector(GetForwardVector());
+    }
+
+    CameraPilotState FreeCamera::BuildPilotState() const
+    {
+        CameraPilotState state{};
+        state.Position = m_Position;
+        state.YawDegrees = m_Yaw;
+        state.PitchDegrees = m_Pitch;
+        state.MoveSpeed = m_MoveSpeed;
+        state.LookSensitivity = m_LookSensitivity;
+        return state;
+    }
+
+    void FreeCamera::ApplyPilotState(const CameraPilotState &state)
+    {
+        m_Position = state.Position;
+        m_Yaw = state.YawDegrees;
+        m_Pitch = state.PitchDegrees;
     }
 
     void FreeCamera::SetMoveSpeed(float moveSpeed)

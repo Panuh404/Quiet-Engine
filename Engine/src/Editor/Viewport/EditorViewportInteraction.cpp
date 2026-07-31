@@ -33,6 +33,12 @@ namespace Quiet::Editor
     {
         if (mouseCaptureEnabled) return;
         if (m_State.Scene.Mode != SceneMode::Edit) return;
+        if (m_State.Viewport.NavigationCaptureRequested != ViewportNavigationMode::None ||
+            m_State.Viewport.NavigationMode != ViewportNavigationMode::None) return;
+
+        const bool altDown = input.IsKeyDown(Input::KeyCode::LeftAlt) || input.IsKeyDown(Input::KeyCode::RightAlt);
+        if (altDown) return;
+
         if (!m_State.Viewport.ImageHovered) return;
         if (ImGui::GetDragDropPayload()) return;
         if (!input.IsMouseButtonPressed(Input::MouseCode::ButtonLeft)) return;
@@ -82,6 +88,7 @@ namespace Quiet::Editor
     {
         if (mouseCaptureEnabled) return;
         if (m_State.Scene.Mode != SceneMode::Edit) return;
+        if (m_State.Viewport.NavigationCaptureRequested != ViewportNavigationMode::None || m_State.Viewport.NavigationMode != ViewportNavigationMode::None) return;
         if (!renderer.IsSceneViewportReady()) return;
         if (!m_State.Selection.SelectedActorID.has_value()) return;
         if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return;
@@ -151,12 +158,8 @@ namespace Quiet::Editor
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
         if (sceneExtent.width == 0 || sceneExtent.height == 0) return;
 
-        const float aspect =
-            static_cast<float>(sceneExtent.width) /
-            static_cast<float>(sceneExtent.height);
-
-        const auto cameraData =
-            camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
+        const float aspect = static_cast<float>(sceneExtent.width) / static_cast<float>(sceneExtent.height);
+        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 

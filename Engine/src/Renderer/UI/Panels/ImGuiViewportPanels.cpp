@@ -58,7 +58,7 @@ namespace
 
     void UpdateViewportCameraSpeedFromWheel(Quiet::Editor::EditorState& editorState)
     {
-        if (!editorState.Viewport.FlyNavigationActive) return;
+        if (editorState.Viewport.NavigationMode != Quiet::Editor::ViewportNavigationMode::Fly) return;
 
         const float wheelDelta = ImGui::GetIO().MouseWheel;
         if (std::abs(wheelDelta) <= 0.001f) return;
@@ -325,10 +325,7 @@ namespace
         ImGui::PopStyleVar(2);
     }
 
-    void DrawViewportStatusOverlay(const Quiet::Editor::EditorState& editorState,
-                                   const ImVec2& imageMin,
-                                   const ImVec2& imageSize,
-                                   const float uiScale)
+    void DrawViewportStatusOverlay(const Quiet::Editor::EditorState& editorState, const ImVec2& imageMin, const ImVec2& imageSize, const float uiScale)
     {
         if (imageSize.x < 220.0f || imageSize.y < 120.0f)
             return;
@@ -357,21 +354,41 @@ namespace
         if (editorState.Viewport.ShowDebugIcons)
             statusText += "  |  Icons";
 
-        if (editorState.Viewport.FlyNavigationActive)
+        const auto navigationMode = editorState.Viewport.NavigationMode;
+        if (navigationMode != Quiet::Editor::ViewportNavigationMode::None)
         {
-            const float effectiveSpeed = editorState.Viewport .CameraMoveSpeed * (editorState.Viewport.FlySpeedBoostActive ? 2.0f : 1.0f);
             statusText += "  |  ";
 
             const bool pilotingCamera =
                 editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit &&
                 editorState.Selection.PilotedCameraActorID.has_value();
 
-            statusText += pilotingCamera ? "Pilot " : "Fly ";
-            statusText += FormatViewportCameraSpeed(effectiveSpeed);
-
-            if (editorState.Viewport.FlySpeedBoostActive)
+            switch (navigationMode)
             {
-                statusText += "  Boost";
+                case Quiet::Editor::ViewportNavigationMode::Fly:
+                {
+                    const float effectiveSpeed = editorState.Viewport.CameraMoveSpeed * (editorState.Viewport.FlySpeedBoostActive ? 2.0f : 1.0f);
+                    statusText += pilotingCamera ? "Pilot " : "Fly ";
+                    statusText += FormatViewportCameraSpeed(effectiveSpeed);
+
+                    if (editorState.Viewport.FlySpeedBoostActive)
+                    {
+                        statusText += "  Boost";
+                    }
+                    break;
+                }
+
+                case Quiet::Editor::ViewportNavigationMode::Orbit:
+                    statusText += pilotingCamera ? "Pilot Orbit" : "Orbit";
+                    break;
+
+                case Quiet::Editor::ViewportNavigationMode::Pan:
+                    statusText += pilotingCamera ? "Pilot Pan" : "Pan";
+                    break;
+
+                case Quiet::Editor::ViewportNavigationMode::None:
+                default:
+                    break;
             }
         }
 
@@ -685,9 +702,22 @@ namespace Quiet::Renderer::UI
 
                 ImGui::Image(sceneViewportTexture, imageSize);
                 editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
-                if (editorState.Viewport.ImageHovered && ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                if (editorState.Viewport.ImageHovered)
                 {
-                    editorState.Viewport.FlyNavigationCaptureRequested = true;
+                    const bool altDown = ImGui::GetIO().KeyAlt;
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                    {
+                        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::Fly;
+                    }
+                    else if (altDown && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                    {
+                        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::Orbit;
+                    }
+                    else if (ImGui::IsItemClicked(ImGuiMouseButton_Middle))
+                    {
+                        editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::Pan;
+                    }
                 }
                 UpdateViewportCameraSpeedFromWheel(editorState);
                 editorState.Viewport.ScreenX = imageMin.x;
@@ -705,7 +735,7 @@ namespace Quiet::Renderer::UI
             }
             else
             {
-                editorState.Viewport.FlyNavigationCaptureRequested = false;
+                editorState.Viewport.NavigationCaptureRequested = Editor::ViewportNavigationMode::None;
                 editorState.Viewport.ImageHovered = false;
                 DrawViewportUnavailableState(m_UIScale);
             }

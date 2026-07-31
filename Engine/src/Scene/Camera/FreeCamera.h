@@ -13,6 +13,8 @@ namespace Quiet::Input
 
 namespace Quiet::Scene
 {
+    struct CameraPilotState;
+
     class FreeCamera
     {
     public:
@@ -30,6 +32,9 @@ namespace Quiet::Scene
 
         [[nodiscard]] glm::vec3 GetForwardVector() const;
         [[nodiscard]] glm::vec3 GetRightVector() const;
+
+        [[nodiscard]] CameraPilotState BuildPilotState() const;
+        void ApplyPilotState(const CameraPilotState& state);
 
         void SetPosition(const glm::vec3& position) { m_Position = position; }
         void SetMoveSpeed(float moveSpeed);

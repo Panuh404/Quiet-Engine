@@ -76,11 +76,8 @@ namespace Quiet::Editor
 
         if (ctrlDown) return;
 
-        const bool isUsingViewportFlyControls =
-            m_State.Viewport.ImageHovered &&
-            input.IsMouseButtonDown(Input::MouseCode::ButtonRight);
-
-        if (isUsingViewportFlyControls)
+        if (m_State.Viewport.NavigationCaptureRequested != ViewportNavigationMode::None ||
+            m_State.Viewport.NavigationMode != ViewportNavigationMode::None)
         {
             return;
         }
@@ -101,8 +98,7 @@ namespace Quiet::Editor
         if (input.IsKeyPressed(KeyCode::G)) m_State.Gizmo.SnapEnabled = !m_State.Gizmo.SnapEnabled;
     }
 
-    void EditorController::FocusSelectedActor(Scene::Scene& scene,
-                                              Scene::FreeCamera& camera)
+    void EditorController::FocusSelectedActor(Scene::Scene& scene, Scene::FreeCamera& camera)
     {
         if (!m_State.Selection.SelectedActorID.has_value()) return;
 
@@ -142,11 +138,6 @@ namespace Quiet::Editor
 
         camera.SetPosition(newPosition);
 
-        QUIET_CORE_TRACE(
-            "Focused selected actor at ({:.2f}, {:.2f}, {:.2f}).",
-            target.x,
-            target.y,
-            target.z
-        );
+        QUIET_CORE_TRACE("Focused selected actor at ({:.2f}, {:.2f}, {:.2f}).", target.x, target.y, target.z);
     }
 }

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <optional>
 #include <string>
@@ -29,6 +30,14 @@ namespace Quiet::Editor
         Edit,
         Simulate,
         Play
+    };
+
+    enum class ViewportNavigationMode : std::uint8_t
+    {
+        None,
+        Fly,
+        Orbit,
+        Pan
     };
 
     enum class EditorRequestType
@@ -115,8 +124,8 @@ namespace Quiet::Editor
 
         float CameraMoveSpeed = 2.5f;
 
-        bool FlyNavigationCaptureRequested = false;
-        bool FlyNavigationActive = false;
+        ViewportNavigationMode NavigationCaptureRequested = ViewportNavigationMode::None;
+        ViewportNavigationMode NavigationMode = ViewportNavigationMode::None;
         bool FlySpeedBoostActive = false;
 
         float ScreenX = 0.0f;
