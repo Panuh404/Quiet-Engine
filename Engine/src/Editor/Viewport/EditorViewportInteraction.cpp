@@ -22,14 +22,39 @@
 #include "Editor/Viewport/EditorViewportGizmo.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
+namespace
+{
+    std::optional<Quiet::Core::UUID> PickActorAtViewportPosition(const Quiet::Scene::Scene& scene,
+                                                                 const Quiet::Scene::FreeCamera& camera,
+                                                                 const Quiet::Renderer::Vulkan::VulkanRenderer& renderer,
+                                                                 const Quiet::Editor::EditorViewportState& viewportState,
+                                                                 const ImVec2& mousePosition)
+    {
+        const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
+        if (sceneExtent.width == 0 || sceneExtent.height == 0) return std::nullopt;
+
+        const float aspect = static_cast<float>(sceneExtent.width) / static_cast<float>(sceneExtent.height);
+        const auto cameraData = camera.BuildUniformData(aspect, Quiet::Renderer::UseEditorScreenProjectionYFlip);
+
+        if (viewportState.ShowDebugIcons)
+        {
+            const auto debugIconHit = Quiet::Editor::PickViewportDebugIcon(scene, cameraData, viewportState, mousePosition);
+            if (debugIconHit.has_value()) return debugIconHit;
+        }
+
+        Quiet::Math::Ray ray{};
+        if (!Quiet::Editor::BuildViewportPickRay(mousePosition.x, mousePosition.y, viewportState, camera, renderer, ray))
+        {
+            return std::nullopt;
+        }
+
+        return Quiet::Editor::PickStaticMeshActor(scene, ray);
+    }
+}
 
 namespace Quiet::Editor
 {
-    void EditorController::TrySelectActorFromViewport(const Input::Input& input,
-                                                      Scene::Scene& scene,
-                                                      const Scene::FreeCamera& camera,
-                                                      const Renderer::Vulkan::VulkanRenderer& renderer,
-                                                      bool mouseCaptureEnabled)
+    void EditorController::TrySelectActorFromViewport(const Input::Input& input, Scene::Scene& scene, const bool mouseCaptureEnabled)
     {
         if (mouseCaptureEnabled) return;
         if (m_State.Scene.Mode != SceneMode::Edit) return;
@@ -38,47 +63,40 @@ namespace Quiet::Editor
 
         const bool altDown = input.IsKeyDown(Input::KeyCode::LeftAlt) || input.IsKeyDown(Input::KeyCode::RightAlt);
         if (altDown) return;
-
         if (!m_State.Viewport.ImageHovered) return;
         if (ImGui::GetDragDropPayload()) return;
         if (!input.IsMouseButtonPressed(Input::MouseCode::ButtonLeft)) return;
         if (ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
 
-        const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
-        if (sceneExtent.width == 0 || sceneExtent.height == 0) return;
-
-        const float aspect =
-            static_cast<float>(sceneExtent.width) /
-            static_cast<float>(sceneExtent.height);
-
-        const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
-
-        const ImVec2 mousePosition = ImGui::GetMousePos();
-        if (m_State.Viewport.ShowDebugIcons)
+        const auto hoveredActorID = m_State.Selection.HoveredActorID;
+        if (hoveredActorID.has_value() && scene.FindActorByID(hoveredActorID.value()))
         {
-            const std::optional<Core::UUID> debugIconHit = PickViewportDebugIcon(scene, cameraData, m_State.Viewport, mousePosition);
-            if (debugIconHit.has_value())
-            {
-                m_State.Selection.SelectedActorID = debugIconHit;
-                QUIET_CORE_TRACE("Viewport debug icon selected actor.");
-                return;
-            }
-        }
-
-        Math::Ray ray{};
-        if (!BuildViewportPickRay(mousePosition.x, mousePosition.y, m_State.Viewport, camera, renderer, ray))
-            return;
-
-        const std::optional<Core::UUID> staticMeshHit = PickStaticMeshActor(scene, ray);
-        if (staticMeshHit.has_value())
-        {
-            m_State.Selection.SelectedActorID = staticMeshHit;
-            QUIET_CORE_TRACE("Viewport pick selected actor.");
+            m_State.Selection.SelectedActorID = hoveredActorID;
+            QUIET_CORE_TRACE("Viewport selected hovered actor.");
         }
         else
         {
             m_State.Selection.SelectedActorID.reset();
         }
+    }
+
+    void EditorController::UpdateHoveredActorFromViewport(const Scene::Scene& scene,
+                                                          const Scene::FreeCamera& camera,
+                                                          const Renderer::Vulkan::VulkanRenderer& renderer,
+                                                          const bool mouseCaptureEnabled)
+    {
+        auto& hoveredActorID = m_State.Selection.HoveredActorID;
+        hoveredActorID.reset();
+
+        if (mouseCaptureEnabled) return;
+        if (m_State.Scene.Mode != SceneMode::Edit) return;
+        if (!m_State.Viewport.ImageHovered) return;
+        if (m_State.Viewport.NavigationCaptureRequested != ViewportNavigationMode::None ||
+            m_State.Viewport.NavigationMode != ViewportNavigationMode::None) return;
+        if (ImGui::GetDragDropPayload()) return;
+        if (ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
+
+        hoveredActorID = PickActorAtViewportPosition(scene, camera, renderer, m_State.Viewport, ImGui::GetMousePos());
     }
 
     void EditorController::BuildSelectedActorGizmo(Scene::Scene& scene,
@@ -190,11 +208,15 @@ namespace Quiet::Editor
                     m_State.Selection.SelectedActorID.has_value() &&
                     m_State.Selection.SelectedActorID.value() == actor.ID;
 
+                const bool hovered =
+                    !selected && m_State.Selection.HoveredActorID.has_value() &&
+                    m_State.Selection.HoveredActorID.value() == actor.ID;
+
                 if (actor.Camera.has_value())
-                    DrawCameraFrustumOverlay(drawList, actor, actor.Camera.value(), cameraData, m_State.Viewport, selected);
+                    DrawCameraFrustumOverlay(drawList, actor, actor.Camera.value(), cameraData, m_State.Viewport, selected, hovered);
 
                 if (actor.DirectionalLight.has_value())
-                    DrawDirectionalLightDirectionOverlay(drawList, actor, actor.DirectionalLight.value(), cameraData, m_State.Viewport, selected);
+                    DrawDirectionalLightDirectionOverlay(drawList, actor, actor.DirectionalLight.value(), cameraData, m_State.Viewport, selected, hovered);
 
                 float verticalOffset = 0.0f;
 
@@ -202,8 +224,8 @@ namespace Quiet::Editor
                 {
                     const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
 
-                    DrawCameraDebugIcon(drawList, iconPosition, selected);
-                    DrawDebugLabel(drawList, iconPosition, "Camera", selected);
+                    DrawCameraDebugIcon(drawList, iconPosition, selected, hovered);
+                    DrawDebugLabel(drawList, iconPosition, "Camera", selected, hovered);
 
                     verticalOffset += 22.0f;
                 }
@@ -212,8 +234,8 @@ namespace Quiet::Editor
                 {
                     const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
 
-                    DrawDirectionalLightDebugIcon(drawList, iconPosition, selected);
-                    DrawDebugLabel(drawList, iconPosition, "Light", selected);
+                    DrawDirectionalLightDebugIcon(drawList, iconPosition, selected, hovered);
+                    DrawDebugLabel(drawList, iconPosition, "Light", selected, hovered);
                 }
             }
         }
@@ -224,6 +246,24 @@ namespace Quiet::Editor
             if (selectedActor)
             {
                 DrawSelectedActorViewportOverlay(*selectedActor, cameraData, m_State.Viewport, drawList);
+            }
+        }
+
+        if (m_State.Selection.HoveredActorID.has_value())
+        {
+            const Core::UUID hoveredActorID = m_State.Selection.HoveredActorID.value();
+
+            const bool hoveredActorIsSelected =
+                m_State.Selection.SelectedActorID.has_value() &&
+                m_State.Selection.SelectedActorID.value() == hoveredActorID;
+
+            if (!hoveredActorIsSelected)
+            {
+                const Scene::Actor* hoveredActor = scene.FindActorByID(hoveredActorID);
+                if (hoveredActor)
+                {
+                    DrawHoveredActorViewportOverlay(*hoveredActor, cameraData, m_State.Viewport, drawList);
+                }
             }
         }
 

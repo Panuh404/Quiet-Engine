@@ -28,6 +28,7 @@ namespace Quiet::Editor
     void EditorController::ResetSelection()
     {
         m_State.Selection.SelectedActorID.reset();
+        m_State.Selection.HoveredActorID.reset();
     }
 
     void EditorController::ResetSceneHistory(const Scene::Scene& scene)

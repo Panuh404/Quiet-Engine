@@ -874,29 +874,11 @@ namespace Quiet::Core
         return [this]()
         {
             auto& overlayScene = GetActiveScene();
-
-            m_EditorController->TrySelectActorFromViewport(
-                *m_Input,
-                overlayScene,
-                *m_FreeCamera,
-                *m_Renderer,
-                m_MouseCaptureEnabled
-            );
-
+            m_EditorController->UpdateHoveredActorFromViewport(overlayScene, *m_FreeCamera, *m_Renderer, m_MouseCaptureEnabled);
+            m_EditorController->TrySelectActorFromViewport(*m_Input, overlayScene, m_MouseCaptureEnabled);
             m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
-
-            m_EditorController->DrawViewportDebugIcons(
-                overlayScene,
-                *m_FreeCamera,
-                *m_Renderer
-            );
-
-            m_EditorController->BuildSelectedActorGizmo(
-                overlayScene,
-                *m_FreeCamera,
-                *m_Renderer,
-                m_MouseCaptureEnabled
-            );
+            m_EditorController->DrawViewportDebugIcons(overlayScene, *m_FreeCamera, *m_Renderer);
+            m_EditorController->BuildSelectedActorGizmo(overlayScene, *m_FreeCamera, *m_Renderer, m_MouseCaptureEnabled);
         };
     }
 

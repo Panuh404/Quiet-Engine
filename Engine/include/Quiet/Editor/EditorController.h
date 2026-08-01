@@ -45,9 +45,12 @@ namespace Quiet::Editor
 
         void TrySelectActorFromViewport(const Input::Input& input,
                                         Scene::Scene& scene,
-                                        const Scene::FreeCamera& camera,
-                                        const Renderer::Vulkan::VulkanRenderer& renderer,
                                         bool mouseCaptureEnabled);
+
+        void UpdateHoveredActorFromViewport(const Scene::Scene& scene,
+                                            const Scene::FreeCamera& camera,
+                                            const Renderer::Vulkan::VulkanRenderer& renderer,
+                                            bool mouseCaptureEnabled);
 
         void BuildSelectedActorGizmo(Scene::Scene& scene,
                                      Scene::FreeCamera& camera,

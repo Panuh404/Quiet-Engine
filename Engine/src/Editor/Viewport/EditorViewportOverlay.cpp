@@ -9,8 +9,9 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/trigonometric.hpp>
 
-#include "Editor/Viewport/EditorViewportProjection.h"
 #include "Quiet/Editor/EditorState.h"
+#include "Editor/Viewport/EditorViewportProjection.h"
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Scene/Actor.h"
 #include "Scene/Components/CameraComponent.h"
@@ -47,21 +48,14 @@ namespace
         const auto& mesh = actor.StaticMesh->Mesh;
         const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
 
-        const auto corners = Quiet::Math::BuildAABBCorners(
-            mesh->GetLocalBoundsMin(),
-            mesh->GetLocalBoundsMax()
-        );
+        const auto corners = Quiet::Math::BuildAABBCorners(mesh->GetLocalBoundsMin(), mesh->GetLocalBoundsMax());
 
         Quiet::Editor::ScreenRect rect{};
         for (const glm::vec3& corner : corners)
         {
             const glm::vec3 worldCorner = glm::vec3(model * glm::vec4(corner, 1.0f));
             ImVec2 screenPoint{};
-            if (Quiet::Editor::ProjectWorldToViewport(
-                    worldCorner,
-                    cameraData,
-                    viewportState,
-                    screenPoint))
+            if (Quiet::Editor::ProjectWorldToViewport(worldCorner, cameraData, viewportState, screenPoint))
             {
                 ExpandScreenRect(rect, screenPoint);
             }
@@ -72,19 +66,12 @@ namespace
         return true;
     }
 
-    void DrawFilledScreenRect(ImDrawList* drawList,
-                          const ImVec2& min,
-                          const ImVec2& max,
-                          const ImU32 color)
+    void DrawFilledScreenRect(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const ImU32 color)
     {
         drawList->AddQuadFilled(min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y), color);
     }
 
-    void DrawScreenRectOutline(ImDrawList* drawList,
-                               const ImVec2& min,
-                               const ImVec2& max,
-                               const ImU32 color,
-                               const float thickness)
+    void DrawScreenRectOutline(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const ImU32 color, const float thickness)
     {
         drawList->AddLine(min, ImVec2(max.x, min.y), color, thickness);
         drawList->AddLine(ImVec2(max.x, min.y), max, color, thickness);
@@ -93,10 +80,33 @@ namespace
         drawList->AddLine(ImVec2(min.x, max.y), min, color, thickness);
     }
 
-    void DrawScreenDiamondFilled(ImDrawList* drawList,
-                                 const ImVec2& center,
-                                 const float radius,
-                                 const ImU32 color)
+    ImU32 MakeOverlayColor(const ImVec4& sourceColor, const float alphaMultiplier = 1.0f)
+    {
+        ImVec4 color = sourceColor;
+        color.w *= std::clamp(alphaMultiplier, 0.0f, 1.0f);
+
+        return ImGui::ColorConvertFloat4ToU32(color);
+    }
+
+    void DrawScreenRectCorners(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const ImU32 color, const float requestedLength, const float thickness)
+    {
+        const float width = std::max(max.x - min.x, 0.0f);
+        const float height = std::max(max.y - min.y, 0.0f);
+
+        const float maximumLength = std::min(width, height) * 0.4f;
+        const float length = std::clamp(requestedLength, 1.0f, std::max(maximumLength, 1.0f));
+
+        drawList->AddLine(min, ImVec2(min.x + length, min.y), color, thickness);
+        drawList->AddLine(min, ImVec2(min.x, min.y + length), color, thickness);
+        drawList->AddLine(ImVec2(max.x - length, min.y), ImVec2(max.x, min.y), color, thickness);
+        drawList->AddLine(ImVec2(max.x, min.y), ImVec2(max.x, min.y + length), color, thickness);
+        drawList->AddLine(ImVec2(min.x, max.y - length), ImVec2(min.x, max.y), color, thickness);
+        drawList->AddLine(ImVec2(min.x, max.y), ImVec2(min.x + length, max.y), color, thickness);
+        drawList->AddLine(ImVec2(max.x - length, max.y), max, color, thickness);
+        drawList->AddLine(ImVec2(max.x, max.y - length), max, color, thickness);
+    }
+
+    void DrawScreenDiamondFilled(ImDrawList* drawList, const ImVec2& center, const float radius, const ImU32 color)
     {
         drawList->AddQuadFilled(
             ImVec2(center.x, center.y - radius),
@@ -107,11 +117,7 @@ namespace
         );
     }
 
-    void DrawScreenDiamondOutline(ImDrawList* drawList,
-                                  const ImVec2& center,
-                                  const float radius,
-                                  const ImU32 color,
-                                  const float thickness)
+    void DrawScreenDiamondOutline(ImDrawList* drawList, const ImVec2& center, const float radius, const ImU32 color, const float thickness)
     {
         const ImVec2 top(center.x, center.y - radius);
         const ImVec2 right(center.x + radius, center.y);
@@ -124,23 +130,14 @@ namespace
         drawList->AddLine(left, top, color, thickness);
     }
 
-    void DrawScreenTriangleOutline(ImDrawList* drawList,
-                                   const ImVec2& a,
-                                   const ImVec2& b,
-                                   const ImVec2& c,
-                                   const ImU32 color,
-                                   const float thickness)
+    void DrawScreenTriangleOutline(ImDrawList* drawList, const ImVec2& a, const ImVec2& b, const ImVec2& c, const ImU32 color, const float thickness)
     {
         drawList->AddLine(a, b, color, thickness);
         drawList->AddLine(b, c, color, thickness);
         drawList->AddLine(c, a, color, thickness);
     }
 
-    void DrawScreenCross(ImDrawList* drawList,
-                         const ImVec2& center,
-                         const float radius,
-                         const ImU32 color,
-                         const float thickness)
+    void DrawScreenCross(ImDrawList* drawList, const ImVec2& center, const float radius, const ImU32 color, const float thickness)
     {
         drawList->AddLine(
             ImVec2(center.x - radius, center.y),
@@ -160,28 +157,33 @@ namespace
 
 namespace Quiet::Editor
 {
-    void DrawDebugLabel(ImDrawList* drawList, const ImVec2& position, const char* label, bool selected)
+    void DrawDebugLabel(ImDrawList* drawList, const ImVec2& position, const char* label, const bool selected, const bool hovered)
     {
-        const ImU32 textColor = selected
-            ? IM_COL32(255, 255, 255, 255)
-            : IM_COL32(210, 220, 230, 230);
+        const ImU32 textColor =
+            selected
+                ? IM_COL32(255, 255, 255, 255)
+                : hovered
+                    ? MakeOverlayColor(Renderer::UI::EditorColor::AccentHover)
+                    : IM_COL32(210, 220, 230, 230);
 
-        drawList->AddText(
-            ImVec2(position.x + 14.0f, position.y - 8.0f),
-            textColor,
-            label
-        );
+        drawList->AddText(ImVec2(position.x + 14.0f, position.y - 8.0f), textColor, label);
     }
 
-    void DrawCameraDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected)
+    void DrawCameraDebugIcon(ImDrawList* drawList, const ImVec2& position, const bool selected, const bool hovered)
     {
-        const ImU32 color = selected
-            ? IM_COL32(255, 255, 255, 255)
-            : IM_COL32(80, 190, 255, 230);
+        const ImU32 color =
+            selected
+                ? IM_COL32(255, 255, 255, 255)
+                : hovered
+                    ? IM_COL32(150, 220, 255, 255)
+                    : IM_COL32(80, 190, 255, 230);
 
-        const ImU32 fill = selected
-            ? IM_COL32(80, 190, 255, 90)
-            : IM_COL32(80, 190, 255, 45);
+        const ImU32 fill =
+            selected
+                ? IM_COL32(80, 190, 255, 100)
+                : hovered
+                    ? IM_COL32(80, 190, 255, 90)
+                    : IM_COL32(80, 190, 255, 45);
 
         constexpr float halfWidth = 9.0f;
         constexpr float halfHeight = 6.0f;
@@ -190,26 +192,32 @@ namespace Quiet::Editor
         const ImVec2 max(position.x + halfWidth, position.y + halfHeight);
 
         DrawFilledScreenRect(drawList, min, max, fill);
-        DrawScreenRectOutline(drawList, min, max, color, 2.0f);
+        DrawScreenRectOutline(drawList, min, max, color, selected || hovered ? 2.5f : 2.0f);
         DrawScreenTriangleOutline(
             drawList,
             ImVec2(max.x, position.y - 4.0f),
             ImVec2(max.x + 8.0f, position.y - 8.0f),
             ImVec2(max.x + 8.0f, position.y + 8.0f),
             color,
-            2.0f
+            selected || hovered ? 2.5f : 2.0f
         );
     }
 
-    void DrawDirectionalLightDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected)
+    void DrawDirectionalLightDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected, const bool hovered)
     {
-        const ImU32 color = selected
-            ? IM_COL32(255, 255, 255, 255)
-            : IM_COL32(255, 220, 80, 235);
+        const ImU32 color =
+            selected
+                ? IM_COL32(255, 255, 255, 255)
+                : hovered
+                    ? IM_COL32(255, 238, 145, 255)
+                    : IM_COL32(255, 220, 80, 235);
 
-        const ImU32 fill = selected
-            ? IM_COL32(255, 220, 80, 100)
-            : IM_COL32(255, 220, 80, 55);
+        const ImU32 fill =
+            selected
+                ? IM_COL32(255, 220, 80, 110)
+                : hovered
+                    ? IM_COL32(255, 220, 80, 95)
+                    : IM_COL32(255, 220, 80, 55);
 
         DrawScreenDiamondFilled(drawList, position, 8.0f, fill);
         DrawScreenDiamondOutline(drawList, position, 8.0f, color, 2.0f);
@@ -245,65 +253,55 @@ namespace Quiet::Editor
 
     void DrawSelectedBoundsOverlay(ImDrawList* drawList, const ScreenRect& rect)
     {
-        constexpr ImU32 color = IM_COL32(255, 210, 70, 255);
-        constexpr ImU32 shadow = IM_COL32(0, 0, 0, 170);
-
-        constexpr float padding = 4.0f;
+        const float padding = Renderer::UI::EditorSizing::Px(5.0f);
 
         const ImVec2 min(rect.Min.x - padding, rect.Min.y - padding);
         const ImVec2 max(rect.Max.x + padding, rect.Max.y + padding);
 
-        DrawScreenRectOutline(
-            drawList,
-            ImVec2(min.x + 1.0f, min.y + 1.0f),
-            ImVec2(max.x + 1.0f, max.y + 1.0f),
+        const ImU32 subtleOutline = MakeOverlayColor(Renderer::UI::EditorColor::Accent, 0.42f);
+        const ImU32 cornerColor = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover);
+
+        constexpr ImU32 shadow = IM_COL32(0, 0, 0, 180);
+
+        DrawScreenRectOutline(drawList, min, max, subtleOutline, Renderer::UI::EditorSizing::Px(1.0f));
+        DrawScreenRectCorners(drawList,
+            ImVec2(min.x + Renderer::UI::EditorSizing::Px(1.0f), min.y + Renderer::UI::EditorSizing::Px(1.0f)),
+            ImVec2(max.x + Renderer::UI::EditorSizing::Px(1.0f), max.y + Renderer::UI::EditorSizing::Px(1.0f)),
             shadow,
-            3.0f
+            Renderer::UI::EditorSizing::Px(17.0f),
+            Renderer::UI::EditorSizing::Px(3.5f)
         );
 
-        DrawScreenRectOutline(
-            drawList,
-            min,
-            max,
-            color,
-            2.0f
+        DrawScreenRectCorners(drawList, min, max, cornerColor,
+            Renderer::UI::EditorSizing::Px(17.0f),
+            Renderer::UI::EditorSizing::Px(2.25f)
         );
+    }
+
+    void DrawHoveredBoundsOverlay(ImDrawList *drawList, const ScreenRect &rect)
+    {
+        const float padding = Renderer::UI::EditorSizing::Px(3.0f);
+
+        const ImVec2 min(rect.Min.x - padding, rect.Min.y - padding);
+        const ImVec2 max(rect.Max.x + padding, rect.Max.y + padding);
+
+        const ImU32 outlineColor = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover, 0.62f);
+
+        DrawScreenRectOutline(drawList, min, max, outlineColor, Renderer::UI::EditorSizing::Px(1.0f));
+        DrawScreenRectCorners(drawList, min, max, outlineColor, Renderer::UI::EditorSizing::Px(11.0f), Renderer::UI::EditorSizing::Px(1.5f));
     }
 
     void DrawSelectedOriginMarker(ImDrawList* drawList, const ImVec2& position)
     {
-        constexpr ImU32 color = IM_COL32(255, 210, 70, 255);
+        const ImU32 color = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover);
         constexpr ImU32 shadow = IM_COL32(0, 0, 0, 170);
 
-        DrawScreenDiamondFilled(
-            drawList,
-            ImVec2(position.x + 1.0f, position.y + 1.0f),
-            6.0f,
-            shadow
-        );
+        DrawScreenDiamondFilled(drawList, ImVec2(position.x + 1.0f, position.y + 1.0f), 6.0f, shadow);
+        DrawScreenDiamondFilled(drawList, position, 5.0f, color);
 
-        DrawScreenDiamondFilled(
-            drawList,
-            position,
-            5.0f,
-            color
-        );
+        DrawScreenDiamondOutline(drawList, position, 10.0f, color, 2.0f);
 
-        DrawScreenDiamondOutline(
-            drawList,
-            position,
-            10.0f,
-            color,
-            2.0f
-        );
-
-        DrawScreenCross(
-            drawList,
-            position,
-            13.0f,
-            color,
-            1.5f
-        );
+        DrawScreenCross(drawList, position, 13.0f, color, 1.5f);
     }
 
     void DrawSelectedActorName(ImDrawList* drawList, const ImVec2& position, const std::string& actorName)
@@ -327,36 +325,106 @@ namespace Quiet::Editor
         );
     }
 
+    void DrawHoveredActorName(ImDrawList* drawList, const ImVec2& position, const std::string& actorName)
+    {
+        if (actorName.empty()) return;
+
+        const ImU32 textColor = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover, 0.92f);
+        constexpr ImU32 shadow = IM_COL32(0, 0, 0, 190);
+
+        const ImVec2 textPosition(
+            position.x + Renderer::UI::EditorSizing::Px(8.0f),
+            position.y - ImGui::GetTextLineHeight() - Renderer::UI::EditorSizing::Px(7.0f));
+
+        drawList->AddText(
+            ImVec2(textPosition.x + 1.0f, textPosition.y + 1.0f),
+            shadow,
+            actorName.c_str()
+        );
+
+        drawList->AddText(
+            textPosition,
+            textColor,
+            actorName.c_str()
+        );
+    }
+
+    void DrawHoveredOriginMarker(ImDrawList* drawList, const ImVec2& position)
+    {
+        const ImU32 color = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover, 0.8f);
+
+        drawList->AddCircle(
+            position,
+            Renderer::UI::EditorSizing::Px(8.0f),
+            color,
+            0,
+            Renderer::UI::EditorSizing::Px(1.5f)
+        );
+
+        drawList->AddCircleFilled(
+            position,
+            Renderer::UI::EditorSizing::Px(2.5f),
+            color
+        );
+    }
+
     void DrawSelectedActorViewportOverlay(const Scene::Actor& actor,
                                           const Renderer::Vulkan::CameraUniformData& cameraData,
                                           const EditorViewportState& viewportState,
                                           ImDrawList* drawList)
     {
         ImVec2 actorScreenPosition{};
-        if (!ProjectWorldToViewport(
-                actor.Transform.WorldTransform.Position,
-                cameraData,
-                viewportState,
-                actorScreenPosition))
-            return;
+
+        const bool originVisible = ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
 
         ScreenRect boundsRect{};
-        if (ProjectStaticMeshBoundsToViewport(
-                actor,
-                cameraData,
-                viewportState,
-                boundsRect))
+        const bool boundsVisible = ProjectStaticMeshBoundsToViewport(actor, cameraData, viewportState, boundsRect);
+
+        if (!originVisible && !boundsVisible) return;
+
+        if (boundsVisible)
         {
             DrawSelectedBoundsOverlay(drawList, boundsRect);
         }
+        if (originVisible)
+        {
+            DrawSelectedOriginMarker(drawList, actorScreenPosition);
+            DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
+        }
+        else
+        {
+            DrawSelectedActorName(drawList, boundsRect.Min, actor.Name);
+        }
+    }
 
-        DrawSelectedOriginMarker(drawList, actorScreenPosition);
-        DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
+    void DrawHoveredActorViewportOverlay(const Scene::Actor &actor,
+                                         const Renderer::Vulkan::CameraUniformData &cameraData,
+                                         const EditorViewportState &viewportState,
+                                         ImDrawList *drawList)
+    {
+        ImVec2 actorScreenPosition{};
+
+        const bool originVisible = ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
+        ScreenRect boundsRect{};
+
+        const bool boundsVisible = ProjectStaticMeshBoundsToViewport(actor, cameraData, viewportState, boundsRect);
+        if (!originVisible && !boundsVisible) return;
+
+        if (boundsVisible)
+        {
+            DrawHoveredBoundsOverlay(drawList, boundsRect);
+            DrawHoveredActorName(drawList, boundsRect.Min, actor.Name);
+        }
+        else
+        {
+            DrawHoveredOriginMarker(drawList, actorScreenPosition);
+            DrawHoveredActorName(drawList, actorScreenPosition, actor.Name);
+        }
     }
 
     bool DrawProjectedLine(ImDrawList* drawList,
-                           const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
-                           const Quiet::Editor::EditorViewportState& viewportState,
+                           const Renderer::Vulkan::CameraUniformData& cameraData,
+                           const EditorViewportState& viewportState,
                            const glm::vec3& worldA,
                            const glm::vec3& worldB,
                            ImU32 color,
@@ -403,19 +471,26 @@ namespace Quiet::Editor
     }
 
     void DrawCameraFrustumOverlay(ImDrawList* drawList,
-                                  const Quiet::Scene::Actor& actor,
-                                  const Quiet::Scene::CameraComponent& cameraComponent,
-                                  const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
-                                  const Quiet::Editor::EditorViewportState& viewportState,
-                                  bool selected)
+                                  const Scene::Actor& actor,
+                                  const Scene::CameraComponent& cameraComponent,
+                                  const Renderer::Vulkan::CameraUniformData& cameraData,
+                                  const EditorViewportState& viewportState,
+                                  bool selected,
+                                  const bool hovered)
     {
-        const ImU32 color = selected
-            ? IM_COL32(255, 255, 255, 230)
-            : IM_COL32(80, 190, 255, 150);
+        const ImU32 color =
+            selected
+                ? IM_COL32(255, 255, 255, 230)
+                : hovered
+                    ? IM_COL32(145, 215, 255, 225)
+                    : IM_COL32(80, 190, 255, 150);
 
-        const ImU32 centerColor = selected
-            ? IM_COL32(255, 255, 255, 240)
-            : IM_COL32(80, 190, 255, 180);
+        const ImU32 centerColor =
+            selected
+                ? IM_COL32(255, 255, 255, 240)
+                : hovered
+                    ? IM_COL32(145, 215, 255, 235)
+                    : IM_COL32(80, 190, 255, 180);
 
         const float aspect = viewportState.Height > 0
             ? static_cast<float>(viewportState.Width) / static_cast<float>(viewportState.Height)
@@ -459,8 +534,8 @@ namespace Quiet::Editor
 
         for (std::size_t i = 0; i < 4; ++i)
         {
-            worldNear[i] = Quiet::Math::TransformPoint(model, nearCorners[i]);
-            worldFar[i] = Quiet::Math::TransformPoint(model, farCorners[i]);
+            worldNear[i] = Math::TransformPoint(model, nearCorners[i]);
+            worldFar[i] = Math::TransformPoint(model, farCorners[i]);
         }
 
         for (std::size_t i = 0; i < 4; ++i)
@@ -476,12 +551,7 @@ namespace Quiet::Editor
         ImVec2 originScreen{};
         if (ProjectWorldToViewport(worldOrigin, cameraData, viewportState, originScreen))
         {
-            DrawScreenDiamondFilled(
-                drawList,
-                originScreen,
-                selected ? 4.0f : 3.0f,
-                centerColor
-            );
+            DrawScreenDiamondFilled(drawList, originScreen, selected ? 4.0f : 3.0f, centerColor);
         }
     }
 
@@ -490,11 +560,15 @@ namespace Quiet::Editor
                                               const Scene::DirectionalLightComponent& lightComponent,
                                               const Renderer::Vulkan::CameraUniformData& cameraData,
                                               const EditorViewportState& viewportState,
-                                              bool selected)
+                                              bool selected,
+                                              const bool hovered)
     {
-        const ImU32 color = selected
-            ? IM_COL32(255, 255, 255, 240)
-            : IM_COL32(255, 220, 80, 170);
+        const ImU32 color =
+            selected
+                ? IM_COL32(255, 255, 255, 240)
+                : hovered
+                    ? IM_COL32(255, 238, 145, 230)
+                    : IM_COL32(255, 220, 80, 170);
 
         const glm::vec3 origin = actor.Transform.WorldTransform.Position;
 
@@ -532,8 +606,8 @@ namespace Quiet::Editor
                 !ProjectWorldToViewport(rayEnd, cameraData, viewportState, screenEnd))
                 continue;
 
-            drawList->AddLine(screenStart, screenEnd, color, selected ? 2.0f : 1.5f);
-            DrawScreenArrowHead(drawList, screenStart, screenEnd, color, selected ? 2.0f : 1.5f);
+            drawList->AddLine(screenStart, screenEnd, color, selected || hovered ? 2.0f : 1.5f);
+            DrawScreenArrowHead(drawList, screenStart, screenEnd, color, selected || hovered ? 2.0f : 1.5f);
         }
     }
 }

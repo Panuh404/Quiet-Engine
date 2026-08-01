@@ -94,6 +94,7 @@ namespace Quiet::Editor
     struct EditorSelectionState
     {
         std::optional<Core::UUID> SelectedActorID;
+        std::optional<Core::UUID> HoveredActorID;
         std::optional<Core::UUID> PilotedCameraActorID;
     };
 
