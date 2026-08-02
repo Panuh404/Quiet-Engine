@@ -437,22 +437,25 @@ namespace Quiet::Editor
         }
 
         constexpr std::array<std::array<std::size_t, 2>, 12> edges =
-            {{
-                {{0, 1}},
-                {{1, 2}},
-                {{2, 3}},
-                {{3, 0}},
+        {{
+            // Near face.
+            {{0, 1}},
+            {{0, 2}},
+            {{1, 3}},
+            {{2, 3}},
 
-                {{4, 5}},
-                {{5, 6}},
-                {{6, 7}},
-                {{7, 4}},
+            // Far face.
+            {{4, 5}},
+            {{4, 6}},
+            {{5, 7}},
+            {{6, 7}},
 
-                {{0, 4}},
-                {{1, 5}},
-                {{2, 6}},
-                {{3, 7}}
-            }};
+            // Connecting edges.
+            {{0, 4}},
+            {{1, 5}},
+            {{2, 6}},
+            {{3, 7}}
+        }};
 
         const ImU32 previewColor = MakeOverlayColor(Renderer::UI::EditorColor::Success, 0.95f);
         constexpr ImU32 shadowColor = IM_COL32(0, 0, 0, 190);
@@ -483,9 +486,10 @@ namespace Quiet::Editor
             );
         }
 
+        const glm::vec3 placementAnchor = worldPosition + glm::vec3(0.0f, mesh.GetLocalBoundsMin().y, 0.0f);
         ImVec2 groundScreenPosition{};
 
-        if (!ProjectWorldToViewport(worldPosition, cameraData, viewportState, groundScreenPosition))
+        if (!ProjectWorldToViewport(placementAnchor, cameraData, viewportState, groundScreenPosition))
         {
             return;
         }
