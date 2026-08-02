@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <string>
 
@@ -39,6 +40,13 @@ namespace
             50.0f,
             100.0f
         };
+
+    struct ViewportNavigationGuideItem
+    {
+        const char* Key = "";
+        const char* Action = "";
+        bool Emphasized = false;
+    };
 
     std::string FormatViewportCameraSpeed(const float speed)
     {
@@ -144,7 +152,7 @@ namespace
         ImGui::Checkbox("Editor Icons", &editorState.Viewport.ShowDebugIcons);
         ImGui::Checkbox("Selection Feedback", &editorState.Viewport.ShowSelectionFeedback);
         ImGui::Checkbox("Hover Feedback", &editorState.Viewport.ShowHoverFeedback);
-        ImGui::Checkbox("Navigation Hints", &editorState.Viewport.ShowNavigationHints);
+        ImGui::Checkbox("Navigation Guide", &editorState.Viewport.ShowNavigationHints);
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -464,34 +472,265 @@ namespace
         );
     }
 
-    void DrawViewportNavigationHintsOverlay(const Quiet::Editor::EditorState& editorState, const ImVec2& imageMin, const ImVec2& imageSize, const float uiScale)
+    float MeasureViewportNavigationGuideItem(const ViewportNavigationGuideItem& item, const float uiScale)
+    {
+        const float keyPaddingX = 7.0f * uiScale;
+        const float keyActionGap = 6.0f * uiScale;
+
+        const ImVec2 keyTextSize = ImGui::CalcTextSize(item.Key);
+        const ImVec2 actionTextSize = ImGui::CalcTextSize(item.Action);
+
+        return keyTextSize.x + keyPaddingX * 2.0f + keyActionGap + actionTextSize.x;
+    }
+
+    float MeasureViewportNavigationGuideRow(const std::array<ViewportNavigationGuideItem, 5>& items, const std::size_t itemCount, const float uiScale)
+    {
+        const float itemSpacing = 16.0f * uiScale;
+        float width = 0.0f;
+
+        for (std::size_t index = 0; index < itemCount; ++index)
+        {
+            if (index > 0) width += itemSpacing;
+            width += MeasureViewportNavigationGuideItem(items[index], uiScale);
+        }
+
+        return width;
+    }
+
+    void DrawViewportNavigationGuideRow(ImDrawList* drawList, const ImVec2& startPosition, const std::array<ViewportNavigationGuideItem, 5>& items, const std::size_t itemCount, const float uiScale)
+    {
+        if (!drawList || itemCount == 0) return;
+
+        const float keyPaddingX = 7.0f * uiScale;
+        const float keyPaddingY = 3.0f * uiScale;
+        const float keyActionGap = 6.0f * uiScale;
+        const float itemSpacing = 16.0f * uiScale;
+        const float rounding = 4.0f * uiScale;
+
+        ImVec2 cursor = startPosition;
+
+        for (std::size_t index = 0; index < itemCount; ++index)
+        {
+           const ViewportNavigationGuideItem& item = items[index];
+
+            if (index > 0) cursor.x += itemSpacing;
+
+            const ImVec2 keyTextSize = ImGui::CalcTextSize(item.Key);
+            const ImVec2 actionTextSize = ImGui::CalcTextSize(item.Action);
+
+            const ImVec2 keySize(keyTextSize.x + keyPaddingX * 2.0f, keyTextSize.y + keyPaddingY * 2.0f);
+            const ImVec2 keyMin = cursor;
+            const ImVec2 keyMax(keyMin.x + keySize.x, keyMin.y + keySize.y);
+
+            ImVec4 keyBackground = item.Emphasized
+                ? QUI::EditorColor::AccentDim
+                : QUI::EditorColor::Background3;
+
+            ImVec4 keyBorder = item.Emphasized
+                ? QUI::EditorColor::AccentHover
+                : QUI::EditorColor::Border;
+
+            ImVec4 keyTextColor = item.Emphasized
+                ? QUI::EditorColor::AccentHover
+                : QUI::EditorColor::Text;
+
+            drawList->AddRectFilled(
+                keyMin,
+                keyMax,
+                ImGui::ColorConvertFloat4ToU32(keyBackground),
+                rounding
+            );
+
+            drawList->AddRect(
+                keyMin,
+                keyMax,
+                ImGui::ColorConvertFloat4ToU32(keyBorder),
+                rounding,
+                0,
+                std::max(1.0f, uiScale)
+            );
+
+            drawList->AddText(
+                ImVec2(
+                    keyMin.x + (keySize.x - keyTextSize.x) * 0.5f,
+                    keyMin.y + (keySize.y - keyTextSize.y) * 0.5f
+                ),
+                ImGui::ColorConvertFloat4ToU32(keyTextColor),
+                item.Key
+            );
+
+            const ImVec2 actionPosition(
+                keyMax.x + keyActionGap,
+                keyMin.y + (keySize.y - actionTextSize.y) * 0.5f
+            );
+
+            drawList->AddText(
+                actionPosition,
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                item.Action
+            );
+
+            cursor.x = actionPosition.x + actionTextSize.x;
+        }
+    }
+
+    void DrawViewportNavigationGuideOverlay(const Quiet::Editor::EditorState& editorState, const ImVec2& imageMin, const ImVec2& imageSize, const float uiScale)
     {
         if (!editorState.Viewport.ShowNavigationHints) return;
         if (editorState.Scene.Mode == Quiet::Editor::SceneMode::Play) return;
-        if (editorState.Viewport.NavigationMode != Quiet::Editor::ViewportNavigationMode::None) return;
-        if (imageSize.x < 620.0f * uiScale ||
-            imageSize.y < 170.0f * uiScale) return;
 
-        constexpr const char* primaryText = "RMB  Fly    Alt+LMB  Orbit    MMB  Pan";
-        constexpr const char* secondaryText = "Wheel  Speed    Shift  Boost";
+        const Quiet::Editor::ViewportNavigationMode navigationMode = editorState.Viewport.NavigationMode;
+        const bool navigationActive = navigationMode != Quiet::Editor::ViewportNavigationMode::None;
 
-        const ImVec2 primarySize = ImGui::CalcTextSize(primaryText);
-        const ImVec2 secondarySize = ImGui::CalcTextSize(secondaryText);
-        const ImVec2 padding(10.0f * uiScale, 7.0f * uiScale);
+        // The idle guide is contextual rather than permanently
+        // occupying Viewport space.
+        if (!navigationActive && !editorState.Viewport.ImageHovered) return;
+        if (imageSize.x < 360.0f * uiScale ||
+            imageSize.y < 110.0f * uiScale) return;
 
-        const float lineSpacing = 3.0f * uiScale;
-        const float contentWidth = std::max(primarySize.x, secondarySize.x);
+        const bool pilotingCamera =
+            editorState.Scene.Mode == Quiet::Editor::SceneMode::Edit &&
+            editorState.Selection.PilotedCameraActorID.has_value();
+
+        std::string title;
+
+        std::array<ViewportNavigationGuideItem, 5> primaryItems{};
+        std::array<ViewportNavigationGuideItem, 5> secondaryItems{};
+        std::size_t primaryItemCount = 0;
+        std::size_t secondaryItemCount = 0;
+
+        switch (navigationMode)
+        {
+            case Quiet::Editor::ViewportNavigationMode::Fly:
+            {
+                title = pilotingCamera ? "PILOT FLY CONTROLS" : "FLY CONTROLS";
+                primaryItems[primaryItemCount++] =
+                    {
+                        "WASD",
+                        "Move"
+                    };
+                primaryItems[primaryItemCount++] =
+                    {
+                        "Q / E",
+                        "Vertical"
+                    };
+                secondaryItems[secondaryItemCount++] =
+                    {
+                        "Wheel",
+                        "Speed"
+                    };
+                secondaryItems[secondaryItemCount++] =
+                    {
+                        "Shift",
+                        "Boost x2",
+                        editorState.Viewport.FlySpeedBoostActive
+                    };
+                secondaryItems[secondaryItemCount++] =
+                    {
+                        "RMB",
+                        "Release"
+                    };
+                break;
+            }
+
+            case Quiet::Editor::ViewportNavigationMode::Orbit:
+            {
+                title = pilotingCamera ? "PILOT ORBIT CONTROLS" : "ORBIT CONTROLS";
+                primaryItems[primaryItemCount++] =
+                    {
+                        "Mouse",
+                        "Orbit pivot"
+                    };
+                primaryItems[primaryItemCount++] =
+                    {
+                        "Alt+LMB",
+                        "Release"
+                    };
+                break;
+            }
+
+            case Quiet::Editor::ViewportNavigationMode::Pan:
+            {
+                title = pilotingCamera ? "PILOT PAN CONTROLS" : "PAN CONTROLS";
+                primaryItems[primaryItemCount++] =
+                    {
+                        "Mouse",
+                        "Pan view"
+                    };
+                primaryItems[primaryItemCount++] =
+                    {
+                        "MMB",
+                        "Release"
+                    };
+                break;
+            }
+
+            case Quiet::Editor::ViewportNavigationMode::None:
+            default:
+            {
+                title = "VIEWPORT NAVIGATION";
+                primaryItems[primaryItemCount++] =
+                    {
+                        "RMB",
+                        "Fly"
+                    };
+                primaryItems[primaryItemCount++] =
+                    {
+                        "Alt+LMB",
+                        "Orbit"
+                    };
+                primaryItems[primaryItemCount++] =
+                    {
+                        "MMB",
+                        "Pan"
+                    };
+                break;
+            }
+        }
+
+        const float horizontalPadding = 11.0f * uiScale;
+        const float verticalPadding = 8.0f * uiScale;
+        const float titleGap = 7.0f * uiScale;
+        const float rowSpacing = 5.0f * uiScale;
+
+        const float keyRowHeight = ImGui::GetTextLineHeight() + 6.0f * uiScale;
+        const ImVec2 titleSize = ImGui::CalcTextSize(title.c_str());
+
+        const float primaryRowWidth = MeasureViewportNavigationGuideRow(primaryItems, primaryItemCount, uiScale);
+        const float secondaryRowWidth = MeasureViewportNavigationGuideRow(secondaryItems, secondaryItemCount, uiScale);
+
+        const float contentWidth =
+            std::max(
+                titleSize.x,
+                std::max(primaryRowWidth, secondaryRowWidth)
+            );
+
+        float contentHeight = titleSize.y + titleGap + keyRowHeight;
+        if (secondaryItemCount > 0)
+        {
+            contentHeight +=  rowSpacing + keyRowHeight;
+        }
 
         const ImVec2 panelSize(
-            contentWidth + padding.x * 2.0f,
-            primarySize.y + secondarySize.y + lineSpacing + padding.y * 2.0f
+            contentWidth + horizontalPadding * 2.0f,
+            contentHeight + verticalPadding * 2.0f
         );
 
         const float margin = 12.0f * uiScale;
+        if (panelSize.x + margin * 2.0f > imageSize.x ||
+            panelSize.y + margin * 2.0f > imageSize.y)
+        {
+            return;
+        }
+
+        const ImVec2 imageMax(
+            imageMin.x + imageSize.x,
+            imageMin.y + imageSize.y
+        );
 
         const ImVec2 panelMax(
-            imageMin.x + imageSize.x - margin,
-            imageMin.y + margin + panelSize.y
+            imageMax.x - margin,
+            imageMax.y - margin
         );
 
         const ImVec2 panelMin(
@@ -500,39 +739,87 @@ namespace
         );
 
         ImVec4 background = QUI::EditorColor::Background0;
-        background.w = 0.80f;
+        background.w = navigationActive ? 0.90f : 0.76f;
 
+        ImVec4 border = navigationActive
+            ? QUI::EditorColor::AccentSoft
+            : QUI::EditorColor::BorderSoft;
+
+        const float rounding = 7.0f * uiScale;
         ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->PushClipRect(imageMin, imageMax, true);
         drawList->AddRectFilled(
             panelMin,
             panelMax,
             ImGui::ColorConvertFloat4ToU32(background),
-            7.0f * uiScale
+            rounding
         );
 
         drawList->AddRect(
             panelMin,
             panelMax,
-            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
-            7.0f * uiScale
+            ImGui::ColorConvertFloat4ToU32(border),
+            rounding,
+            0,
+            std::max(1.0f, uiScale)
+        );
+
+        if (navigationActive)
+        {
+            drawList->AddRectFilled(
+                panelMin,
+                ImVec2(panelMin.x + 3.0f * uiScale, panelMax.y),
+                ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::Accent),
+                rounding,
+                ImDrawFlags_RoundCornersLeft
+            );
+        }
+
+        const ImVec2 titlePosition(
+            panelMin.x + horizontalPadding,
+            panelMin.y + verticalPadding
         );
 
         drawList->AddText(
-            ImVec2(
-                panelMin.x + padding.x,
-                panelMin.y + padding.y),
-            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
-            primaryText
-        );
-
-        drawList->AddText(
-            ImVec2(
-                panelMin.x + padding.x,
-                panelMin.y + padding.y + primarySize.y + lineSpacing
+            titlePosition,
+            ImGui::ColorConvertFloat4ToU32(navigationActive
+                    ? QUI::EditorColor::AccentHover
+                    : QUI::EditorColor::TextDim
             ),
-            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextDim),
-            secondaryText
+            title.c_str()
         );
+
+        const ImVec2 primaryRowPosition(
+            panelMin.x + horizontalPadding,
+            titlePosition.y + titleSize.y + titleGap
+        );
+
+        DrawViewportNavigationGuideRow(
+            drawList,
+            primaryRowPosition,
+            primaryItems,
+            primaryItemCount,
+            uiScale
+        );
+
+        if (secondaryItemCount > 0)
+        {
+            const ImVec2 secondaryRowPosition(
+                panelMin.x + horizontalPadding,
+                primaryRowPosition.y + keyRowHeight + rowSpacing
+            );
+
+            DrawViewportNavigationGuideRow(
+                drawList,
+                secondaryRowPosition,
+                secondaryItems,
+                secondaryItemCount,
+                uiScale
+            );
+        }
+
+        drawList->PopClipRect();
     }
 }
 
@@ -821,7 +1108,7 @@ namespace Quiet::Renderer::UI
                 DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
                 if (!assetDropVisual.Visible)
                 {
-                    DrawViewportNavigationHintsOverlay(editorState, imageMin, imageSize, m_UIScale);
+                    DrawViewportNavigationGuideOverlay(editorState, imageMin, imageSize, m_UIScale);
                 }
                 DrawViewportAssetDropOverlay(assetDropVisual, imageMin, imageSize, m_UIScale);
             }
