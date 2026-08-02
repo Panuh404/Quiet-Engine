@@ -422,6 +422,100 @@ namespace Quiet::Editor
         }
     }
 
+    void DrawViewportMeshDropPreview(const Renderer::Vulkan::StaticMesh &mesh,
+                                     const glm::vec3 &worldPosition,
+                                     const Renderer::Vulkan::CameraUniformData &cameraData,
+                                     const EditorViewportState &viewportState,
+                                     ImDrawList *drawList)
+    {
+        const auto localCorners = Math::BuildAABBCorners(mesh.GetLocalBoundsMin(), mesh.GetLocalBoundsMax());
+        std::array<glm::vec3, 8> worldCorners{};
+
+        for (std::size_t index = 0; index < localCorners.size(); ++index)
+        {
+            worldCorners[index] = localCorners[index] + worldPosition;
+        }
+
+        constexpr std::array<std::array<std::size_t, 2>, 12> edges =
+            {{
+                {{0, 1}},
+                {{1, 2}},
+                {{2, 3}},
+                {{3, 0}},
+
+                {{4, 5}},
+                {{5, 6}},
+                {{6, 7}},
+                {{7, 4}},
+
+                {{0, 4}},
+                {{1, 5}},
+                {{2, 6}},
+                {{3, 7}}
+            }};
+
+        const ImU32 previewColor = MakeOverlayColor(Renderer::UI::EditorColor::Success, 0.95f);
+        constexpr ImU32 shadowColor = IM_COL32(0, 0, 0, 190);
+        const float previewThickness = Renderer::UI::EditorSizing::Px(2.0f);
+
+        for (const auto& edge : edges)
+        {
+            const glm::vec3& worldA = worldCorners[edge[0]];
+            const glm::vec3& worldB = worldCorners[edge[1]];
+
+            DrawProjectedLine(
+                drawList,
+                cameraData,
+                viewportState,
+                worldA,
+                worldB,
+                shadowColor,
+                previewThickness + Renderer::UI::EditorSizing::Px(2.0f));
+
+            DrawProjectedLine(
+                drawList,
+                cameraData,
+                viewportState,
+                worldA,
+                worldB,
+                previewColor,
+                previewThickness
+            );
+        }
+
+        ImVec2 groundScreenPosition{};
+
+        if (!ProjectWorldToViewport(worldPosition, cameraData, viewportState, groundScreenPosition))
+        {
+            return;
+        }
+
+        const float markerRadius = Renderer::UI::EditorSizing::Px(9.0f);
+        const float markerCrossSize = Renderer::UI::EditorSizing::Px(13.0f);
+
+        drawList->AddCircle(
+            groundScreenPosition,
+            markerRadius,
+            previewColor,
+            0,
+            Renderer::UI::EditorSizing::Px(2.0f)
+        );
+
+        drawList->AddLine(
+            ImVec2(groundScreenPosition.x - markerCrossSize, groundScreenPosition.y),
+            ImVec2(groundScreenPosition.x + markerCrossSize, groundScreenPosition.y),
+            previewColor,
+            Renderer::UI::EditorSizing::Px(1.5f)
+        );
+
+        drawList->AddLine(
+            ImVec2(groundScreenPosition.x, groundScreenPosition.y - markerCrossSize),
+            ImVec2(groundScreenPosition.x, groundScreenPosition.y + markerCrossSize),
+            previewColor,
+            Renderer::UI::EditorSizing::Px(1.5f)
+        );
+    }
+
     bool DrawProjectedLine(ImDrawList* drawList,
                            const Renderer::Vulkan::CameraUniformData& cameraData,
                            const EditorViewportState& viewportState,

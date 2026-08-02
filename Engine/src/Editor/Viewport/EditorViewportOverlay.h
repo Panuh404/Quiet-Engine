@@ -19,6 +19,7 @@ namespace Quiet::Editor
 namespace Quiet::Renderer::Vulkan
 {
     struct CameraUniformData;
+    class StaticMesh;
 }
 
 namespace Quiet::Editor
@@ -47,6 +48,12 @@ namespace Quiet::Editor
                                          const Renderer::Vulkan::CameraUniformData& cameraData,
                                          const EditorViewportState& viewportState,
                                          ImDrawList* drawList);
+
+    void DrawViewportMeshDropPreview(const Renderer::Vulkan::StaticMesh& mesh,
+                                     const glm::vec3& worldPosition,
+                                     const Renderer::Vulkan::CameraUniformData& cameraData,
+                                     const EditorViewportState& viewportState,
+                                     ImDrawList* drawList);
 
     bool DrawProjectedLine(ImDrawList* drawList,
                            const Renderer::Vulkan::CameraUniformData& cameraData,

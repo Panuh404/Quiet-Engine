@@ -6,10 +6,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/vec3.hpp>
 
+#include <cmath>
+
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Renderer/RenderConventions.h"
 #include "Renderer/Vulkan/RenderTypes.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Scene/Camera/FreeCamera.h"
 
 namespace Quiet::Editor
@@ -92,5 +95,33 @@ namespace Quiet::Editor
         outRay.Origin = nearPoint;
         outRay.Direction = glm::normalize(direction);
         return true;
+    }
+
+    glm::vec3 CalculateViewportMeshPlacementPosition(const Math::Ray &ray, const Renderer::Vulkan::StaticMesh &mesh)
+    {
+        constexpr float fallbackDistance = 5.0f;
+        constexpr float minimumHitDistance = 0.05f;
+        constexpr float maximumGroundDistance = 1000.0f;
+
+        glm::vec3 position = ray.Origin + ray.Direction * fallbackDistance;
+
+        if (std::abs(ray.Direction.y) <= 0.00001f)
+        {
+            return position;
+        }
+
+        const float groundHitDistance = -ray.Origin.y / ray.Direction.y;
+        if (groundHitDistance < minimumHitDistance ||
+            groundHitDistance > maximumGroundDistance)
+        {
+            return position;
+        }
+
+        position = ray.Origin + ray.Direction * groundHitDistance;
+
+        // The actor is created with an identity transform. Move its
+        // lowest local-space point onto the world ground plane.
+        position.y -= mesh.GetLocalBoundsMin().y;
+        return position;
     }
 }

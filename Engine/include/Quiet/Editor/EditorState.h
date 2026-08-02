@@ -132,6 +132,7 @@ namespace Quiet::Editor
         float ScreenX = 0.0f;
         float ScreenY = 0.0f;
 
+        std::optional<EditorViewportAssetDropRequest> ActiveMeshAssetDrop{};
         std::optional<EditorViewportAssetDropRequest> PendingMeshAssetDrop{};
     };
 

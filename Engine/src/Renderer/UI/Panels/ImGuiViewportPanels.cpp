@@ -28,7 +28,7 @@ namespace
     constexpr float kMaximumViewportCameraSpeed = 100.0f;
     constexpr float kViewportCameraWheelMultiplier = 1.25f;
 
-    constexpr std::array<float, 8> kViewportCameraSpeedPresets =
+    constexpr std::array kViewportCameraSpeedPresets =
         {
             0.5f,
             1.0f,
@@ -206,16 +206,15 @@ namespace
         }
 
         visual.Accepted = true;
-        visual.Label = "Create " + record->ID + " actor";
+        visual.Label = "Release to create " + record->ID + " actor";
 
+        const ImVec2 mousePosition = ImGui::GetMousePos();
+        const Quiet::Editor::EditorViewportAssetDropRequest dropRequest{ record->ID, mousePosition.x, mousePosition.y };
+
+        editorState.Viewport.ActiveMeshAssetDrop = dropRequest;
         if (payload.Delivered)
         {
-            const ImVec2 mousePosition = ImGui::GetMousePos();
-            editorState.Viewport.PendingMeshAssetDrop = Quiet::Editor::EditorViewportAssetDropRequest{
-                record->ID,
-                mousePosition.x,
-                mousePosition.y
-            };
+            editorState.Viewport.PendingMeshAssetDrop = dropRequest;
         }
 
         return visual;
@@ -229,7 +228,7 @@ namespace
         const ImVec4 accentColor = visual.Accepted ? QUI::EditorColor::Success : QUI::EditorColor::Error;
 
         ImVec4 tintColor = accentColor;
-        tintColor.w = 0.08f;
+        tintColor.w = visual.Accepted ? 0.025f : 0.08f;
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
@@ -430,9 +429,7 @@ namespace
 
 namespace Quiet::Renderer::UI
 {
-    void ImGuiLayer::BuildRuntimeUI(std::uint32_t& outViewportWidth,
-                                    std::uint32_t& outViewportHeight,
-                                    ImTextureID sceneViewportTexture)
+    void ImGuiLayer::BuildRuntimeUI(std::uint32_t& outViewportWidth, std::uint32_t& outViewportHeight, ImTextureID sceneViewportTexture)
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -687,6 +684,7 @@ namespace Quiet::Renderer::UI
     {
         ImGui::Begin("Viewport");
         {
+            editorState.Viewport.ActiveMeshAssetDrop.reset();
             editorState.Viewport.Focused = ImGui::IsWindowFocused();
             editorState.Viewport.Hovered = ImGui::IsWindowHovered();
 

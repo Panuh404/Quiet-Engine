@@ -18,6 +18,7 @@ namespace Quiet::Editor
 namespace Quiet::Renderer::Vulkan
 {
     struct CameraUniformData;
+    class StaticMesh;
     class VulkanRenderer;
 }
 
@@ -35,5 +36,7 @@ namespace Quiet::Editor
                                             const Scene::FreeCamera& camera,
                                             const Renderer::Vulkan::VulkanRenderer& renderer,
                                             Math::Ray& outRay);
+
+    [[nodiscard]] glm::vec3 CalculateViewportMeshPlacementPosition(const Math::Ray& ray, const Renderer::Vulkan::StaticMesh& mesh);
 
 }

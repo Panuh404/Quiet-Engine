@@ -88,25 +88,6 @@ namespace
         return data;
     }
 
-    glm::vec3 CalculateViewportMeshDropPosition(const Quiet::Math::Ray& ray, const Quiet::Renderer::Vulkan::StaticMesh& mesh)
-    {
-        constexpr float fallbackDistance = 5.0f;
-        constexpr float minimumHitDistance = 0.05f;
-        constexpr float maximumGroundDistance = 1000.0f;
-
-        glm::vec3 position = ray.Origin + ray.Direction * fallbackDistance;
-        if (std::abs(ray.Direction.y) <= 0.00001f) return position;
-
-        const float groundHitDistance = -ray.Origin.y / ray.Direction.y;
-        if (groundHitDistance < minimumHitDistance || groundHitDistance > maximumGroundDistance) return position;
-
-        position = ray.Origin + ray.Direction * groundHitDistance;
-
-        // Place the mesh's lowest local-space point on the ground plane.
-        position.y -= mesh.GetLocalBoundsMin().y;
-        return position;
-    }
-
     bool IsViewportNavigationButtonDown(const Quiet::Editor::ViewportNavigationMode mode, const Quiet::Input::Input& input)
     {
         using Quiet::Editor::ViewportNavigationMode;
@@ -496,7 +477,7 @@ namespace Quiet::Core
         glm::vec3 actorPosition = m_FreeCamera->GetPosition() + m_FreeCamera->GetForwardVector() * 5.0f;
         if (Editor::BuildViewportPickRay(request->ScreenX, request->ScreenY, editorState.Viewport, *m_FreeCamera, *m_Renderer, dropRay))
         {
-            actorPosition = CalculateViewportMeshDropPosition(dropRay, *mesh);
+            actorPosition = Editor::CalculateViewportMeshPlacementPosition(dropRay, *mesh);
         }
 
         Editor::EditorCommands commands(*m_EditorController);

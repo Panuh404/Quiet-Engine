@@ -11,16 +11,19 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Input/Input.h"
 #include "Quiet/Renderer/RenderConventions.h"
+
 #include "Renderer/Vulkan/VulkanRenderer.h"
+#include "Renderer/Vulkan/Mesh/MeshLibrary.h"
+#include "Renderer/Vulkan/Mesh/StaticMesh.h"
+
 #include "Scene/Actor.h"
-#include "Scene/Camera/FreeCamera.h"
 #include "Scene/Scene.h"
+#include "Scene/Camera/FreeCamera.h"
 
 #include "Editor/Viewport/EditorViewportOverlay.h"
 #include "Editor/Viewport/EditorViewportPicking.h"
 #include "Editor/Viewport/EditorViewportProjection.h"
 #include "Editor/Viewport/EditorViewportGizmo.h"
-#include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace
 {
@@ -240,12 +243,22 @@ namespace Quiet::Editor
             }
         }
 
-        if (m_State.Selection.SelectedActorID.has_value())
+        if (m_State.Viewport.ActiveMeshAssetDrop.has_value())
         {
-            const Scene::Actor* selectedActor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
-            if (selectedActor)
+            const EditorViewportAssetDropRequest& previewRequest = m_State.Viewport.ActiveMeshAssetDrop.value();
+            const auto previewMesh = renderer.GetMeshLibrary() .TryGet(previewRequest.AssetID);
+            Math::Ray previewRay{};
+
+            if (previewMesh && BuildViewportPickRay(previewRequest.ScreenX, previewRequest.ScreenY, m_State.Viewport, camera, renderer, previewRay))
             {
-                DrawSelectedActorViewportOverlay(*selectedActor, cameraData, m_State.Viewport, drawList);
+                const glm::vec3 previewPosition = CalculateViewportMeshPlacementPosition(previewRay, *previewMesh);
+                DrawViewportMeshDropPreview(
+                    *previewMesh,
+                    previewPosition,
+                    cameraData,
+                    m_State.Viewport,
+                    drawList
+                );
             }
         }
 
@@ -264,6 +277,15 @@ namespace Quiet::Editor
                 {
                     DrawHoveredActorViewportOverlay(*hoveredActor, cameraData, m_State.Viewport, drawList);
                 }
+            }
+        }
+
+        if (m_State.Selection.SelectedActorID.has_value())
+        {
+            const Scene::Actor* selectedActor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
+            if (selectedActor)
+            {
+                DrawSelectedActorViewportOverlay(*selectedActor, cameraData, m_State.Viewport, drawList);
             }
         }
 
