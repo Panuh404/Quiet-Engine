@@ -122,6 +122,9 @@ namespace Quiet::Editor
 
         bool ShowGrid = true;
         bool ShowDebugIcons = true;
+        bool ShowSelectionFeedback = true;
+        bool ShowHoverFeedback = true;
+        bool ShowNavigationHints = true;
 
         float CameraMoveSpeed = 2.5f;
 

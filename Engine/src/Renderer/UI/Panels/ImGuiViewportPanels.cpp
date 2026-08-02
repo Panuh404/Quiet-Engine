@@ -124,6 +124,44 @@ namespace
         ImGui::EndPopup();
     }
 
+    void DrawViewportDisplayOptionsPopup(Quiet::Editor::EditorState& editorState)
+    {
+        if (!ImGui::BeginPopup("##ViewportDisplayOptionsPopup")) return;
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::TextUnformatted("Viewport Display");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextWrapped("Control editor-only Viewport overlays.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::Checkbox("Grid", &editorState.Viewport.ShowGrid);
+        ImGui::Checkbox("Editor Icons", &editorState.Viewport.ShowDebugIcons);
+        ImGui::Checkbox("Selection Feedback", &editorState.Viewport.ShowSelectionFeedback);
+        ImGui::Checkbox("Hover Feedback", &editorState.Viewport.ShowHoverFeedback);
+        ImGui::Checkbox("Navigation Hints", &editorState.Viewport.ShowNavigationHints);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (QUI::EditorButton("Restore Defaults", ImVec2(QUI::EditorSizing::Px(190.0f), 0.0f)))
+        {
+            editorState.Viewport.ShowGrid = true;
+            editorState.Viewport.ShowDebugIcons = true;
+            editorState.Viewport.ShowSelectionFeedback = true;
+            editorState.Viewport.ShowHoverFeedback = true;
+            editorState.Viewport.ShowNavigationHints = true;
+        }
+
+        ImGui::EndPopup();
+    }
+
     const char* GetViewportModeLabel(const Quiet::Editor::SceneMode mode)
     {
         switch (mode)
@@ -425,6 +463,77 @@ namespace
             statusText.c_str()
         );
     }
+
+    void DrawViewportNavigationHintsOverlay(const Quiet::Editor::EditorState& editorState, const ImVec2& imageMin, const ImVec2& imageSize, const float uiScale)
+    {
+        if (!editorState.Viewport.ShowNavigationHints) return;
+        if (editorState.Scene.Mode == Quiet::Editor::SceneMode::Play) return;
+        if (editorState.Viewport.NavigationMode != Quiet::Editor::ViewportNavigationMode::None) return;
+        if (imageSize.x < 620.0f * uiScale ||
+            imageSize.y < 170.0f * uiScale) return;
+
+        constexpr const char* primaryText = "RMB  Fly    Alt+LMB  Orbit    MMB  Pan";
+        constexpr const char* secondaryText = "Wheel  Speed    Shift  Boost";
+
+        const ImVec2 primarySize = ImGui::CalcTextSize(primaryText);
+        const ImVec2 secondarySize = ImGui::CalcTextSize(secondaryText);
+        const ImVec2 padding(10.0f * uiScale, 7.0f * uiScale);
+
+        const float lineSpacing = 3.0f * uiScale;
+        const float contentWidth = std::max(primarySize.x, secondarySize.x);
+
+        const ImVec2 panelSize(
+            contentWidth + padding.x * 2.0f,
+            primarySize.y + secondarySize.y + lineSpacing + padding.y * 2.0f
+        );
+
+        const float margin = 12.0f * uiScale;
+
+        const ImVec2 panelMax(
+            imageMin.x + imageSize.x - margin,
+            imageMin.y + margin + panelSize.y
+        );
+
+        const ImVec2 panelMin(
+            panelMax.x - panelSize.x,
+            panelMax.y - panelSize.y
+        );
+
+        ImVec4 background = QUI::EditorColor::Background0;
+        background.w = 0.80f;
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddRectFilled(
+            panelMin,
+            panelMax,
+            ImGui::ColorConvertFloat4ToU32(background),
+            7.0f * uiScale
+        );
+
+        drawList->AddRect(
+            panelMin,
+            panelMax,
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+            7.0f * uiScale
+        );
+
+        drawList->AddText(
+            ImVec2(
+                panelMin.x + padding.x,
+                panelMin.y + padding.y),
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+            primaryText
+        );
+
+        drawList->AddText(
+            ImVec2(
+                panelMin.x + padding.x,
+                panelMin.y + padding.y + primarySize.y + lineSpacing
+            ),
+            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextDim),
+            secondaryText
+        );
+    }
 }
 
 namespace Quiet::Renderer::UI
@@ -567,16 +676,12 @@ namespace Quiet::Renderer::UI
                         : "World/Local mode is not used for Scale",
                     isLocalMode,
                     canToggleGizmoMode,
-                    ImVec2(
-                        m_Fonts.HasIcons
+                    ImVec2(m_Fonts.HasIcons
                             ? ToolbarStyle::ButtonSize()
                             : ToolbarStyle::WideButtonWidth(),
                         ToolbarStyle::ButtonHeight())))
             {
-                editorState.Gizmo.Mode =
-                    isLocalMode
-                        ? Editor::GizmoMode::World
-                        : Editor::GizmoMode::Local;
+                editorState.Gizmo.Mode = isLocalMode ? Editor::GizmoMode::World : Editor::GizmoMode::Local;
             }
 
             ImGui::SameLine();
@@ -600,18 +705,25 @@ namespace Quiet::Renderer::UI
 
             ImGui::SameLine();
 
+            const bool displayPopupOpen = ImGui::IsPopupOpen("##ViewportDisplayOptionsPopup");
             if (DrawToolbarButton(
                     m_Fonts,
-                    "ViewportGrid",
-                    Icons::Grid,
-                    "Grid",
-                    editorState.Viewport.ShowGrid ? "Hide viewport grid" : "Show viewport grid",
-                    editorState.Viewport.ShowGrid,
+                    "ViewportDisplay",
+                    Icons::Gear,
+                    "Display",
+                    "Viewport display options",
+                    displayPopupOpen,
                     true,
-                    ImVec2(m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(), ToolbarStyle::ButtonHeight())))
+                    ImVec2(m_Fonts.HasIcons
+                            ? ToolbarStyle::ButtonSize()
+                            : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight()
+                    )))
             {
-                editorState.Viewport.ShowGrid = !editorState.Viewport.ShowGrid;
+                ImGui::OpenPopup("##ViewportDisplayOptionsPopup");
             }
+
+            DrawViewportDisplayOptionsPopup(editorState);
 
             ImGui::SameLine();
 
@@ -645,28 +757,6 @@ namespace Quiet::Renderer::UI
                         ToolbarStyle::ButtonHeight())))
             {
                 editorState.QueueRequest(Editor::EditorRequestType::FocusSelected);
-            }
-
-            ImGui::SameLine();
-
-            if (DrawToolbarButton(
-                    m_Fonts,
-                    "ViewportDebugIcons",
-                    Icons::DebugIcons,
-                    "Icons",
-                    editorState.Viewport.ShowDebugIcons
-                        ? "Hide editor icons"
-                        : "Show editor icons",
-                    editorState.Viewport.ShowDebugIcons,
-                    true,
-                    ImVec2(
-                        m_Fonts.HasIcons
-                            ? ToolbarStyle::ButtonSize()
-                            : ToolbarStyle::WideButtonWidth(),
-                        ToolbarStyle::ButtonHeight())))
-            {
-                editorState.Viewport.ShowDebugIcons =
-                    !editorState.Viewport.ShowDebugIcons;
             }
         }
         ImGui::End();
@@ -729,6 +819,10 @@ namespace Quiet::Renderer::UI
                 BuildViewportToolbar(editorState, imageMin);
 
                 DrawViewportStatusOverlay(editorState, imageMin, imageSize, m_UIScale);
+                if (!assetDropVisual.Visible)
+                {
+                    DrawViewportNavigationHintsOverlay(editorState, imageMin, imageSize, m_UIScale);
+                }
                 DrawViewportAssetDropOverlay(assetDropVisual, imageMin, imageSize, m_UIScale);
             }
             else

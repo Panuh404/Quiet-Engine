@@ -207,13 +207,16 @@ namespace Quiet::Editor
                 if (!ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, m_State.Viewport, screenPosition))
                     continue;
 
-                const bool selected =
+                const bool actorSelected =
                     m_State.Selection.SelectedActorID.has_value() &&
                     m_State.Selection.SelectedActorID.value() == actor.ID;
 
-                const bool hovered =
-                    !selected && m_State.Selection.HoveredActorID.has_value() &&
+                const bool actorHovered = !actorSelected &&
+                    m_State.Selection.HoveredActorID.has_value() &&
                     m_State.Selection.HoveredActorID.value() == actor.ID;
+
+                const bool selected = m_State.Viewport.ShowSelectionFeedback && actorSelected;
+                const bool hovered = m_State.Viewport.ShowHoverFeedback && actorHovered;
 
                 if (actor.Camera.has_value())
                     DrawCameraFrustumOverlay(drawList, actor, actor.Camera.value(), cameraData, m_State.Viewport, selected, hovered);
@@ -262,7 +265,7 @@ namespace Quiet::Editor
             }
         }
 
-        if (m_State.Selection.HoveredActorID.has_value())
+        if (m_State.Viewport.ShowHoverFeedback && m_State.Selection.HoveredActorID.has_value())
         {
             const Core::UUID hoveredActorID = m_State.Selection.HoveredActorID.value();
 
@@ -280,7 +283,7 @@ namespace Quiet::Editor
             }
         }
 
-        if (m_State.Selection.SelectedActorID.has_value())
+        if (m_State.Viewport.ShowSelectionFeedback && m_State.Selection.SelectedActorID.has_value())
         {
             const Scene::Actor* selectedActor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
             if (selectedActor)
