@@ -63,6 +63,7 @@ namespace Quiet::Editor
         bool SetActorPosition(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& position);
         bool SetActorRotation(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& rotationDegrees);
         bool SetActorScale(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& scale);
+        bool ResetActorTransform(Scene::Scene& scene, Core::UUID actorID);
 
         bool AddStaticMesh(Scene::Scene& scene,
                            Core::UUID actorID,
@@ -81,22 +82,29 @@ namespace Quiet::Editor
                                   Core::UUID actorID,
                                   bool visible);
 
+    #pragma region Materials
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
         bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
         bool SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor);
         bool SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const std::string& textureAssetID);
+    #pragma endregion
 
+    #pragma region Directional Lights
         bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled);
         bool SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction);
         bool SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color);
         bool SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity);
+    #pragma endregion
 
         bool AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed = 45.0f);
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetRotator(Scene::Scene& scene, Core::UUID actorID);
         bool SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed);
 
         bool SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction);
@@ -107,6 +115,7 @@ namespace Quiet::Editor
     #pragma region Camera
         bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetCamera(Scene::Scene& scene, Core::UUID actorID);
         bool SetCameraPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary);
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);

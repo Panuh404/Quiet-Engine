@@ -98,7 +98,7 @@ namespace
 
             if (resettable)
             {
-                if (QUI::EditorSelectable("Reset Transform", false, 0, itemSize))
+                if (QUI::EditorSelectable("Reset Component", false, 0, itemSize))
                 {
                     result.ResetRequested = true;
                     g_OpenInspectorComponentMenuID.clear();
@@ -750,8 +750,6 @@ namespace Quiet::Renderer::UI
 
         ImGui::Spacing();
 
-        auto& transform = actor.Transform.WorldTransform;
-
         const auto transformHeader = BeginInspectorComponent(
             "Transform",
             "TransformComponentOptions",
@@ -761,13 +759,13 @@ namespace Quiet::Renderer::UI
 
         if (transformHeader.ResetRequested)
         {
-            commands.SetActorPosition(scene, actor.ID, glm::vec3(0.0f));
-            commands.SetActorRotation(scene, actor.ID, glm::vec3(0.0f));
-            commands.SetActorScale(scene, actor.ID, glm::vec3(1.0f));
+            commands.ResetActorTransform(scene, actor.ID);
         }
 
         if (transformHeader.Open)
         {
+            auto& transform = actor.Transform.WorldTransform;
+
             glm::vec3 position = transform.Position;
             if (DrawVec3PropertyRow("Position", position, 0.1f, 0.0f, 0.0f, tracked))
             {
@@ -918,11 +916,17 @@ namespace Quiet::Renderer::UI
         if (!actor.StaticMesh.has_value()) return;
         if (!actor.Material.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Material", "MaterialComponentOptions");
+        const bool canResetMaterial = actor.StaticMesh->Mesh != nullptr;
+
+        const auto header = BeginInspectorComponent("Material", "MaterialComponentOptions", true, canResetMaterial);
         if (header.RemoveRequested)
         {
             commands.RemoveMaterial(scene, actor.ID);
             return;
+        }
+        if (header.ResetRequested)
+        {
+            commands.ResetMaterial(scene, actor.ID);
         }
         if (!header.Open) return;
 
@@ -1007,19 +1011,22 @@ namespace Quiet::Renderer::UI
         }
     }
 
-    void DrawDirectionalLightSection(Scene::Scene &scene,
-                                     Scene::Actor &actor,
-                                     Editor::EditorCommands &commands,
-                                     const TrackedInspectorInteraction &tracked)
+    void DrawDirectionalLightSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)
     {
         if (!actor.DirectionalLight.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Directional Light", "DirectionalLightComponentOptions");
+        const auto header = BeginInspectorComponent("Directional Light", "DirectionalLightComponentOptions", true, true);
         if (header.RemoveRequested)
         {
             commands.RemoveDirectionalLight(scene, actor.ID);
             return;
         }
+
+        if (header.ResetRequested)
+        {
+            commands.ResetDirectionalLight(scene, actor.ID);
+        }
+
         if (!header.Open) return;
 
         bool enabled = actor.DirectionalLight->Enabled;
@@ -1039,20 +1046,25 @@ namespace Quiet::Renderer::UI
             commands.SetDirectionalLightIntensity(scene, actor.ID, intensity);
     }
 
-    void DrawRotatorSection(Scene::Scene& scene,
-                            Scene::Actor& actor,
-                            Editor::EditorCommands& commands,
-                            const TrackedInspectorInteraction& tracked)
+    void DrawRotatorSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)
     {
         if (!actor.Rotator.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Rotator", "RotatorComponentOptions");
+        const auto header = BeginInspectorComponent("Rotator", "RotatorComponentOptions", true, true);
+
         if (header.RemoveRequested)
         {
             commands.RemoveRotator(scene, actor.ID);
             return;
         }
-        if (!header.Open) return;
+
+        if (header.ResetRequested)
+        {
+            commands.ResetRotator(scene, actor.ID);
+        }
+
+        if (!header.Open)
+            return;
 
         float rotationSpeed = actor.Rotator->RotationSpeedDegreesPerSecond;
         if (DrawFloatPropertyRow("Rotation Speed", rotationSpeed, 1.0f, 0.0f, 0.0f, tracked))
@@ -1068,13 +1080,19 @@ namespace Quiet::Renderer::UI
     {
         if (!actor.Camera.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Camera", "CameraComponentOptions");
+        const auto header = BeginInspectorComponent("Camera", "CameraComponentOptions", true, true);
         if (header.RemoveRequested)
         {
             commands.RemoveCamera(scene, actor.ID);
             return;
         }
-        if (!header.Open) return;
+        if (header.ResetRequested)
+        {
+            commands.ResetCamera(scene, actor.ID);
+        }
+
+        if (!header.Open)
+            return;
 
         const bool isPilotingThisCamera =
             editorState.Selection.PilotedCameraActorID.has_value() &&

@@ -14,9 +14,7 @@
 namespace
 {
     template<typename Fn>
-    bool ApplyImmediateMutation(
-        Quiet::Editor::EditorController& editorController,
-        Quiet::Scene::Scene& scene, Fn&& fn)
+    bool ApplyImmediateMutation(Quiet::Editor::EditorController& editorController, Quiet::Scene::Scene& scene, Fn&& fn)
     {
         auto& editorState = editorController.GetState();
         if (editorState.Scene.Mode != Quiet::Editor::SceneMode::Edit)
@@ -28,9 +26,7 @@ namespace
         return changed && committed;
     }
 
-    const Quiet::Project::AssetRecord* FindMeshAssetRecord(
-        const Quiet::Project::ProjectContext& projectContext,
-        const std::string& meshResourceID)
+    const Quiet::Project::AssetRecord* FindMeshAssetRecord(const Quiet::Project::ProjectContext& projectContext, const std::string& meshResourceID)
     {
         const auto& registry = projectContext.GetAssetRegistry();
         const auto* record = Quiet::Project::AssetRegistryIO::FindByID(registry, meshResourceID);
@@ -40,17 +36,15 @@ namespace
         return record;
     }
 
-    std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> ResolveMeshResource(
-        const Quiet::Project::ProjectContext& projectContext,
-        const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
-        const std::string& meshResourceID)
+    std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> ResolveMeshResource(const Quiet::Project::ProjectContext& projectContext,
+                                                                             const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                                                             const std::string& meshResourceID)
     {
         if (!FindMeshAssetRecord(projectContext, meshResourceID)) return nullptr;
         return meshLibrary.TryGet(meshResourceID);
     }
 
-    std::vector<Quiet::Scene::MaterialComponent> CreateDefaultMaterialSlots(
-        const std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh>& mesh)
+    std::vector<Quiet::Scene::MaterialComponent> CreateDefaultMaterialSlots(const std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh>& mesh)
     {
         std::vector<Quiet::Scene::MaterialComponent> slots;
         if (!mesh) return slots;
@@ -266,9 +260,7 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::RenameActor(Scene::Scene& scene,
-                                     Core::UUID actorID,
-                                     const std::string& newName)
+    bool EditorCommands::RenameActor(Scene::Scene& scene, Core::UUID actorID, const std::string& newName)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -277,9 +269,7 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetActorPosition(Scene::Scene& scene,
-                                          Core::UUID actorID,
-                                          const glm::vec3& position)
+    bool EditorCommands::SetActorPosition(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& position)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -288,9 +278,7 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetActorRotation(Scene::Scene& scene,
-                                          Core::UUID actorID,
-                                          const glm::vec3& rotationDegrees)
+    bool EditorCommands::SetActorRotation(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& rotationDegrees)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -299,15 +287,26 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetActorScale(Scene::Scene& scene,
-                                       Core::UUID actorID,
-                                       const glm::vec3& scale)
+    bool EditorCommands::SetActorScale(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& scale)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
 
         actor->Transform.WorldTransform.Scale = scale;
         return true;
+    }
+
+    bool EditorCommands::ResetActorTransform(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor)
+                    return false;
+
+                actor->Transform = Scene::TransformComponent{};
+                return true;
+            });
     }
 
     bool EditorCommands::AddStaticMesh(Scene::Scene& scene,
@@ -392,9 +391,7 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetStaticMeshVisible(Scene::Scene& scene,
-                                              Core::UUID actorID,
-                                              bool visible)
+    bool EditorCommands::SetStaticMeshVisible(Scene::Scene& scene, Core::UUID actorID, bool visible)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -431,6 +428,25 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::ResetMaterial(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor ||
+                !actor->StaticMesh.has_value() ||
+                !actor->StaticMesh->Mesh ||
+                !actor->Material.has_value())
+            {
+                return false;
+            }
+
+            actor->Material = Scene::MaterialComponent{};
+            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(actor->StaticMesh->Mesh);
+            return true;
+        });
+    }
+
     bool EditorCommands::SetMaterialBaseColor(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
@@ -452,8 +468,7 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetStaticMeshMaterialSlotBaseColor(Scene::Scene &scene, Core::UUID actorID,
-        std::uint32_t slotIndex, const glm::vec4 &baseColor)
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColor(Scene::Scene &scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4 &baseColor)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor || !actor->StaticMesh.has_value())
@@ -468,8 +483,7 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID,
-        std::uint32_t slotIndex, const std::string &textureAssetID)
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, std::uint32_t slotIndex, const std::string &textureAssetID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -507,6 +521,19 @@ namespace Quiet::Editor
             if (!actor || !actor->DirectionalLight.has_value()) return false;
 
             actor->DirectionalLight.reset();
+            return true;
+        });
+    }
+
+    bool EditorCommands::ResetDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->DirectionalLight.has_value())
+                return false;
+
+            actor->DirectionalLight = Scene::DirectionalLightComponent{};
             return true;
         });
     }
@@ -569,6 +596,19 @@ namespace Quiet::Editor
             actor->Rotator.reset();
             return true;
         });
+    }
+
+    bool EditorCommands::ResetRotator(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+       {
+           Scene::Actor* actor = scene.FindActorByID(actorID);
+           if (!actor || !actor->Rotator.has_value())
+               return false;
+
+           actor->Rotator = Scene::RotatorComponent{ 45.0f };
+           return true;
+       });
     }
 
     bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed)
@@ -657,6 +697,27 @@ namespace Quiet::Editor
                     }
                 }
             }
+            return true;
+        });
+    }
+
+    bool EditorCommands::ResetCamera(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->Camera.has_value())
+                return false;
+
+            const Scene::Actor* primaryCameraActor =
+                scene.FindPrimaryCameraActor();
+
+            Scene::CameraComponent camera{};
+            camera.Primary =
+                primaryCameraActor == nullptr ||
+                primaryCameraActor->ID == actorID;
+
+            actor->Camera = camera;
             return true;
         });
     }
