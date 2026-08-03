@@ -20,7 +20,7 @@ Implemented foundations:
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
-* scene viewport with picking, overlays, camera controls, and ImGuizmo editing
+* scene viewport with an adaptive world grid, actor picking, hover/selection feedback, Fly/Orbit/Pan navigation, mesh-placement previews, and ImGuizmo editing
 * project manager with `.quiet` project descriptors
 * scene save/load workflow
 * dual-source Asset Browser with editable physical Project content, read-only Engine resources, and a project-local asset registry
@@ -71,19 +71,36 @@ The editor target is currently the primary development target.
 
 ### Viewport
 
-* scene viewport render target
-* viewport picking
-* selected actor interaction
-* camera navigation
+* offscreen scene viewport render target
+* procedural GPU world grid on the world XZ plane
+* adaptive grid scale with smooth 1/10, 10/100, and 100/1000 transitions
+* distance and horizon fading for stable large-scene navigation
+* world X and Z axis visualization
+* Edit and Simulate grid rendering with automatic Play/Sandbox suppression
+* CPU actor picking for Static Mesh actors and editor debug icons
+* distinct hover and selected-actor feedback
+* projected mesh bounds, actor names, and origin markers
+* Camera and Directional Light editor icons and overlays
+* configurable Viewport display options
+* formal cursor capture with focus-loss cancellation and cursor restoration
+* RMB Fly navigation
+* Alt+LMB Orbit navigation around selected bounds or a resolved scene pivot
+* MMB camera-plane Pan navigation
+* configurable logarithmic camera speed with presets
+* RMB-wheel speed adjustment and Shift speed boost
+* shared navigation controls for free and piloted Camera actors
+* contextual idle, Fly, Orbit, Pan, and Pilot navigation guides
+* live Viewport mode and navigation status overlay
 * viewport overlay toolbar
-* status overlays
 * ImGuizmo integration
 * translate / rotate / scale tools
 * local/world gizmo mode
 * snapping support
 * focus selected actor
 * drag mesh assets from the Asset Browser into the Viewport
+* live world-space mesh placement preview using source bounds
 * cursor-ray actor placement with ground-plane fallback
+* lowest-bound ground alignment for dropped meshes
 * undoable Static Mesh actor creation from asset drops
 
 ### Hierarchy
@@ -480,6 +497,16 @@ F2                  Rename the selected Project Asset
 F                   Focus selected actor
 F5                  Play / Stop Play
 F6                  Simulate / Stop Simulate
+T                   Translate gizmo
+R                   Rotate gizmo
+S                   Scale gizmo
+L                   Toggle Local / World gizmo mode
+G                   Toggle snapping
+RMB                 Fly through the Viewport
+Alt+LMB             Orbit around the resolved pivot
+MMB                 Pan parallel to the camera plane
+Mouse Wheel         Adjust camera speed during Fly
+Shift               Apply 2x Fly speed boost
 ```
 
 ---
@@ -514,13 +541,22 @@ F6                  Simulate / Stop Simulate
 * drag/drop Static Mesh actor creation in the Viewport
 * built-in primitive creation from the Engine source
 * imported material-slot Inspector presentation and compact texture previews
+* procedural adaptive world grid with major lines and world axes
+* camera-height grid LOD and horizon-aware fading
+* configurable Viewport camera speed and presets
+* formal Viewport cursor capture and restoration
+* RMB Fly, Alt+LMB Orbit, and MMB Pan navigation
+* shared free-camera and piloted-camera navigation
+* contextual Viewport navigation guide and live status feedback
+* mesh and editor-icon hover feedback
+* selected-actor projected bounds and origin feedback
+* live mesh-drop placement preview with ground alignment
+* consolidated Viewport display options
 
 ### Upcoming Areas
 
-* viewport grid
-* better selection outline/highlight
-* snapping controls UI
-* camera speed settings
+* editable snapping increment controls
+* GPU silhouette/post-process selection highlighting
 * component copy/paste
 * reset component values
 * recent scenes per project
