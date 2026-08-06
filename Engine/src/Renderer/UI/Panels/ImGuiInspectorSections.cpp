@@ -27,14 +27,27 @@ namespace
     {
         None,
         Transform,
-        DirectionalLight
+        StaticMesh,
+        Material,
+        DirectionalLight,
+        Rotator,
+        Camera
     };
 
     struct InspectorComponentClipboardState
     {
         InspectorComponentClipboardType Type = InspectorComponentClipboardType::None;
         Quiet::Scene::TransformComponent Transform{};
+
+        std::string StaticMeshResourceID;
+        bool StaticMeshVisible = true;
+
+        Quiet::Scene::MaterialComponent Material{};
+        std::vector<Quiet::Scene::MaterialComponent> MaterialSlots;
+
         Quiet::Scene::DirectionalLightComponent DirectionalLight{};
+        Quiet::Scene::RotatorComponent Rotator{};
+        Quiet::Scene::CameraComponent Camera{};
     };
 
     InspectorComponentClipboardState g_InspectorComponentClipboard{};
@@ -902,30 +915,64 @@ namespace Quiet::Renderer::UI
                                const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary)
     {
-        const bool hasMeshAssets = !projectContext.EnumerateMeshAssetIDs().empty();
         if (!actor.StaticMesh.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Static Mesh", "StaticMeshComponentOptions");
+        const bool hasMeshAssets = !projectContext.EnumerateMeshAssetIDs().empty();
+        const bool hasStaticMeshClipboard = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::StaticMesh;
+        const Project::AssetRecord* copiedMeshRecord = nullptr;
+
+        if (hasStaticMeshClipboard && !g_InspectorComponentClipboard.StaticMeshResourceID.empty())
+        {
+            copiedMeshRecord = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), g_InspectorComponentClipboard.StaticMeshResourceID);
+        }
+
+        const bool canPasteStaticMesh =
+            copiedMeshRecord != nullptr &&
+            copiedMeshRecord->Type == Project::AssetType::Mesh &&
+            meshLibrary.TryGet(g_InspectorComponentClipboard.StaticMeshResourceID) != nullptr;
+
+        const auto header = BeginInspectorComponent("Static Mesh", "StaticMeshComponentOptions", true, false, true, canPasteStaticMesh);
         if (header.RemoveRequested)
         {
             commands.RemoveStaticMesh(scene, actor.ID);
             return;
         }
-        if (!header.Open) return;
+
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::StaticMesh;
+            g_InspectorComponentClipboard.StaticMeshResourceID = actor.StaticMesh->MeshResourceID;
+            g_InspectorComponentClipboard.StaticMeshVisible = actor.StaticMesh->Visible;
+        }
+
+        if (header.PasteRequested && canPasteStaticMesh)
+        {
+            commands.PasteStaticMeshValues(
+                scene,
+                actor.ID,
+                g_InspectorComponentClipboard.StaticMeshResourceID,
+                g_InspectorComponentClipboard.StaticMeshVisible,
+                projectContext,
+                meshLibrary
+            );
+        }
+
+        if (!header.Open)
+            return;
 
         Assets::AssetPickerOptions meshPickerOptions{};
         meshPickerOptions.Type = Project::AssetType::Mesh;
         meshPickerOptions.MeshLibrary = &meshLibrary;
+
         std::string selectedMeshAssetID;
 
         if (DrawAssetPickerPropertyRow("Mesh Resource", projectContext, meshPickerOptions, actor.StaticMesh->MeshResourceID, selectedMeshAssetID))
         {
             commands.SetStaticMeshResource(scene, actor.ID, selectedMeshAssetID, projectContext, meshLibrary);
         }
+
         if (!hasMeshAssets)
-        {
             DrawInspectorHint("No mesh assets registered.");
-        }
 
         bool visible = actor.StaticMesh->Visible;
         if (DrawCheckboxPropertyRow("Visible", visible))
@@ -946,17 +993,42 @@ namespace Quiet::Renderer::UI
         if (!actor.Material.has_value()) return;
 
         const bool canResetMaterial = actor.StaticMesh->Mesh != nullptr;
+        const bool canPasteMaterial =
+            g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Material &&
+            g_InspectorComponentClipboard.MaterialSlots.size() == actor.StaticMesh->MaterialSlots.size();
 
-        const auto header = BeginInspectorComponent("Material", "MaterialComponentOptions", true, canResetMaterial);
+        const auto header = BeginInspectorComponent(
+            "Material",
+            "MaterialComponentOptions",
+            true,
+            canResetMaterial,
+            true,
+            canPasteMaterial
+        );
+
         if (header.RemoveRequested)
         {
             commands.RemoveMaterial(scene, actor.ID);
             return;
         }
+
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Material;
+            g_InspectorComponentClipboard.Material = actor.Material.value();
+            g_InspectorComponentClipboard.MaterialSlots = actor.StaticMesh->MaterialSlots;
+        }
+
+        if (header.PasteRequested && canPasteMaterial)
+        {
+            commands.PasteMaterialValues(scene, actor.ID, g_InspectorComponentClipboard.Material, g_InspectorComponentClipboard.MaterialSlots);
+        }
+
         if (header.ResetRequested)
         {
             commands.ResetMaterial(scene, actor.ID);
         }
+
         if (!header.Open) return;
 
         const bool hasMaterialSlots = !actor.StaticMesh->MaterialSlots.empty();
@@ -974,9 +1046,7 @@ namespace Quiet::Renderer::UI
 
         ImGui::Spacing();
 
-        const bool hasTextureAssets = !projectContext
-                .EnumerateTextureAssetIDs()
-                .empty();
+        const bool hasTextureAssets = !projectContext.EnumerateTextureAssetIDs().empty();
 
         Assets::AssetPickerOptions texturePickerOptions{};
         texturePickerOptions.Type = Project::AssetType::Texture;
@@ -1099,11 +1169,22 @@ namespace Quiet::Renderer::UI
         }
     }
 
-    void DrawRotatorSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)
+    void DrawRotatorSection(Scene::Scene& scene,
+                            Scene::Actor& actor,
+                            Editor::EditorCommands& commands,
+                            const TrackedInspectorInteraction& tracked)
     {
         if (!actor.Rotator.has_value()) return;
+        const bool canPasteRotator = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Rotator;
 
-        const auto header = BeginInspectorComponent("Rotator", "RotatorComponentOptions", true, true);
+        const auto header = BeginInspectorComponent(
+            "Rotator",
+            "RotatorComponentOptions",
+            true,
+            true,
+            true,
+            canPasteRotator
+        );
 
         if (header.RemoveRequested)
         {
@@ -1111,17 +1192,30 @@ namespace Quiet::Renderer::UI
             return;
         }
 
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Rotator;
+            g_InspectorComponentClipboard.Rotator = actor.Rotator.value();
+        }
+
+        if (header.PasteRequested && canPasteRotator)
+        {
+            commands.PasteRotatorValues(scene, actor.ID, g_InspectorComponentClipboard.Rotator);
+        }
+
         if (header.ResetRequested)
         {
             commands.ResetRotator(scene, actor.ID);
         }
 
-        if (!header.Open)
-            return;
+        if (!header.Open) return;
 
         float rotationSpeed = actor.Rotator->RotationSpeedDegreesPerSecond;
+
         if (DrawFloatPropertyRow("Rotation Speed", rotationSpeed, 1.0f, 0.0f, 0.0f, tracked))
+        {
             commands.SetRotatorSpeed(scene, actor.ID, rotationSpeed);
+        }
     }
 
     void DrawCameraSection(Scene::Scene& scene,
@@ -1132,20 +1226,39 @@ namespace Quiet::Renderer::UI
                            const bool isEditMode)
     {
         if (!actor.Camera.has_value()) return;
+        const bool canPasteCamera = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Camera;
+        const auto header = BeginInspectorComponent(
+            "Camera",
+            "CameraComponentOptions",
+            true,
+            true,
+            true,
+            canPasteCamera
+        );
 
-        const auto header = BeginInspectorComponent("Camera", "CameraComponentOptions", true, true);
         if (header.RemoveRequested)
         {
             commands.RemoveCamera(scene, actor.ID);
             return;
         }
+
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Camera;
+            g_InspectorComponentClipboard.Camera = actor.Camera.value();
+        }
+
+        if (header.PasteRequested && canPasteCamera)
+        {
+            commands.PasteCameraValues(scene, actor.ID, g_InspectorComponentClipboard.Camera);
+        }
+
         if (header.ResetRequested)
         {
             commands.ResetCamera(scene, actor.ID);
         }
 
-        if (!header.Open)
-            return;
+        if (!header.Open) return;
 
         const bool isPilotingThisCamera =
             editorState.Selection.PilotedCameraActorID.has_value() &&

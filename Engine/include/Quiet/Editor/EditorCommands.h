@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 #include "Quiet/Core/UUID.h"
 #include "glm/vec3.hpp"
@@ -10,9 +11,13 @@
 
 namespace Quiet::Scene
 {
+    struct CameraComponent;
     class Scene;
     struct TransformComponent;
     struct DirectionalLightComponent;
+    struct RotatorComponent;
+    struct MaterialComponent;
+    struct TransformComponent;
 }
 
 namespace Quiet::Project
@@ -69,6 +74,7 @@ namespace Quiet::Editor
             const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position = glm::vec3(0.0f));
         bool AddStaticMesh(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool RemoveStaticMesh(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteStaticMeshValues(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, bool visible, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool SetStaticMeshVisible(Scene::Scene& scene, Core::UUID actorID, bool visible);
     #pragma endregion
@@ -77,6 +83,8 @@ namespace Quiet::Editor
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool ResetMaterial(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots
+);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
         bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
         bool SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor);
@@ -100,6 +108,7 @@ namespace Quiet::Editor
         bool AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed = 45.0f);
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);
         bool ResetRotator(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteRotatorValues(Scene::Scene& scene, Core::UUID actorID, const Scene::RotatorComponent& rotator);
         bool SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed);
     #pragma endregion
 
@@ -114,6 +123,8 @@ namespace Quiet::Editor
         bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);
         bool ResetCamera(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteCameraValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CameraComponent& camera
+);
         bool SetCameraPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary);
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);

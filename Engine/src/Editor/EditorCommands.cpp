@@ -353,6 +353,36 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::PasteStaticMeshValues(Scene::Scene &scene, Core::UUID actorID, const std::string &meshResourceID, bool visible, const Project::ProjectContext &projectContext, const Renderer::Vulkan::MeshLibrary &meshLibrary)
+    {
+        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
+        if (!mesh)
+        {
+            QUIET_CORE_WARN("Cannot paste Static Mesh values because mesh asset '{}' is not registered or loaded.", meshResourceID);
+            return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->StaticMesh.has_value())
+                return false;
+
+            Scene::StaticMeshComponent& staticMesh = actor->StaticMesh.value();
+            const bool resourceChanged = staticMesh.MeshResourceID != meshResourceID;
+            staticMesh.MeshResourceID = meshResourceID;
+            staticMesh.Mesh = mesh;
+            staticMesh.Visible = visible;
+
+            if (resourceChanged)
+            {
+                staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
+            }
+
+            return true;
+        });
+    }
+
     bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
@@ -434,6 +464,19 @@ namespace Quiet::Editor
             actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(actor->StaticMesh->Mesh);
             return true;
         });
+    }
+
+    bool EditorCommands::PasteMaterialValues(Scene::Scene &scene, Core::UUID actorID, const Scene::MaterialComponent &material, const std::vector<Scene::MaterialComponent> &materialSlots)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+           {
+               Scene::Actor* actor = scene.FindActorByID(actorID);
+               if (!actor || !actor->StaticMesh.has_value() || !actor->Material.has_value()) return false;
+               if (actor->StaticMesh->MaterialSlots.size() != materialSlots.size()) return false;
+               actor->Material = material;
+               actor->StaticMesh->MaterialSlots = materialSlots;
+               return true;
+           });
     }
 
     bool EditorCommands::SetMaterialBaseColor(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
@@ -635,6 +678,19 @@ namespace Quiet::Editor
        });
     }
 
+    bool EditorCommands::PasteRotatorValues(Scene::Scene &scene, Core::UUID actorID, const Scene::RotatorComponent &rotator)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+       {
+           Scene::Actor* actor = scene.FindActorByID(actorID);
+           if (!actor || !actor->Rotator.has_value())
+               return false;
+
+           actor->Rotator = rotator;
+           return true;
+       });
+    }
+
     bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);
@@ -748,6 +804,27 @@ namespace Quiet::Editor
             camera.Primary =
                 primaryCameraActor == nullptr ||
                 primaryCameraActor->ID == actorID;
+
+            actor->Camera = camera;
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteCameraValues(Scene::Scene &scene, Core::UUID actorID, const Scene::CameraComponent &camera)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->Camera.has_value())
+                return false;
+
+            if (camera.Primary)
+            {
+                for (Scene::Actor& other : scene.GetActors())
+                {
+                    if (other.Camera.has_value()) other.Camera->Primary = false;
+                }
+            }
 
             actor->Camera = camera;
             return true;
