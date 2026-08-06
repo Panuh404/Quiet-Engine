@@ -1047,8 +1047,33 @@ namespace Quiet::Renderer::UI
         const bool canResetMaterial = actor.StaticMesh->Mesh != nullptr;
         const bool hasMaterialClipboard = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Material;
         const bool materialSlotCountsMatch = hasMaterialClipboard && g_InspectorComponentClipboard.MaterialSlots.size() == actor.StaticMesh->MaterialSlots.size();
-        const bool canPasteMaterial = hasMaterialClipboard && materialSlotCountsMatch;
+        const auto& assetRegistry = projectContext.GetAssetRegistry();
 
+        const auto isRegisteredTextureAsset = [&](const std::string& textureAssetID)
+            {
+                if (textureAssetID.empty()) return true;
+                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
+                return record && record->Type == Project::AssetType::Texture;
+            };
+
+        bool copiedMaterialTexturesValid = true;
+        if (hasMaterialClipboard)
+        {
+            copiedMaterialTexturesValid = isRegisteredTextureAsset(g_InspectorComponentClipboard.Material.BaseColorTextureAssetID);
+            if (copiedMaterialTexturesValid)
+            {
+                for (const Scene::MaterialComponent& materialSlot : g_InspectorComponentClipboard.MaterialSlots)
+                {
+                    if (!isRegisteredTextureAsset(materialSlot.BaseColorTextureAssetID))
+                    {
+                        copiedMaterialTexturesValid = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const bool canPasteMaterial = hasMaterialClipboard && materialSlotCountsMatch && copiedMaterialTexturesValid;
         const char* pasteUnavailableReason = nullptr;
 
         if (!hasMaterialClipboard)
@@ -1058,6 +1083,10 @@ namespace Quiet::Renderer::UI
         else if (!materialSlotCountsMatch)
         {
             pasteUnavailableReason = "Source and target Materials must have the same imported slot count.";
+        }
+        else if (!copiedMaterialTexturesValid)
+        {
+            pasteUnavailableReason = "One or more copied Material textures are no longer registered in this project.";
         }
 
         const auto header = BeginInspectorComponent(
@@ -1085,7 +1114,13 @@ namespace Quiet::Renderer::UI
 
         if (header.PasteRequested && canPasteMaterial)
         {
-            commands.PasteMaterialValues(scene, actor.ID, g_InspectorComponentClipboard.Material, g_InspectorComponentClipboard.MaterialSlots);
+            commands.PasteMaterialValues(
+                scene,
+                actor.ID,
+                g_InspectorComponentClipboard.Material,
+                g_InspectorComponentClipboard.MaterialSlots,
+                projectContext
+            );
         }
 
         if (header.ResetRequested)

@@ -27,7 +27,7 @@ Implemented foundations:
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
 * dedicated Scene Settings panel for scene-wide lighting and ambient controls
-* inspector with actor/component editing
+* inspector with validated component editing, reset, copy/paste, undo/redo, and dirty-state integration
 * undo/redo and dirty-state tracking
 * Edit / Simulate / Play runtime mode groundwork
 * console and diagnostics panels
@@ -123,18 +123,24 @@ Folders are editor organization nodes only. They do not change runtime transform
 
 ### Inspector
 
-* actor header
-* transform editing
-* static mesh editing
-* material editing with fallback material controls
+* actor header and rename workflow
+* Transform editing
+* Static Mesh resource and visibility editing
+* Material editing with fallback material controls
 * imported material-slot overrides with source names and submesh usage
 * compact material-slot texture previews
-* directional light component editing
-* rotator component editing
-* camera component editing
-* add component menu
-* component action menu
-* reset transform action
+* Directional Light component editing
+* Rotator component editing
+* Camera component editing and piloting controls
+* Add Component menu
+* consistent component action menus
+* Reset Component support for Transform, Material, Directional Light, Rotator, and Camera
+* typed component-value clipboard for Transform, Static Mesh, Material, Directional Light, Rotator, and Camera
+* cross-actor Copy Component and Paste Component Values workflows
+* asset, slot-count, and component-type validation for pasted values
+* contextual explanations for unavailable Paste actions
+* atomic undo/redo and dirty-state integration for component actions and value editing
+* bounded numeric validation for Transform scale, lighting, material colors, and Camera projection values
 * searchable Mesh and Texture asset pickers
 * asset search by registry ID and path
 * texture previews and source diagnostics in picker results
@@ -552,6 +558,10 @@ Shift               Apply 2x Fly speed boost
 * selected-actor projected bounds and origin feedback
 * live mesh-drop placement preview with ground alignment
 * consolidated Viewport display options
+* Inspector component reset workflow for Transform, Material, Directional Light, Rotator, and Camera
+* typed Inspector component clipboard for Transform, Static Mesh, Material, Directional Light, Rotator, and Camera
+* validated component paste availability with contextual disabled-action feedback
+* complete Inspector component Undo/Redo and dirty-state integration
 
 ### Upcoming Areas
 
@@ -563,6 +573,7 @@ Shift               Apply 2x Fly speed boost
 * better unsaved-change prompts
 * project settings
 * runtime/play-mode expansion
+* component copy/paste
 
 ---
 

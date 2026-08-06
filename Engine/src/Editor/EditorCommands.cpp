@@ -1,6 +1,7 @@
 #include "Quiet/Editor/EditorCommands.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "Quiet/Editor/EditorController.h"
@@ -552,8 +553,28 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots)
+    bool EditorCommands::PasteMaterialValues(Scene::Scene& scene,
+                                             Core::UUID actorID,
+                                             const Scene::MaterialComponent& material,
+                                             const std::vector<Scene::MaterialComponent>& materialSlots,
+                                             const Project::ProjectContext& projectContext)
     {
+        const auto& assetRegistry = projectContext.GetAssetRegistry();
+
+        const auto isRegisteredTextureAsset =
+            [&](const std::string& textureAssetID)
+            {
+                if (textureAssetID.empty()) return true;
+
+                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
+                return record && record->Type == Project::AssetType::Texture;
+            };
+
+        if (!isRegisteredTextureAsset(material.BaseColorTextureAssetID))
+        {
+            return false;
+        }
+
         if (!std::isfinite(material.BaseColor.x) ||
             !std::isfinite(material.BaseColor.y) ||
             !std::isfinite(material.BaseColor.z) ||
@@ -574,8 +595,12 @@ namespace Quiet::Editor
         std::vector<Scene::MaterialComponent> validatedMaterialSlots = materialSlots;
         for (Scene::MaterialComponent& materialSlot : validatedMaterialSlots)
         {
-            const glm::vec4 sourceColor =
-                materialSlot.BaseColor;
+            if (!isRegisteredTextureAsset(materialSlot.BaseColorTextureAssetID))
+            {
+                return false;
+            }
+
+            const glm::vec4 sourceColor = materialSlot.BaseColor;
 
             if (!std::isfinite(sourceColor.x) ||
                 !std::isfinite(sourceColor.y) ||
@@ -600,6 +625,7 @@ namespace Quiet::Editor
             [&]()
             {
                 Scene::Actor* actor = scene.FindActorByID(actorID);
+
                 if (!actor ||
                     !actor->StaticMesh.has_value() ||
                     !actor->Material.has_value())
@@ -614,6 +640,7 @@ namespace Quiet::Editor
 
                 actor->Material = validatedMaterial;
                 actor->StaticMesh->MaterialSlots = validatedMaterialSlots;
+
                 return true;
             }
         );
