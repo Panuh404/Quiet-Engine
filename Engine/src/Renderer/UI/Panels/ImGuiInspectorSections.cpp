@@ -26,13 +26,15 @@ namespace
     enum class InspectorComponentClipboardType
     {
         None,
-        Transform
+        Transform,
+        DirectionalLight
     };
 
     struct InspectorComponentClipboardState
     {
         InspectorComponentClipboardType Type = InspectorComponentClipboardType::None;
         Quiet::Scene::TransformComponent Transform{};
+        Quiet::Scene::DirectionalLightComponent DirectionalLight{};
     };
 
     InspectorComponentClipboardState g_InspectorComponentClipboard{};
@@ -1038,15 +1040,31 @@ namespace Quiet::Renderer::UI
         }
     }
 
-    void DrawDirectionalLightSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)
+    void DrawDirectionalLightSection(Scene::Scene& scene,
+                                     Scene::Actor& actor,
+                                     Editor::EditorCommands& commands,
+                                     const TrackedInspectorInteraction& tracked)
     {
         if (!actor.DirectionalLight.has_value()) return;
 
-        const auto header = BeginInspectorComponent("Directional Light", "DirectionalLightComponentOptions", true, true);
+        const bool canPasteDirectionalLight = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::DirectionalLight;
+        const auto header = BeginInspectorComponent("Directional Light", "DirectionalLightComponentOptions", true, true, true, canPasteDirectionalLight);
+
         if (header.RemoveRequested)
         {
             commands.RemoveDirectionalLight(scene, actor.ID);
             return;
+        }
+
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::DirectionalLight;
+            g_InspectorComponentClipboard.DirectionalLight = *actor.DirectionalLight;
+        }
+
+        if (header.PasteRequested && canPasteDirectionalLight)
+        {
+            commands.PasteDirectionalLightValues(scene, actor.ID, g_InspectorComponentClipboard.DirectionalLight);
         }
 
         if (header.ResetRequested)
@@ -1058,19 +1076,27 @@ namespace Quiet::Renderer::UI
 
         bool enabled = actor.DirectionalLight->Enabled;
         if (DrawCheckboxPropertyRow("Enabled", enabled))
+        {
             commands.SetDirectionalLightEnabled(scene, actor.ID, enabled);
+        }
 
         glm::vec3 direction = actor.DirectionalLight->Direction;
         if (DrawVec3PropertyRow("Direction", direction, 0.01f, -1.0f, 1.0f, tracked))
+        {
             commands.SetDirectionalLightDirection(scene, actor.ID, direction);
+        }
 
         glm::vec3 color = actor.DirectionalLight->Color;
         if (DrawColor3PropertyRow("Color", color, tracked))
+        {
             commands.SetDirectionalLightColor(scene, actor.ID, color);
+        }
 
         float intensity = actor.DirectionalLight->Intensity;
         if (DrawFloatPropertyRow("Intensity", intensity, 0.01f, 0.0f, 10.0f, tracked))
+        {
             commands.SetDirectionalLightIntensity(scene, actor.ID, intensity);
+        }
     }
 
     void DrawRotatorSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)

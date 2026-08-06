@@ -545,6 +545,19 @@ namespace Quiet::Editor
         });
     }
 
+    bool EditorCommands::PasteDirectionalLightValues(Scene::Scene &scene, Core::UUID actorID, const Scene::DirectionalLightComponent &directionalLight)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || !actor->DirectionalLight.has_value())
+                    return false;
+
+                actor->DirectionalLight = directionalLight;
+                return true;
+            });
+    }
+
     bool EditorCommands::SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled)
     {
         Scene::Actor* actor = scene.FindActorByID(actorID);

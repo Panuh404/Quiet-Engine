@@ -12,6 +12,7 @@ namespace Quiet::Scene
 {
     class Scene;
     struct TransformComponent;
+    struct DirectionalLightComponent;
 }
 
 namespace Quiet::Project
@@ -87,6 +88,8 @@ namespace Quiet::Editor
         bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool ResetDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteDirectionalLightValues(Scene::Scene& scene, Core::UUID actorID, const Scene::DirectionalLightComponent& directionalLight
+);
         bool SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled);
         bool SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction);
         bool SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color);
