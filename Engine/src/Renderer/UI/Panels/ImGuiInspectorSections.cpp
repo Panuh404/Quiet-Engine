@@ -23,11 +23,27 @@ namespace
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
     namespace ASSETS = Quiet::Renderer::UI::Assets;
 
+    enum class InspectorComponentClipboardType
+    {
+        None,
+        Transform
+    };
+
+    struct InspectorComponentClipboardState
+    {
+        InspectorComponentClipboardType Type = InspectorComponentClipboardType::None;
+        Quiet::Scene::TransformComponent Transform{};
+    };
+
+    InspectorComponentClipboardState g_InspectorComponentClipboard{};
+
     struct InspectorComponentHeaderResult
     {
         bool Open = false;
         bool RemoveRequested = false;
         bool ResetRequested = false;
+        bool CopyRequested = false;
+        bool PasteRequested = false;
     };
 
     std::string g_OpenInspectorComponentMenuID;
@@ -47,7 +63,7 @@ namespace
         return {std::clamp(desiredPosition.x, minX, maxX), std::clamp(desiredPosition.y, minY, maxY)};
     }
 
-    void DrawFloatingComponentOptionsMenu(const char* popupID, const bool removable, const bool resettable, InspectorComponentHeaderResult& result)
+    void DrawFloatingComponentOptionsMenu(const char* popupID, const bool removable, const bool resettable, const bool clipboardSupported, const bool pasteAvailable, InspectorComponentHeaderResult& result)
     {
         if (g_OpenInspectorComponentMenuID != popupID) return;
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
@@ -56,18 +72,24 @@ namespace
             return;
         }
 
+        const int menuItemCount = (resettable ? 1 : 0) + (clipboardSupported ? 2 : 0) + 1;
+        const int separatorCount = (resettable && clipboardSupported ? 1 : 0) + (resettable || clipboardSupported ? 1 : 0);
+
         const float menuWidth = SZ::Px(230.0f);
-        const float estimatedMenuHeight = SZ::Px(48.0f);
+        const float estimatedMenuHeight = SZ::Px(
+            12.0f +
+            static_cast<float>(menuItemCount) * 30.0f +
+            static_cast<float>(separatorCount) * 5.0f
+        );
 
         const ImVec2 menuSize(menuWidth, estimatedMenuHeight);
         const ImVec2 menuPosition = ClampMenuPositionToViewport(g_OpenInspectorComponentMenuPosition, menuSize);
 
         const std::string windowID = std::string("##FloatingComponentMenu_") + popupID;
-
         ImGui::SetNextWindowPos(menuPosition, ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(menuWidth, 0.0f), ImGuiCond_Always);
 
-        ImGuiWindowFlags flags =
+        const ImGuiWindowFlags flags =
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove |
@@ -96,6 +118,7 @@ namespace
             hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
             const ImVec2 itemSize(ImGui::GetContentRegionAvail().x, 0.0f);
 
+            bool hasPreviousAction = false;
             if (resettable)
             {
                 if (QUI::EditorSelectable("Reset Component", false, 0, itemSize))
@@ -103,8 +126,28 @@ namespace
                     result.ResetRequested = true;
                     g_OpenInspectorComponentMenuID.clear();
                 }
-                ImGui::Separator();
+                hasPreviousAction = true;
             }
+
+            if (clipboardSupported)
+            {
+                if (hasPreviousAction) ImGui::Separator();
+                if (QUI::EditorSelectable("Copy Component", false, 0, itemSize))
+                {
+                    result.CopyRequested = true;
+                    g_OpenInspectorComponentMenuID.clear();
+                }
+
+                if (QUI::EditorSelectable("Paste Component Values", false, 0, itemSize, pasteAvailable))
+                {
+                    result.PasteRequested = true;
+                    g_OpenInspectorComponentMenuID.clear();
+                }
+
+                hasPreviousAction = true;
+            }
+
+            if (hasPreviousAction) ImGui::Separator();
 
             if (removable)
             {
@@ -134,7 +177,7 @@ namespace
         }
     }
 
-    InspectorComponentHeaderResult BeginInspectorComponent(const char* title, const char* popupID, const bool removable = true, const bool resettable = false)
+    InspectorComponentHeaderResult BeginInspectorComponent(const char* title, const char* popupID, const bool removable = true, const bool resettable = false, const bool clipboardSupported = false, const bool pasteAvailable = false)
     {
         InspectorComponentHeaderResult result{};
 
@@ -196,7 +239,7 @@ namespace
         }
 
         ImGui::PopID();
-        DrawFloatingComponentOptionsMenu(popupID, removable, resettable, result);
+        DrawFloatingComponentOptionsMenu(popupID, removable, resettable, clipboardSupported, pasteAvailable, result);
         return result;
     }
 
@@ -243,29 +286,6 @@ namespace
         ImGui::Dummy(ImVec2(0.0f, SZ::Px(3.0f)));
     }
 
-    void DrawMaterialTexturePreviewIfAvailable(
-        const std::string& textureAssetID,
-        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary,
-        const float uiScale,
-        const float previewSize)
-    {
-        if (textureAssetID.empty()) return;
-        const auto textureStats = textureLibrary.GetStats(textureAssetID);
-        if (!textureStats.has_value())
-        {
-            DrawInspectorWarning("Texture is not loaded. Press Reload in the Assets panel.");
-            return;
-        }
-
-        if (!textureStats->GpuReady)
-        {
-            DrawInspectorWarning("Texture metadata is loaded, but GPU texture is not ready.");
-            return;
-        }
-
-        QUI::DrawTexturePreview(textureAssetID, textureLibrary, textureStats.value(), uiScale, previewSize);
-    }
-
     float GetInspectorPropertyLabelWidth()
     {
         const float availableWidth = ImGui::GetContentRegionAvail().x;
@@ -286,8 +306,7 @@ namespace
         ImGui::SameLine(rowStartX + labelWidth);
     }
 
-    bool DrawFloatPropertyRow(const char* label, float& value, const float speed, const float minValue, const float maxValue,
-                              const QUI::TrackedInspectorInteraction& tracked)
+    bool DrawFloatPropertyRow(const char* label, float& value, const float speed, const float minValue, const float maxValue, const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
@@ -302,8 +321,7 @@ namespace
         return changed;
     }
 
-    bool DrawVec3PropertyRow(const char* label, glm::vec3& value, const float speed, const float minValue, const float maxValue,
-                             const QUI::TrackedInspectorInteraction& tracked)
+    bool DrawVec3PropertyRow(const char* label, glm::vec3& value, const float speed, const float minValue, const float maxValue, const QUI::TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
 
@@ -750,12 +768,21 @@ namespace Quiet::Renderer::UI
 
         ImGui::Spacing();
 
-        const auto transformHeader = BeginInspectorComponent(
-            "Transform",
-            "TransformComponentOptions",
-            false,
-            true
-        );
+        const bool canPasteTransform =
+            g_InspectorComponentClipboard.Type ==
+            InspectorComponentClipboardType::Transform;
+
+        const auto transformHeader = BeginInspectorComponent("Transform", "TransformComponentOptions", false, true, true, canPasteTransform);
+        if (transformHeader.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Transform;
+            g_InspectorComponentClipboard.Transform = actor.Transform;
+        }
+
+        if (transformHeader.PasteRequested && canPasteTransform)
+        {
+            commands.PasteActorTransformValues(scene, actor.ID, g_InspectorComponentClipboard.Transform);
+        }
 
         if (transformHeader.ResetRequested)
         {

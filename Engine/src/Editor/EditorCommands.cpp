@@ -82,8 +82,7 @@ namespace
 
 namespace Quiet::Editor
 {
-    EditorCommands::EditorCommands(EditorController& editorController)
-        : m_EditorController(editorController) {}
+    EditorCommands::EditorCommands(EditorController& editorController) : m_EditorController(editorController) {}
 
     bool EditorCommands::CanEditScene() const
     {
@@ -102,6 +101,8 @@ namespace Quiet::Editor
         return m_EditorController.EndSceneMutation(scene);
     }
 
+#pragma region Actors
+
     bool EditorCommands::CreateEmptyActor(Scene::Scene& scene, const std::string& name)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
@@ -109,105 +110,6 @@ namespace Quiet::Editor
             auto& actor = scene.CreateActor(name);
             m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
             return true;
-        });
-    }
-
-    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene,
-                                               const std::string& actorName,
-                                               const std::string& meshResourceID,
-                                               const Project::ProjectContext& projectContext,
-                                               const Renderer::Vulkan::MeshLibrary& meshLibrary,
-                                               const glm::vec3& position)
-    {
-        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
-        if (!mesh)
-        {
-            QUIET_CORE_WARN(
-                "Cannot create mesh actor because mesh asset '{}' is not registered or loaded.",
-                meshResourceID
-            );
-            return false;
-        }
-
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
-            actor.Transform.WorldTransform.Position = position;
-
-            actor.StaticMesh = Scene::StaticMeshComponent{};
-            actor.StaticMesh->MeshResourceID = meshResourceID;
-            actor.StaticMesh->Mesh = mesh;
-            actor.StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
-            actor.StaticMesh->Visible = true;
-            actor.Material = Scene::MaterialComponent{};
-
-            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
-            return true;
-        });
-    }
-
-    bool EditorCommands::CreateDirectionalLightActor(Scene::Scene &scene, const std::string &actorName)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? "Directional Light" : actorName);
-
-            actor.DirectionalLight = Scene::DirectionalLightComponent{};
-            actor.Transform.WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
-
-            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
-            return true;
-        });
-    }
-
-    bool EditorCommands::CreateHierarchyFolder(Scene::Scene &scene, const std::string &name)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            const Core::UUID folderID = scene.CreateHierarchyFolder(name.empty() ? "Folder" : name);
-            return folderID.IsValid();
-        });
-    }
-
-    bool EditorCommands::RenameHierarchyFolder(Scene::Scene &scene, Core::UUID folderID, const std::string &newName)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            return scene.RenameHierarchyFolder(folderID, newName.empty() ? "Folder" : newName);
-        });
-    }
-
-    bool EditorCommands::DeleteEmptyHierarchyFolder(Scene::Scene &scene, Core::UUID folderID)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            return scene.DeleteEmptyHierarchyFolder(folderID);
-        });
-    }
-
-    bool EditorCommands::MoveActorToHierarchyFolder(Scene::Scene &scene, Core::UUID actorID, Core::UUID folderID)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            return scene.MoveActorToHierarchyFolder(actorID, folderID);
-        });
-    }
-
-    bool EditorCommands::MoveActorToHierarchyRoot(Scene::Scene &scene, Core::UUID actorID)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            return scene.MoveActorToHierarchyRoot(actorID);
-        });
-    }
-
-    bool EditorCommands::MoveHierarchyRootNode(Scene::Scene &scene,
-                                               Scene::SceneHierarchyNodeType nodeType,
-                                               Core::UUID nodeID, std::size_t destinationIndex)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
-        {
-            return scene.MoveHierarchyRootNode(nodeType, nodeID, destinationIndex);
         });
     }
 
@@ -309,10 +211,101 @@ namespace Quiet::Editor
             });
     }
 
-    bool EditorCommands::AddStaticMesh(Scene::Scene& scene,
-                                       const Core::UUID actorID,
-                                       const Project::ProjectContext& projectContext,
-                                       const Renderer::Vulkan::MeshLibrary& meshLibrary)
+    bool EditorCommands::PasteActorTransformValues(Scene::Scene &scene, Core::UUID actorID, const Scene::TransformComponent &transform)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor) return false;
+
+                actor->Transform = transform;
+                return true;
+            });
+    }
+
+#pragma endregion
+
+#pragma region Folders
+
+    bool EditorCommands::CreateHierarchyFolder(Scene::Scene &scene, const std::string &name)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            const Core::UUID folderID = scene.CreateHierarchyFolder(name.empty() ? "Folder" : name);
+            return folderID.IsValid();
+        });
+    }
+
+    bool EditorCommands::RenameHierarchyFolder(Scene::Scene &scene, Core::UUID folderID, const std::string &newName)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.RenameHierarchyFolder(folderID, newName.empty() ? "Folder" : newName);
+        });
+    }
+
+    bool EditorCommands::DeleteEmptyHierarchyFolder(Scene::Scene &scene, Core::UUID folderID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.DeleteEmptyHierarchyFolder(folderID);
+        });
+    }
+
+    bool EditorCommands::MoveActorToHierarchyFolder(Scene::Scene &scene, Core::UUID actorID, Core::UUID folderID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveActorToHierarchyFolder(actorID, folderID);
+        });
+    }
+
+    bool EditorCommands::MoveActorToHierarchyRoot(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveActorToHierarchyRoot(actorID);
+        });
+    }
+
+    bool EditorCommands::MoveHierarchyRootNode(Scene::Scene &scene, Scene::SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            return scene.MoveHierarchyRootNode(nodeType, nodeID, destinationIndex);
+        });
+    }
+
+#pragma endregion
+
+#pragma region Static Meshes
+    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
+                                               const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position)
+    {
+        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
+        if (!mesh)
+        {
+            QUIET_CORE_WARN("Cannot create mesh actor because mesh asset '{}' is not registered or loaded.", meshResourceID);
+            return false;
+        }
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
+            actor.Transform.WorldTransform.Position = position;
+
+            actor.StaticMesh = Scene::StaticMeshComponent{};
+            actor.StaticMesh->MeshResourceID = meshResourceID;
+            actor.StaticMesh->Mesh = mesh;
+            actor.StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
+            actor.StaticMesh->Visible = true;
+            actor.Material = Scene::MaterialComponent{};
+
+            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            return true;
+        });
+    }
+
+    bool EditorCommands::AddStaticMesh(Scene::Scene& scene, const Core::UUID actorID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
         const auto meshAssetIDs = projectContext.EnumerateMeshAssetIDs();
         if (meshAssetIDs.empty())
@@ -325,9 +318,7 @@ namespace Quiet::Editor
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, defaultMeshID);
         if (!mesh)
         {
-            QUIET_CORE_WARN(
-                "Default mesh asset '{}' is registered but not currently available in the mesh library.",
-                defaultMeshID);
+            QUIET_CORE_WARN("Default mesh asset '{}' is registered but not currently available in the mesh library.", defaultMeshID);
             return false;
         }
 
@@ -362,19 +353,12 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene,
-                                               Core::UUID actorID,
-                                               const std::string& meshResourceID,
-                                               const Project::ProjectContext& projectContext,
-                                               const Renderer::Vulkan::MeshLibrary& meshLibrary)
+    bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
         if (!mesh)
         {
-            QUIET_CORE_WARN(
-                "Mesh asset '{}' is not registered in the project or is not currently loaded.",
-                meshResourceID
-            );
+            QUIET_CORE_WARN("Mesh asset '{}' is not registered in the project or is not currently loaded.", meshResourceID);
             return false;
         }
 
@@ -402,6 +386,11 @@ namespace Quiet::Editor
             return true;
         });
     }
+
+#pragma endregion
+
+
+#pragma region Material
 
     bool EditorCommands::AddMaterial(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
     {
@@ -501,6 +490,24 @@ namespace Quiet::Editor
         });
     }
 
+#pragma endregion
+
+#pragma region Directional Lights
+
+    bool EditorCommands::CreateDirectionalLightActor(Scene::Scene &scene, const std::string &actorName)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
+        {
+            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? "Directional Light" : actorName);
+
+            actor.DirectionalLight = Scene::DirectionalLightComponent{};
+            actor.Transform.WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
+
+            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            return true;
+        });
+    }
+
     bool EditorCommands::AddDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
@@ -574,6 +581,10 @@ namespace Quiet::Editor
         return true;
     }
 
+#pragma endregion
+
+#pragma region Rotator
+
     bool EditorCommands::AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
@@ -620,6 +631,10 @@ namespace Quiet::Editor
         return true;
     }
 
+#pragma endregion
+
+#pragma region Scene Lighting
+
     bool EditorCommands::SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction)
     {
         if (!CanEditScene()) return false;
@@ -647,6 +662,10 @@ namespace Quiet::Editor
         scene.GetRenderSettings().AmbientIntensity = intensity;
         return true;
     }
+
+#pragma endregion
+
+#pragma region Camera
 
     bool EditorCommands::AddCamera(Scene::Scene &scene, Core::UUID actorID)
     {
@@ -768,4 +787,6 @@ namespace Quiet::Editor
         actor->Camera->FarClip = farClip;
         return true;
     }
+
+#pragma endregion
 }
