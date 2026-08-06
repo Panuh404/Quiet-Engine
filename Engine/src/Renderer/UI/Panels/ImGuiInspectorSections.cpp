@@ -1,10 +1,12 @@
 #include "ImGuiInspectorSections.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 
@@ -78,7 +80,13 @@ namespace
         return {std::clamp(desiredPosition.x, minX, maxX), std::clamp(desiredPosition.y, minY, maxY)};
     }
 
-    void DrawFloatingComponentOptionsMenu(const char* popupID, const bool removable, const bool resettable, const bool clipboardSupported, const bool pasteAvailable, InspectorComponentHeaderResult& result)
+    void DrawFloatingComponentOptionsMenu(const char* popupID,
+                                          const bool removable,
+                                          const bool resettable,
+                                          const bool clipboardSupported,
+                                          const bool pasteAvailable,
+                                          const char* pasteUnavailableReason,
+                                          InspectorComponentHeaderResult& result)
     {
         if (g_OpenInspectorComponentMenuID != popupID) return;
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
@@ -159,6 +167,14 @@ namespace
                     g_OpenInspectorComponentMenuID.clear();
                 }
 
+                if (!pasteAvailable &&
+                    pasteUnavailableReason &&
+                    pasteUnavailableReason[0] != '\0' &&
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
+                {
+                    ImGui::SetTooltip("%s", pasteUnavailableReason);
+                }
+
                 hasPreviousAction = true;
             }
 
@@ -192,7 +208,13 @@ namespace
         }
     }
 
-    InspectorComponentHeaderResult BeginInspectorComponent(const char* title, const char* popupID, const bool removable = true, const bool resettable = false, const bool clipboardSupported = false, const bool pasteAvailable = false)
+    InspectorComponentHeaderResult BeginInspectorComponent(const char* title,
+                                                           const char* popupID,
+                                                           const bool removable = true,
+                                                           const bool resettable = false,
+                                                           const bool clipboardSupported = false,
+                                                           const bool pasteAvailable = false,
+                                                           const char* pasteUnavailableReason = nullptr)
     {
         InspectorComponentHeaderResult result{};
 
@@ -254,7 +276,7 @@ namespace
         }
 
         ImGui::PopID();
-        DrawFloatingComponentOptionsMenu(popupID, removable, resettable, clipboardSupported, pasteAvailable, result);
+        DrawFloatingComponentOptionsMenu(popupID, removable, resettable, clipboardSupported, pasteAvailable, pasteUnavailableReason, result);
         return result;
     }
 
@@ -327,8 +349,8 @@ namespace
         BeginInspectorPropertyRow(label);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
-        const bool changed = ImGui::DragFloat("##Value", &value, speed, minValue, maxValue, "%.3f");
-
+        const ImGuiSliderFlags flags = minValue < maxValue ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None;
+        const bool changed = ImGui::DragFloat("##Value", &value, speed, minValue, maxValue, "%.3f", flags);
         tracked.Begin();
         tracked.End();
 
@@ -359,8 +381,9 @@ namespace
             ImGui::SameLine();
 
             ImGui::SetNextItemWidth(fieldWidth);
-            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f");
+            const ImGuiSliderFlags flags = minValue < maxValue ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None;
 
+            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f", flags);
             tracked.Begin();
             tracked.End();
         };
@@ -739,10 +762,7 @@ namespace Quiet::Renderer::UI
         if (Enabled && ImGui::IsItemDeactivated()) Commands.EndInteraction(SceneRef);
     }
 
-    void DrawActorDetailsSection(Scene::Scene& scene,
-                                 Scene::Actor& actor,
-                                 Editor::EditorCommands& commands,
-                                 const TrackedInspectorInteraction& tracked)
+    void DrawActorDetailsSection(Scene::Scene& scene, Scene::Actor& actor, Editor::EditorCommands& commands, const TrackedInspectorInteraction& tracked)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(9.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
@@ -762,12 +782,14 @@ namespace Quiet::Renderer::UI
             std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
 
             ImGui::SetNextItemWidth(-1.0f);
-            if (ImGui::InputText("##ActorName", nameBuffer, sizeof(nameBuffer)))
+            const bool nameChanged = ImGui::InputText("##ActorName", nameBuffer, sizeof(nameBuffer));
+            tracked.Begin();
+
+            if (nameChanged)
             {
                 commands.RenameActor(scene, actor.ID, nameBuffer);
             }
 
-            tracked.Begin();
             tracked.End();
 
             const std::string actorIDText = Quiet::Core::UUIDToString(actor.ID);
@@ -787,7 +809,16 @@ namespace Quiet::Renderer::UI
             g_InspectorComponentClipboard.Type ==
             InspectorComponentClipboardType::Transform;
 
-        const auto transformHeader = BeginInspectorComponent("Transform", "TransformComponentOptions", false, true, true, canPasteTransform);
+        const auto transformHeader = BeginInspectorComponent(
+            "Transform",
+            "TransformComponentOptions",
+            false,
+            true,
+            true,
+            canPasteTransform,
+            canPasteTransform ? nullptr : "Copy Transform values first."
+        );
+
         if (transformHeader.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Transform;
@@ -926,12 +957,33 @@ namespace Quiet::Renderer::UI
             copiedMeshRecord = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), g_InspectorComponentClipboard.StaticMeshResourceID);
         }
 
-        const bool canPasteStaticMesh =
-            copiedMeshRecord != nullptr &&
-            copiedMeshRecord->Type == Project::AssetType::Mesh &&
-            meshLibrary.TryGet(g_InspectorComponentClipboard.StaticMeshResourceID) != nullptr;
+        const bool copiedMeshIsRegistered =  copiedMeshRecord != nullptr && copiedMeshRecord->Type == Project::AssetType::Mesh;
+        const bool copiedMeshIsLoaded = copiedMeshIsRegistered && meshLibrary.TryGet(g_InspectorComponentClipboard.StaticMeshResourceID) != nullptr;
+        const bool canPasteStaticMesh = hasStaticMeshClipboard && copiedMeshIsLoaded;
+        const char* pasteUnavailableReason = nullptr;
 
-        const auto header = BeginInspectorComponent("Static Mesh", "StaticMeshComponentOptions", true, false, true, canPasteStaticMesh);
+        if (!hasStaticMeshClipboard)
+        {
+            pasteUnavailableReason = "Copy Static Mesh values first.";
+        }
+        else if (!copiedMeshIsRegistered)
+        {
+            pasteUnavailableReason = "The copied mesh asset is no longer registered.";
+        }
+        else if (!copiedMeshIsLoaded)
+        {
+            pasteUnavailableReason = "The copied mesh asset is not currently loaded.";
+        }
+
+        const auto header = BeginInspectorComponent(
+            "Static Mesh",
+            "StaticMeshComponentOptions",
+            true,
+            false,
+            true,
+            canPasteStaticMesh,
+            pasteUnavailableReason
+        );
         if (header.RemoveRequested)
         {
             commands.RemoveStaticMesh(scene, actor.ID);
@@ -993,9 +1045,20 @@ namespace Quiet::Renderer::UI
         if (!actor.Material.has_value()) return;
 
         const bool canResetMaterial = actor.StaticMesh->Mesh != nullptr;
-        const bool canPasteMaterial =
-            g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Material &&
-            g_InspectorComponentClipboard.MaterialSlots.size() == actor.StaticMesh->MaterialSlots.size();
+        const bool hasMaterialClipboard = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Material;
+        const bool materialSlotCountsMatch = hasMaterialClipboard && g_InspectorComponentClipboard.MaterialSlots.size() == actor.StaticMesh->MaterialSlots.size();
+        const bool canPasteMaterial = hasMaterialClipboard && materialSlotCountsMatch;
+
+        const char* pasteUnavailableReason = nullptr;
+
+        if (!hasMaterialClipboard)
+        {
+            pasteUnavailableReason = "Copy Material values first.";
+        }
+        else if (!materialSlotCountsMatch)
+        {
+            pasteUnavailableReason = "Source and target Materials must have the same imported slot count.";
+        }
 
         const auto header = BeginInspectorComponent(
             "Material",
@@ -1003,7 +1066,8 @@ namespace Quiet::Renderer::UI
             true,
             canResetMaterial,
             true,
-            canPasteMaterial
+            canPasteMaterial,
+            pasteUnavailableReason
         );
 
         if (header.RemoveRequested)
@@ -1118,8 +1182,15 @@ namespace Quiet::Renderer::UI
         if (!actor.DirectionalLight.has_value()) return;
 
         const bool canPasteDirectionalLight = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::DirectionalLight;
-        const auto header = BeginInspectorComponent("Directional Light", "DirectionalLightComponentOptions", true, true, true, canPasteDirectionalLight);
-
+        const auto header = BeginInspectorComponent(
+            "Directional Light",
+            "DirectionalLightComponentOptions",
+            true,
+            true,
+            true,
+            canPasteDirectionalLight,
+            canPasteDirectionalLight ? nullptr : "Copy Directional Light values first."
+        );
         if (header.RemoveRequested)
         {
             commands.RemoveDirectionalLight(scene, actor.ID);
@@ -1183,9 +1254,9 @@ namespace Quiet::Renderer::UI
             true,
             true,
             true,
-            canPasteRotator
+            canPasteRotator,
+            canPasteRotator ? nullptr : "Copy Rotator values first."
         );
-
         if (header.RemoveRequested)
         {
             commands.RemoveRotator(scene, actor.ID);
@@ -1233,9 +1304,9 @@ namespace Quiet::Renderer::UI
             true,
             true,
             true,
-            canPasteCamera
+            canPasteCamera,
+            canPasteCamera ? nullptr : "Copy Camera values first."
         );
-
         if (header.RemoveRequested)
         {
             commands.RemoveCamera(scene, actor.ID);
@@ -1280,18 +1351,32 @@ namespace Quiet::Renderer::UI
 
         bool primary = actor.Camera->Primary;
         if (DrawCheckboxPropertyRow("Primary", primary))
+        {
             commands.SetCameraPrimary(scene, actor.ID, primary);
+        }
 
         float fov = actor.Camera->FieldOfViewDegrees;
         if (DrawFloatPropertyRow("Field Of View", fov, 0.25f, 1.0f, 179.0f, tracked))
+        {
             commands.SetCameraFieldOfView(scene, actor.ID, fov);
+        }
 
+        const float currentFarClip = std::isfinite(actor.Camera->FarClip) ? actor.Camera->FarClip : 1000.0f;
+        const float maximumNearClip = std::clamp(currentFarClip - 0.001f, 0.001f, 100.0f);
         float nearClip = actor.Camera->NearClip;
-        if (DrawFloatPropertyRow("Near Clip", nearClip, 0.01f, 0.001f, 100.0f, tracked))
-            commands.SetCameraNearClip(scene, actor.ID, nearClip);
 
+        if (DrawFloatPropertyRow("Near Clip", nearClip, 0.01f, 0.001f, maximumNearClip, tracked))
+        {
+            commands.SetCameraNearClip(scene, actor.ID, nearClip);
+        }
+
+        const float currentNearClip = std::isfinite(actor.Camera->NearClip) ? std::clamp(actor.Camera->NearClip, 0.001f, 100.0f) : 0.1f;
+        const float minimumFarClip = std::max(1.0f, currentNearClip + 0.001f);
         float farClip = actor.Camera->FarClip;
-        if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, 1.0f, 100000.0f, tracked))
+
+        if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, minimumFarClip, 100000.0f, tracked))
+        {
             commands.SetCameraFarClip(scene, actor.ID, farClip);
+        }
     }
 }

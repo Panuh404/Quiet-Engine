@@ -164,8 +164,11 @@ namespace Quiet::Editor
 
     bool EditorCommands::RenameActor(Scene::Scene& scene, Core::UUID actorID, const std::string& newName)
     {
+        if (!CanEditScene()) return false;
+
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor) return false;
+        if (!actor || actor->Name == newName)
+            return false;
 
         actor->Name = newName;
         return true;
@@ -173,8 +176,17 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetActorPosition(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& position)
     {
+        if (!CanEditScene() ||
+            !std::isfinite(position.x) ||
+            !std::isfinite(position.y) ||
+            !std::isfinite(position.z))
+        {
+            return false;
+        }
+
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor) return false;
+        if (!actor)
+            return false;
 
         actor->Transform.WorldTransform.Position = position;
         return true;
@@ -182,19 +194,44 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetActorRotation(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& rotationDegrees)
     {
+        if (!CanEditScene() ||
+            !std::isfinite(rotationDegrees.x) ||
+            !std::isfinite(rotationDegrees.y) ||
+            !std::isfinite(rotationDegrees.z))
+        {
+            return false;
+        }
+
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor) return false;
+        if (!actor)
+            return false;
 
         actor->Transform.WorldTransform.RotationDegrees = rotationDegrees;
+
         return true;
     }
 
     bool EditorCommands::SetActorScale(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& scale)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor) return false;
+        if (!CanEditScene() ||
+            !std::isfinite(scale.x) ||
+            !std::isfinite(scale.y) ||
+            !std::isfinite(scale.z))
+        {
+            return false;
+        }
 
-        actor->Transform.WorldTransform.Scale = scale;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor)
+            return false;
+
+        actor->Transform.WorldTransform.Scale =
+        {
+            std::clamp(scale.x, 0.01f, 100.0f),
+            std::clamp(scale.y, 0.01f, 100.0f),
+            std::clamp(scale.z, 0.01f, 100.0f)
+        };
+
         return true;
     }
 
@@ -211,16 +248,44 @@ namespace Quiet::Editor
             });
     }
 
-    bool EditorCommands::PasteActorTransformValues(Scene::Scene &scene, Core::UUID actorID, const Scene::TransformComponent &transform)
+    bool EditorCommands::PasteActorTransformValues(Scene::Scene& scene, Core::UUID actorID, const Scene::TransformComponent& transform)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        const Scene::Transform& source = transform.WorldTransform;
+
+        if (!std::isfinite(source.Position.x) ||
+            !std::isfinite(source.Position.y) ||
+            !std::isfinite(source.Position.z) ||
+            !std::isfinite(source.RotationDegrees.x) ||
+            !std::isfinite(source.RotationDegrees.y) ||
+            !std::isfinite(source.RotationDegrees.z) ||
+            !std::isfinite(source.Scale.x) ||
+            !std::isfinite(source.Scale.y) ||
+            !std::isfinite(source.Scale.z))
+        {
+            return false;
+        }
+
+        Scene::TransformComponent validatedTransform = transform;
+
+        validatedTransform.WorldTransform.Scale =
+        {
+            std::clamp(source.Scale.x, 0.01f, 100.0f),
+            std::clamp(source.Scale.y, 0.01f, 100.0f),
+            std::clamp(source.Scale.z, 0.01f, 100.0f)
+        };
+
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
             {
                 Scene::Actor* actor = scene.FindActorByID(actorID);
                 if (!actor) return false;
 
-                actor->Transform = transform;
+                actor->Transform = validatedTransform;
                 return true;
-            });
+            }
+        );
     }
 
 #pragma endregion
@@ -422,17 +487,38 @@ namespace Quiet::Editor
 
 #pragma region Material
 
-    bool EditorCommands::AddMaterial(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
+    bool EditorCommands::AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        if (!std::isfinite(baseColor.x) ||
+            !std::isfinite(baseColor.y) ||
+            !std::isfinite(baseColor.z) ||
+            !std::isfinite(baseColor.w))
         {
-           Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || actor->Material.has_value()) return false;
+            return false;
+        }
 
-            actor->Material = Scene::MaterialComponent{};
-            actor->Material->BaseColor = baseColor;
-            return true;
-        });
+        const glm::vec4 validatedColor
+        {
+            std::clamp(baseColor.x, 0.0f, 1.0f),
+            std::clamp(baseColor.y, 0.0f, 1.0f),
+            std::clamp(baseColor.z, 0.0f, 1.0f),
+            std::clamp(baseColor.w, 0.0f, 1.0f)
+        };
+
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || actor->Material.has_value())
+                    return false;
+
+                actor->Material = Scene::MaterialComponent{};
+                actor->Material->BaseColor = validatedColor;
+                return true;
+            }
+        );
     }
 
     bool EditorCommands::RemoveMaterial(Scene::Scene &scene, Core::UUID actorID)
@@ -466,25 +552,96 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::PasteMaterialValues(Scene::Scene &scene, Core::UUID actorID, const Scene::MaterialComponent &material, const std::vector<Scene::MaterialComponent> &materialSlots)
+    bool EditorCommands::PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
-           {
-               Scene::Actor* actor = scene.FindActorByID(actorID);
-               if (!actor || !actor->StaticMesh.has_value() || !actor->Material.has_value()) return false;
-               if (actor->StaticMesh->MaterialSlots.size() != materialSlots.size()) return false;
-               actor->Material = material;
-               actor->StaticMesh->MaterialSlots = materialSlots;
-               return true;
-           });
+        if (!std::isfinite(material.BaseColor.x) ||
+            !std::isfinite(material.BaseColor.y) ||
+            !std::isfinite(material.BaseColor.z) ||
+            !std::isfinite(material.BaseColor.w))
+        {
+            return false;
+        }
+
+        Scene::MaterialComponent validatedMaterial = material;
+        validatedMaterial.BaseColor =
+        {
+            std::clamp(material.BaseColor.x, 0.0f, 1.0f),
+            std::clamp(material.BaseColor.y, 0.0f, 1.0f),
+            std::clamp(material.BaseColor.z, 0.0f, 1.0f),
+            std::clamp(material.BaseColor.w, 0.0f, 1.0f)
+        };
+
+        std::vector<Scene::MaterialComponent> validatedMaterialSlots = materialSlots;
+        for (Scene::MaterialComponent& materialSlot : validatedMaterialSlots)
+        {
+            const glm::vec4 sourceColor =
+                materialSlot.BaseColor;
+
+            if (!std::isfinite(sourceColor.x) ||
+                !std::isfinite(sourceColor.y) ||
+                !std::isfinite(sourceColor.z) ||
+                !std::isfinite(sourceColor.w))
+            {
+                return false;
+            }
+
+            materialSlot.BaseColor =
+            {
+                std::clamp(sourceColor.x, 0.0f, 1.0f),
+                std::clamp(sourceColor.y, 0.0f, 1.0f),
+                std::clamp(sourceColor.z, 0.0f, 1.0f),
+                std::clamp(sourceColor.w, 0.0f, 1.0f)
+            };
+        }
+
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor ||
+                    !actor->StaticMesh.has_value() ||
+                    !actor->Material.has_value())
+                {
+                    return false;
+                }
+
+                if (actor->StaticMesh->MaterialSlots.size() != validatedMaterialSlots.size())
+                {
+                    return false;
+                }
+
+                actor->Material = validatedMaterial;
+                actor->StaticMesh->MaterialSlots = validatedMaterialSlots;
+                return true;
+            }
+        );
     }
 
-    bool EditorCommands::SetMaterialBaseColor(Scene::Scene &scene, Core::UUID actorID, const glm::vec4 &baseColor)
+    bool EditorCommands::SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Material.has_value()) return false;
+        if (!CanEditScene() ||
+            !std::isfinite(baseColor.x) ||
+            !std::isfinite(baseColor.y) ||
+            !std::isfinite(baseColor.z) ||
+            !std::isfinite(baseColor.w))
+        {
+            return false;
+        }
 
-        actor->Material->BaseColor = baseColor;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Material.has_value())
+            return false;
+
+        actor->Material->BaseColor =
+        {
+            std::clamp(baseColor.x, 0.0f, 1.0f),
+            std::clamp(baseColor.y, 0.0f, 1.0f),
+            std::clamp(baseColor.z, 0.0f, 1.0f),
+            std::clamp(baseColor.w, 0.0f, 1.0f)
+        };
+
         return true;
     }
 
@@ -500,18 +657,31 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetStaticMeshMaterialSlotBaseColor(Scene::Scene &scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4 &baseColor)
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor)
     {
+        if (!CanEditScene() ||
+            !std::isfinite(baseColor.x) ||
+            !std::isfinite(baseColor.y) ||
+            !std::isfinite(baseColor.z) ||
+            !std::isfinite(baseColor.w))
+        {
+            return false;
+        }
+
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor || !actor->StaticMesh.has_value())
             return false;
 
         Scene::MaterialComponent* materialSlot = actor->StaticMesh->TryGetMaterialSlot(slotIndex);
+        if (!materialSlot) return false;
+        materialSlot->BaseColor =
+        {
+            std::clamp(baseColor.x, 0.0f, 1.0f),
+            std::clamp(baseColor.y, 0.0f, 1.0f),
+            std::clamp(baseColor.z, 0.0f, 1.0f),
+            std::clamp(baseColor.w, 0.0f, 1.0f)
+        };
 
-        if (!materialSlot)
-            return false;
-
-        materialSlot->BaseColor = baseColor;
         return true;
     }
 
@@ -588,52 +758,141 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::PasteDirectionalLightValues(Scene::Scene &scene, Core::UUID actorID, const Scene::DirectionalLightComponent &directionalLight)
+    bool EditorCommands::PasteDirectionalLightValues(Scene::Scene& scene, Core::UUID actorID, const Scene::DirectionalLightComponent& directionalLight)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        if (!std::isfinite(directionalLight.Direction.x) ||
+            !std::isfinite(directionalLight.Direction.y) ||
+            !std::isfinite(directionalLight.Direction.z) ||
+            !std::isfinite(directionalLight.Color.x) ||
+            !std::isfinite(directionalLight.Color.y) ||
+            !std::isfinite(directionalLight.Color.z) ||
+            !std::isfinite(directionalLight.Intensity))
+        {
+            return false;
+        }
+
+        Scene::DirectionalLightComponent validatedLight = directionalLight;
+        validatedLight.Direction =
+        {
+            std::clamp(directionalLight.Direction.x, -1.0f, 1.0f),
+            std::clamp(directionalLight.Direction.y, -1.0f, 1.0f),
+            std::clamp(directionalLight.Direction.z, -1.0f, 1.0f)
+        };
+
+        validatedLight.Color =
+        {
+            std::clamp(directionalLight.Color.x, 0.0f, 1.0f),
+            std::clamp(directionalLight.Color.y, 0.0f, 1.0f),
+            std::clamp(directionalLight.Color.z, 0.0f, 1.0f)
+        };
+
+        validatedLight.Intensity = std::clamp(directionalLight.Intensity, 0.0f, 10.0f);
+
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
             {
                 Scene::Actor* actor = scene.FindActorByID(actorID);
                 if (!actor || !actor->DirectionalLight.has_value())
+                {
                     return false;
+                }
 
-                actor->DirectionalLight = directionalLight;
+                actor->DirectionalLight = validatedLight;
                 return true;
-            });
+            }
+        );
     }
 
     bool EditorCommands::SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value()) return false;
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || !actor->DirectionalLight.has_value())
+                {
+                    return false;
+                }
 
-        actor->DirectionalLight->Enabled = enabled;
-        return true;
+                actor->DirectionalLight->Enabled = enabled;
+                return true;
+            }
+        );
     }
 
     bool EditorCommands::SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value()) return false;
+        if (!CanEditScene() ||
+            !std::isfinite(direction.x) ||
+            !std::isfinite(direction.y) ||
+            !std::isfinite(direction.z))
+        {
+            return false;
+        }
 
-        actor->DirectionalLight->Direction = direction;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value())
+        {
+            return false;
+        }
+
+        actor->DirectionalLight->Direction =
+        {
+            std::clamp(direction.x, -1.0f, 1.0f),
+            std::clamp(direction.y, -1.0f, 1.0f),
+            std::clamp(direction.z, -1.0f, 1.0f)
+        };
+
         return true;
     }
 
     bool EditorCommands::SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value()) return false;
+        if (!CanEditScene() ||
+            !std::isfinite(color.x) ||
+            !std::isfinite(color.y) ||
+            !std::isfinite(color.z))
+        {
+            return false;
+        }
 
-        actor->DirectionalLight->Color = color;
+        Scene::Actor* actor =
+            scene.FindActorByID(actorID);
+
+        if (!actor ||
+            !actor->DirectionalLight.has_value())
+        {
+            return false;
+        }
+
+        actor->DirectionalLight->Color =
+        {
+            std::clamp(color.x, 0.0f, 1.0f),
+            std::clamp(color.y, 0.0f, 1.0f),
+            std::clamp(color.z, 0.0f, 1.0f)
+        };
+
         return true;
     }
 
     bool EditorCommands::SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value()) return false;
+        if (!CanEditScene() || !std::isfinite(intensity))
+        {
+            return false;
+        }
 
-        actor->DirectionalLight->Intensity = intensity;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->DirectionalLight.has_value())
+        {
+            return false;
+        }
+
+        actor->DirectionalLight->Intensity = std::clamp(intensity, 0.0f, 10.0f);
         return true;
     }
 
@@ -643,14 +902,22 @@ namespace Quiet::Editor
 
     bool EditorCommands::AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
-        {
-            Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor) return false;
+        if (!std::isfinite(initialSpeed))
+            return false;
 
-            actor->Rotator = Scene::RotatorComponent{ initialSpeed };
-            return true;
-        });
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || actor->Rotator.has_value())
+                    return false;
+
+                actor->Rotator = Scene::RotatorComponent{ initialSpeed };
+                return true;
+            }
+        );
     }
 
     bool EditorCommands::RemoveRotator(Scene::Scene& scene, Core::UUID actorID)
@@ -678,23 +945,40 @@ namespace Quiet::Editor
        });
     }
 
-    bool EditorCommands::PasteRotatorValues(Scene::Scene &scene, Core::UUID actorID, const Scene::RotatorComponent &rotator)
+    bool EditorCommands::PasteRotatorValues(Scene::Scene& scene, Core::UUID actorID, const Scene::RotatorComponent& rotator)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
-       {
-           Scene::Actor* actor = scene.FindActorByID(actorID);
-           if (!actor || !actor->Rotator.has_value())
-               return false;
+        if (!std::isfinite(rotator.RotationSpeedDegreesPerSecond))
+        {
+            return false;
+        }
 
-           actor->Rotator = rotator;
-           return true;
-       });
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
+            {
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || !actor->Rotator.has_value())
+                {
+                    return false;
+                }
+
+                actor->Rotator = rotator;
+                return true;
+            }
+        );
     }
 
     bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed)
     {
+        if (!CanEditScene() || !std::isfinite(speed))
+        {
+            return false;
+        }
+
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Rotator.has_value()) return false;
+        if (!actor || !actor->Rotator.has_value())
+            return false;
 
         actor->Rotator->RotationSpeedDegreesPerSecond = speed;
         return true;
@@ -810,25 +1094,44 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::PasteCameraValues(Scene::Scene &scene, Core::UUID actorID, const Scene::CameraComponent &camera)
+    bool EditorCommands::PasteCameraValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CameraComponent& camera)
     {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        if (!std::isfinite(camera.FieldOfViewDegrees) ||
+            !std::isfinite(camera.NearClip) ||
+            !std::isfinite(camera.FarClip))
         {
-            Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Camera.has_value())
-                return false;
+            return false;
+        }
 
-            if (camera.Primary)
+        Scene::CameraComponent validatedCamera = camera;
+        validatedCamera.FieldOfViewDegrees = std::clamp(camera.FieldOfViewDegrees, 1.0f, 179.0f);
+        validatedCamera.NearClip = std::clamp(camera.NearClip, 0.001f, 100.0f);
+
+        const float minimumFarClip = std::max(1.0f, validatedCamera.NearClip + 0.001f);
+        validatedCamera.FarClip = std::clamp(camera.FarClip, minimumFarClip, 100000.0f);
+
+        return ApplyImmediateMutation(
+            m_EditorController,
+            scene,
+            [&]()
             {
-                for (Scene::Actor& other : scene.GetActors())
-                {
-                    if (other.Camera.has_value()) other.Camera->Primary = false;
-                }
-            }
+                Scene::Actor* actor = scene.FindActorByID(actorID);
+                if (!actor || !actor->Camera.has_value())
+                    return false;
 
-            actor->Camera = camera;
-            return true;
-        });
+                if (validatedCamera.Primary)
+                {
+                    for (Scene::Actor& other : scene.GetActors())
+                    {
+                        if (other.Camera.has_value())
+                            other.Camera->Primary = false;
+                    }
+                }
+
+                actor->Camera = validatedCamera;
+                return true;
+            }
+        );
     }
 
     bool EditorCommands::SetCameraPrimary(Scene::Scene &scene, Core::UUID actorID, bool primary)
@@ -851,30 +1154,66 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetCameraFieldOfView(Scene::Scene &scene, Core::UUID actorID, float fovDegrees)
+    bool EditorCommands::SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value()) return false;
+        if (!CanEditScene() || !std::isfinite(fovDegrees))
+        {
+            return false;
+        }
 
-        actor->Camera->FieldOfViewDegrees = fovDegrees;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value())
+            return false;
+
+        actor->Camera->FieldOfViewDegrees = std::clamp(fovDegrees, 1.0f, 179.0f);
         return true;
     }
 
-    bool EditorCommands::SetCameraNearClip(Scene::Scene &scene, Core::UUID actorID, float nearClip)
+    bool EditorCommands::SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value()) return false;
+        if (!CanEditScene() || !std::isfinite(nearClip))
+        {
+            return false;
+        }
 
-        actor->Camera->NearClip = nearClip;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value())
+            return false;
+
+        float validatedFarClip = actor->Camera->FarClip;
+        if (!std::isfinite(validatedFarClip))
+            validatedFarClip = 1000.0f;
+
+        validatedFarClip = std::clamp(validatedFarClip, 1.0f, 100000.0f);
+        const float maximumNearClip = std::clamp(validatedFarClip - 0.001f, 0.001f, 100.0f);
+
+        actor->Camera->FarClip = validatedFarClip;
+        actor->Camera->NearClip = std::clamp(nearClip, 0.001f, maximumNearClip);
+
         return true;
     }
 
-    bool EditorCommands::SetCameraFarClip(Scene::Scene &scene, Core::UUID actorID, float farClip)
+    bool EditorCommands::SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip)
     {
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value()) return false;
+        if (!CanEditScene() || !std::isfinite(farClip))
+        {
+            return false;
+        }
 
-        actor->Camera->FarClip = farClip;
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor || !actor->Camera.has_value())
+            return false;
+
+        float validatedNearClip = actor->Camera->NearClip;
+        if (!std::isfinite(validatedNearClip))
+            validatedNearClip = 0.1f;
+
+        validatedNearClip = std::clamp(validatedNearClip, 0.001f, 100.0f);
+        const float minimumFarClip = std::max(1.0f, validatedNearClip + 0.001f);
+
+        actor->Camera->NearClip = validatedNearClip;
+        actor->Camera->FarClip = std::clamp(farClip, minimumFarClip, 100000.0f);
+
         return true;
     }
 

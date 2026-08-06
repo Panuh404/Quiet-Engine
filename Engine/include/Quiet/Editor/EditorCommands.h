@@ -11,12 +11,12 @@
 
 namespace Quiet::Scene
 {
-    struct CameraComponent;
     class Scene;
-    struct TransformComponent;
+
+    struct CameraComponent;
     struct DirectionalLightComponent;
-    struct RotatorComponent;
     struct MaterialComponent;
+    struct RotatorComponent;
     struct TransformComponent;
 }
 
@@ -71,7 +71,7 @@ namespace Quiet::Editor
 
     #pragma region Static Meshes
         bool CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
-            const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position = glm::vec3(0.0f));
+                                   const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position = glm::vec3(0.0f));
         bool AddStaticMesh(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool RemoveStaticMesh(Scene::Scene& scene, Core::UUID actorID);
         bool PasteStaticMeshValues(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, bool visible, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
@@ -83,8 +83,7 @@ namespace Quiet::Editor
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool ResetMaterial(Scene::Scene& scene, Core::UUID actorID);
-        bool PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots
-);
+        bool PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
         bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
         bool SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor);
@@ -96,8 +95,8 @@ namespace Quiet::Editor
         bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool ResetDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
-        bool PasteDirectionalLightValues(Scene::Scene& scene, Core::UUID actorID, const Scene::DirectionalLightComponent& directionalLight
-);
+        bool PasteDirectionalLightValues(Scene::Scene& scene, Core::UUID actorID, const Scene::DirectionalLightComponent& directionalLight);
+
         bool SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled);
         bool SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction);
         bool SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color);
@@ -123,8 +122,8 @@ namespace Quiet::Editor
         bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);
         bool ResetCamera(Scene::Scene& scene, Core::UUID actorID);
-        bool PasteCameraValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CameraComponent& camera
-);
+        bool PasteCameraValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CameraComponent& camera);
+
         bool SetCameraPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary);
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);
