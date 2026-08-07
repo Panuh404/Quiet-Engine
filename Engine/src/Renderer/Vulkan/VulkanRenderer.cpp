@@ -550,6 +550,15 @@ namespace Quiet::Renderer::Vulkan
                 m_CameraResources->GetDescriptorSetLayout());
 
             m_EditorGridRenderSystem = std::make_unique<EditorGridRenderSystem>();
+
+            m_SelectionMaskPipeline = std::make_unique<SelectionMaskPipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetSelectionMaskFormat(),
+                m_SceneViewportTarget->GetDepthFormat(),
+                m_CameraResources->GetDescriptorSetLayout()
+            );
+
+            m_SelectionMaskRenderSystem = std::make_unique<SelectionMaskRenderSystem>();
         }
 
         m_FrameSync = std::make_unique<FrameSync>(
