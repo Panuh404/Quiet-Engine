@@ -42,14 +42,24 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkImageLayout GetDepthLayout() const { return m_DepthLayout; }
         void SetDepthLayout(VkImageLayout layout) { m_DepthLayout = layout; }
 
+        [[nodiscard]] VkFormat GetSelectionMaskFormat() const { return kSelectionMaskFormat; }
+        [[nodiscard]] VkImage GetSelectionMaskImage() const { return m_SelectionMaskImage; }
+        [[nodiscard]] VkImageView GetSelectionMaskImageView() const { return m_SelectionMaskImageView; }
+        [[nodiscard]] VkImageLayout GetSelectionMaskLayout() const { return m_SelectionMaskLayout; }
+        void SetSelectionMaskLayout(VkImageLayout layout) { m_SelectionMaskLayout = layout; }
+
     private:
         void CreateColorResources(std::uint32_t width, std::uint32_t height);
         void CreateDepthResources(std::uint32_t width, std::uint32_t height);
+        void CreateSelectionMaskResources(std::uint32_t width, std::uint32_t height);
+
         void CreateSampler();
 
         [[nodiscard]] std::uint32_t FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
     private:
+        static constexpr VkFormat kSelectionMaskFormat = VK_FORMAT_R8_UNORM;
+
         VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
         VkDevice m_Device = VK_NULL_HANDLE;
 
@@ -67,5 +77,10 @@ namespace Quiet::Renderer::Vulkan
         VkDeviceMemory m_DepthMemory = VK_NULL_HANDLE;
         VkImageView m_DepthImageView = VK_NULL_HANDLE;
         VkImageLayout m_DepthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VkImage m_SelectionMaskImage = VK_NULL_HANDLE;
+        VkDeviceMemory m_SelectionMaskMemory = VK_NULL_HANDLE;
+        VkImageView m_SelectionMaskImageView = VK_NULL_HANDLE;
+        VkImageLayout m_SelectionMaskLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     };
 }

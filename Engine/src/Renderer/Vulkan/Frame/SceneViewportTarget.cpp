@@ -22,8 +22,16 @@ namespace Quiet::Renderer::Vulkan
 
     void SceneViewportTarget::Resize(std::uint32_t width, std::uint32_t height)
     {
-        if (width == 0 || height == 0) { Destroy(); return; }
-        if (m_Extent.width == width && m_Extent.height == height && IsValid()) return;
+        if (width == 0 || height == 0)
+        {
+            Destroy();
+            return;
+        }
+        if (m_Extent.width == width && m_Extent.height == height && IsValid())
+        {
+            return;
+        }
+
         Destroy();
 
         m_Extent.width = width;
@@ -31,6 +39,7 @@ namespace Quiet::Renderer::Vulkan
 
         CreateColorResources(width, height);
         CreateDepthResources(width, height);
+        CreateSelectionMaskResources(width, height);
         CreateSampler();
 
         QUIET_CORE_INFO("Created scene viewport target. extent={}x{}", width, height);
@@ -42,6 +51,24 @@ namespace Quiet::Renderer::Vulkan
         {
             vkDestroySampler(m_Device, m_Sampler, nullptr);
             m_Sampler = VK_NULL_HANDLE;
+        }
+
+        if (m_SelectionMaskImageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(m_Device, m_SelectionMaskImageView, nullptr);
+            m_SelectionMaskImageView = VK_NULL_HANDLE;
+        }
+
+        if (m_SelectionMaskImage != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(m_Device, m_SelectionMaskImage, nullptr);
+            m_SelectionMaskImage = VK_NULL_HANDLE;
+        }
+
+        if (m_SelectionMaskMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(m_Device, m_SelectionMaskMemory, nullptr);
+            m_SelectionMaskMemory = VK_NULL_HANDLE;
         }
 
         if (m_ColorImageView != VK_NULL_HANDLE)
@@ -82,6 +109,7 @@ namespace Quiet::Renderer::Vulkan
 
         m_ColorLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         m_DepthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        m_SelectionMaskLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         m_Extent = {};
     }
 
@@ -209,6 +237,65 @@ namespace Quiet::Renderer::Vulkan
         m_DepthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
+    void SceneViewportTarget::CreateSelectionMaskResources(std::uint32_t width, std::uint32_t height)
+    {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.format = kSelectionMaskFormat;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        if (vkCreateImage(m_Device, &imageInfo, nullptr, &m_SelectionMaskImage) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create scene viewport selection-mask image.");
+        }
+
+        VkMemoryRequirements memoryRequirements{};
+        vkGetImageMemoryRequirements(m_Device, m_SelectionMaskImage, &memoryRequirements);
+
+        VkMemoryAllocateInfo allocationInfo{};
+        allocationInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocationInfo.allocationSize = memoryRequirements.size;
+        allocationInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        if (vkAllocateMemory(m_Device, &allocationInfo, nullptr, &m_SelectionMaskMemory) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to allocate scene viewport selection-mask image memory.");
+        }
+
+        if (vkBindImageMemory(m_Device, m_SelectionMaskImage, m_SelectionMaskMemory, 0) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to bind scene viewport selection-mask image memory.");
+        }
+
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = m_SelectionMaskImage;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = kSelectionMaskFormat;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseMipLevel =  0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(m_Device, &viewInfo, nullptr, &m_SelectionMaskImageView) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create scene viewport selection-mask image view.");
+        }
+
+        m_SelectionMaskLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+
     void SceneViewportTarget::CreateSampler()
     {
         VkSamplerCreateInfo samplerInfo{};
@@ -234,8 +321,7 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 
-    std::uint32_t SceneViewportTarget::FindMemoryType(std::uint32_t typeFilter,
-                                                      VkMemoryPropertyFlags properties) const
+    std::uint32_t SceneViewportTarget::FindMemoryType(std::uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
         VkPhysicalDeviceMemoryProperties memProperties{};
         vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);
