@@ -562,16 +562,15 @@ Shift               Apply 2x Fly speed boost
 * typed Inspector component clipboard for Transform, Static Mesh, Material, Directional Light, Rotator, and Camera
 * validated component paste availability with contextual disabled-action feedback
 * complete Inspector component Undo/Redo and dirty-state integration
+* editable gizmo snapping increments with compact Viewport configuration
 
 ### Upcoming Areas
 
-* editable snapping increment controls
 * GPU silhouette/post-process selection highlighting
 * recent scenes per project
 * better unsaved-change prompts
 * project settings
 * runtime/play-mode expansion
-* component copy/paste
 
 ---
 

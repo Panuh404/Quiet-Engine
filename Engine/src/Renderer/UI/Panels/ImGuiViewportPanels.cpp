@@ -29,6 +29,16 @@ namespace
     constexpr float kMaximumViewportCameraSpeed = 100.0f;
     constexpr float kViewportCameraWheelMultiplier = 1.25f;
 
+    constexpr float kMinimumTranslateSnap = 0.001f;
+    constexpr float kMaximumTranslateSnap = 1000.0f;
+
+    constexpr float kMinimumRotateSnap = 0.1f;
+    constexpr float kMaximumRotateSnap = 180.0f;
+
+    constexpr float kMinimumScaleSnap = 0.001f;
+    constexpr float kMaximumScaleSnap = 10.0f;
+
+
     constexpr std::array kViewportCameraSpeedPresets =
         {
             0.5f,
@@ -127,6 +137,131 @@ namespace
             {
                 editorState.Viewport.CameraMoveSpeed = preset;
             }
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void DrawViewportSnapSettingsPopup(Quiet::Editor::EditorState& editorState)
+    {
+        if (!ImGui::BeginPopup("##ViewportSnapSettingsPopup"))
+            return;
+
+        auto& gizmo = editorState.Gizmo;
+        constexpr float defaultTranslateSnap[3] =
+        {
+            0.5f,
+            0.5f,
+            0.5f
+        };
+
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+            if (!std::isfinite(gizmo.TranslateSnap[axis]))
+            {
+                gizmo.TranslateSnap[axis] = defaultTranslateSnap[axis];
+            }
+
+            gizmo.TranslateSnap[axis] = std::clamp(gizmo.TranslateSnap[axis], kMinimumTranslateSnap, kMaximumTranslateSnap);
+        }
+
+        if (!std::isfinite(gizmo.RotateSnap))
+            gizmo.RotateSnap = 15.0f;
+
+        gizmo.RotateSnap = std::clamp(gizmo.RotateSnap, kMinimumRotateSnap, kMaximumRotateSnap);
+
+        if (!std::isfinite(gizmo.ScaleSnap))
+            gizmo.ScaleSnap = 0.1f;
+
+        gizmo.ScaleSnap = std::clamp(gizmo.ScaleSnap, kMinimumScaleSnap, kMaximumScaleSnap);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+        ImGui::TextUnformatted("Gizmo Snapping");
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+        ImGui::TextWrapped("Configure the increments used by the active Transform gizmo when snapping is enabled.");
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::Checkbox("Enable Snapping", &gizmo.SnapEnabled);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted("TRANSLATION");
+        ImGui::PopStyleColor();
+
+        ImGui::SetNextItemWidth(QUI::EditorSizing::Px(250.0f));
+
+        ImGui::DragFloat3(
+            "##ViewportTranslateSnap",
+            gizmo.TranslateSnap,
+            0.01f,
+            kMinimumTranslateSnap,
+            kMaximumTranslateSnap,
+            "%.3f",
+            ImGuiSliderFlags_AlwaysClamp
+        );
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("X, Y, and Z translation increments in world units.");
+        }
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted("ROTATION");
+        ImGui::PopStyleColor();
+
+        ImGui::SetNextItemWidth(QUI::EditorSizing::Px(250.0f));
+
+        ImGui::DragFloat(
+            "##ViewportRotateSnap",
+            &gizmo.RotateSnap,
+            0.5f,
+            kMinimumRotateSnap,
+            kMaximumRotateSnap,
+            "%.1f deg",
+            ImGuiSliderFlags_AlwaysClamp
+        );
+
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+        ImGui::TextUnformatted("SCALE");
+        ImGui::PopStyleColor();
+
+        ImGui::SetNextItemWidth(QUI::EditorSizing::Px(250.0f));
+
+        ImGui::DragFloat(
+            "##ViewportScaleSnap",
+            &gizmo.ScaleSnap,
+            0.01f,
+            kMinimumScaleSnap,
+            kMaximumScaleSnap,
+            "%.3f",
+            ImGuiSliderFlags_AlwaysClamp
+        );
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (QUI::EditorButton("Restore Default Increments", ImVec2(QUI::EditorSizing::Px(250.0f), 0.0f)))
+        {
+            gizmo.TranslateSnap[0] = 0.5f;
+            gizmo.TranslateSnap[1] = 0.5f;
+            gizmo.TranslateSnap[2] = 0.5f;
+
+            gizmo.RotateSnap = 15.0f;
+            gizmo.ScaleSnap = 0.1f;
         }
 
         ImGui::EndPopup();
@@ -973,22 +1108,34 @@ namespace Quiet::Renderer::UI
 
             ImGui::SameLine();
 
-            if (DrawToolbarButton(
+            const bool snapButtonPressed =
+                DrawToolbarButton(
                     m_Fonts,
                     "ViewportSnap",
                     Icons::Snap,
                     "Snap",
-                    "Toggle Snap (G)",
+                    "Toggle Snap (G)\n"
+                    "Right-click to configure increments.",
                     editorState.Gizmo.SnapEnabled,
                     true,
                     ImVec2(
-                        m_Fonts.HasIcons
-                            ? ToolbarStyle::ButtonSize()
-                            : ToolbarStyle::WideButtonWidth(),
-                        ToolbarStyle::ButtonHeight())))
+                        m_Fonts.HasIcons ? ToolbarStyle::ButtonSize() : ToolbarStyle::WideButtonWidth(),
+                        ToolbarStyle::ButtonHeight()
+                    )
+                );
+
+            const bool snapSettingsRequested = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+            if (snapButtonPressed)
             {
-                editorState.Gizmo.SnapEnabled = !editorState.Gizmo.SnapEnabled;
+                editorState.Gizmo.SnapEnabled =!editorState.Gizmo.SnapEnabled;
             }
+
+            if (snapSettingsRequested)
+            {
+                ImGui::OpenPopup("##ViewportSnapSettingsPopup");
+            }
+
+            DrawViewportSnapSettingsPopup(editorState);
 
             ImGui::SameLine();
 
