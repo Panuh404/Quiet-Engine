@@ -35,6 +35,8 @@
 #include "Renderer/Vulkan/Editor/EditorGridRenderSystem.h"
 #include "Renderer/Vulkan/Editor/SelectionMaskPipeline.h"
 #include "Renderer/Vulkan/Editor/SelectionMaskRenderSystem.h"
+#include "Renderer/Vulkan/Editor/SelectionOutlinePipeline.h"
+#include "Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.h"
 
 #include "Scene/Scene.h"
 
@@ -181,6 +183,39 @@ namespace
              &barrier
          );
      }
+
+    void SynchronizeColorAttachmentForOverlay(VkCommandBuffer commandBuffer, VkImage colorImage)
+     {
+         VkImageMemoryBarrier barrier{};
+         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+         barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+         barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         barrier.image = colorImage;
+
+         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+         barrier.subresourceRange.baseMipLevel = 0;
+         barrier.subresourceRange.levelCount = 1;
+         barrier.subresourceRange.baseArrayLayer = 0;
+         barrier.subresourceRange.layerCount = 1;
+
+         barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+         barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+         vkCmdPipelineBarrier(
+             commandBuffer,
+             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+             0,
+             0,
+             nullptr,
+             0,
+             nullptr,
+             1,
+             &barrier
+         );
+     }
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -286,6 +321,12 @@ namespace Quiet::Renderer::Vulkan
                 m_CameraResources->GetDescriptorSetLayout());
 
             m_SelectionMaskRenderSystem = std::make_unique<SelectionMaskRenderSystem>();
+
+            m_SelectionOutlinePipeline = std::make_unique<SelectionOutlinePipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetColorFormat());
+
+            m_SelectionOutlineRenderSystem = std::make_unique<SelectionOutlineRenderSystem>();
         }
 
         m_FrameSync = std::make_unique<FrameSync>(
@@ -304,10 +345,15 @@ namespace Quiet::Renderer::Vulkan
 
         m_FrameSync.reset();
         m_StaticMeshRenderSystem.reset();
+
+        m_SelectionOutlineRenderSystem.reset();
+        m_SelectionOutlinePipeline.reset();
         m_SelectionMaskRenderSystem.reset();
         m_SelectionMaskPipeline.reset();
+
         m_EditorGridRenderSystem.reset();
         m_EditorGridPipeline.reset();
+
         m_GraphicsCommands.reset();
         m_StaticMeshPipeline.reset();
         m_StaticMeshMaterialResources.reset();
@@ -486,6 +532,8 @@ namespace Quiet::Renderer::Vulkan
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
 
+        m_SelectionOutlineRenderSystem.reset();
+        m_SelectionOutlinePipeline.reset();
         m_SelectionMaskRenderSystem.reset();
         m_SelectionMaskPipeline.reset();
         m_EditorGridRenderSystem.reset();
@@ -559,6 +607,12 @@ namespace Quiet::Renderer::Vulkan
             );
 
             m_SelectionMaskRenderSystem = std::make_unique<SelectionMaskRenderSystem>();
+
+            m_SelectionOutlinePipeline = std::make_unique<SelectionOutlinePipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetColorFormat());
+
+            m_SelectionOutlineRenderSystem = std::make_unique<SelectionOutlineRenderSystem>();
         }
 
         m_FrameSync = std::make_unique<FrameSync>(
@@ -658,6 +712,14 @@ namespace Quiet::Renderer::Vulkan
             m_PendingViewportWidth,
             m_PendingViewportHeight
         );
+
+        if (m_EditorMode && m_SelectionOutlinePipeline && m_SceneViewportTarget->IsValid())
+        {
+            m_SelectionOutlinePipeline->UpdateMaskImage(
+                m_SceneViewportTarget->GetSampler(),
+                m_SceneViewportTarget->GetSelectionMaskImageView()
+            );
+        }
 
         m_ViewportResizePending = false;
         m_ViewportResizeStableFrames = 0;
@@ -835,6 +897,49 @@ namespace Quiet::Renderer::Vulkan
                 );
 
                 m_SceneViewportTarget->SetSelectionMaskLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                const bool selectedStaticMeshVisible =
+                    selectedActor &&
+                    selectedActor->StaticMesh.has_value() &&
+                    selectedActor->StaticMesh->IsValid() &&
+                    selectedActor->StaticMesh->Visible;
+
+                if (selectedStaticMeshVisible &&
+                    m_EditorMode &&
+                    m_SelectionOutlinePipeline &&
+                    m_SelectionOutlineRenderSystem &&
+                    m_SelectionOutlinePipeline->IsMaskImageReady())
+                {
+                    SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
+
+                    VkRenderingAttachmentInfo outlineAttachment{};
+                    outlineAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    outlineAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
+                    outlineAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    outlineAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    outlineAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+                    VkRenderingInfo outlineRenderingInfo{};
+                    outlineRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                    outlineRenderingInfo.renderArea.offset = { 0, 0 };
+                    outlineRenderingInfo.renderArea.extent = m_SceneViewportTarget->GetExtent();
+                    outlineRenderingInfo.layerCount = 1;
+                    outlineRenderingInfo.colorAttachmentCount = 1;
+                    outlineRenderingInfo.pColorAttachments = &outlineAttachment;
+                    outlineRenderingInfo.pDepthAttachment = nullptr;
+                    outlineRenderingInfo.pStencilAttachment = nullptr;
+
+                    vkCmdBeginRendering(commandBuffer, &outlineRenderingInfo);
+
+                    SelectionOutlineRenderContext outlineContext{};
+                    outlineContext.CommandBuffer = commandBuffer;
+                    outlineContext.Pipeline = m_SelectionOutlinePipeline.get();
+                    outlineContext.Extent = m_SceneViewportTarget->GetExtent();
+
+                    m_SelectionOutlineRenderSystem->Record(outlineContext);
+
+                    vkCmdEndRendering(commandBuffer);
+                }
             }
 
             TransitionImageLayout(

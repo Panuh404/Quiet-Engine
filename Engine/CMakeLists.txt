@@ -193,6 +193,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Editor/SelectionMaskPipeline.cpp
         src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.h
         src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.cpp
+        src/Renderer/Vulkan/Editor/SelectionOutlinePipeline.h
+        src/Renderer/Vulkan/Editor/SelectionOutlinePipeline.cpp
+        src/Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.h
+        src/Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.cpp
 
         # Renderer - Vulkan
         src/Renderer/Vulkan/RenderTypes.h

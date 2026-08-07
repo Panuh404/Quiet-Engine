@@ -57,6 +57,8 @@ namespace Quiet::Renderer::Vulkan
     class EditorGridRenderSystem;
     class SelectionMaskPipeline;
     class SelectionMaskRenderSystem;
+    class SelectionOutlinePipeline;
+    class SelectionOutlineRenderSystem;
 
     class VulkanRenderer
     {
@@ -135,6 +137,8 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<EditorGridRenderSystem> m_EditorGridRenderSystem;
         std::unique_ptr<SelectionMaskPipeline> m_SelectionMaskPipeline;
         std::unique_ptr<SelectionMaskRenderSystem> m_SelectionMaskRenderSystem;
+        std::unique_ptr<SelectionOutlinePipeline> m_SelectionOutlinePipeline;
+        std::unique_ptr<SelectionOutlineRenderSystem> m_SelectionOutlineRenderSystem;
 
         std::uint32_t m_PendingViewportWidth = 0;
         std::uint32_t m_PendingViewportHeight = 0;
