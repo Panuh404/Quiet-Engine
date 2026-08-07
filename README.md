@@ -567,8 +567,6 @@ Shift               Apply 2x Fly speed boost
 
 * editable snapping increment controls
 * GPU silhouette/post-process selection highlighting
-* component copy/paste
-* reset component values
 * recent scenes per project
 * better unsaved-change prompts
 * project settings
