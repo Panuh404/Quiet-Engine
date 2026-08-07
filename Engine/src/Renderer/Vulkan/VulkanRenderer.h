@@ -1,10 +1,12 @@
 #pragma once
 
 #include <memory>
-#include <vulkan/vulkan.h>
+#include <optional>
 
+#include <vulkan/vulkan.h>
 #include "imgui.h"
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Platform/Window.h"
 
 namespace Quiet::Platform
@@ -53,6 +55,8 @@ namespace Quiet::Renderer::Vulkan
     class StaticMeshMaterialResources;
     class EditorGridPipeline;
     class EditorGridRenderSystem;
+    class SelectionMaskPipeline;
+    class SelectionMaskRenderSystem;
 
     class VulkanRenderer
     {
@@ -63,7 +67,11 @@ namespace Quiet::Renderer::Vulkan
         VulkanRenderer(const VulkanRenderer&) = delete;
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
-        bool DrawFrame(Scene::Scene& scene, const CameraUniformData& cameraData, UI::ImGuiLayer& imguiLayer, bool drawEditorGrid);
+        bool DrawFrame(Scene::Scene& scene,
+                       const CameraUniformData& cameraData,
+                       UI::ImGuiLayer& imguiLayer,
+                       bool drawEditorGrid,
+                       std::optional<Core::UUID> selectedActorID);
 
         void WaitIdle() const;
         void RecreateSwapchain();
@@ -99,8 +107,11 @@ namespace Quiet::Renderer::Vulkan
         void LoadEditorTextures();
 
         void EnsureSceneViewportSize();
-        void RecordFrameCommandBuffer(std::uint32_t imageIndex, Scene::Scene& scene, UI::ImGuiLayer& imguiLayer, bool drawEditorGrid);
-
+        void RecordFrameCommandBuffer(std::uint32_t imageIndex,
+                                      Scene::Scene& scene,
+                                      UI::ImGuiLayer& imguiLayer,
+                                      bool drawEditorGrid,
+                                      const std::optional<Core::UUID>& selectedActorID);
     private:
         Platform::Window* m_Window = nullptr;
 
@@ -122,6 +133,8 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<StaticMeshMaterialResources> m_StaticMeshMaterialResources;
         std::unique_ptr<EditorGridPipeline> m_EditorGridPipeline;
         std::unique_ptr<EditorGridRenderSystem> m_EditorGridRenderSystem;
+        std::unique_ptr<SelectionMaskPipeline> m_SelectionMaskPipeline;
+        std::unique_ptr<SelectionMaskRenderSystem> m_SelectionMaskRenderSystem;
 
         std::uint32_t m_PendingViewportWidth = 0;
         std::uint32_t m_PendingViewportHeight = 0;

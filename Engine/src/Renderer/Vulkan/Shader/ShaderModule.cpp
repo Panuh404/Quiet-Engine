@@ -33,9 +33,7 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 
-    VkPipelineShaderStageCreateInfo ShaderModule::MakeStageInfo(
-        VkShaderStageFlagBits stage,
-        const char *entryPoint) const
+    VkPipelineShaderStageCreateInfo ShaderModule::MakeStageInfo(VkShaderStageFlagBits stage, const char *entryPoint) const
     {
         VkPipelineShaderStageCreateInfo stageInfo{};
         stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

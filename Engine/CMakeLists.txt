@@ -189,6 +189,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Editor/EditorGridPipeline.cpp
         src/Renderer/Vulkan/Editor/EditorGridRenderSystem.h
         src/Renderer/Vulkan/Editor/EditorGridRenderSystem.cpp
+        src/Renderer/Vulkan/Editor/SelectionMaskPipeline.h
+        src/Renderer/Vulkan/Editor/SelectionMaskPipeline.cpp
+        src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.h
+        src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.cpp
 
         # Renderer - Vulkan
         src/Renderer/Vulkan/RenderTypes.h

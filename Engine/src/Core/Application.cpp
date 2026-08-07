@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <optional>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -814,7 +815,14 @@ namespace Quiet::Core
         const auto activeCameraData = BuildActiveRenderCameraData(renderScene);
         const bool drawEditorGrid = editorState.Viewport.ShowGrid && editorState.Scene.Mode != Editor::SceneMode::Play;
 
-        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer, drawEditorGrid);
+        std::optional<Core::UUID> selectedActorID;
+
+        if (editorState.Viewport.ShowSelectionFeedback)
+        {
+            selectedActorID = editorState.Selection.SelectedActorID;
+        }
+
+        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer, drawEditorGrid, selectedActorID);
     }
 
     bool Application::RunSandboxFrame(const FrameContext& frame)
@@ -838,7 +846,7 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
-        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer, false);
+        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer, false, std::nullopt);
     }
 
     void Application::FinalizePlatformWindows(const bool frameCompleted) const

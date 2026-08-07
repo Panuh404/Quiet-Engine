@@ -33,6 +33,10 @@
 
 #include "Renderer/Vulkan/Editor/EditorGridPipeline.h"
 #include "Renderer/Vulkan/Editor/EditorGridRenderSystem.h"
+#include "Renderer/Vulkan/Editor/SelectionMaskPipeline.h"
+#include "Renderer/Vulkan/Editor/SelectionMaskRenderSystem.h"
+
+#include "Scene/Scene.h"
 
 namespace
 {
@@ -142,6 +146,41 @@ namespace
             0, nullptr, 1, &barrier
         );
     }
+
+    void SynchronizeDepthAttachmentForSelectionRead(VkCommandBuffer commandBuffer, VkImage depthImage)
+     {
+         VkImageMemoryBarrier barrier{};
+         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+         barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+         barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         barrier.image = depthImage;
+         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+         barrier.subresourceRange.baseMipLevel = 0;
+         barrier.subresourceRange.levelCount = 1;
+         barrier.subresourceRange.baseArrayLayer = 0;
+         barrier.subresourceRange.layerCount = 1;
+         barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+         barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+         const VkPipelineStageFlags depthStages =
+             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+         vkCmdPipelineBarrier(
+             commandBuffer,
+             depthStages,
+             depthStages,
+             0,
+             0,
+             nullptr,
+             0,
+             nullptr,
+             1,
+             &barrier
+         );
+     }
 }
 
 namespace Quiet::Renderer::Vulkan
@@ -239,6 +278,14 @@ namespace Quiet::Renderer::Vulkan
                 m_CameraResources->GetDescriptorSetLayout());
 
             m_EditorGridRenderSystem = std::make_unique<EditorGridRenderSystem>();
+
+            m_SelectionMaskPipeline = std::make_unique<SelectionMaskPipeline>(
+                *m_LogicalDevice,
+                m_SceneViewportTarget->GetSelectionMaskFormat(),
+                m_SceneViewportTarget->GetDepthFormat(),
+                m_CameraResources->GetDescriptorSetLayout());
+
+            m_SelectionMaskRenderSystem = std::make_unique<SelectionMaskRenderSystem>();
         }
 
         m_FrameSync = std::make_unique<FrameSync>(
@@ -257,6 +304,8 @@ namespace Quiet::Renderer::Vulkan
 
         m_FrameSync.reset();
         m_StaticMeshRenderSystem.reset();
+        m_SelectionMaskRenderSystem.reset();
+        m_SelectionMaskPipeline.reset();
         m_EditorGridRenderSystem.reset();
         m_EditorGridPipeline.reset();
         m_GraphicsCommands.reset();
@@ -334,7 +383,11 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 
-    bool VulkanRenderer::DrawFrame(Scene::Scene &scene, const CameraUniformData &cameraData, UI::ImGuiLayer &imguiLayer, const bool drawEditorGrid)
+    bool VulkanRenderer::DrawFrame(Scene::Scene& scene,
+                                   const CameraUniformData& cameraData,
+                                   UI::ImGuiLayer& imguiLayer,
+                                   const bool drawEditorGrid,
+                                   std::optional<Core::UUID> selectedActorID)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -370,7 +423,7 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to acquire swapchain image.");
 
         m_CameraResources->Update(imageIndex, cameraData);
-        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer, drawEditorGrid);
+        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer, drawEditorGrid, selectedActorID);
 
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
@@ -433,6 +486,8 @@ namespace Quiet::Renderer::Vulkan
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
 
+        m_SelectionMaskRenderSystem.reset();
+        m_SelectionMaskPipeline.reset();
         m_EditorGridRenderSystem.reset();
         m_EditorGridPipeline.reset();
         m_SceneViewportTarget.reset();
@@ -600,7 +655,11 @@ namespace Quiet::Renderer::Vulkan
         m_SceneViewportReady = false;
     }
 
-    void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex, Scene::Scene &scene, UI::ImGuiLayer& imguiLayer, const bool drawEditorGrid)
+    void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
+                                                  Scene::Scene& scene,
+                                                  UI::ImGuiLayer& imguiLayer,
+                                                  const bool drawEditorGrid,
+                                                  const std::optional<Core::UUID>& selectedActorID)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         vkResetCommandBuffer(commandBuffer, 0);
@@ -693,6 +752,81 @@ namespace Quiet::Renderer::Vulkan
             }
 
             vkCmdEndRendering(commandBuffer);
+
+            // Selected Actor Pass
+            const Scene::Actor* selectedActor = nullptr;
+
+            if (selectedActorID.has_value())
+            {
+                selectedActor = scene.FindActorByID(selectedActorID.value());
+            }
+
+            if (m_EditorMode && m_SelectionMaskPipeline && m_SelectionMaskRenderSystem)
+            {
+                SynchronizeDepthAttachmentForSelectionRead(commandBuffer, m_SceneViewportTarget->GetDepthImage());
+
+                TransitionImageLayout(
+                    commandBuffer,
+                    m_SceneViewportTarget->GetSelectionMaskImage(),
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    m_SceneViewportTarget->GetSelectionMaskLayout(),
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                );
+
+                m_SceneViewportTarget->SetSelectionMaskLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+                VkClearValue selectionMaskClear{};
+                selectionMaskClear.color.float32[0] = 0.0f;
+
+                VkRenderingAttachmentInfo maskAttachment{};
+                maskAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                maskAttachment.imageView = m_SceneViewportTarget->GetSelectionMaskImageView();
+                maskAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                maskAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                maskAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                maskAttachment.clearValue = selectionMaskClear;
+
+                VkRenderingAttachmentInfo maskDepthAttachment{};
+                maskDepthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                maskDepthAttachment.imageView = m_SceneViewportTarget->GetDepthImageView();
+                maskDepthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                maskDepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                maskDepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+                VkRenderingInfo maskRenderingInfo{};
+                maskRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                maskRenderingInfo.renderArea.offset = { 0, 0 };
+                maskRenderingInfo.renderArea.extent = m_SceneViewportTarget->GetExtent();
+                maskRenderingInfo.layerCount = 1;
+                maskRenderingInfo.colorAttachmentCount = 1;
+                maskRenderingInfo.pColorAttachments = &maskAttachment;
+                maskRenderingInfo.pDepthAttachment = &maskDepthAttachment;
+                maskRenderingInfo.pStencilAttachment = nullptr;
+
+                vkCmdBeginRendering(commandBuffer, &maskRenderingInfo);
+
+                SelectionMaskRenderContext maskContext{};
+                maskContext.CommandBuffer = commandBuffer;
+                maskContext.ImageIndex = imageIndex;
+                maskContext.Pipeline = m_SelectionMaskPipeline.get();
+                maskContext.Camera = m_CameraResources.get();
+                maskContext.SelectedActor = selectedActor;
+                maskContext.Extent = m_SceneViewportTarget->GetExtent();
+
+                m_SelectionMaskRenderSystem->Record(maskContext);
+
+                vkCmdEndRendering(commandBuffer);
+
+                TransitionImageLayout(
+                    commandBuffer,
+                    m_SceneViewportTarget->GetSelectionMaskImage(),
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    m_SceneViewportTarget->GetSelectionMaskLayout(),
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                );
+
+                m_SceneViewportTarget->SetSelectionMaskLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            }
 
             TransitionImageLayout(
                 commandBuffer,
