@@ -78,10 +78,11 @@ The editor target is currently the primary development target.
 * world X and Z axis visualization
 * Edit and Simulate grid rendering with automatic Play/Sandbox suppression
 * CPU actor picking for Static Mesh actors and editor debug icons
-* distinct hover and selected-actor feedback
-* projected mesh bounds, actor names, and origin markers
+* projected mesh bounds and actor names for hover feedback
+* depth-aware GPU silhouette highlighting for selected visible Static Mesh actors
+* selected actor origin markers and names
 * Camera and Directional Light editor icons and overlays
-* configurable Viewport display options
+* configurable Viewport display options with selection-feedback control
 * formal cursor capture with focus-loss cancellation and cursor restoration
 * RMB Fly navigation
 * Alt+LMB Orbit navigation around selected bounds or a resolved scene pivot
@@ -95,7 +96,10 @@ The editor target is currently the primary development target.
 * ImGuizmo integration
 * translate / rotate / scale tools
 * local/world gizmo mode
-* snapping support
+* snapping toggle through the Viewport toolbar and G shortcut
+* editable per-axis translation snapping increments
+* editable rotation and scale snapping increments
+* bounded snapping values with default-increment restoration
 * focus selected actor
 * drag mesh assets from the Asset Browser into the Viewport
 * live world-space mesh placement preview using source bounds
@@ -555,7 +559,7 @@ Shift               Apply 2x Fly speed boost
 * shared free-camera and piloted-camera navigation
 * contextual Viewport navigation guide and live status feedback
 * mesh and editor-icon hover feedback
-* selected-actor projected bounds and origin feedback
+* depth-aware GPU silhouette highlighting for selected Static Mesh actors
 * live mesh-drop placement preview with ground alignment
 * consolidated Viewport display options
 * Inspector component reset workflow for Transform, Material, Directional Light, Rotator, and Camera
@@ -563,10 +567,11 @@ Shift               Apply 2x Fly speed boost
 * validated component paste availability with contextual disabled-action feedback
 * complete Inspector component Undo/Redo and dirty-state integration
 * editable gizmo snapping increments with compact Viewport configuration
+* editor-only selection-mask render target and selected-mesh mask pass
+* fullscreen selection-outline composite with resize-safe Vulkan resource handling
 
 ### Upcoming Areas
 
-* GPU silhouette/post-process selection highlighting
 * recent scenes per project
 * better unsaved-change prompts
 * project settings

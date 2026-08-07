@@ -34,7 +34,6 @@ namespace Quiet::Editor
     void DrawDebugLabel(ImDrawList* drawList, const ImVec2& position, const char* label, bool selected, bool hovered);
     void DrawCameraDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected, bool hovered);
     void DrawDirectionalLightDebugIcon(ImDrawList* drawList, const ImVec2& position, bool selected, bool hovered);
-    void DrawSelectedBoundsOverlay(ImDrawList* drawList, const ScreenRect& rect);
     void DrawHoveredBoundsOverlay(ImDrawList* drawList, const ScreenRect& rect);
     void DrawSelectedOriginMarker(ImDrawList* drawList, const ImVec2& position);
     void DrawSelectedActorName(ImDrawList* drawList, const ImVec2& position, const std::string& actorName);

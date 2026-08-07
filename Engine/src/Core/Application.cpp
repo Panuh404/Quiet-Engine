@@ -816,8 +816,7 @@ namespace Quiet::Core
         const bool drawEditorGrid = editorState.Viewport.ShowGrid && editorState.Scene.Mode != Editor::SceneMode::Play;
 
         std::optional<Core::UUID> selectedActorID;
-
-        if (editorState.Viewport.ShowSelectionFeedback)
+        if (editorState.Viewport.ShowSelectionFeedback && editorState.Scene.Mode != Editor::SceneMode::Play)
         {
             selectedActorID = editorState.Selection.SelectedActorID;
         }

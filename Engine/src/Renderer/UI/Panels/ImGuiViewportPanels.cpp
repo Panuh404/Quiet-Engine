@@ -286,6 +286,10 @@ namespace
         ImGui::Checkbox("Grid", &editorState.Viewport.ShowGrid);
         ImGui::Checkbox("Editor Icons", &editorState.Viewport.ShowDebugIcons);
         ImGui::Checkbox("Selection Feedback", &editorState.Viewport.ShowSelectionFeedback);
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("Show the selected-mesh silhouette, actor origin and name, and selected Camera or Light feedback.");
+        }
         ImGui::Checkbox("Hover Feedback", &editorState.Viewport.ShowHoverFeedback);
         ImGui::Checkbox("Navigation Guide", &editorState.Viewport.ShowNavigationHints);
 

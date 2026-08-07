@@ -251,33 +251,6 @@ namespace Quiet::Editor
         );
     }
 
-    void DrawSelectedBoundsOverlay(ImDrawList* drawList, const ScreenRect& rect)
-    {
-        const float padding = Renderer::UI::EditorSizing::Px(5.0f);
-
-        const ImVec2 min(rect.Min.x - padding, rect.Min.y - padding);
-        const ImVec2 max(rect.Max.x + padding, rect.Max.y + padding);
-
-        const ImU32 subtleOutline = MakeOverlayColor(Renderer::UI::EditorColor::Accent, 0.42f);
-        const ImU32 cornerColor = MakeOverlayColor(Renderer::UI::EditorColor::AccentHover);
-
-        constexpr ImU32 shadow = IM_COL32(0, 0, 0, 180);
-
-        DrawScreenRectOutline(drawList, min, max, subtleOutline, Renderer::UI::EditorSizing::Px(1.0f));
-        DrawScreenRectCorners(drawList,
-            ImVec2(min.x + Renderer::UI::EditorSizing::Px(1.0f), min.y + Renderer::UI::EditorSizing::Px(1.0f)),
-            ImVec2(max.x + Renderer::UI::EditorSizing::Px(1.0f), max.y + Renderer::UI::EditorSizing::Px(1.0f)),
-            shadow,
-            Renderer::UI::EditorSizing::Px(17.0f),
-            Renderer::UI::EditorSizing::Px(3.5f)
-        );
-
-        DrawScreenRectCorners(drawList, min, max, cornerColor,
-            Renderer::UI::EditorSizing::Px(17.0f),
-            Renderer::UI::EditorSizing::Px(2.25f)
-        );
-    }
-
     void DrawHoveredBoundsOverlay(ImDrawList *drawList, const ScreenRect &rect)
     {
         const float padding = Renderer::UI::EditorSizing::Px(3.0f);
@@ -375,26 +348,27 @@ namespace Quiet::Editor
     {
         ImVec2 actorScreenPosition{};
 
-        const bool originVisible = ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
+        const bool originVisible = ProjectWorldToViewport(
+            actor.Transform.WorldTransform.Position,
+            cameraData,
+            viewportState,
+            actorScreenPosition);
 
         ScreenRect boundsRect{};
+
         const bool boundsVisible = ProjectStaticMeshBoundsToViewport(actor, cameraData, viewportState, boundsRect);
 
-        if (!originVisible && !boundsVisible) return;
+        if (!originVisible && !boundsVisible)
+            return;
 
-        if (boundsVisible)
-        {
-            DrawSelectedBoundsOverlay(drawList, boundsRect);
-        }
         if (originVisible)
         {
             DrawSelectedOriginMarker(drawList, actorScreenPosition);
             DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
+            return;
         }
-        else
-        {
-            DrawSelectedActorName(drawList, boundsRect.Min, actor.Name);
-        }
+
+        DrawSelectedActorName(drawList, boundsRect.Min, actor.Name);
     }
 
     void DrawHoveredActorViewportOverlay(const Scene::Actor &actor,
