@@ -30,6 +30,7 @@ namespace Quiet::Project
                         Scene::Scene& scene,
                         Renderer::Vulkan::MeshLibrary& meshLibrary);
 
+        bool InitializeProject(const std::filesystem::path& projectFilePath);
         bool InitializeLastOpenedOrDefaultProject();
         bool OpenOrCreateProject(const std::filesystem::path& projectFilePath);
         bool CreateProject(const std::string& projectName);

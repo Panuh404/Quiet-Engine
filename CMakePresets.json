@@ -63,7 +63,7 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "QUIET_BUILD_SANDBOX": "OFF",
-        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_EDITOR": "ON",
         "QUIET_BUILD_LAUNCHER": "ON"
       }
     },
@@ -76,7 +76,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "QUIET_BUILD_SANDBOX": "OFF",
-        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_EDITOR": "ON",
         "QUIET_BUILD_LAUNCHER": "ON"
       }
     }
@@ -108,14 +108,16 @@
       "name": "build-debug-launcher",
       "configurePreset": "debug-launcher",
       "targets": [
-        "Quiet_Launcher"
+        "Quiet_Launcher",
+        "Quiet_Editor"
       ]
     },
     {
       "name": "build-release-launcher",
       "configurePreset": "release-launcher",
       "targets": [
-        "Quiet_Launcher"
+        "Quiet_Launcher",
+        "Quiet_Editor"
       ]
     }
   ]

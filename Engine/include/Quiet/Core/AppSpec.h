@@ -1,4 +1,6 @@
 #pragma once
+
+#include <filesystem>
 #include <cstdint>
 #include <string>
 
@@ -14,6 +16,8 @@ namespace Quiet::Core
     {
         std::string Name = "Quiet Application";
         std::string WindowIconPath;
+
+        std::filesystem::path ProjectFilePath;
 
         std::uint32_t Width = 1280;
         std::uint32_t Height = 720;

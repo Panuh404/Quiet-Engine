@@ -85,6 +85,37 @@ namespace Quiet::Project
                                          , m_Scene(scene)
                                          , m_MeshLibrary(meshLibrary) {}
 
+    bool ProjectWorkflow::InitializeProject(const std::filesystem::path& projectFilePath)
+    {
+        if (!LoadOrCreateRegistry())
+        {
+            QUIET_CORE_ERROR("Failed to load or create project registry.");
+            return false;
+        }
+
+        if (projectFilePath.empty())
+        {
+            QUIET_CORE_ERROR("Cannot initialize an empty explicit project path.");
+            return false;
+        }
+
+        const std::filesystem::path normalizedProjectPath = std::filesystem::absolute(projectFilePath).lexically_normal();
+        if (normalizedProjectPath.extension() != ".quiet")
+        {
+            QUIET_CORE_ERROR("Explicit project path is not a Quiet project: '{}'.", normalizedProjectPath.string());
+            return false;
+        }
+
+        std::error_code ec;
+        if (!std::filesystem::exists(normalizedProjectPath, ec) || ec)
+        {
+            QUIET_CORE_ERROR("Explicit project does not exist: '{}'.", normalizedProjectPath.string());
+            return false;
+        }
+
+        return OpenOrCreateProject(normalizedProjectPath);
+    }
+
     bool ProjectWorkflow::InitializeLastOpenedOrDefaultProject()
     {
         if (!LoadOrCreateRegistry())

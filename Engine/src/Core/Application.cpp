@@ -333,7 +333,11 @@ namespace Quiet::Core
             m_Renderer->GetMeshLibrary()
         );
 
-        if (!m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject())
+        const bool projectInitialized = m_Spec.IsEditor() && !m_Spec.ProjectFilePath.empty()
+            ? m_ProjectWorkflow->InitializeProject(m_Spec.ProjectFilePath)
+            : m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject();
+
+        if (!projectInitialized)
         {
             throw std::runtime_error("Failed to initialize project workflow.");
         }

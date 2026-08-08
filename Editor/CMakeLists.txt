@@ -14,7 +14,7 @@ if(WIN32)
     enable_language(RC)
 
     target_sources(Quiet_Editor
-            PRIVATE
+        PRIVATE
             Resources/Windows/QuietEditor.rc
     )
 endif()
