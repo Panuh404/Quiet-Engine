@@ -53,6 +53,32 @@
         "QUIET_BUILD_SANDBOX": "OFF",
         "QUIET_BUILD_EDITOR": "ON"
       }
+    },
+    {
+      "name": "debug-launcher",
+      "displayName": "Debug Launcher",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Debug-Launcher",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_LAUNCHER": "ON"
+      }
+    },
+    {
+      "name": "release-launcher",
+      "displayName": "Release Launcher",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Release-Launcher",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_LAUNCHER": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -76,6 +102,20 @@
       "configurePreset": "release-editor",
       "targets": [
         "Quiet_Editor"
+      ]
+    },
+    {
+      "name": "build-debug-launcher",
+      "configurePreset": "debug-launcher",
+      "targets": [
+        "Quiet_Launcher"
+      ]
+    },
+    {
+      "name": "build-release-launcher",
+      "configurePreset": "release-launcher",
+      "targets": [
+        "Quiet_Launcher"
       ]
     }
   ]
