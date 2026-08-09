@@ -886,19 +886,40 @@ namespace Quiet::Core
         {
             case EditorBootstrapStage::WaitingForFirstFrame:
             {
-                m_EditorBootstrapStage = EditorBootstrapStage::LoadingProject;
+                m_EditorBootstrapStage = EditorBootstrapStage::PreparingProject;
                 break;
             }
 
-            case EditorBootstrapStage::LoadingProject:
+            case EditorBootstrapStage::PreparingProject:
             {
-                if (!m_ProjectWorkflow->OpenOrCreateProject(m_EditorProjectFilePath))
+                if (!m_ProjectWorkflow->BeginStagedOpenProject(m_EditorProjectFilePath))
                 {
                     m_EditorBootstrapStage = EditorBootstrapStage::Failed;
-                    m_EditorBootstrapError = "Quiet could not load the selected project.";
+                    m_EditorBootstrapError = "Quiet could not prepare the selected project.";
                     break;
                 }
 
+                m_EditorBootstrapStage = EditorBootstrapStage::LoadingAssets;
+                break;
+            }
+
+            case EditorBootstrapStage::LoadingAssets:
+            {
+                if (!m_ProjectAssetLoader->IsIncrementalReloadComplete())
+                {
+                    m_ProjectAssetLoader->AdvanceIncrementalReload();
+                }
+
+                if (m_ProjectAssetLoader->IsIncrementalReloadComplete())
+                {
+                    m_EditorBootstrapStage = EditorBootstrapStage::LoadingScene;
+                }
+                break;
+            }
+
+            case EditorBootstrapStage::LoadingScene:
+            {
+                m_ProjectWorkflow->FinishStagedOpenProject();
                 m_EditorSceneWorkflow->ResetSceneSession();
                 m_EditorBootstrapStage = EditorBootstrapStage::Ready;
 
@@ -989,13 +1010,70 @@ namespace Quiet::Core
 
                 ImGui::Spacing();
 
+                std::string statusText;
+                float progress = 0.05f;
+
+                switch (m_EditorBootstrapStage)
+                {
+                    case EditorBootstrapStage::WaitingForFirstFrame:
+                    {
+                        statusText = "Preparing editor...";
+                        progress = 0.05f;
+                        break;
+                    }
+
+                    case EditorBootstrapStage::PreparingProject:
+                    {
+                        statusText = "Reading project data...";
+                        progress = 0.12f;
+                        break;
+                    }
+
+                    case EditorBootstrapStage::LoadingAssets:
+                    {
+                        const Project::AssetReloadProgress& assetProgress = m_ProjectAssetLoader->GetIncrementalReloadProgress();
+                        const float stageProgress = assetProgress.Total > 0 ? static_cast<float>(assetProgress.Completed) / static_cast<float>(assetProgress.Total) : 1.0f;
+                        if (assetProgress.Stage == Project::AssetReloadStage::Meshes)
+                        {
+                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading meshes..." : "Loading mesh: " + assetProgress.CurrentAssetID;
+                            progress = 0.15f + stageProgress * 0.45f;
+                        }
+                        else if (assetProgress.Stage == Project::AssetReloadStage::Textures)
+                        {
+                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading textures..." : "Loading texture: " + assetProgress.CurrentAssetID;
+                            progress = 0.60f + stageProgress * 0.30f;
+                        }
+                        else
+                        {
+                            statusText = "Finalizing assets...";
+                            progress = 0.90f;
+                        }
+                        break;
+                    }
+
+                    case EditorBootstrapStage::LoadingScene:
+                    {
+                        statusText = "Loading startup scene...";
+                        progress = 0.95f;
+                        break;
+                    }
+
+                    case EditorBootstrapStage::Ready:
+                    {
+                        progress = 1.0f;
+                        break;
+                    }
+
+                    case EditorBootstrapStage::Failed:
+                    default:
+                        break;
+                }
+
                 ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                ImGui::TextUnformatted(m_EditorBootstrapStage == EditorBootstrapStage::WaitingForFirstFrame ? "Preparing editor..." : "Loading project data and assets...");
+                ImGui::TextUnformatted(statusText.c_str());
                 ImGui::PopStyleColor();
 
                 ImGui::Spacing();
-
-                const float progress = m_EditorBootstrapStage == EditorBootstrapStage::WaitingForFirstFrame ? 0.20f : 0.55f;
 
                 ImGui::PushStyleColor(ImGuiCol_PlotHistogram, QUI::EditorColor::Accent);
                 ImGui::ProgressBar(progress, ImVec2(-1.0f, uiLayer.Scale(6.0f)), "");

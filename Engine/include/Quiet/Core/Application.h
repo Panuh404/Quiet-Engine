@@ -115,7 +115,9 @@ namespace Quiet::Core
         enum class EditorBootstrapStage : std::uint8_t
         {
             WaitingForFirstFrame,
-            LoadingProject,
+            PreparingProject,
+            LoadingAssets,
+            LoadingScene,
             Ready,
             Failed
         };

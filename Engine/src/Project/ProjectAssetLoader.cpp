@@ -421,6 +421,85 @@ namespace Quiet::Project
         }
     }
 
+    void ProjectAssetLoader::BeginIncrementalReload(bool forceReimport)
+    {
+        m_IncrementalForceReimport = forceReimport;
+        m_IncrementalReloadProgress = {};
+        m_IncrementalReloadProgress.Stage = AssetReloadStage::Meshes;
+        PrepareIncrementalMeshAssets();
+    }
+
+    void ProjectAssetLoader::AdvanceIncrementalReload()
+    {
+        if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Idle ||
+            m_IncrementalReloadProgress.Stage == AssetReloadStage::Complete)
+        {
+            return;
+        }
+
+        if (m_IncrementalReloadIndex >= m_IncrementalReloadAssets.size())
+        {
+            if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Meshes)
+            {
+                PrepareIncrementalTextureAssets();
+            }
+            else
+            {
+                m_IncrementalReloadProgress.Stage = AssetReloadStage::Complete;
+                m_IncrementalReloadProgress.CurrentAssetID.clear();
+            }
+            return;
+        }
+
+        const AssetRecord record = m_IncrementalReloadAssets[m_IncrementalReloadIndex];
+        bool loaded = true;
+
+        switch (m_IncrementalReloadProgress.Stage)
+        {
+            case AssetReloadStage::Meshes:
+            {
+                loaded = record.BuiltIn ? LoadBuiltInMesh(record) : LoadExternalMesh(record, m_IncrementalForceReimport);
+                break;
+            }
+
+            case AssetReloadStage::Textures:
+            {
+                loaded = LoadExternalTexture(record, m_IncrementalForceReimport);
+                break;
+            }
+
+            case AssetReloadStage::Idle:
+            case AssetReloadStage::Complete:
+            default:
+                return;
+        }
+
+        if (!loaded)
+        {
+            m_IncrementalReloadProgress.HadFailures = true;
+        }
+
+        ++m_IncrementalReloadIndex;
+        m_IncrementalReloadProgress.Completed = m_IncrementalReloadIndex;
+        if (m_IncrementalReloadIndex >= m_IncrementalReloadAssets.size())
+        {
+            if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Meshes)
+            {
+                // Important: query textures only now.
+                // Mesh import may have registered new ones.
+                PrepareIncrementalTextureAssets();
+            }
+            else
+            {
+                m_IncrementalReloadProgress.Stage = AssetReloadStage::Complete;
+                m_IncrementalReloadProgress.CurrentAssetID.clear();
+            }
+            return;
+        }
+
+        m_IncrementalReloadProgress.CurrentAssetID = m_IncrementalReloadAssets[m_IncrementalReloadIndex].ID;
+    }
+
     bool ProjectAssetLoader::LoadBuiltInMesh(const AssetRecord &record)
     {
         if (!HasBoundRendererResources(m_PhysicalDevice, m_LogicalDevice, m_GraphicsCommands))
@@ -690,5 +769,57 @@ namespace Quiet::Project
         }
 
         return true;
+    }
+
+    void ProjectAssetLoader::PrepareIncrementalMeshAssets()
+    {
+        m_IncrementalReloadAssets.clear();
+        m_IncrementalReloadIndex = 0;
+
+        const auto assetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Mesh);
+        m_IncrementalReloadAssets.reserve(assetPointers.size());
+        for (const AssetRecord* record : assetPointers)
+        {
+            if (record)
+            {
+                m_IncrementalReloadAssets.push_back(*record);
+            }
+        }
+
+        m_IncrementalReloadProgress.Stage = AssetReloadStage::Meshes;
+        m_IncrementalReloadProgress.Completed = 0;
+        m_IncrementalReloadProgress.Total = m_IncrementalReloadAssets.size();
+        m_IncrementalReloadProgress.CurrentAssetID = m_IncrementalReloadAssets.empty() ? std::string{}
+        : m_IncrementalReloadAssets.front().ID;
+
+        if (m_IncrementalReloadAssets.empty())
+        {
+            PrepareIncrementalTextureAssets();
+        }
+    }
+
+    void ProjectAssetLoader::PrepareIncrementalTextureAssets()
+    {
+        m_IncrementalReloadAssets.clear();
+        m_IncrementalReloadIndex = 0;
+
+        const auto assetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Texture);
+        m_IncrementalReloadAssets.reserve(assetPointers.size());
+        for (const AssetRecord* record : assetPointers)
+        {
+            if (!record || record->BuiltIn) continue;
+            m_IncrementalReloadAssets.push_back(*record);
+        }
+
+        m_IncrementalReloadProgress.Stage = AssetReloadStage::Textures;
+        m_IncrementalReloadProgress.Completed = 0;
+        m_IncrementalReloadProgress.Total = m_IncrementalReloadAssets.size();
+        m_IncrementalReloadProgress.CurrentAssetID = m_IncrementalReloadAssets.empty() ? std::string{} : m_IncrementalReloadAssets.front().ID;
+
+        if (m_IncrementalReloadAssets.empty())
+        {
+            m_IncrementalReloadProgress.Stage = AssetReloadStage::Complete;
+            m_IncrementalReloadProgress.CurrentAssetID.clear();
+        }
     }
 }

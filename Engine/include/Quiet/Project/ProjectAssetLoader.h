@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "Quiet/Project/AssetRegistry.h"
 
@@ -20,6 +24,23 @@ namespace Quiet::Renderer::Vulkan
 
 namespace Quiet::Project
 {
+    enum class AssetReloadStage : std::uint8_t
+    {
+        Idle,
+        Meshes,
+        Textures,
+        Complete
+    };
+
+    struct AssetReloadProgress
+    {
+        AssetReloadStage Stage = AssetReloadStage::Idle;
+        std::size_t Completed = 0;
+        std::size_t Total = 0;
+        std::string CurrentAssetID;
+        bool HadFailures = false;
+    };
+
     class ProjectAssetLoader
     {
     public:
@@ -39,10 +60,19 @@ namespace Quiet::Project
         bool ReloadAssets(bool forceReimport = false);
         bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
+        void BeginIncrementalReload(bool forceReimport = false);
+        void AdvanceIncrementalReload();
+
+        [[nodiscard]] bool IsIncrementalReloadComplete() const { return m_IncrementalReloadProgress.Stage == AssetReloadStage::Complete; }
+        [[nodiscard]] const AssetReloadProgress& GetIncrementalReloadProgress() const { return m_IncrementalReloadProgress; }
+
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
         bool LoadExternalMesh(const Project::AssetRecord& record, bool forceReimport);
         bool LoadExternalTexture(const AssetRecord& record, bool forceReimport);
+
+        void PrepareIncrementalMeshAssets();
+        void PrepareIncrementalTextureAssets();
 
     private:
         ProjectContext& m_ProjectContext;
@@ -51,5 +81,10 @@ namespace Quiet::Project
         const Renderer::Vulkan::PhysicalDevice* m_PhysicalDevice = nullptr;
         const Renderer::Vulkan::LogicalDevice* m_LogicalDevice = nullptr;
         const Renderer::Vulkan::GraphicsCommands* m_GraphicsCommands = nullptr;
+
+        std::vector<AssetRecord> m_IncrementalReloadAssets;
+        std::size_t m_IncrementalReloadIndex = 0;
+        bool m_IncrementalForceReimport = false;
+        AssetReloadProgress m_IncrementalReloadProgress{};
     };
 }

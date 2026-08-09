@@ -31,10 +31,14 @@ namespace Quiet::Project
                         Renderer::Vulkan::MeshLibrary& meshLibrary);
 
         bool InitializeProjectRegistry();
-        [[nodiscard]] std::filesystem::path GetInitialProjectFilePath() const;
-
         bool InitializeProject(const std::filesystem::path& projectFilePath);
         bool InitializeLastOpenedOrDefaultProject();
+
+        bool BeginStagedOpenProject(const std::filesystem::path& projectFilePath);
+        void FinishStagedOpenProject();
+
+        [[nodiscard]] std::filesystem::path GetInitialProjectFilePath() const;
+
         bool OpenOrCreateProject(const std::filesystem::path& projectFilePath);
         bool CreateProject(const std::string& projectName);
         bool SetStartupScene(const std::filesystem::path& relativeScenePath);

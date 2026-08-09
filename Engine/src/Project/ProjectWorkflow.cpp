@@ -140,6 +140,38 @@ namespace Quiet::Project
         return OpenOrCreateProject(ResolveInitialProjectFilePath());
     }
 
+    bool ProjectWorkflow::BeginStagedOpenProject(const std::filesystem::path &projectFilePath)
+    {
+        if (!LoadOrCreateProject(m_ProjectContext, projectFilePath))
+        {
+            QUIET_CORE_ERROR("Failed to prepare project '{}'.", projectFilePath.string());
+            return false;
+        }
+
+        TouchRecentProject();
+        if (!SaveRegistry())
+        {
+            QUIET_CORE_WARN("Failed to save project registry.");
+        }
+
+        m_ProjectAssetLoader.BeginIncrementalReload();
+
+        QUIET_CORE_INFO("Prepared staged project load for '{}'.", m_ProjectContext.GetProjectFilePath().string());
+        return true;
+    }
+
+    void ProjectWorkflow::FinishStagedOpenProject()
+    {
+        const AssetReloadProgress& progress = m_ProjectAssetLoader.GetIncrementalReloadProgress();
+        if (progress.HadFailures)
+        {
+            QUIET_CORE_WARN("Project '{}' has assets that are registered but not fully loadable yet.", m_ProjectContext.GetProjectFilePath().string());
+        }
+
+        LoadOrCreateStartupScene();
+        QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
+    }
+
     bool ProjectWorkflow::OpenOrCreateProject(const std::filesystem::path &projectFilePath)
     {
         if (!LoadOrCreateProject(m_ProjectContext, projectFilePath))
