@@ -573,7 +573,7 @@ namespace Quiet::Scene
     {
         for (auto& actor : m_Actors)
         {
-            if (actor.ID == id) return &actor;
+            if (actor.GetID() == id) return &actor;
         }
         return nullptr;
     }
@@ -582,7 +582,7 @@ namespace Quiet::Scene
     {
         for (const auto& actor : m_Actors)
         {
-            if (actor.ID == id) return &actor;
+            if (actor.GetID() == id) return &actor;
         }
         return nullptr;
     }
@@ -591,8 +591,8 @@ namespace Quiet::Scene
     {
         for (auto& actor : m_Actors)
         {
-            if (actor.Camera.has_value() && actor.Camera->Primary)
-                return &actor;
+            const CameraComponent* camera = actor.TryGetComponent<CameraComponent>();
+            if (camera && camera->Primary) return &actor;
         }
         return nullptr;
     }
@@ -601,8 +601,8 @@ namespace Quiet::Scene
     {
         for (const auto& actor : m_Actors)
         {
-            if (actor.Camera.has_value() && actor.Camera->Primary)
-                return &actor;
+            const CameraComponent* camera = actor.TryGetComponent<CameraComponent>();
+            if (camera && camera->Primary) return &actor;
         }
         return nullptr;
     }
@@ -676,22 +676,23 @@ namespace Quiet::Scene
     void Scene::HandlePlayInput(const Input::Input& input, float deltaTime)
     {
         Actor* cameraActor = FindPrimaryCameraActor();
-        if (!cameraActor || !cameraActor->Camera.has_value()) return;
+        if (!cameraActor) return;
 
-        CameraPilotState state = BuildPilotStateFromCameraTransform(cameraActor->Transform.WorldTransform);
+        auto& transform = cameraActor->GetComponent<TransformComponent>().WorldTransform;
+        CameraPilotState state = BuildPilotStateFromCameraTransform(transform);
         CameraController::UpdateFromInput(state, input, deltaTime);
-        ApplyPilotStateToCameraTransform(state, cameraActor->Transform.WorldTransform);
+        ApplyPilotStateToCameraTransform(state, transform);
     }
 
     void Scene::UpdateRuntime(float deltaTime)
     {
         for (auto& actor : m_Actors)
         {
-            if (actor.Rotator.has_value())
-            {
-                actor.Transform.WorldTransform.RotationDegrees.z +=
-                    actor.Rotator->RotationSpeedDegreesPerSecond * deltaTime;
-            }
+            RotatorComponent* rotator = actor.TryGetComponent<RotatorComponent>();
+            if (!rotator) continue;
+
+            auto& transform = actor.GetComponent<TransformComponent>().WorldTransform;
+            transform.RotationDegrees.z += rotator->RotationSpeedDegreesPerSecond * deltaTime;
         }
     }
 

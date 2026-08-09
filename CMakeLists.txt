@@ -115,7 +115,13 @@ FetchContent_Declare(
         GIT_TAG         master
         GIT_SHALLOW     TRUE
 )
-FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog stb)
+FetchContent_Declare(
+        entt
+        GIT_REPOSITORY  https://github.com/skypjack/entt.git
+        GIT_TAG         v4.0.0
+        GIT_SHALLOW     TRUE
+)
+FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog stb entt)
 
 find_package(Vulkan REQUIRED)
 

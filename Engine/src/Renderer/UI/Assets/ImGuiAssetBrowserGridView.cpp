@@ -267,8 +267,6 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserThumbnailSize thumbnailSize)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
-        auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
-
         const bool runtimeModeActive = editorState.Scene.Mode != Editor::SceneMode::Edit;
         const AssetBrowserCardMetrics metrics = MakeAssetBrowserCardMetrics(thumbnailSize);
         const float availableWidth = ImGui::GetContentRegionAvail().x;
@@ -434,7 +432,6 @@ namespace Quiet::Renderer::UI::Assets
             const Project::AssetRecord& record = *recordPtr;
             ImGui::TableNextColumn();
 
-            const std::uint32_t referenceCount = CountAssetReferences(scene, record);
             const std::string displayName = MakeAssetDisplayName(record);
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
             const bool isSelectedAsset = IsAssetSelected(state, record.ID);

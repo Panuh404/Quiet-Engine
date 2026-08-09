@@ -281,6 +281,9 @@ target_link_libraries(Quiet_Engine
         glm
         nlohmann_json::nlohmann_json
         assimp
+
+    PRIVATE
+        EnTT::EnTT
 )
 
 if (MSVC)
