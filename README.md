@@ -21,7 +21,8 @@ Implemented foundations:
 * dark professional editor theme
 * high-DPI aware editor UI scaling
 * scene viewport with an adaptive world grid, actor picking, hover/selection feedback, Fly/Orbit/Pan navigation, mesh-placement previews, and ImGuizmo editing
-* project manager with `.quiet` project descriptors
+* standalone Quiet Launcher for project discovery, creation, and Editor handoff
+* staged Editor project bootstrap with visible incremental mesh and texture loading
 * scene save/load workflow
 * dual-source Asset Browser with editable physical Project content, read-only Engine resources, and a project-local asset registry
 * mesh and texture import/loading foundation
@@ -40,9 +41,10 @@ Implemented foundations:
 The workspace currently contains three main targets:
 
 ```text
-Quiet_Engine   - core static engine library
-Quiet_Sandbox  - runtime sandbox executable
-Quiet_Editor   - editor executable
+Quiet_Engine     - core static engine library
+Quiet_Launcher   - project launcher executable
+Quiet_Editor     - editor executable
+Quiet_Sandbox    - runtime sandbox executable
 ```
 
 The editor target is currently the primary development target.
@@ -263,6 +265,26 @@ Runtime play-testing mode.
 
 Quiet uses `.quiet` project files.
 
+Normal project startup is handled by the standalone `Quiet_Launcher`.
+
+The launcher can discover existing projects, track recent projects, create new projects, and launch the Editor with an explicit project descriptor.
+
+Editor startup is staged across rendered frames:
+
+```text
+Prepare Editor
+    ↓
+Read Project
+    ↓
+Load Mesh Assets
+    ↓
+Load Texture Assets
+    ↓
+Load Startup Scene
+    ↓
+Editor Ready
+```
+
 A project descriptor stores:
 
 * project name
@@ -430,33 +452,42 @@ Fetched automatically by CMake:
 
 ## Build
 
-### Debug Sandbox
-
+### Sandbox (Debug)
 ```bash
 cmake --preset debug
 cmake --build --preset build-debug
 ```
 
-### Release Sandbox
-
+### Sandbox (Release)
 ```bash
 cmake --preset release
 cmake --build --preset build-release
 ```
 
-### Debug Editor
-
+### Editor (Debug)
 ```bash
 cmake --preset debug-editor
 cmake --build --preset build-debug-editor
 ```
 
-### Release Editor
-
+### Editor (Release)
 ```bash
 cmake --preset release-editor
 cmake --build --preset build-release-editor
 ```
+
+### Launcher (Debug)
+```bash
+cmake --preset debug-launcher
+cmake --build --preset build-debug-launcher
+```
+
+### Launcher (Release)
+```bash
+cmake --preset release-launcher
+cmake --build --preset build-release-launcher
+```
+
 
 You can also build the editor target directly:
 
@@ -474,10 +505,11 @@ Executables and resources are written to:
 Build/Binaries/<Config>/
 ```
 
-Typical debug editor output:
+Typical debug launcher/editor output:
 
 ```text
 Build/Binaries/Debug/
+├── Quiet_Launcher
 ├── Quiet_Editor
 └── Resources/
     ├── Fonts/
@@ -569,13 +601,19 @@ Shift               Apply 2x Fly speed boost
 * editable gizmo snapping increments with compact Viewport configuration
 * editor-only selection-mask render target and selected-mesh mask pass
 * fullscreen selection-outline composite with resize-safe Vulkan resource handling
+* standalone Quiet Launcher application foundation
+* launcher project discovery, creation, and Editor process handoff
+* isolated Launcher and Editor ImGui layout state
+* visible staged Editor project bootstrap
+* incremental startup mesh and texture loading
 
 ### Upcoming Areas
 
-* recent scenes per project
-* better unsaved-change prompts
-* project settings
-* runtime/play-mode expansion
+* EnTT-based ECS foundation
+* Jolt Physics integration
+* Lua scripting foundation
+* audio system foundation
+* runtime rendering expansion
 
 ---
 
