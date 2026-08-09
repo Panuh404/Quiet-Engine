@@ -31,15 +31,22 @@ namespace Quiet::Renderer::UI
                            std::uint32_t minImageCount,
                            std::uint32_t imageCount,
                            VkFormat colorFormat,
-                           VkFormat depthFormat)
+                           VkFormat depthFormat,
+                           const char* iniFilename,
+                           bool enableDocking,
+                           bool enableViewports)
         : m_Device(device)
     {
         CreateDescriptorPool();
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.IniFilename = iniFilename;
+        if (enableDocking)
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        if (enableViewports)
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         float contentScaleX = 1.0f;
         float contentScaleY = 1.0f;

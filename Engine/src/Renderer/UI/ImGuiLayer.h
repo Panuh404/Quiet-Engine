@@ -59,16 +59,20 @@ namespace Quiet::Renderer::UI
     class ImGuiLayer
     {
     public:
-        ImGuiLayer(GLFWwindow* window,
-                   VkInstance instance,
-                   VkPhysicalDevice physicalDevice,
-                   VkDevice device,
-                   std::uint32_t queueFamily,
-                   VkQueue queue,
-                   std::uint32_t minImageCount,
-                   std::uint32_t imageCount,
-                   VkFormat colorFormat,
-                   VkFormat depthFormat);
+        ImGuiLayer(
+            GLFWwindow* window,
+            VkInstance instance,
+            VkPhysicalDevice physicalDevice,
+            VkDevice device,
+            std::uint32_t queueFamily,
+            VkQueue queue,
+            std::uint32_t minImageCount,
+            std::uint32_t imageCount,
+            VkFormat colorFormat,
+            VkFormat depthFormat,
+            const char* iniFilename = "imgui.ini",
+            bool enableDocking = true,
+            bool enableViewports = true);
         ~ImGuiLayer();
 
         ImGuiLayer(const ImGuiLayer&) = delete;
@@ -86,6 +90,7 @@ namespace Quiet::Renderer::UI
                            const Vulkan::TextureLibrary &textureLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()> &viewportOverlayCallback);
+
         void BuildRuntimeUI(std::uint32_t& outViewportWidth,
                             std::uint32_t& outViewportHeight,
                             ImTextureID sceneViewportTexture);

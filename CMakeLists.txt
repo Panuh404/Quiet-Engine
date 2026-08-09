@@ -214,3 +214,7 @@ endif()
 if(TARGET Quiet_Editor)
     add_dependencies(Quiet_Editor Quiet_Shaders)
 endif()
+
+if(TARGET Quiet_Launcher AND TARGET Quiet_Editor)
+    add_dependencies(Quiet_Launcher Quiet_Editor)
+endif()

@@ -136,7 +136,10 @@ namespace Quiet::Launcher
             2,
             static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
             m_Swapchain->GetImageFormat(),
-            VK_FORMAT_UNDEFINED);
+            VK_FORMAT_UNDEFINED,
+            "Quiet_Launcher.ini",
+            false,
+            false);
     }
 
     void LauncherRenderer::DestroyResources()
@@ -371,7 +374,10 @@ namespace Quiet::Launcher
             2,
             static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
             m_Swapchain->GetImageFormat(),
-            VK_FORMAT_UNDEFINED);
+            VK_FORMAT_UNDEFINED,
+            "Quiet_Launcher.ini",
+            false,
+            false);
 
         oldSwapchain.reset();
         m_Window->ResetFramebufferResizedFlag();

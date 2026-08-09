@@ -280,7 +280,10 @@ namespace Quiet::Renderer::Vulkan
             2,
             static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
             m_Swapchain->GetImageFormat(),
-            m_DepthResources->GetFormat());
+            m_DepthResources->GetFormat(),
+            m_EditorMode ? "Quiet_Editor.ini" : nullptr,
+            m_EditorMode,
+            m_EditorMode);
 
         m_MeshLibrary = std::make_unique<MeshLibrary>();
         m_TextureLibrary = std::make_unique<TextureLibrary>();
@@ -630,7 +633,10 @@ namespace Quiet::Renderer::Vulkan
             2,
             static_cast<std::uint32_t>(m_Swapchain->GetImages().size()),
             m_Swapchain->GetImageFormat(),
-            m_DepthResources->GetFormat()
+            m_DepthResources->GetFormat(),
+            m_EditorMode ? "Quiet_Editor.ini" : nullptr,
+            m_EditorMode,
+            m_EditorMode
         );
 
         m_SceneViewportReady = false;

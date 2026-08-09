@@ -108,16 +108,14 @@
       "name": "build-debug-launcher",
       "configurePreset": "debug-launcher",
       "targets": [
-        "Quiet_Launcher",
-        "Quiet_Editor"
+        "Quiet_Launcher"
       ]
     },
     {
       "name": "build-release-launcher",
       "configurePreset": "release-launcher",
       "targets": [
-        "Quiet_Launcher",
-        "Quiet_Editor"
+        "Quiet_Launcher"
       ]
     }
   ]
