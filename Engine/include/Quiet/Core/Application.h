@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <filesystem>
+#include <string>
 
 #include "AppSpec.h"
 #include "glm/vec3.hpp"
@@ -110,6 +112,14 @@ namespace Quiet::Core
         [[nodiscard]] const Scene::Actor* GetPreferredRenderCameraActor(const Scene::Scene& scene) const;
         [[nodiscard]] float CalculateDeltaTime(double& previousTime) const;
 
+        enum class EditorBootstrapStage : std::uint8_t
+        {
+            WaitingForFirstFrame,
+            LoadingProject,
+            Ready,
+            Failed
+        };
+
         struct FrameContext
         {
             float DeltaTime = 0.0f;
@@ -118,6 +128,10 @@ namespace Quiet::Core
 
         [[nodiscard]] FrameContext BeginFrame(double& previousTime);
         bool RunEditorFrame(const FrameContext& frame);
+        bool RunEditorBootstrapFrame(const FrameContext& frame);
+        void AdvanceEditorBootstrap();
+        void BuildEditorBootstrapUI(Renderer::UI::ImGuiLayer& uiLayer);
+
         bool RunSandboxFrame(const FrameContext& frame);
         void FinalizePlatformWindows(bool frameCompleted) const;
         [[nodiscard]] std::function<void()> BuildEditorViewportOverlayCallback();
@@ -127,6 +141,10 @@ namespace Quiet::Core
         AppSpec m_Spec;
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
+
+        EditorBootstrapStage m_EditorBootstrapStage = EditorBootstrapStage::Ready;
+        std::filesystem::path m_EditorProjectFilePath;
+        std::string m_EditorBootstrapError;
 
         Editor::ViewportNavigationMode m_ViewportNavigationMode{};
         glm::vec3 m_ViewportNavigationPivot{0.0f};

@@ -33,6 +33,7 @@
 
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
+#include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
@@ -333,13 +334,15 @@ namespace Quiet::Core
             m_Renderer->GetMeshLibrary()
         );
 
-        const bool projectInitialized = m_Spec.IsEditor() && !m_Spec.ProjectFilePath.empty()
-            ? m_ProjectWorkflow->InitializeProject(m_Spec.ProjectFilePath)
-            : m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject();
-
-        if (!projectInitialized)
+        if (m_Spec.IsEditor())
         {
-            throw std::runtime_error("Failed to initialize project workflow.");
+            if (!m_ProjectWorkflow->InitializeProjectRegistry())
+                throw std::runtime_error("Failed to initialize the Quiet project registry.");
+        }
+        else
+        {
+            if (!m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject())
+                throw std::runtime_error("Failed to initialize project workflow.");
         }
     }
 
@@ -362,7 +365,32 @@ namespace Quiet::Core
 
         auto& editorState = m_EditorController->GetState();
         editorState.Scene.Mode = Editor::SceneMode::Edit;
-        m_EditorSceneWorkflow->ResetSceneSession();
+
+        if (!m_Spec.ProjectFilePath.empty())
+        {
+            m_EditorProjectFilePath = std::filesystem::absolute(m_Spec.ProjectFilePath).lexically_normal();
+            std::error_code ec;
+
+            if (!std::filesystem::exists(m_EditorProjectFilePath, ec) || ec)
+            {
+                m_EditorBootstrapStage = EditorBootstrapStage::Failed;
+                m_EditorBootstrapError = "The selected Quiet project no longer exists.";
+                return;
+            }
+        }
+        else
+        {
+            m_EditorProjectFilePath = m_ProjectWorkflow->GetInitialProjectFilePath().lexically_normal();
+        }
+
+        if (m_EditorProjectFilePath.empty())
+        {
+            m_EditorBootstrapStage = EditorBootstrapStage::Failed;
+            m_EditorBootstrapError = "No Quiet project was selected.";
+            return;
+        }
+
+        m_EditorBootstrapStage = EditorBootstrapStage::WaitingForFirstFrame;
     }
 
     void Application::InitializeSandboxStartup()
@@ -801,6 +829,11 @@ namespace Quiet::Core
             return false;
         }
 
+        if (m_EditorBootstrapStage != EditorBootstrapStage::Ready)
+        {
+            return RunEditorBootstrapFrame(frame);
+        }
+
         auto& uiLayer = *frame.UILayer;
         const float deltaTime = frame.DeltaTime;
         auto& editorState = m_EditorController->GetState();
@@ -826,6 +859,165 @@ namespace Quiet::Core
         }
 
         return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer, drawEditorGrid, selectedActorID);
+    }
+
+    bool Application::RunEditorBootstrapFrame(const FrameContext &frame)
+    {
+        if (!frame.UILayer) return false;
+
+        auto& uiLayer = *frame.UILayer;
+        uiLayer.BeginFrame();
+        BuildEditorBootstrapUI(uiLayer);
+        uiLayer.EndFrame();
+
+        const auto cameraData = BuildActiveRenderCameraData(*m_Scene);
+        const bool frameCompleted = m_Renderer->DrawFrame(*m_Scene, cameraData, uiLayer, false, std::nullopt);
+
+        if (frameCompleted)
+        {
+            AdvanceEditorBootstrap();
+        }
+        return frameCompleted;
+    }
+
+    void Application::AdvanceEditorBootstrap()
+    {
+        switch (m_EditorBootstrapStage)
+        {
+            case EditorBootstrapStage::WaitingForFirstFrame:
+            {
+                m_EditorBootstrapStage = EditorBootstrapStage::LoadingProject;
+                break;
+            }
+
+            case EditorBootstrapStage::LoadingProject:
+            {
+                if (!m_ProjectWorkflow->OpenOrCreateProject(m_EditorProjectFilePath))
+                {
+                    m_EditorBootstrapStage = EditorBootstrapStage::Failed;
+                    m_EditorBootstrapError = "Quiet could not load the selected project.";
+                    break;
+                }
+
+                m_EditorSceneWorkflow->ResetSceneSession();
+                m_EditorBootstrapStage = EditorBootstrapStage::Ready;
+
+                QUIET_CORE_INFO("Editor project bootstrap completed for '{}'.", m_EditorProjectFilePath.string());
+                break;
+            }
+
+            case EditorBootstrapStage::Ready:
+            case EditorBootstrapStage::Failed:
+            default:
+                break;
+        }
+    }
+
+    void Application::BuildEditorBootstrapUI(Renderer::UI::ImGuiLayer &uiLayer)
+    {
+        namespace QUI = Renderer::UI;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        if (!viewport) return;
+
+        ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+
+        constexpr ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoDocking;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, QUI::EditorColor::Background0);
+
+        if (ImGui::Begin("##QuietEditorBootstrap", nullptr, flags))
+        {
+            const ImVec2 cardSize = uiLayer.Scale(ImVec2(520.0f, 215.0f));
+            const ImVec2 available = ImGui::GetContentRegionAvail();
+
+            ImGui::SetCursorPos(ImVec2(
+                std::max(0.0f, (available.x - cardSize.x) * 0.5f),
+                std::max(0.0f,(available.y - cardSize.y) * 0.5f))
+            );
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(24.0f, 22.0f)));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, uiLayer.Scale(8.0f));
+
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background1);
+            ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+            ImGui::BeginChild("##BootstrapCard", cardSize, ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+
+            ImGui::PushStyleColor( ImGuiCol_Text, QUI::EditorColor::AccentHover);
+            ImGui::TextUnformatted("QUIET");
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            const std::string projectName = m_EditorProjectFilePath.empty() ? "Project" : m_EditorProjectFilePath.stem().string();
+
+            if (m_EditorBootstrapStage == EditorBootstrapStage::Failed)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Error);
+                ImGui::TextUnformatted("Project loading failed");
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextWrapped("%s", m_EditorBootstrapError.c_str());
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                if (QUI::EditorButton("Close Editor", ImVec2(uiLayer.Scale(130.0f), 0.0f)))
+                {
+                    m_Running = false;
+                }
+            }
+            else
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                ImGui::Text("Opening %s", projectName.c_str());
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextUnformatted(m_EditorBootstrapStage == EditorBootstrapStage::WaitingForFirstFrame ? "Preparing editor..." : "Loading project data and assets...");
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                const float progress = m_EditorBootstrapStage == EditorBootstrapStage::WaitingForFirstFrame ? 0.20f : 0.55f;
+
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, QUI::EditorColor::Accent);
+                ImGui::ProgressBar(progress, ImVec2(-1.0f, uiLayer.Scale(6.0f)), "");
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+                ImGui::TextWrapped("%s", m_EditorProjectFilePath.string().c_str());
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::EndChild();
+
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar(2);
+        }
+
+        ImGui::End();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
     }
 
     bool Application::RunSandboxFrame(const FrameContext& frame)

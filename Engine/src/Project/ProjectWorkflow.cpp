@@ -85,11 +85,25 @@ namespace Quiet::Project
                                          , m_Scene(scene)
                                          , m_MeshLibrary(meshLibrary) {}
 
-    bool ProjectWorkflow::InitializeProject(const std::filesystem::path& projectFilePath)
+    bool ProjectWorkflow::InitializeProjectRegistry()
     {
         if (!LoadOrCreateRegistry())
         {
             QUIET_CORE_ERROR("Failed to load or create project registry.");
+            return false;
+        }
+        return true;
+    }
+
+    std::filesystem::path ProjectWorkflow::GetInitialProjectFilePath() const
+    {
+        return ResolveInitialProjectFilePath();
+    }
+
+    bool ProjectWorkflow::InitializeProject(const std::filesystem::path& projectFilePath)
+    {
+        if (!InitializeProjectRegistry())
+        {
             return false;
         }
 
@@ -118,11 +132,11 @@ namespace Quiet::Project
 
     bool ProjectWorkflow::InitializeLastOpenedOrDefaultProject()
     {
-        if (!LoadOrCreateRegistry())
+        if (!InitializeProjectRegistry())
         {
-            QUIET_CORE_ERROR("Failed to load or create project registry.");
             return false;
         }
+
         return OpenOrCreateProject(ResolveInitialProjectFilePath());
     }
 
