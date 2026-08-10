@@ -109,7 +109,7 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             auto& actor = scene.CreateActor(name);
-            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            m_EditorController.GetState().Selection.SelectedActorID = actor.GetID();
             return true;
         });
     }
@@ -134,7 +134,7 @@ namespace Quiet::Editor
         {
             Scene::Actor* duplicate = scene.TryDuplicateActor(actorID);
             if (!duplicate) return false;
-            m_EditorController.GetState().Selection.SelectedActorID = duplicate->ID;
+            m_EditorController.GetState().Selection.SelectedActorID = duplicate->GetID();
             return true;
         });
     }
@@ -168,10 +168,9 @@ namespace Quiet::Editor
         if (!CanEditScene()) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || actor->Name == newName)
-            return false;
+        if (!actor || actor->GetName() == newName) return false;
 
-        actor->Name = newName;
+        actor->GetName() = newName;
         return true;
     }
 
@@ -189,7 +188,7 @@ namespace Quiet::Editor
         if (!actor)
             return false;
 
-        actor->Transform.WorldTransform.Position = position;
+        actor->GetComponent<Scene::TransformComponent>().WorldTransform.Position = position;
         return true;
     }
 
@@ -207,8 +206,7 @@ namespace Quiet::Editor
         if (!actor)
             return false;
 
-        actor->Transform.WorldTransform.RotationDegrees = rotationDegrees;
-
+        actor->GetComponent<Scene::TransformComponent>().WorldTransform.RotationDegrees = rotationDegrees;
         return true;
     }
 
@@ -226,13 +224,12 @@ namespace Quiet::Editor
         if (!actor)
             return false;
 
-        actor->Transform.WorldTransform.Scale =
+        actor->GetComponent<Scene::TransformComponent>().WorldTransform.Scale =
         {
             std::clamp(scale.x, 0.01f, 100.0f),
             std::clamp(scale.y, 0.01f, 100.0f),
             std::clamp(scale.z, 0.01f, 100.0f)
         };
-
         return true;
     }
 
@@ -244,7 +241,7 @@ namespace Quiet::Editor
                 if (!actor)
                     return false;
 
-                actor->Transform = Scene::TransformComponent{};
+                actor->GetComponent<Scene::TransformComponent>() = Scene::TransformComponent{};
                 return true;
             });
     }
@@ -283,7 +280,7 @@ namespace Quiet::Editor
                 Scene::Actor* actor = scene.FindActorByID(actorID);
                 if (!actor) return false;
 
-                actor->Transform = validatedTransform;
+                actor->GetComponent<Scene::TransformComponent>() = validatedTransform;
                 return true;
             }
         );
@@ -345,8 +342,9 @@ namespace Quiet::Editor
 #pragma endregion
 
 #pragma region Static Meshes
-    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
-                                               const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position)
+    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID,
+                                               const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary,
+                                               const glm::vec3& position)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
         if (!mesh)
@@ -357,16 +355,17 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
             Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
-            actor.Transform.WorldTransform.Position = position;
+            actor.GetComponent<Scene::TransformComponent>().WorldTransform.Position = position;
 
-            actor.StaticMesh = Scene::StaticMeshComponent{};
-            actor.StaticMesh->MeshResourceID = meshResourceID;
-            actor.StaticMesh->Mesh = mesh;
-            actor.StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
-            actor.StaticMesh->Visible = true;
-            actor.Material = Scene::MaterialComponent{};
+            Scene::StaticMeshComponent& staticMesh = actor.AddComponent<Scene::StaticMeshComponent>();
+            staticMesh.MeshResourceID = meshResourceID;
+            staticMesh.Mesh = mesh;
+            staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
+            staticMesh.Visible = true;
 
-            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            actor.AddComponent<Scene::MaterialComponent>();
+
+            m_EditorController.GetState().Selection.SelectedActorID = actor.GetID();
             return true;
         });
     }
@@ -390,17 +389,18 @@ namespace Quiet::Editor
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
-            auto* actor = scene.FindActorByID(actorID);
-            if (!actor || actor->StaticMesh.has_value()) return false;
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::StaticMeshComponent>()) return false;
 
-            actor->StaticMesh = Scene::StaticMeshComponent{};
-            actor->StaticMesh->MeshResourceID = defaultMeshID;
-            actor->StaticMesh->Mesh = mesh;
-            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
-            actor->StaticMesh->Visible= true;
-            if (!actor->Material.has_value())
+            Scene::StaticMeshComponent& staticMesh = actor->AddComponent<Scene::StaticMeshComponent>();
+            staticMesh.MeshResourceID = defaultMeshID;
+            staticMesh.Mesh = mesh;
+            staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
+            staticMesh.Visible = true;
+
+            if (!actor->HasComponent<Scene::MaterialComponent>())
             {
-                actor->Material = Scene::MaterialComponent{};
+                actor->AddComponent<Scene::MaterialComponent>();
             }
             return true;
         });
@@ -411,10 +411,9 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value()) return false;
-
-            actor->StaticMesh.reset();
-            actor->Material.reset();
+            if (!actor || !actor->HasComponent<Scene::StaticMeshComponent>()) return false;
+            actor->RemoveComponent<Scene::StaticMeshComponent>();
+            actor->RemoveComponent<Scene::MaterialComponent>();
             return true;
         });
     }
@@ -431,18 +430,19 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value())
-                return false;
+            if (!actor) return false;
 
-            Scene::StaticMeshComponent& staticMesh = actor->StaticMesh.value();
-            const bool resourceChanged = staticMesh.MeshResourceID != meshResourceID;
-            staticMesh.MeshResourceID = meshResourceID;
-            staticMesh.Mesh = mesh;
-            staticMesh.Visible = visible;
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh) return false;
+
+            const bool resourceChanged = staticMesh->MeshResourceID != meshResourceID;
+            staticMesh->MeshResourceID = meshResourceID;
+            staticMesh->Mesh = mesh;
+            staticMesh->Visible = visible;
 
             if (resourceChanged)
             {
-                staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
+                staticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
             }
 
             return true;
@@ -460,13 +460,17 @@ namespace Quiet::Editor
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
-            auto* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value()) return false;
-            if (actor->StaticMesh->MeshResourceID == meshResourceID) return false;
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
 
-            actor->StaticMesh->MeshResourceID = meshResourceID;
-            actor->StaticMesh->Mesh = mesh;
-            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh) return false;
+            if (staticMesh->MeshResourceID == meshResourceID) return false;
+
+            staticMesh->MeshResourceID = meshResourceID;
+            staticMesh->Mesh = mesh;
+            staticMesh->MaterialSlots = CreateDefaultMaterialSlots(mesh);
+
             return true;
         });
     }
@@ -476,9 +480,12 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value()) return false;
+            if (!actor) return false;
 
-            actor->StaticMesh->Visible = visible;
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh) return false;
+            staticMesh->Visible = visible;
+
             return true;
         });
     }
@@ -506,20 +513,15 @@ namespace Quiet::Editor
             std::clamp(baseColor.w, 0.0f, 1.0f)
         };
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || actor->Material.has_value())
-                    return false;
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::MaterialComponent>()) return false;
 
-                actor->Material = Scene::MaterialComponent{};
-                actor->Material->BaseColor = validatedColor;
-                return true;
-            }
-        );
+            Scene::MaterialComponent& material = actor->AddComponent<Scene::MaterialComponent>();
+            material.BaseColor = validatedColor;
+            return true;
+        });
     }
 
     bool EditorCommands::RemoveMaterial(Scene::Scene &scene, Core::UUID actorID)
@@ -527,10 +529,9 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Material.has_value()) return false;
+            if (!actor || !actor->HasComponent<Scene::MaterialComponent>()) return false;
 
-            actor->Material.reset();
-            return true;
+            return actor->RemoveComponent<Scene::MaterialComponent>();
         });
     }
 
@@ -539,16 +540,14 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor ||
-                !actor->StaticMesh.has_value() ||
-                !actor->StaticMesh->Mesh ||
-                !actor->Material.has_value())
-            {
-                return false;
-            }
+            if (!actor) return false;
 
-            actor->Material = Scene::MaterialComponent{};
-            actor->StaticMesh->MaterialSlots = CreateDefaultMaterialSlots(actor->StaticMesh->Mesh);
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+            if (!staticMesh || !staticMesh->Mesh || !material) return false;
+
+            *material = Scene::MaterialComponent{};
+            staticMesh->MaterialSlots = CreateDefaultMaterialSlots(staticMesh->Mesh);
             return true;
         });
     }
@@ -619,31 +618,24 @@ namespace Quiet::Editor
             };
         }
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+            if (!staticMesh || !material) return false;
+
+            if (staticMesh->MaterialSlots.size() != validatedMaterialSlots.size())
             {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-
-                if (!actor ||
-                    !actor->StaticMesh.has_value() ||
-                    !actor->Material.has_value())
-                {
-                    return false;
-                }
-
-                if (actor->StaticMesh->MaterialSlots.size() != validatedMaterialSlots.size())
-                {
-                    return false;
-                }
-
-                actor->Material = validatedMaterial;
-                actor->StaticMesh->MaterialSlots = validatedMaterialSlots;
-
-                return true;
+                return false;
             }
-        );
+
+            *material = validatedMaterial;
+            staticMesh->MaterialSlots = validatedMaterialSlots;
+            return true;
+        });
     }
 
     bool EditorCommands::SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor)
@@ -658,10 +650,12 @@ namespace Quiet::Editor
         }
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Material.has_value())
-            return false;
+        if (!actor) return false;
 
-        actor->Material->BaseColor =
+        Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+
+        if (!material) return false;
+        material->BaseColor =
         {
             std::clamp(baseColor.x, 0.0f, 1.0f),
             std::clamp(baseColor.y, 0.0f, 1.0f),
@@ -677,9 +671,12 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Material.has_value()) return false;
+            if (!actor) return false;
 
-            actor->Material->BaseColorTextureAssetID = textureAssetID;
+            Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+            if (!material) return false;
+            material->BaseColorTextureAssetID = textureAssetID;
+
             return true;
         });
     }
@@ -696,10 +693,12 @@ namespace Quiet::Editor
         }
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->StaticMesh.has_value())
-            return false;
+        if (!actor) return false;
 
-        Scene::MaterialComponent* materialSlot = actor->StaticMesh->TryGetMaterialSlot(slotIndex);
+        Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+        if (!staticMesh) return false;
+
+        Scene::MaterialComponent* materialSlot = staticMesh->TryGetMaterialSlot(slotIndex);
         if (!materialSlot) return false;
         materialSlot->BaseColor =
         {
@@ -717,15 +716,15 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->StaticMesh.has_value())
-                return false;
+            if (!actor) return false;
 
-            Scene::MaterialComponent* materialSlot = actor->StaticMesh->TryGetMaterialSlot(slotIndex);
+            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh) return false;
 
-            if (!materialSlot)
-                return false;
-
+            Scene::MaterialComponent* materialSlot = staticMesh->TryGetMaterialSlot(slotIndex);
+            if (!materialSlot) return false;
             materialSlot->BaseColorTextureAssetID = textureAssetID;
+
             return true;
         });
     }
@@ -743,7 +742,7 @@ namespace Quiet::Editor
             actor.DirectionalLight = Scene::DirectionalLightComponent{};
             actor.Transform.WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
 
-            m_EditorController.GetState().Selection.SelectedActorID = actor.ID;
+            m_EditorController.GetState().Selection.SelectedActorID = actor.GetID();
             return true;
         });
     }
