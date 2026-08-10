@@ -127,7 +127,7 @@ namespace Quiet::Editor
             return;
         }
 
-        auto& transform = actor->Transform.WorldTransform;
+        auto& transform = actor->GetComponent<Scene::TransformComponent>().WorldTransform;
         const GizmoTransformComponents components = MakeGizmoTransformComponents(transform);
         glm::mat4 model = ComposeGizmoMatrix(components);
 
@@ -200,46 +200,56 @@ namespace Quiet::Editor
         {
             for (const Scene::Actor& actor : scene.GetActors())
             {
-                if (!actor.Camera.has_value() && !actor.DirectionalLight.has_value())
-                    continue;
+                const Scene::CameraComponent* camera = actor.TryGetComponent<Scene::CameraComponent>();
+                const Scene::DirectionalLightComponent* directionalLight = actor.TryGetComponent<Scene::DirectionalLightComponent>();
+                if (!camera && !directionalLight) continue;
+
+                const Scene::TransformComponent& transform = actor.GetComponent<Scene::TransformComponent>();
 
                 ImVec2 screenPosition{};
-                if (!ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, m_State.Viewport, screenPosition))
-                    continue;
 
+                if (!ProjectWorldToViewport(transform.WorldTransform.Position, cameraData, m_State.Viewport, screenPosition))
+                {
+                    continue;
+                }
+
+                const Core::UUID actorID = actor.GetID();
                 const bool actorSelected =
                     m_State.Selection.SelectedActorID.has_value() &&
-                    m_State.Selection.SelectedActorID.value() == actor.ID;
+                    m_State.Selection.SelectedActorID.value() == actorID;
 
-                const bool actorHovered = !actorSelected &&
+                const bool actorHovered =
+                    !actorSelected &&
                     m_State.Selection.HoveredActorID.has_value() &&
-                    m_State.Selection.HoveredActorID.value() == actor.ID;
+                    m_State.Selection.HoveredActorID.value() == actorID;
 
                 const bool selected = m_State.Viewport.ShowSelectionFeedback && actorSelected;
                 const bool hovered = m_State.Viewport.ShowHoverFeedback && actorHovered;
 
-                if (actor.Camera.has_value())
-                    DrawCameraFrustumOverlay(drawList, actor, actor.Camera.value(), cameraData, m_State.Viewport, selected, hovered);
+                if (camera)
+                {
+                    DrawCameraFrustumOverlay(drawList, actor, *camera, cameraData, m_State.Viewport, selected, hovered);
+                }
 
-                if (actor.DirectionalLight.has_value())
-                    DrawDirectionalLightDirectionOverlay(drawList, actor, actor.DirectionalLight.value(), cameraData, m_State.Viewport, selected, hovered);
+                if (directionalLight)
+                {
+                    DrawDirectionalLightDirectionOverlay(drawList, actor, *directionalLight, cameraData, m_State.Viewport, selected, hovered);
+                }
 
                 float verticalOffset = 0.0f;
 
-                if (actor.Camera.has_value())
+                if (camera)
                 {
                     const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
-
                     DrawCameraDebugIcon(drawList, iconPosition, selected, hovered);
                     DrawDebugLabel(drawList, iconPosition, "Camera", selected, hovered);
 
                     verticalOffset += 22.0f;
                 }
 
-                if (actor.DirectionalLight.has_value())
+                if (directionalLight)
                 {
                     const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
-
                     DrawDirectionalLightDebugIcon(drawList, iconPosition, selected, hovered);
                     DrawDebugLabel(drawList, iconPosition, "Light", selected, hovered);
                 }
@@ -255,13 +265,7 @@ namespace Quiet::Editor
             if (previewMesh && BuildViewportPickRay(previewRequest.ScreenX, previewRequest.ScreenY, m_State.Viewport, camera, renderer, previewRay))
             {
                 const glm::vec3 previewPosition = CalculateViewportMeshPlacementPosition(previewRay, *previewMesh);
-                DrawViewportMeshDropPreview(
-                    *previewMesh,
-                    previewPosition,
-                    cameraData,
-                    m_State.Viewport,
-                    drawList
-                );
+                DrawViewportMeshDropPreview(*previewMesh, previewPosition, cameraData, m_State.Viewport, drawList);
             }
         }
 

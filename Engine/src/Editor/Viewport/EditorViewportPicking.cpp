@@ -52,83 +52,64 @@ namespace Quiet::Editor
 
         for (const Scene::Actor& actor : scene.GetActors())
         {
-            if (!actor.Camera.has_value() && !actor.DirectionalLight.has_value()) continue;
+            const bool hasCamera = actor.HasComponent<Scene::CameraComponent>();
+            const bool hasDirectionalLight = actor.HasComponent<Scene::DirectionalLightComponent>();
 
+            if (!hasCamera && !hasDirectionalLight)
+            {
+                continue;
+            }
+
+            const Scene::TransformComponent& transform = actor.GetComponent<Scene::TransformComponent>();
             ImVec2 screenPosition{};
-            if (!ProjectWorldToViewport(
-                    actor.Transform.WorldTransform.Position,
-                    cameraData,
-                    viewportState,
-                    screenPosition))
+
+            if (!ProjectWorldToViewport(transform.WorldTransform.Position, cameraData, viewportState, screenPosition))
             {
                 continue;
             }
 
             float verticalOffset = 0.0f;
-            if (actor.Camera.has_value())
-            {
-                const ImVec2 iconPosition(
-                    screenPosition.x,
-                    screenPosition.y + verticalOffset
-                );
 
-                TrySetBestDebugIconHit(
-                    actor.ID,
-                    mousePosition,
-                    iconPosition,
-                    bestActorID,
-                    bestDistanceSquared
-                );
+            if (hasCamera)
+            {
+                const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
+                TrySetBestDebugIconHit(actor.GetID(), mousePosition, iconPosition, bestActorID, bestDistanceSquared);
                 verticalOffset += 22.0f;
             }
 
-            if (actor.DirectionalLight.has_value())
+            if (hasDirectionalLight)
             {
-                const ImVec2 iconPosition(
-                    screenPosition.x,
-                    screenPosition.y + verticalOffset
-                );
-
-                TrySetBestDebugIconHit(
-                    actor.ID,
-                    mousePosition,
-                    iconPosition,
-                    bestActorID,
-                    bestDistanceSquared
-                );
+                const ImVec2 iconPosition(screenPosition.x, screenPosition.y + verticalOffset);
+                TrySetBestDebugIconHit(actor.GetID(), mousePosition, iconPosition, bestActorID, bestDistanceSquared);
             }
         }
+
         return bestActorID;
     }
 
-    std::optional<Core::UUID> PickStaticMeshActor(const Scene::Scene& scene,
-                                                  const Math::Ray& ray)
+    std::optional<Core::UUID> PickStaticMeshActor(const Scene::Scene& scene, const Math::Ray& ray)
     {
         float closestHit = std::numeric_limits<float>::max();
         std::optional<Core::UUID> bestHitID;
 
         for (const Scene::Actor& actor : scene.GetActors())
         {
-            if (!actor.StaticMesh.has_value() || !actor.StaticMesh->IsValid() || !actor.StaticMesh->Visible)
-                continue;
-
-            const auto& mesh = actor.StaticMesh->Mesh;
-            const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
-
-            const Math::AABB worldBounds = Math::TransformAABB(
-                model,
-                mesh->GetLocalBoundsMin(),
-                mesh->GetLocalBoundsMax()
-            );
-
-            float hitDistance = 0.0f;
-            if (Math::IntersectRayAABB(ray, worldBounds, hitDistance))
+            const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh || !staticMesh->IsValid() || !staticMesh->Visible)
             {
-                if (hitDistance < closestHit)
-                {
-                    closestHit = hitDistance;
-                    bestHitID = actor.ID;
-                }
+                continue;
+            }
+
+            const auto& mesh = staticMesh->Mesh;
+            const glm::mat4 model = actor.GetComponent<Scene::TransformComponent>().WorldTransform.ToMatrix();
+
+            const Math::AABB worldBounds = Math::TransformAABB(model, mesh->GetLocalBoundsMin(), mesh->GetLocalBoundsMax());
+            float hitDistance = 0.0f;
+
+            if (Math::IntersectRayAABB(ray, worldBounds, hitDistance) && hitDistance < closestHit)
+            {
+                closestHit = hitDistance;
+                bestHitID = actor.GetID();
             }
         }
 

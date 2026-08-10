@@ -40,17 +40,20 @@ namespace
                                            const Quiet::Editor::EditorViewportState& viewportState,
                                            Quiet::Editor::ScreenRect& outRect)
     {
-        if (!actor.StaticMesh.has_value() ||
-            !actor.StaticMesh->IsValid() ||
-            !actor.StaticMesh->Visible)
+        const auto* staticMesh = actor.TryGetComponent<Quiet::Scene::StaticMeshComponent>();
+        if (!staticMesh || !staticMesh->IsValid() || !staticMesh->Visible)
+        {
             return false;
+        }
 
-        const auto& mesh = actor.StaticMesh->Mesh;
-        const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
+        const auto& mesh = staticMesh->Mesh;
+        const auto& transform = actor.GetComponent<Quiet::Scene::TransformComponent>();
 
+        const glm::mat4 model = transform.WorldTransform.ToMatrix();
         const auto corners = Quiet::Math::BuildAABBCorners(mesh->GetLocalBoundsMin(), mesh->GetLocalBoundsMax());
 
         Quiet::Editor::ScreenRect rect{};
+
         for (const glm::vec3& corner : corners)
         {
             const glm::vec3 worldCorner = glm::vec3(model * glm::vec4(corner, 1.0f));
@@ -346,53 +349,57 @@ namespace Quiet::Editor
                                           const EditorViewportState& viewportState,
                                           ImDrawList* drawList)
     {
-        ImVec2 actorScreenPosition{};
+        const Scene::TransformComponent& transform = actor.GetComponent<Scene::TransformComponent>();
+        const std::string& actorName = actor.GetName();
 
-        const bool originVisible = ProjectWorldToViewport(
-            actor.Transform.WorldTransform.Position,
-            cameraData,
-            viewportState,
-            actorScreenPosition);
+        ImVec2 actorScreenPosition{};
+        const bool originVisible =  ProjectWorldToViewport(transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
 
         ScreenRect boundsRect{};
-
         const bool boundsVisible = ProjectStaticMeshBoundsToViewport(actor, cameraData, viewportState, boundsRect);
 
         if (!originVisible && !boundsVisible)
+        {
             return;
+        }
 
         if (originVisible)
         {
             DrawSelectedOriginMarker(drawList, actorScreenPosition);
-            DrawSelectedActorName(drawList, actorScreenPosition, actor.Name);
+            DrawSelectedActorName(drawList, actorScreenPosition, actorName);
             return;
         }
 
-        DrawSelectedActorName(drawList, boundsRect.Min, actor.Name);
+        DrawSelectedActorName(drawList, boundsRect.Min, actorName);
     }
 
-    void DrawHoveredActorViewportOverlay(const Scene::Actor &actor,
-                                         const Renderer::Vulkan::CameraUniformData &cameraData,
-                                         const EditorViewportState &viewportState,
-                                         ImDrawList *drawList)
+    void DrawHoveredActorViewportOverlay(const Scene::Actor& actor,
+                                         const Renderer::Vulkan::CameraUniformData& cameraData,
+                                         const EditorViewportState& viewportState,
+                                         ImDrawList* drawList)
     {
+        const Scene::TransformComponent& transform = actor.GetComponent<Scene::TransformComponent>();
+        const std::string& actorName = actor.GetName();
+
         ImVec2 actorScreenPosition{};
+        const bool originVisible = ProjectWorldToViewport(transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
 
-        const bool originVisible = ProjectWorldToViewport(actor.Transform.WorldTransform.Position, cameraData, viewportState, actorScreenPosition);
         ScreenRect boundsRect{};
-
         const bool boundsVisible = ProjectStaticMeshBoundsToViewport(actor, cameraData, viewportState, boundsRect);
-        if (!originVisible && !boundsVisible) return;
+        if (!originVisible && !boundsVisible)
+        {
+            return;
+        }
 
         if (boundsVisible)
         {
             DrawHoveredBoundsOverlay(drawList, boundsRect);
-            DrawHoveredActorName(drawList, boundsRect.Min, actor.Name);
+            DrawHoveredActorName(drawList, boundsRect.Min, actorName);
         }
         else
         {
             DrawHoveredOriginMarker(drawList, actorScreenPosition);
-            DrawHoveredActorName(drawList, actorScreenPosition, actor.Name);
+            DrawHoveredActorName(drawList, actorScreenPosition, actorName);
         }
     }
 
@@ -598,8 +605,9 @@ namespace Quiet::Editor
             farCenter + glm::vec3{ -farHalfWidth, -farHalfHeight, 0.0f }
         };
 
-        const glm::mat4 model = actor.Transform.WorldTransform.ToMatrix();
-        const glm::vec3 worldOrigin = actor.Transform.WorldTransform.Position;
+        const Scene::TransformComponent& transform = actor.GetComponent<Scene::TransformComponent>();
+        const glm::mat4 model = transform.WorldTransform.ToMatrix();
+        const glm::vec3 worldOrigin = transform.WorldTransform.Position;
 
         std::array<glm::vec3, 4> worldNear{};
         std::array<glm::vec3, 4> worldFar{};
@@ -642,7 +650,7 @@ namespace Quiet::Editor
                     ? IM_COL32(255, 238, 145, 230)
                     : IM_COL32(255, 220, 80, 170);
 
-        const glm::vec3 origin = actor.Transform.WorldTransform.Position;
+        const glm::vec3 origin = actor.GetComponent<Scene::TransformComponent>().WorldTransform.Position;
 
         // DirectionalLightComponent::Direction is direction from the surface toward light.
         // The visible arrow shows the emitted light direction, so it points the opposite way.
