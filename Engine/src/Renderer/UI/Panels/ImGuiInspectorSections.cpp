@@ -1230,9 +1230,11 @@ namespace Quiet::Renderer::UI
                                      Editor::EditorCommands& commands,
                                      const TrackedInspectorInteraction& tracked)
     {
-        if (!actor.DirectionalLight.has_value()) return;
+        Scene::DirectionalLightComponent* light = actor.TryGetComponent<Scene::DirectionalLightComponent>();
+        if (!light) return;
 
         const bool canPasteDirectionalLight = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::DirectionalLight;
+
         const auto header = BeginInspectorComponent(
             "Directional Light",
             "DirectionalLightComponentOptions",
@@ -1240,8 +1242,8 @@ namespace Quiet::Renderer::UI
             true,
             true,
             canPasteDirectionalLight,
-            canPasteDirectionalLight ? nullptr : "Copy Directional Light values first."
-        );
+            canPasteDirectionalLight ? nullptr : "Copy Directional Light values first."            );
+
         if (header.RemoveRequested)
         {
             commands.RemoveDirectionalLight(scene, actor.GetID());
@@ -1251,7 +1253,7 @@ namespace Quiet::Renderer::UI
         if (header.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::DirectionalLight;
-            g_InspectorComponentClipboard.DirectionalLight = *actor.DirectionalLight;
+            g_InspectorComponentClipboard.DirectionalLight = *light;
         }
 
         if (header.PasteRequested && canPasteDirectionalLight)
@@ -1266,25 +1268,26 @@ namespace Quiet::Renderer::UI
 
         if (!header.Open) return;
 
-        bool enabled = actor.DirectionalLight->Enabled;
+        bool enabled = light->Enabled;
+
         if (DrawCheckboxPropertyRow("Enabled", enabled))
         {
             commands.SetDirectionalLightEnabled(scene, actor.GetID(), enabled);
         }
 
-        glm::vec3 direction = actor.DirectionalLight->Direction;
+        glm::vec3 direction = light->Direction;
         if (DrawVec3PropertyRow("Direction", direction, 0.01f, -1.0f, 1.0f, tracked))
         {
             commands.SetDirectionalLightDirection(scene, actor.GetID(), direction);
         }
 
-        glm::vec3 color = actor.DirectionalLight->Color;
+        glm::vec3 color = light->Color;
         if (DrawColor3PropertyRow("Color", color, tracked))
         {
             commands.SetDirectionalLightColor(scene, actor.GetID(), color);
         }
 
-        float intensity = actor.DirectionalLight->Intensity;
+        float intensity = light->Intensity;
         if (DrawFloatPropertyRow("Intensity", intensity, 0.01f, 0.0f, 10.0f, tracked))
         {
             commands.SetDirectionalLightIntensity(scene, actor.GetID(), intensity);
@@ -1296,9 +1299,10 @@ namespace Quiet::Renderer::UI
                             Editor::EditorCommands& commands,
                             const TrackedInspectorInteraction& tracked)
     {
-        if (!actor.Rotator.has_value()) return;
-        const bool canPasteRotator = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Rotator;
+        Scene::RotatorComponent* rotator = actor.TryGetComponent<Scene::RotatorComponent>();
+        if (!rotator) return;
 
+        const bool canPasteRotator = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Rotator;
         const auto header = BeginInspectorComponent(
             "Rotator",
             "RotatorComponentOptions",
@@ -1306,8 +1310,8 @@ namespace Quiet::Renderer::UI
             true,
             true,
             canPasteRotator,
-            canPasteRotator ? nullptr : "Copy Rotator values first."
-        );
+            canPasteRotator ? nullptr : "Copy Rotator values first.");
+
         if (header.RemoveRequested)
         {
             commands.RemoveRotator(scene, actor.GetID());
@@ -1317,22 +1321,20 @@ namespace Quiet::Renderer::UI
         if (header.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Rotator;
-            g_InspectorComponentClipboard.Rotator = actor.Rotator.value();
+            g_InspectorComponentClipboard.Rotator = *rotator;
         }
 
         if (header.PasteRequested && canPasteRotator)
         {
             commands.PasteRotatorValues(scene, actor.GetID(), g_InspectorComponentClipboard.Rotator);
         }
-
         if (header.ResetRequested)
         {
             commands.ResetRotator(scene, actor.GetID());
         }
-
         if (!header.Open) return;
 
-        float rotationSpeed = actor.Rotator->RotationSpeedDegreesPerSecond;
+        float rotationSpeed = rotator->RotationSpeedDegreesPerSecond;
 
         if (DrawFloatPropertyRow("Rotation Speed", rotationSpeed, 1.0f, 0.0f, 0.0f, tracked))
         {
@@ -1347,7 +1349,9 @@ namespace Quiet::Renderer::UI
                            const TrackedInspectorInteraction& tracked,
                            const bool isEditMode)
     {
-        if (!actor.Camera.has_value()) return;
+        Scene::CameraComponent* camera = actor.TryGetComponent<Scene::CameraComponent>();
+        if (!camera) return;
+
         const bool canPasteCamera = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Camera;
         const auto header = BeginInspectorComponent(
             "Camera",
@@ -1356,8 +1360,8 @@ namespace Quiet::Renderer::UI
             true,
             true,
             canPasteCamera,
-            canPasteCamera ? nullptr : "Copy Camera values first."
-        );
+            canPasteCamera ? nullptr : "Copy Camera values first.");
+
         if (header.RemoveRequested)
         {
             commands.RemoveCamera(scene, actor.GetID());
@@ -1367,19 +1371,16 @@ namespace Quiet::Renderer::UI
         if (header.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Camera;
-            g_InspectorComponentClipboard.Camera = actor.Camera.value();
+            g_InspectorComponentClipboard.Camera = *camera;
         }
-
         if (header.PasteRequested && canPasteCamera)
         {
             commands.PasteCameraValues(scene, actor.GetID(), g_InspectorComponentClipboard.Camera);
         }
-
         if (header.ResetRequested)
         {
             commands.ResetCamera(scene, actor.GetID());
         }
-
         if (!header.Open) return;
 
         const bool isPilotingThisCamera =
@@ -1391,39 +1392,43 @@ namespace Quiet::Renderer::UI
             if (!isPilotingThisCamera)
             {
                 if (EditorButton("Pilot Camera"))
+                {
                     editorState.Selection.PilotedCameraActorID = actor.GetID();
+                }
             }
             else
             {
                 if (EditorButton("Stop Piloting"))
+                {
                     editorState.Selection.PilotedCameraActorID.reset();
+                }
             }
         }
 
-        bool primary = actor.Camera->Primary;
+        bool primary = camera->Primary;
         if (DrawCheckboxPropertyRow("Primary", primary))
         {
             commands.SetCameraPrimary(scene, actor.GetID(), primary);
         }
 
-        float fov = actor.Camera->FieldOfViewDegrees;
+        float fov = camera->FieldOfViewDegrees;
         if (DrawFloatPropertyRow("Field Of View", fov, 0.25f, 1.0f, 179.0f, tracked))
         {
             commands.SetCameraFieldOfView(scene, actor.GetID(), fov);
         }
 
-        const float currentFarClip = std::isfinite(actor.Camera->FarClip) ? actor.Camera->FarClip : 1000.0f;
+        const float currentFarClip = std::isfinite(camera->FarClip) ? camera->FarClip : 1000.0f;
         const float maximumNearClip = std::clamp(currentFarClip - 0.001f, 0.001f, 100.0f);
-        float nearClip = actor.Camera->NearClip;
+        float nearClip = camera->NearClip;
 
         if (DrawFloatPropertyRow("Near Clip", nearClip, 0.01f, 0.001f, maximumNearClip, tracked))
         {
             commands.SetCameraNearClip(scene, actor.GetID(), nearClip);
         }
 
-        const float currentNearClip = std::isfinite(actor.Camera->NearClip) ? std::clamp(actor.Camera->NearClip, 0.001f, 100.0f) : 0.1f;
+        const float currentNearClip = std::isfinite(camera->NearClip) ? std::clamp(camera->NearClip, 0.001f, 100.0f) : 0.1f;
         const float minimumFarClip = std::max(1.0f, currentNearClip + 0.001f);
-        float farClip = actor.Camera->FarClip;
+        float farClip = camera->FarClip;
 
         if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, minimumFarClip, 100000.0f, tracked))
         {
