@@ -464,20 +464,22 @@ namespace
 
     std::string GetMaterialSlotSourceName(const Quiet::Scene::Actor& actor, const std::uint32_t slotIndex)
     {
-        if (!actor.StaticMesh.has_value()) return {};
-        if (!actor.StaticMesh->Mesh) return {};
+        const auto* staticMesh = actor.TryGetComponent<Quiet::Scene::StaticMeshComponent>();
+        if (!staticMesh || !staticMesh->Mesh) return {};
 
-        const auto& importedSlots = actor.StaticMesh->Mesh->GetImportedMaterialSlots();
+        const auto& importedSlots = staticMesh->Mesh->GetImportedMaterialSlots();
         if (slotIndex >= importedSlots.size()) return {};
+
         return importedSlots[slotIndex].Name;
     }
 
     std::size_t CountSubmeshesUsingMaterialSlot(const Quiet::Scene::Actor& actor, const std::uint32_t slotIndex)
     {
-        if (!actor.StaticMesh.has_value()) return 0;
-        if (!actor.StaticMesh->Mesh) return 0;
+        const auto* staticMesh = actor.TryGetComponent<Quiet::Scene::StaticMeshComponent>();
+        if (!staticMesh || !staticMesh->Mesh) return 0;
 
-        const auto& submeshes = actor.StaticMesh->Mesh->GetSubmeshes();
+        const auto& submeshes = staticMesh->Mesh->GetSubmeshes();
+
         return static_cast<std::size_t>(
             std::count_if(
                 submeshes.begin(),
@@ -706,7 +708,7 @@ namespace
             glm::vec4 baseColor = materialSlot.BaseColor;
             if (DrawColor4PropertyRow("Base Color", baseColor, tracked))
             {
-                commands.SetStaticMeshMaterialSlotBaseColor(scene, actor.ID, slotIndex, baseColor);
+                commands.SetStaticMeshMaterialSlotBaseColor(scene, actor.GetID(), slotIndex, baseColor);
             }
 
             ASSETS::AssetPickerOptions texturePickerOptions{};
@@ -717,7 +719,7 @@ namespace
             std::string selectedTextureAssetID;
             if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, materialSlot.BaseColorTextureAssetID, selectedTextureAssetID))
             {
-                commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(scene, actor.ID, slotIndex, selectedTextureAssetID);
+                commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(scene, actor.GetID(), slotIndex, selectedTextureAssetID);
             }
 
             if (!materialSlot.HasBaseColorTexture())
@@ -766,6 +768,7 @@ namespace Quiet::Renderer::UI
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(9.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+
         ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
 
@@ -779,25 +782,26 @@ namespace Quiet::Renderer::UI
             ImGui::PopStyleColor();
 
             char nameBuffer[256]{};
-            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.Name.c_str());
+
+            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.GetName().c_str());
 
             ImGui::SetNextItemWidth(-1.0f);
+
             const bool nameChanged = ImGui::InputText("##ActorName", nameBuffer, sizeof(nameBuffer));
             tracked.Begin();
-
             if (nameChanged)
             {
-                commands.RenameActor(scene, actor.ID, nameBuffer);
+                commands.RenameActor(scene, actor.GetID(), nameBuffer);
             }
-
             tracked.End();
 
-            const std::string actorIDText = Quiet::Core::UUIDToString(actor.ID);
+            const std::string actorIDText = Quiet::Core::UUIDToString(actor.GetID());
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
             ImGui::Text("ID: %s", actorIDText.c_str());
             ImGui::PopStyleColor();
         }
+
         ImGui::EndChild();
 
         ImGui::PopStyleColor(2);
@@ -805,81 +809,80 @@ namespace Quiet::Renderer::UI
 
         ImGui::Spacing();
 
-        const bool canPasteTransform =
-            g_InspectorComponentClipboard.Type ==
-            InspectorComponentClipboardType::Transform;
+        const bool canPasteTransform = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Transform;
+        const auto transformHeader =
+            BeginInspectorComponent(
+                "Transform",
+                "TransformComponentOptions",
+                false,
+                true,
+                true,
+                canPasteTransform,
+                canPasteTransform ? nullptr : "Copy Transform values first."
+            );
 
-        const auto transformHeader = BeginInspectorComponent(
-            "Transform",
-            "TransformComponentOptions",
-            false,
-            true,
-            true,
-            canPasteTransform,
-            canPasteTransform ? nullptr : "Copy Transform values first."
-        );
-
+        Scene::TransformComponent& transformComponent = actor.GetComponent<Scene::TransformComponent>();
         if (transformHeader.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Transform;
-            g_InspectorComponentClipboard.Transform = actor.Transform;
+            g_InspectorComponentClipboard.Transform = transformComponent;
         }
 
         if (transformHeader.PasteRequested && canPasteTransform)
         {
-            commands.PasteActorTransformValues(scene, actor.ID, g_InspectorComponentClipboard.Transform);
+            commands.PasteActorTransformValues(scene, actor.GetID(), g_InspectorComponentClipboard.Transform);
         }
 
         if (transformHeader.ResetRequested)
         {
-            commands.ResetActorTransform(scene, actor.ID);
+            commands.ResetActorTransform(scene, actor.GetID());
         }
 
         if (transformHeader.Open)
         {
-            auto& transform = actor.Transform.WorldTransform;
+            auto& transform = transformComponent.WorldTransform;
 
             glm::vec3 position = transform.Position;
             if (DrawVec3PropertyRow("Position", position, 0.1f, 0.0f, 0.0f, tracked))
             {
-                commands.SetActorPosition(scene, actor.ID, position);
+                commands.SetActorPosition(scene, actor.GetID(), position);
             }
 
             glm::vec3 rotation = transform.RotationDegrees;
             if (DrawVec3PropertyRow("Rotation", rotation, 0.5f, 0.0f, 0.0f, tracked))
             {
-                commands.SetActorRotation(scene, actor.ID, rotation);
+                commands.SetActorRotation(scene, actor.GetID(), rotation);
             }
 
             glm::vec3 scale = transform.Scale;
             if (DrawVec3PropertyRow("Scale", scale, 0.05f, 0.01f, 100.0f, tracked))
             {
-                commands.SetActorScale(scene, actor.ID, scale);
+                commands.SetActorScale(scene, actor.GetID(), scale);
             }
         }
     }
 
-    void DrawAddComponentMenu(Scene::Scene &scene, Scene::Actor &actor,
-                              Editor::EditorCommands &commands,
-                              const Project::ProjectContext &projectContext,
-                              const Vulkan::MeshLibrary &meshLibrary)
+    void DrawAddComponentMenu(Scene::Scene& scene,
+                              Scene::Actor& actor,
+                              Editor::EditorCommands& commands,
+                              const Project::ProjectContext& projectContext,
+                              const Vulkan::MeshLibrary& meshLibrary)
     {
         const auto meshAssetIDs = projectContext.EnumerateMeshAssetIDs();
-        const bool canAddStaticMesh = !actor.StaticMesh.has_value() && !meshAssetIDs.empty();
-        const bool canAddMaterial = actor.StaticMesh.has_value() && !actor.Material.has_value();
-        const bool canAddDirectionalLight = !actor.DirectionalLight.has_value();
-        const bool canAddRotator = !actor.Rotator.has_value();
-        const bool canAddCamera = !actor.Camera.has_value();
+        const bool hasStaticMesh = actor.HasComponent<Scene::StaticMeshComponent>();
 
-        const bool hasAnyAvailableComponent =
-            canAddStaticMesh ||
-            canAddMaterial ||
-            canAddDirectionalLight ||
-            canAddRotator ||
-            canAddCamera;
+        const bool canAddStaticMesh = !hasStaticMesh && !meshAssetIDs.empty();
+        const bool canAddMaterial = hasStaticMesh && !actor.HasComponent<Scene::MaterialComponent>();
+        const bool canAddDirectionalLight = !actor.HasComponent<Scene::DirectionalLightComponent>();
+        const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
+        const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
+
+        const bool hasAnyAvailableComponent = canAddStaticMesh || canAddMaterial || canAddDirectionalLight || canAddRotator || canAddCamera;
 
         if (EditorButton("+ Add Component", ImVec2(-1.0f, 0.0f), hasAnyAvailableComponent))
+        {
             ImGui::OpenPopup("##AddComponentPopup");
+        }
 
         if (!hasAnyAvailableComponent)
         {
@@ -888,7 +891,7 @@ namespace Quiet::Renderer::UI
             ImGui::PopStyleColor();
         }
 
-        if (!actor.StaticMesh.has_value() && meshAssetIDs.empty())
+        if (!hasStaticMesh && meshAssetIDs.empty())
         {
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Warning);
             ImGui::TextWrapped("Static Mesh cannot be added because no mesh assets are registered.");
@@ -899,39 +902,43 @@ namespace Quiet::Renderer::UI
         {
             if (EditorMenuItem("Static Mesh", nullptr, false, canAddStaticMesh))
             {
-                commands.AddStaticMesh(scene, actor.ID, projectContext, meshLibrary);
+                commands.AddStaticMesh(scene, actor.GetID(), projectContext, meshLibrary);
                 ImGui::CloseCurrentPopup();
             }
 
-            if (!actor.StaticMesh.has_value() && meshAssetIDs.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            if (!hasStaticMesh && meshAssetIDs.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
                 ImGui::SetTooltip("Register or load a mesh asset before adding a Static Mesh component.");
+            }
 
             if (EditorMenuItem("Material", nullptr, false, canAddMaterial))
             {
-                commands.AddMaterial(scene, actor.ID);
+                commands.AddMaterial(scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
-            if (!actor.StaticMesh.has_value() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            if (!hasStaticMesh && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
                 ImGui::SetTooltip("A Material component requires a Static Mesh component.");
+            }
 
             ImGui::Separator();
 
             if (EditorMenuItem("Directional Light", nullptr, false, canAddDirectionalLight))
             {
-                commands.AddDirectionalLight(scene, actor.ID);
+                commands.AddDirectionalLight(scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
             if (EditorMenuItem("Rotator", nullptr, false, canAddRotator))
             {
-                commands.AddRotator(scene, actor.ID);
+                commands.AddRotator(scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
             if (EditorMenuItem("Camera", nullptr, false, canAddCamera))
             {
-                commands.AddCamera(scene, actor.ID);
+                commands.AddCamera(scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -939,29 +946,29 @@ namespace Quiet::Renderer::UI
         }
     }
 
-
     void DrawStaticMeshSection(Scene::Scene& scene,
                                Scene::Actor& actor,
                                Editor::EditorCommands& commands,
                                const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary)
     {
-        if (!actor.StaticMesh.has_value()) return;
+        Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+        if (!staticMesh) return;
 
         const bool hasMeshAssets = !projectContext.EnumerateMeshAssetIDs().empty();
         const bool hasStaticMeshClipboard = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::StaticMesh;
-        const Project::AssetRecord* copiedMeshRecord = nullptr;
 
+        const Project::AssetRecord* copiedMeshRecord = nullptr;
         if (hasStaticMeshClipboard && !g_InspectorComponentClipboard.StaticMeshResourceID.empty())
         {
             copiedMeshRecord = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), g_InspectorComponentClipboard.StaticMeshResourceID);
         }
 
-        const bool copiedMeshIsRegistered =  copiedMeshRecord != nullptr && copiedMeshRecord->Type == Project::AssetType::Mesh;
+        const bool copiedMeshIsRegistered = copiedMeshRecord != nullptr && copiedMeshRecord->Type == Project::AssetType::Mesh;
         const bool copiedMeshIsLoaded = copiedMeshIsRegistered && meshLibrary.TryGet(g_InspectorComponentClipboard.StaticMeshResourceID) != nullptr;
         const bool canPasteStaticMesh = hasStaticMeshClipboard && copiedMeshIsLoaded;
-        const char* pasteUnavailableReason = nullptr;
 
+        const char* pasteUnavailableReason = nullptr;
         if (!hasStaticMeshClipboard)
         {
             pasteUnavailableReason = "Copy Static Mesh values first.";
@@ -982,26 +989,26 @@ namespace Quiet::Renderer::UI
             false,
             true,
             canPasteStaticMesh,
-            pasteUnavailableReason
-        );
+            pasteUnavailableReason);
+
         if (header.RemoveRequested)
         {
-            commands.RemoveStaticMesh(scene, actor.ID);
+            commands.RemoveStaticMesh(scene, actor.GetID());
             return;
         }
 
         if (header.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::StaticMesh;
-            g_InspectorComponentClipboard.StaticMeshResourceID = actor.StaticMesh->MeshResourceID;
-            g_InspectorComponentClipboard.StaticMeshVisible = actor.StaticMesh->Visible;
+            g_InspectorComponentClipboard.StaticMeshResourceID = staticMesh->MeshResourceID;
+            g_InspectorComponentClipboard.StaticMeshVisible = staticMesh->Visible;
         }
 
         if (header.PasteRequested && canPasteStaticMesh)
         {
             commands.PasteStaticMeshValues(
                 scene,
-                actor.ID,
+                actor.GetID(),
                 g_InspectorComponentClipboard.StaticMeshResourceID,
                 g_InspectorComponentClipboard.StaticMeshVisible,
                 projectContext,
@@ -1009,8 +1016,7 @@ namespace Quiet::Renderer::UI
             );
         }
 
-        if (!header.Open)
-            return;
+        if (!header.Open) return;
 
         Assets::AssetPickerOptions meshPickerOptions{};
         meshPickerOptions.Type = Project::AssetType::Mesh;
@@ -1018,18 +1024,20 @@ namespace Quiet::Renderer::UI
 
         std::string selectedMeshAssetID;
 
-        if (DrawAssetPickerPropertyRow("Mesh Resource", projectContext, meshPickerOptions, actor.StaticMesh->MeshResourceID, selectedMeshAssetID))
+        if (DrawAssetPickerPropertyRow("Mesh Resource", projectContext, meshPickerOptions, staticMesh->MeshResourceID, selectedMeshAssetID))
         {
-            commands.SetStaticMeshResource(scene, actor.ID, selectedMeshAssetID, projectContext, meshLibrary);
+            commands.SetStaticMeshResource(scene, actor.GetID(), selectedMeshAssetID, projectContext, meshLibrary);
         }
 
         if (!hasMeshAssets)
+        {
             DrawInspectorHint("No mesh assets registered.");
+        }
 
-        bool visible = actor.StaticMesh->Visible;
+        bool visible = staticMesh->Visible;
         if (DrawCheckboxPropertyRow("Visible", visible))
         {
-            commands.SetStaticMeshVisible(scene, actor.ID, visible);
+            commands.SetStaticMeshVisible(scene, actor.GetID(), visible);
         }
     }
 
@@ -1041,22 +1049,24 @@ namespace Quiet::Renderer::UI
                              const TrackedInspectorInteraction& tracked,
                              const float uiScale)
     {
-        if (!actor.StaticMesh.has_value()) return;
-        if (!actor.Material.has_value()) return;
+        Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+        Scene::MaterialComponent* material = actor.TryGetComponent<Scene::MaterialComponent>();
+        if (!staticMesh || !material) return;
 
-        const bool canResetMaterial = actor.StaticMesh->Mesh != nullptr;
+        const bool canResetMaterial = staticMesh->Mesh != nullptr;
         const bool hasMaterialClipboard = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::Material;
-        const bool materialSlotCountsMatch = hasMaterialClipboard && g_InspectorComponentClipboard.MaterialSlots.size() == actor.StaticMesh->MaterialSlots.size();
-        const auto& assetRegistry = projectContext.GetAssetRegistry();
+        const bool materialSlotCountsMatch = hasMaterialClipboard && g_InspectorComponentClipboard.MaterialSlots.size() == staticMesh->MaterialSlots.size();
 
+        const auto& assetRegistry = projectContext.GetAssetRegistry();
         const auto isRegisteredTextureAsset = [&](const std::string& textureAssetID)
-            {
-                if (textureAssetID.empty()) return true;
-                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
-                return record && record->Type == Project::AssetType::Texture;
-            };
+        {
+            if (textureAssetID.empty()) return true;
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
+            return record && record->Type == Project::AssetType::Texture;
+        };
 
         bool copiedMaterialTexturesValid = true;
+
         if (hasMaterialClipboard)
         {
             copiedMaterialTexturesValid = isRegisteredTextureAsset(g_InspectorComponentClipboard.Material.BaseColorTextureAssetID);
@@ -1096,52 +1106,52 @@ namespace Quiet::Renderer::UI
             canResetMaterial,
             true,
             canPasteMaterial,
-            pasteUnavailableReason
-        );
+            pasteUnavailableReason);
 
         if (header.RemoveRequested)
         {
-            commands.RemoveMaterial(scene, actor.ID);
+            commands.RemoveMaterial(scene, actor.GetID());
             return;
         }
 
         if (header.CopyRequested)
         {
             g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::Material;
-            g_InspectorComponentClipboard.Material = actor.Material.value();
-            g_InspectorComponentClipboard.MaterialSlots = actor.StaticMesh->MaterialSlots;
+            g_InspectorComponentClipboard.Material = *material;
+            g_InspectorComponentClipboard.MaterialSlots = staticMesh->MaterialSlots;
         }
 
         if (header.PasteRequested && canPasteMaterial)
         {
             commands.PasteMaterialValues(
                 scene,
-                actor.ID,
+                actor.GetID(),
                 g_InspectorComponentClipboard.Material,
                 g_InspectorComponentClipboard.MaterialSlots,
-                projectContext
-            );
+                projectContext);
         }
 
         if (header.ResetRequested)
         {
-            commands.ResetMaterial(scene, actor.ID);
+            commands.ResetMaterial(scene, actor.GetID());
         }
 
         if (!header.Open) return;
 
-        const bool hasMaterialSlots = !actor.StaticMesh->MaterialSlots.empty();
+        const bool hasMaterialSlots = !staticMesh->MaterialSlots.empty();
         if (hasMaterialSlots)
         {
             DrawInspectorSubsectionHeader("Fallback Material");
             DrawInspectorHint("Used when a submesh has no matching imported material slot.");
-
             ImGui::Spacing();
         }
 
-        glm::vec4 baseColor = actor.Material->BaseColor;
+        glm::vec4 baseColor = material->BaseColor;
+
         if (DrawColor4PropertyRow("Base Color", baseColor, tracked))
-            commands.SetMaterialBaseColor(scene, actor.ID, baseColor);
+        {
+            commands.SetMaterialBaseColor(scene, actor.GetID(), baseColor);
+        }
 
         ImGui::Spacing();
 
@@ -1154,25 +1164,32 @@ namespace Quiet::Renderer::UI
 
         std::string selectedTextureAssetID;
 
-        if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions,
-            actor.Material->BaseColorTextureAssetID, selectedTextureAssetID))
+        if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, material->BaseColorTextureAssetID, selectedTextureAssetID))
         {
-            commands.SetMaterialBaseColorTextureAsset(scene, actor.ID, selectedTextureAssetID);
+            commands.SetMaterialBaseColorTextureAsset(scene, actor.GetID(), selectedTextureAssetID);
         }
 
         if (!hasTextureAssets)
+        {
             DrawInspectorHint("No texture assets registered.");
-        else if (!actor.Material->HasBaseColorTexture())
+        }
+        else if (!material->HasBaseColorTexture())
+        {
             DrawInspectorHint("No base color texture assigned.");
+        }
         else
         {
-            const std::string& textureAssetID = actor.Material->BaseColorTextureAssetID;
+            const std::string& textureAssetID = material->BaseColorTextureAssetID;
             const auto textureStats = textureLibrary.GetStats(textureAssetID);
 
             if (!textureStats.has_value())
+            {
                 DrawInspectorWarning("Assigned texture is not loaded. Press Reload in the Assets panel.");
+            }
             else if (!textureStats->GpuReady)
+            {
                 DrawInspectorWarning("Assigned texture metadata is loaded, but the GPU texture is not ready.");
+            }
             else
             {
                 DrawInspectorHint("Texture is sampled by the static mesh material.");
@@ -1182,7 +1199,7 @@ namespace Quiet::Renderer::UI
 
         if (hasMaterialSlots)
         {
-            const std::size_t slotCount = actor.StaticMesh->MaterialSlots.size();
+            const std::size_t slotCount = staticMesh->MaterialSlots.size();
             const std::string subsectionLabel = "Imported Slots (" + std::to_string(slotCount) + ")";
 
             DrawInspectorSubsectionHeader(subsectionLabel);
@@ -1198,13 +1215,12 @@ namespace Quiet::Renderer::UI
                     actor,
                     commands,
                     projectContext,
-                    actor.StaticMesh->MaterialSlots[slotIndex],
+                    staticMesh->MaterialSlots[slotIndex],
                     static_cast<std::uint32_t>(slotIndex),
                     textureLibrary,
                     tracked,
                     hasTextureAssets,
-                    openSingleSlotByDefault
-                );
+                    openSingleSlotByDefault);
             }
         }
     }
@@ -1228,7 +1244,7 @@ namespace Quiet::Renderer::UI
         );
         if (header.RemoveRequested)
         {
-            commands.RemoveDirectionalLight(scene, actor.ID);
+            commands.RemoveDirectionalLight(scene, actor.GetID());
             return;
         }
 
@@ -1240,12 +1256,12 @@ namespace Quiet::Renderer::UI
 
         if (header.PasteRequested && canPasteDirectionalLight)
         {
-            commands.PasteDirectionalLightValues(scene, actor.ID, g_InspectorComponentClipboard.DirectionalLight);
+            commands.PasteDirectionalLightValues(scene, actor.GetID(), g_InspectorComponentClipboard.DirectionalLight);
         }
 
         if (header.ResetRequested)
         {
-            commands.ResetDirectionalLight(scene, actor.ID);
+            commands.ResetDirectionalLight(scene, actor.GetID());
         }
 
         if (!header.Open) return;
@@ -1253,25 +1269,25 @@ namespace Quiet::Renderer::UI
         bool enabled = actor.DirectionalLight->Enabled;
         if (DrawCheckboxPropertyRow("Enabled", enabled))
         {
-            commands.SetDirectionalLightEnabled(scene, actor.ID, enabled);
+            commands.SetDirectionalLightEnabled(scene, actor.GetID(), enabled);
         }
 
         glm::vec3 direction = actor.DirectionalLight->Direction;
         if (DrawVec3PropertyRow("Direction", direction, 0.01f, -1.0f, 1.0f, tracked))
         {
-            commands.SetDirectionalLightDirection(scene, actor.ID, direction);
+            commands.SetDirectionalLightDirection(scene, actor.GetID(), direction);
         }
 
         glm::vec3 color = actor.DirectionalLight->Color;
         if (DrawColor3PropertyRow("Color", color, tracked))
         {
-            commands.SetDirectionalLightColor(scene, actor.ID, color);
+            commands.SetDirectionalLightColor(scene, actor.GetID(), color);
         }
 
         float intensity = actor.DirectionalLight->Intensity;
         if (DrawFloatPropertyRow("Intensity", intensity, 0.01f, 0.0f, 10.0f, tracked))
         {
-            commands.SetDirectionalLightIntensity(scene, actor.ID, intensity);
+            commands.SetDirectionalLightIntensity(scene, actor.GetID(), intensity);
         }
     }
 
@@ -1294,7 +1310,7 @@ namespace Quiet::Renderer::UI
         );
         if (header.RemoveRequested)
         {
-            commands.RemoveRotator(scene, actor.ID);
+            commands.RemoveRotator(scene, actor.GetID());
             return;
         }
 
@@ -1306,12 +1322,12 @@ namespace Quiet::Renderer::UI
 
         if (header.PasteRequested && canPasteRotator)
         {
-            commands.PasteRotatorValues(scene, actor.ID, g_InspectorComponentClipboard.Rotator);
+            commands.PasteRotatorValues(scene, actor.GetID(), g_InspectorComponentClipboard.Rotator);
         }
 
         if (header.ResetRequested)
         {
-            commands.ResetRotator(scene, actor.ID);
+            commands.ResetRotator(scene, actor.GetID());
         }
 
         if (!header.Open) return;
@@ -1320,7 +1336,7 @@ namespace Quiet::Renderer::UI
 
         if (DrawFloatPropertyRow("Rotation Speed", rotationSpeed, 1.0f, 0.0f, 0.0f, tracked))
         {
-            commands.SetRotatorSpeed(scene, actor.ID, rotationSpeed);
+            commands.SetRotatorSpeed(scene, actor.GetID(), rotationSpeed);
         }
     }
 
@@ -1344,7 +1360,7 @@ namespace Quiet::Renderer::UI
         );
         if (header.RemoveRequested)
         {
-            commands.RemoveCamera(scene, actor.ID);
+            commands.RemoveCamera(scene, actor.GetID());
             return;
         }
 
@@ -1356,26 +1372,26 @@ namespace Quiet::Renderer::UI
 
         if (header.PasteRequested && canPasteCamera)
         {
-            commands.PasteCameraValues(scene, actor.ID, g_InspectorComponentClipboard.Camera);
+            commands.PasteCameraValues(scene, actor.GetID(), g_InspectorComponentClipboard.Camera);
         }
 
         if (header.ResetRequested)
         {
-            commands.ResetCamera(scene, actor.ID);
+            commands.ResetCamera(scene, actor.GetID());
         }
 
         if (!header.Open) return;
 
         const bool isPilotingThisCamera =
             editorState.Selection.PilotedCameraActorID.has_value() &&
-            editorState.Selection.PilotedCameraActorID.value() == actor.ID;
+            editorState.Selection.PilotedCameraActorID.value() == actor.GetID();
 
         if (isEditMode)
         {
             if (!isPilotingThisCamera)
             {
                 if (EditorButton("Pilot Camera"))
-                    editorState.Selection.PilotedCameraActorID = actor.ID;
+                    editorState.Selection.PilotedCameraActorID = actor.GetID();
             }
             else
             {
@@ -1387,13 +1403,13 @@ namespace Quiet::Renderer::UI
         bool primary = actor.Camera->Primary;
         if (DrawCheckboxPropertyRow("Primary", primary))
         {
-            commands.SetCameraPrimary(scene, actor.ID, primary);
+            commands.SetCameraPrimary(scene, actor.GetID(), primary);
         }
 
         float fov = actor.Camera->FieldOfViewDegrees;
         if (DrawFloatPropertyRow("Field Of View", fov, 0.25f, 1.0f, 179.0f, tracked))
         {
-            commands.SetCameraFieldOfView(scene, actor.ID, fov);
+            commands.SetCameraFieldOfView(scene, actor.GetID(), fov);
         }
 
         const float currentFarClip = std::isfinite(actor.Camera->FarClip) ? actor.Camera->FarClip : 1000.0f;
@@ -1402,7 +1418,7 @@ namespace Quiet::Renderer::UI
 
         if (DrawFloatPropertyRow("Near Clip", nearClip, 0.01f, 0.001f, maximumNearClip, tracked))
         {
-            commands.SetCameraNearClip(scene, actor.ID, nearClip);
+            commands.SetCameraNearClip(scene, actor.GetID(), nearClip);
         }
 
         const float currentNearClip = std::isfinite(actor.Camera->NearClip) ? std::clamp(actor.Camera->NearClip, 0.001f, 100.0f) : 0.1f;
@@ -1411,7 +1427,7 @@ namespace Quiet::Renderer::UI
 
         if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, minimumFarClip, 100000.0f, tracked))
         {
-            commands.SetCameraFarClip(scene, actor.ID, farClip);
+            commands.SetCameraFarClip(scene, actor.GetID(), farClip);
         }
     }
 }
