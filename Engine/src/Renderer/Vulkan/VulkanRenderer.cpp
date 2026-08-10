@@ -904,11 +904,11 @@ namespace Quiet::Renderer::Vulkan
 
                 m_SceneViewportTarget->SetSelectionMaskLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+                const Scene::StaticMeshComponent* selectedStaticMesh = selectedActor ? selectedActor->TryGetComponent<Scene::StaticMeshComponent>() : nullptr;
                 const bool selectedStaticMeshVisible =
-                    selectedActor &&
-                    selectedActor->StaticMesh.has_value() &&
-                    selectedActor->StaticMesh->IsValid() &&
-                    selectedActor->StaticMesh->Visible;
+                    selectedStaticMesh &&
+                    selectedStaticMesh->IsValid() &&
+                    selectedStaticMesh->Visible;
 
                 if (selectedStaticMeshVisible &&
                     m_EditorMode &&

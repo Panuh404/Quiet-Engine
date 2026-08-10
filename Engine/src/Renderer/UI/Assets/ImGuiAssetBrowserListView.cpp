@@ -35,7 +35,6 @@ namespace Quiet::Renderer::UI::Assets
         std::string& pendingReimportAssetID)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
-        auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
 
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
 

@@ -25,15 +25,14 @@ namespace
     {
         for (const Quiet::Scene::Actor& actor : scene.GetActors())
         {
-            if (actor.DirectionalLight.has_value() && actor.DirectionalLight->Enabled)
-                return &actor.DirectionalLight.value();
+            const auto* light = actor.TryGetComponent<Quiet::Scene::DirectionalLightComponent>();
+            if (light && light->Enabled) return light;
         }
+
         return nullptr;
     }
 
-    bool IsValidSubmeshDrawRange(
-        const Quiet::Renderer::Vulkan::StaticSubmesh& submesh,
-        const Quiet::Renderer::Vulkan::StaticMesh& mesh)
+    bool IsValidSubmeshDrawRange(const Quiet::Renderer::Vulkan::StaticSubmesh& submesh, const Quiet::Renderer::Vulkan::StaticMesh& mesh)
     {
         if (submesh.IndexCount == 0) return false;
         if (submesh.BaseIndex >= mesh.GetIndexCount()) return false;
@@ -45,33 +44,27 @@ namespace
         return endIndex <= mesh.GetIndexCount();
     }
 
-    const Quiet::Scene::MaterialComponent* ResolveSubmeshMaterial(
-        const Quiet::Scene::Actor& actor,
-        const Quiet::Renderer::Vulkan::StaticSubmesh& submesh)
+    const Quiet::Scene::MaterialComponent* ResolveSubmeshMaterial(const Quiet::Scene::Actor& actor, const Quiet::Renderer::Vulkan::StaticSubmesh& submesh)
     {
-        if (actor.StaticMesh.has_value())
+        if (const auto* staticMesh = actor.TryGetComponent<Quiet::Scene::StaticMeshComponent>())
         {
-            if (const Quiet::Scene::MaterialComponent* slot = actor.StaticMesh->TryGetMaterialSlot(submesh.MaterialSlot))
+            if (const auto* slot = staticMesh->TryGetMaterialSlot(submesh.MaterialSlot))
+            {
                 return slot;
+            }
         }
-
-        if (!actor.Material.has_value())
-            return nullptr;
-
-        return &actor.Material.value();
+        return actor.TryGetComponent<Quiet::Scene::MaterialComponent>();
     }
-    void ApplyMaterialToPushConstants(
-        const Quiet::Scene::MaterialComponent* material,
-        Quiet::Renderer::Vulkan::StaticMeshPushConstants& push)
+
+    void ApplyMaterialToPushConstants(const Quiet::Scene::MaterialComponent* material, Quiet::Renderer::Vulkan::StaticMeshPushConstants& push)
     {
         if (!material) return;
         push.MaterialBaseColor = material->BaseColor;
     }
 
-    VkDescriptorSet ResolveMaterialDescriptorSet(
-        const Quiet::Scene::MaterialComponent* material,
-        Quiet::Renderer::Vulkan::StaticMeshMaterialResources& materialResources,
-        const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
+    VkDescriptorSet ResolveMaterialDescriptorSet(const Quiet::Scene::MaterialComponent* material,
+                                                 Quiet::Renderer::Vulkan::StaticMeshMaterialResources& materialResources,
+                                                 const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary)
     {
         if (!material || !material->HasBaseColorTexture())
             return materialResources.GetFallbackDescriptorSet();
@@ -82,12 +75,11 @@ namespace
         );
     }
 
-    void DrawSubmesh(
-        const Quiet::Renderer::Vulkan::StaticMeshRenderContext &context,
-        const Quiet::Scene::Actor &actor,
-        const Quiet::Renderer::Vulkan::StaticSubmesh &submesh,
-        Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
-        uint32_t &drawCount)
+    void DrawSubmesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext &context,
+                     const Quiet::Scene::Actor &actor,
+                     const Quiet::Renderer::Vulkan::StaticSubmesh &submesh,
+                     Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
+                     uint32_t &drawCount)
     {
         const Quiet::Scene::MaterialComponent* material = ResolveSubmeshMaterial(actor, submesh);
         ApplyMaterialToPushConstants(material, push);
@@ -130,26 +122,16 @@ namespace
         ++drawCount;
     }
 
-    void DrawWholeMesh(
-        const Quiet::Renderer::Vulkan::StaticMeshRenderContext& context,
-        const Quiet::Scene::Actor& actor,
-        const Quiet::Renderer::Vulkan::StaticMesh& mesh,
-        Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
-        std::uint32_t& drawCount)
+    void DrawWholeMesh(const Quiet::Renderer::Vulkan::StaticMeshRenderContext& context,
+                       const Quiet::Scene::Actor& actor,
+                       const Quiet::Renderer::Vulkan::StaticMesh& mesh,
+                       Quiet::Renderer::Vulkan::StaticMeshPushConstants push,
+                       std::uint32_t& drawCount)
     {
-        const Quiet::Scene::MaterialComponent* material =
-            actor.Material.has_value()
-                ? &actor.Material.value()
-                : nullptr;
-
+        const Quiet::Scene::MaterialComponent* material = actor.TryGetComponent<Quiet::Scene::MaterialComponent>();
         ApplyMaterialToPushConstants(material, push);
 
-        const VkDescriptorSet materialDescriptorSet =
-            ResolveMaterialDescriptorSet(
-                material,
-                *context.Materials,
-                *context.Textures
-            );
+        const VkDescriptorSet materialDescriptorSet = ResolveMaterialDescriptorSet(material, *context.Materials, *context.Textures);
 
         vkCmdBindDescriptorSets(
             context.CommandBuffer,
@@ -235,15 +217,13 @@ namespace Quiet::Renderer::Vulkan
 
         for (const auto& actor : context.SceneData->GetActors())
         {
-            if (!actor.StaticMesh.has_value() ||
-                !actor.StaticMesh->IsValid() ||
-                !actor.StaticMesh->Visible)
+            const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh || !staticMesh->IsValid() || !staticMesh->Visible)
             {
                 ++skippedCount;
                 continue;
             }
-
-            const auto& mesh = actor.StaticMesh->Mesh;
+            const auto& mesh = staticMesh->Mesh;
 
             const VkBuffer vertexBuffers[] = { mesh->GetVertexBuffer() };
             const VkDeviceSize offsets[] = { 0 };
@@ -252,31 +232,19 @@ namespace Quiet::Renderer::Vulkan
             vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
             StaticMeshPushConstants push{};
-            push.Model = actor.Transform.WorldTransform.ToMatrix();
+            push.Model = actor.GetComponent<Scene::TransformComponent>().WorldTransform.ToMatrix();
             if (activeLight)
             {
-                push.LightDirectionIntensity = glm::vec4(
-                    activeLight->Direction,
-                    activeLight->Intensity
-                );
-                push.LightColor = glm::vec4(
-                    activeLight->Color,
-                    1.0f
-                );
+                push.LightDirectionIntensity = glm::vec4(activeLight->Direction, activeLight->Intensity);
+                push.LightColor = glm::vec4(activeLight->Color, 1.0f);
             }
             else
             {
-                push.LightDirectionIntensity = glm::vec4(
-                    renderSettings.LightDirection,
-                    renderSettings.LightIntensity
-                );
+                push.LightDirectionIntensity = glm::vec4(renderSettings.LightDirection, renderSettings.LightIntensity);
                 push.LightColor = glm::vec4(1.0f);
             }
 
-            push.AmbientColorIntensity = glm::vec4(
-                renderSettings.AmbientColor,
-                renderSettings.AmbientIntensity
-            );
+            push.AmbientColorIntensity = glm::vec4(renderSettings.AmbientColor, renderSettings.AmbientIntensity);
 
             const std::vector<StaticSubmesh>& submeshes = mesh->GetSubmeshes();
 
@@ -288,7 +256,7 @@ namespace Quiet::Renderer::Vulkan
                     {
                         QUIET_CORE_WARN(
                             "Skipped invalid submesh draw range. mesh='{}' submesh='{}' baseIndex={} indexCount={} meshIndexCount={}",
-                            actor.StaticMesh->MeshResourceID,
+                            staticMesh->MeshResourceID,
                             submesh.Name,
                             submesh.BaseIndex,
                             submesh.IndexCount,

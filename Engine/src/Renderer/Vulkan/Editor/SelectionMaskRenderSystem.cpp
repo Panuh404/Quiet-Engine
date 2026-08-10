@@ -21,12 +21,11 @@ namespace Quiet::Renderer::Vulkan
             return;
 
         const Scene::Actor& actor = *context.SelectedActor;
-        if (!actor.StaticMesh.has_value() || !actor.StaticMesh->IsValid() || !actor.StaticMesh->Visible)
-            return;
+        const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+        if (!staticMesh || !staticMesh->IsValid() || !staticMesh->Visible) return;
 
-        const auto& mesh = actor.StaticMesh->Mesh;
-        if (!mesh || mesh->GetIndexCount() == 0)
-            return;
+        const auto& mesh = staticMesh->Mesh;
+        if (!mesh || mesh->GetIndexCount() == 0) return;
 
         vkCmdBindPipeline(context.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.Pipeline->GetHandle());
         const VkDescriptorSet cameraDescriptor = context.Camera->GetDescriptorSet(context.ImageIndex);
@@ -72,7 +71,7 @@ namespace Quiet::Renderer::Vulkan
         vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
         SelectionMaskPushConstants push{};
-        push.Model = actor.Transform.WorldTransform.ToMatrix();
+        push.Model = actor.GetComponent<Scene::TransformComponent>().WorldTransform.ToMatrix();
 
         vkCmdPushConstants(
             context.CommandBuffer,

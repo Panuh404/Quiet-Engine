@@ -188,64 +188,69 @@ namespace Quiet::Scene
             { "ambient_color", SerializeVec3(renderSettings.AmbientColor) },
             { "ambient_intensity", renderSettings.AmbientIntensity }
         };
-
         root["editor_hierarchy"] = SerializeHierarchyState(scene.GetHierarchy());
 
-        for (const auto& actor : scene.GetActors())
+        for (const Actor& actor : scene.GetActors())
         {
             json actorJson;
-            actorJson["id"] = Quiet::Core::UUIDToString(actor.ID);
-            actorJson["name"] = actor.Name;
+            actorJson["id"] = Quiet::Core::UUIDToString(actor.GetID());
+            actorJson["name"] = actor.GetName();
 
-            actorJson["transform"] = {
-                { "position", SerializeVec3(actor.Transform.WorldTransform.Position) },
-                { "rotation", SerializeVec3(actor.Transform.WorldTransform.RotationDegrees) },
-                { "scale", SerializeVec3(actor.Transform.WorldTransform.Scale) }
+            const TransformComponent& transform = actor.GetComponent<TransformComponent>();
+            actorJson["transform"] =
+            {
+                { "position", SerializeVec3(transform.WorldTransform.Position) },
+                { "rotation", SerializeVec3(transform.WorldTransform.RotationDegrees) },
+                { "scale", SerializeVec3(transform.WorldTransform.Scale) }
             };
 
-            if (actor.StaticMesh.has_value() && actor.StaticMesh->IsValid())
+            if (const StaticMeshComponent* staticMesh = actor.TryGetComponent<StaticMeshComponent>(); staticMesh && staticMesh->IsValid())
             {
-                json staticMeshJson = {
-                    { "resource_id", actor.StaticMesh->MeshResourceID },
-                    { "visible", actor.StaticMesh->Visible }
+                json staticMeshJson =
+                {
+                    { "resource_id", staticMesh->MeshResourceID },
+                    { "visible", staticMesh->Visible }
                 };
 
-                if (!actor.StaticMesh->MaterialSlots.empty())
+                if (!staticMesh->MaterialSlots.empty())
                 {
                     staticMeshJson["material_slots"] = json::array();
-                    for (const MaterialComponent& materialSlot : actor.StaticMesh->MaterialSlots)
+                    for (const MaterialComponent& materialSlot : staticMesh->MaterialSlots)
                     {
                         staticMeshJson["material_slots"].push_back(SerializeMaterial(materialSlot));
                     }
                 }
+
                 actorJson["static_mesh"] = std::move(staticMeshJson);
             }
 
-            if (actor.Material.has_value())
+            if (const MaterialComponent* material = actor.TryGetComponent<MaterialComponent>())
             {
-                actorJson["material"] = SerializeMaterial(actor.Material.value());
+                actorJson["material"] = SerializeMaterial(*material);
             }
 
-            if (actor.DirectionalLight.has_value())
+            if (const DirectionalLightComponent* light = actor.TryGetComponent<DirectionalLightComponent>())
             {
-                actorJson["directional_light"] = {
-                    { "enabled", actor.DirectionalLight->Enabled },
-                    { "direction", SerializeVec3(actor.DirectionalLight->Direction) },
-                    { "color", SerializeVec3(actor.DirectionalLight->Color) },
-                    { "intensity", actor.DirectionalLight->Intensity }
+                actorJson["directional_light"] =
+                {
+                    { "enabled", light->Enabled },
+                    { "direction", SerializeVec3(light->Direction) },
+                    { "color", SerializeVec3(light->Color) },
+                    { "intensity", light->Intensity }
                 };
             }
 
-            if (actor.Rotator.has_value())
+            if (const RotatorComponent* rotator = actor.TryGetComponent<RotatorComponent>())
             {
-                actorJson["rotator"] = {
-                    { "speed_degrees_per_second", actor.Rotator->RotationSpeedDegreesPerSecond }
+                actorJson["rotator"] =
+                {
+                    { "speed_degrees_per_second", rotator->RotationSpeedDegreesPerSecond }
                 };
             }
 
-            if (actor.Camera.has_value())
+            if (const CameraComponent* camera = actor.TryGetComponent<CameraComponent>())
             {
-                actorJson["camera"] = SerializeCamera(actor.Camera.value());
+                actorJson["camera"] = SerializeCamera(*camera);
             }
 
             root["actors"].push_back(std::move(actorJson));
@@ -315,9 +320,10 @@ namespace Quiet::Scene
             auto& actor = scene.CreateActorWithID(id, actorJson.value("name", "Actor"));
 
             const auto& transformJson = actorJson.at("transform");
-            actor.Transform.WorldTransform.Position = DeserializeVec3(transformJson.at("position"));
-            actor.Transform.WorldTransform.RotationDegrees = DeserializeVec3(transformJson.at("rotation"));
-            actor.Transform.WorldTransform.Scale = DeserializeVec3(transformJson.at("scale"));
+            TransformComponent& transform = actor.GetComponent<TransformComponent>();
+            transform.WorldTransform.Position = DeserializeVec3(transformJson.at("position"));
+            transform.WorldTransform.RotationDegrees = DeserializeVec3(transformJson.at("rotation"));
+            transform.WorldTransform.Scale = DeserializeVec3(transformJson.at("scale"));
 
             if (actorJson.contains("static_mesh"))
             {
@@ -326,17 +332,17 @@ namespace Quiet::Scene
 
                 if (auto mesh = meshLibrary.TryGet(resourceId))
                 {
-                    actor.StaticMesh = StaticMeshComponent{};
-                    actor.StaticMesh->MeshResourceID = resourceId;
-                    actor.StaticMesh->Mesh = mesh;
-                    actor.StaticMesh->Visible = staticMeshJson.value("visible", true);
+                    StaticMeshComponent& staticMesh = actor.AddComponent<StaticMeshComponent>();
+                    staticMesh.MeshResourceID = resourceId;
+                    staticMesh.Mesh = mesh;
+                    staticMesh.Visible = staticMeshJson.value("visible", true);
 
                     if (staticMeshJson.contains("material_slots") && staticMeshJson["material_slots"].is_array())
                     {
-                        actor.StaticMesh->MaterialSlots.clear();
+                        staticMesh.MaterialSlots.clear();
                         for (const auto& materialSlotJson : staticMeshJson["material_slots"])
                         {
-                            actor.StaticMesh->MaterialSlots.push_back(DeserializeMaterial(materialSlotJson));
+                            staticMesh.MaterialSlots.push_back(DeserializeMaterial(materialSlotJson));
                         }
                     }
                 }
@@ -349,7 +355,7 @@ namespace Quiet::Scene
             if (actorJson.contains("material"))
             {
                 const auto& materialJson = actorJson["material"];
-                actor.Material = DeserializeMaterial(materialJson);
+                actor.AddComponent<MaterialComponent>(DeserializeMaterial(materialJson));
             }
 
             if (actorJson.contains("directional_light"))
@@ -370,15 +376,13 @@ namespace Quiet::Scene
                 }
 
                 light.Intensity = lightJson.value("intensity", light.Intensity);
-                actor.DirectionalLight = light;
+                actor.AddComponent<DirectionalLightComponent>(light);
             }
 
             if (actorJson.contains("rotator"))
             {
                 const auto& rotatorJson = actorJson["rotator"];
-                actor.Rotator = RotatorComponent{
-                    rotatorJson.value("speed_degrees_per_second", 0.0f)
-                };
+                actor.AddComponent<RotatorComponent>(RotatorComponent{ rotatorJson.value("speed_degrees_per_second",0.0f) });
             }
 
             if (actorJson.contains("camera"))
@@ -436,7 +440,7 @@ namespace Quiet::Scene
         if (json.contains("FarClip"))
             camera.FarClip = json["FarClip"].get<float>();
 
-        actor.Camera = camera;
+        actor.AddComponent<CameraComponent>(camera);
     }
 
     nlohmann::json SceneSerializer::SerializeMaterial(const MaterialComponent &material)

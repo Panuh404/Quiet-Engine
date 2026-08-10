@@ -963,24 +963,31 @@ namespace Quiet::Renderer::UI::Assets
             {
                 case Project::AssetType::Mesh:
                 {
-                    referenced = actor.StaticMesh.has_value() && actor.StaticMesh->MeshResourceID == record.ID;
+                    const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+                    referenced = staticMesh && staticMesh->MeshResourceID == record.ID;
                     break;
                 }
 
                 case Project::AssetType::Texture:
                 {
-                    referenced = actor.Material.has_value() && actor.Material->BaseColorTextureAssetID == record.ID;
-                    if (!referenced && actor.StaticMesh.has_value())
+                    const Scene::MaterialComponent* material = actor.TryGetComponent<Scene::MaterialComponent>();
+                    referenced = material && material->BaseColorTextureAssetID == record.ID;
+                    if (!referenced)
                     {
-                        for (const Scene::MaterialComponent& slot : actor.StaticMesh->MaterialSlots)
+                        const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+                        if (staticMesh)
                         {
-                            if (slot.BaseColorTextureAssetID == record.ID)
+                            for (const Scene::MaterialComponent& slot : staticMesh->MaterialSlots)
                             {
-                                referenced = true;
-                                break;
+                                if (slot.BaseColorTextureAssetID == record.ID)
+                                {
+                                    referenced = true;
+                                    break;
+                                }
                             }
                         }
                     }
+
                     break;
                 }
 
