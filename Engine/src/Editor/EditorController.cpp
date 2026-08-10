@@ -101,7 +101,10 @@ namespace Quiet::Editor
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene, Scene::FreeCamera& camera)
     {
-        if (!m_State.Selection.SelectedActorID.has_value()) return;
+        if (!m_State.Selection.SelectedActorID.has_value())
+        {
+            return;
+        }
 
         Scene::Actor* actor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
         if (!actor)
@@ -110,22 +113,18 @@ namespace Quiet::Editor
             return;
         }
 
-        glm::vec3 target = actor->Transform.WorldTransform.Position;
+        const Scene::TransformComponent& transform = actor->GetComponent<Scene::TransformComponent>();
+        glm::vec3 target = transform.WorldTransform.Position;
+
         float radius = 1.0f;
 
-        if (actor->StaticMesh.has_value() &&
-            actor->StaticMesh->IsValid() &&
-            actor->StaticMesh->Visible)
+        const Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+        if (staticMesh && staticMesh->IsValid() && staticMesh->Visible)
         {
-            const auto& mesh = actor->StaticMesh->Mesh;
+            const auto& mesh = staticMesh->Mesh;
             const auto localBounds = mesh->GetLocalBounds();
 
-            const Math::AABB worldBounds = Math::TransformAABB(
-                actor->Transform.WorldTransform.ToMatrix(),
-                localBounds.Min,
-                localBounds.Max
-            );
-
+            const Math::AABB worldBounds =  Math::TransformAABB(transform.WorldTransform.ToMatrix(), localBounds.Min, localBounds.Max);
             target = (worldBounds.Min + worldBounds.Max) * 0.5f;
             radius = glm::max(0.5f, glm::length(worldBounds.Max - worldBounds.Min) * 0.5f);
         }
@@ -138,7 +137,6 @@ namespace Quiet::Editor
         const glm::vec3 newPosition = target - forward * distance;
 
         camera.SetPosition(newPosition);
-
         QUIET_CORE_TRACE("Focused selected actor at ({:.2f}, {:.2f}, {:.2f}).", target.x, target.y, target.z);
     }
 }

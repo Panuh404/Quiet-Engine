@@ -126,7 +126,7 @@ namespace
     {
         if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) return;
 
-        g_DraggedActorID = actor.ID;
+        g_DraggedActorID = actor.GetID();
         g_DraggedRootNode.reset();
 
         const int payloadValue = 1;
@@ -137,7 +137,8 @@ namespace
         );
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-        ImGui::TextUnformatted(actor.Name.empty() ? "Unnamed Actor" : actor.Name.c_str());
+        const std::string& actorName = actor.GetName();
+        ImGui::TextUnformatted(actorName.empty() ? "Unnamed Actor" : actorName.c_str());
         ImGui::PopStyleColor();
 
         ImGui::EndDragDropSource();
@@ -147,11 +148,8 @@ namespace
     {
         if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) return;
 
-        g_DraggedActorID = actor.ID;
-        g_DraggedRootNode = std::make_tuple(
-            Quiet::Scene::SceneHierarchyNodeType::Actor,
-            actor.ID
-        );
+        g_DraggedActorID = actor.GetID();
+        g_DraggedRootNode = std::make_tuple(Quiet::Scene::SceneHierarchyNodeType::Actor, actor.GetID());
 
         const int payloadValue = 1;
         ImGui::SetDragDropPayload(
@@ -161,7 +159,8 @@ namespace
         );
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-        ImGui::TextUnformatted(actor.Name.empty() ? "Unnamed Actor" : actor.Name.c_str());
+        const std::string& actorName = actor.GetName();
+        ImGui::TextUnformatted(actorName.empty() ? "Unnamed Actor" : actorName.c_str());
         ImGui::PopStyleColor();
 
         ImGui::EndDragDropSource();
@@ -284,28 +283,43 @@ namespace
 
     const char* GetActorTypeLabel(const Quiet::Scene::Actor& actor)
     {
-        if (actor.Camera.has_value()) return "Camera";
-        if (actor.DirectionalLight.has_value()) return "Light";
-        if (actor.StaticMesh.has_value()) return "Mesh";
-        if (actor.Rotator.has_value()) return "Rotator";
+        if (actor.HasComponent<Quiet::Scene::CameraComponent>())
+            return "Camera";
+
+        if (actor.HasComponent<Quiet::Scene::DirectionalLightComponent>())
+            return "Light";
+
+        if (actor.HasComponent<Quiet::Scene::StaticMeshComponent>())
+            return "Mesh";
+
+        if (actor.HasComponent<Quiet::Scene::RotatorComponent>())
+            return "Rotator";
 
         return "Actor";
     }
 
     const char* GetActorTypeIcon(const Quiet::Scene::Actor& actor)
     {
-        if (actor.Camera.has_value()) return QUI::Icons::Focus;
-        if (actor.DirectionalLight.has_value()) return QUI::Icons::World;
-        if (actor.StaticMesh.has_value()) return QUI::Icons::Local;
-        if (actor.Rotator.has_value()) return QUI::Icons::Rotate;
+        if (actor.HasComponent<Quiet::Scene::CameraComponent>())
+            return QUI::Icons::Focus;
+
+        if (actor.HasComponent<Quiet::Scene::DirectionalLightComponent>())
+            return QUI::Icons::World;
+
+        if (actor.HasComponent<Quiet::Scene::StaticMeshComponent>())
+            return QUI::Icons::Local;
+
+        if (actor.HasComponent<Quiet::Scene::RotatorComponent>())
+            return QUI::Icons::Rotate;
 
         return QUI::Icons::Local;
     }
 
     bool DrawActorRow(const Quiet::Scene::Actor& actor, const bool selected, const bool enabled)
     {
-        const std::string actorID = Quiet::Core::UUIDToString(actor.ID);
-        const std::string displayName = actor.Name.empty() ? "Unnamed Actor" : actor.Name;
+        const std::string actorID = Quiet::Core::UUIDToString(actor.GetID());
+        const std::string& actorName = actor.GetName();
+        const std::string displayName = actorName.empty() ? "Unnamed Actor" : actorName;
 
         const float rowHeight = SZ::Px(38.0f);
         const float rowRounding = SZ::Px(7.0f);
@@ -1039,12 +1053,16 @@ namespace Quiet::Renderer::UI
                     Scene::Actor* actor = scene.FindActorByID(rootNode.ID);
                     if (!actor) continue;
 
+                    const Core::UUID actorID = actor->GetID();
+
                     const bool isSelected =
                         editorState.Selection.SelectedActorID.has_value() &&
-                        editorState.Selection.SelectedActorID.value() == actor->ID;
+                        editorState.Selection.SelectedActorID.value() == actorID;
 
                     if (DrawActorRow(*actor, isSelected, isEditMode))
-                        editorState.Selection.SelectedActorID = actor->ID;
+                    {
+                        editorState.Selection.SelectedActorID = actorID;
+                    }
 
                     const ImVec2 rowMin = ImGui::GetItemRectMin();
                     const ImVec2 rowMax = ImGui::GetItemRectMax();
@@ -1072,7 +1090,7 @@ namespace Quiet::Renderer::UI
                                     rootNodeIndex,
                                     dropAfterTarget,
                                     Scene::SceneHierarchyNodeType::Actor,
-                                    actor->ID
+                                    actorID
                                 );
 
                                 if (pendingMove.has_value())
@@ -1090,7 +1108,7 @@ namespace Quiet::Renderer::UI
                         }
                     }
 
-                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actor->ID);
+                    const std::string actorContextID = "ActorContextMenu_" + Core::UUIDToString(actorID);
 
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
@@ -1098,31 +1116,23 @@ namespace Quiet::Renderer::UI
                         const bool canMoveUp = canEdit && rootNodeIndex > 0;
                         const bool canMoveDown = canEdit && rootNodeIndex + 1 < hierarchy.RootNodes.size();
 
-                        if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
-                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actor->ID, rootNodeIndex - 1);
+                        if (EditorMenuItem("Move Up", nullptr, false, canMoveUp))
+                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actorID, rootNodeIndex - 1);
 
-                        if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
-                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actor->ID, rootNodeIndex + 1);
+                        if (EditorMenuItem("Move Down", nullptr, false, canMoveDown))
+                            pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Actor, actorID, rootNodeIndex + 1);
 
                         ImGui::Separator();
 
-                        if (QUI::EditorMenuItem(
-                                "Duplicate",
-                                editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
-                                false,
-                                canEdit))
+                        if (EditorMenuItem("Duplicate", editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected), false, canEdit))
                         {
-                            pendingActorSelection = actor->ID;
+                            pendingActorSelection = actorID;
                             pendingAction = Editor::EditorActionID::DuplicateSelected;
                         }
 
-                        if (QUI::EditorMenuItem(
-                                "Delete",
-                                editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
-                                false,
-                                canEdit))
+                        if (EditorMenuItem("Delete", editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected), false, canEdit))
                         {
-                            pendingActorSelection = actor->ID;
+                            pendingActorSelection = actorID;
                             pendingAction = Editor::EditorActionID::DeleteSelected;
                         }
 
