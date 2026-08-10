@@ -117,22 +117,23 @@ namespace
         const bool selectedActorIsPilotedCamera =
             editorState.Selection.SelectedActorID.has_value() &&
             editorState.Selection.PilotedCameraActorID.has_value() &&
-            editorState.Selection.SelectedActorID.value() ==
-            editorState.Selection.PilotedCameraActorID.value();
+            editorState.Selection.SelectedActorID.value() == editorState.Selection.PilotedCameraActorID.value();
 
         if (!selectedActorIsPilotedCamera && editorState.Selection.SelectedActorID.has_value())
         {
             const Quiet::Scene::Actor* actor = scene.FindActorByID(editorState.Selection.SelectedActorID.value());
             if (actor)
             {
-                glm::vec3 pivot = actor->Transform.WorldTransform.Position;
+                const Quiet::Scene::TransformComponent& transform = actor->GetComponent<Quiet::Scene::TransformComponent>();
+                glm::vec3 pivot = transform.WorldTransform.Position;
 
-                if (actor->StaticMesh.has_value() && actor->StaticMesh->IsValid())
+                const Quiet::Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Quiet::Scene::StaticMeshComponent>();
+                if (staticMesh && staticMesh->IsValid())
                 {
-                    const auto& mesh = actor->StaticMesh->Mesh;
+                    const auto& mesh = staticMesh->Mesh;
                     const auto localBounds = mesh->GetLocalBounds();
 
-                    const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(actor->Transform.WorldTransform.ToMatrix(), localBounds.Min, localBounds.Max);
+                    const Quiet::Math::AABB worldBounds = Quiet::Math::TransformAABB(transform.WorldTransform.ToMatrix(), localBounds.Min, localBounds.Max);
                     pivot = (worldBounds.Min + worldBounds.Max) * 0.5f;
                 }
 
@@ -142,7 +143,6 @@ namespace
 
         const glm::vec3 cameraPosition = camera.GetPosition();
         const glm::vec3 cameraForward = camera.GetForwardVector();
-
         if (std::abs(cameraForward.y) > 0.00001f)
         {
             const float groundDistance = -cameraPosition.y / cameraForward.y;
@@ -1276,7 +1276,10 @@ namespace Quiet::Core
 
     bool Application::UpdatePilotedEditorCamera(float deltaTime)
     {
-        if (!m_Spec.IsEditor() || !m_EditorController) return false;
+        if (!m_Spec.IsEditor() || !m_EditorController)
+        {
+            return false;
+        }
 
         auto& editorState = m_EditorController->GetState();
         if (editorState.Scene.Mode != Editor::SceneMode::Edit || !editorState.Selection.PilotedCameraActorID.has_value())
@@ -1285,15 +1288,25 @@ namespace Quiet::Core
         }
 
         Scene::Actor* actor = m_Scene->FindActorByID(editorState.Selection.PilotedCameraActorID.value());
-        if (!actor || !actor->Camera.has_value())
+        if (!actor)
         {
             editorState.Selection.PilotedCameraActorID.reset();
             return false;
         }
 
-        Scene::CameraPilotState state = Scene::BuildPilotStateFromCameraTransform(actor->Transform.WorldTransform);
+        Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+        if (!camera)
+        {
+            editorState.Selection.PilotedCameraActorID.reset();
+            return false;
+        }
+
+        auto& transform = actor->GetComponent<Scene::TransformComponent>().WorldTransform;
+
+        Scene::CameraPilotState state = Scene::BuildPilotStateFromCameraTransform(transform);
         state.MoveSpeed = m_FreeCamera->GetMoveSpeed();
         state.LookSensitivity = m_FreeCamera->GetLookSensitivity();
+
         bool cameraChanged = false;
 
         switch (m_ViewportNavigationMode)
@@ -1316,8 +1329,7 @@ namespace Quiet::Core
             case Editor::ViewportNavigationMode::Pan:
             {
                 const auto [deltaX, deltaY] = m_Input->GetMouseDelta();
-                Scene::CameraController::Pan(state, m_ViewportNavigationPivot, deltaX, deltaY,
-                    static_cast<float>(editorState.Viewport.Height), actor->Camera->FieldOfViewDegrees);
+                Scene::CameraController::Pan(state, m_ViewportNavigationPivot, deltaX, deltaY, static_cast<float>(editorState.Viewport.Height), camera->FieldOfViewDegrees);
                 cameraChanged = true;
                 break;
             }
@@ -1329,28 +1341,30 @@ namespace Quiet::Core
 
         if (cameraChanged)
         {
-            Scene::ApplyPilotStateToCameraTransform(state, actor->Transform.WorldTransform);
+            Scene::ApplyPilotStateToCameraTransform(state, transform);
         }
 
-        m_FreeCamera->ApplyPilotState(state);
+        m_FreeCamera->ApplyPilotState(state );
         return true;
     }
 
-    void Application::RelinkSceneStaticMeshes(Scene::Scene &scene)
+    void Application::RelinkSceneStaticMeshes(Scene::Scene& scene)
     {
         auto& meshLibrary = m_Renderer->GetMeshLibrary();
 
-        for (auto& actor : scene.GetActors())
+        for (Scene::Actor& actor : scene.GetActors())
         {
-            if (!actor.StaticMesh.has_value()) continue;
-            const std::string& meshID = actor.StaticMesh->MeshResourceID;
+            Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+            if (!staticMesh) continue;
+
+            const std::string& meshID = staticMesh->MeshResourceID;
             if (auto mesh = meshLibrary.TryGet(meshID))
             {
-                actor.StaticMesh->Mesh = mesh;
+                staticMesh->Mesh = mesh;
             }
             else
             {
-                QUIET_CORE_WARN("Could not relink actor '{}' to missing mesh resource '{}'.", actor.Name, meshID);
+                QUIET_CORE_WARN("Could not relink actor '{}' to missing mesh resource '{}'.", actor.GetName(), meshID);
             }
         }
     }
