@@ -124,30 +124,28 @@ namespace
                AreMaterialSlotsEqual(lhs->MaterialSlots, rhs->MaterialSlots);
     }
 
-    bool AreActorsEqual(const Quiet::Scene::Actor& lhs,
-                        const Quiet::Scene::Actor& rhs)
+    bool AreActorsEqual(const Quiet::Editor::EditorSceneHistory::ActorSnapshot& lhs, const Quiet::Editor::EditorSceneHistory::ActorSnapshot& rhs)
     {
-        return lhs.ID == rhs.ID &&
-               lhs.Name == rhs.Name &&
-               AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
-               AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
-               AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
-               AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
-               AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
-               AreCamerasEqual(lhs.Camera, rhs.Camera);
+        return
+            lhs.ID == rhs.ID &&
+            lhs.Name == rhs.Name &&
+            AreTransformsEqual(lhs.Transform.WorldTransform, rhs.Transform.WorldTransform) &&
+            AreStaticMeshesEqual(lhs.StaticMesh, rhs.StaticMesh) &&
+            AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
+            AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
+            AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
+            AreCamerasEqual(lhs.Camera, rhs.Camera);
     }
 
-    bool AreActorListsEqual(const std::vector<Quiet::Scene::Actor>& lhs,
-                            const std::vector<Quiet::Scene::Actor>& rhs)
+    bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
+                            const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& rhs)
     {
         if (lhs.size() != rhs.size()) return false;
-
         for (std::size_t i = 0; i < lhs.size(); ++i)
         {
             if (!AreActorsEqual(lhs[i], rhs[i]))
                 return false;
         }
-
         return true;
     }
 }
@@ -245,16 +243,86 @@ namespace Quiet::Editor
     EditorSceneHistory::SceneSnapshot EditorSceneHistory::CaptureSnapshot(const Scene::Scene& scene, const EditorState& state) const
     {
         SceneSnapshot snapshot{};
-        snapshot.Actors = scene.GetActors();
+
+        const auto& actors = scene.GetActors();
+        snapshot.Actors.reserve(actors.size());
+
+        for (const Scene::Actor& actor : actors)
+        {
+            ActorSnapshot actorSnapshot{};
+            actorSnapshot.ID = actor.GetID();
+            actorSnapshot.Name = actor.GetName();
+            actorSnapshot.Transform = actor.GetComponent<Scene::TransformComponent>();
+
+            if (const auto* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>())
+            {
+                actorSnapshot.StaticMesh = *staticMesh;
+            }
+
+            if (const auto* material = actor.TryGetComponent<Scene::MaterialComponent>())
+            {
+                actorSnapshot.Material = *material;
+            }
+
+            if (const auto* directionalLight = actor.TryGetComponent<Scene::DirectionalLightComponent>())
+            {
+                actorSnapshot.DirectionalLight = *directionalLight;
+            }
+
+            if (const auto* rotator = actor.TryGetComponent<Scene::RotatorComponent>())
+            {
+                actorSnapshot.Rotator = *rotator;
+            }
+
+            if (const auto* camera = actor.TryGetComponent<Scene::CameraComponent>())
+            {
+                actorSnapshot.Camera = *camera;
+            }
+
+            snapshot.Actors.push_back(std::move(actorSnapshot));
+        }
+
         snapshot.Hierarchy = scene.GetHierarchy();
         snapshot.RenderSettings = scene.GetRenderSettings();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
+
         return snapshot;
     }
 
     void EditorSceneHistory::RestoreSnapshot(Scene::Scene& scene, EditorState& state, const SceneSnapshot& snapshot)
     {
-        scene.GetActors() = snapshot.Actors;
+        scene.Clear();
+
+        for (const ActorSnapshot& actorSnapshot : snapshot.Actors)
+        {
+            Scene::Actor& actor = scene.CreateActorWithID(actorSnapshot.ID, actorSnapshot.Name);
+            actor.GetComponent<Scene::TransformComponent>() = actorSnapshot.Transform;
+
+            if (actorSnapshot.StaticMesh)
+            {
+                actor.AddComponent<Scene::StaticMeshComponent>(*actorSnapshot.StaticMesh);
+            }
+
+            if (actorSnapshot.Material)
+            {
+                actor.AddComponent<Scene::MaterialComponent>(*actorSnapshot.Material);
+            }
+
+            if (actorSnapshot.DirectionalLight)
+            {
+                actor.AddComponent<Scene::DirectionalLightComponent>(*actorSnapshot.DirectionalLight);
+            }
+
+            if (actorSnapshot.Rotator)
+            {
+                actor.AddComponent<Scene::RotatorComponent>(*actorSnapshot.Rotator);
+            }
+
+            if (actorSnapshot.Camera)
+            {
+                actor.AddComponent<Scene::CameraComponent>(*actorSnapshot.Camera);
+            }
+        }
         scene.SetHierarchy(snapshot.Hierarchy);
         scene.GetRenderSettings() = snapshot.RenderSettings;
         state.Selection.SelectedActorID = snapshot.SelectedActorID;

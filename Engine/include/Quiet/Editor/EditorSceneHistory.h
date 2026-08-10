@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <optional>
 #include <vector>
 
@@ -23,9 +24,21 @@ namespace Quiet::Editor
     class EditorSceneHistory
     {
     public:
+        struct ActorSnapshot
+        {
+            Core::UUID ID{};
+            std::string Name;
+            Scene::TransformComponent Transform{};
+            std::optional<Scene::StaticMeshComponent> StaticMesh;
+            std::optional<Scene::MaterialComponent> Material;
+            std::optional<Scene::DirectionalLightComponent> DirectionalLight;
+            std::optional<Scene::RotatorComponent> Rotator;
+            std::optional<Scene::CameraComponent> Camera;
+        };
+
         struct SceneSnapshot
         {
-            std::vector<Scene::Actor> Actors;
+            std::vector<ActorSnapshot> Actors;
             Scene::SceneHierarchyState Hierarchy;
             Scene::SceneRenderSettings RenderSettings;
             std::optional<Core::UUID> SelectedActorID;
@@ -41,11 +54,8 @@ namespace Quiet::Editor
         bool Redo(Scene::Scene& scene, EditorState& state);
 
     private:
-        [[nodiscard]] SceneSnapshot CaptureSnapshot(const Scene::Scene& scene,
-                                                    const EditorState& state) const;
-        void RestoreSnapshot(Scene::Scene& scene,
-                             EditorState& state,
-                             const SceneSnapshot& snapshot);
+        [[nodiscard]] SceneSnapshot CaptureSnapshot(const Scene::Scene& scene, const EditorState& state) const;
+        void RestoreSnapshot(Scene::Scene& scene, EditorState& state, const SceneSnapshot& snapshot);
 
         static bool AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs);
 
