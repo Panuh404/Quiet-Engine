@@ -733,28 +733,26 @@ namespace Quiet::Editor
 
 #pragma region Directional Lights
 
-    bool EditorCommands::CreateDirectionalLightActor(Scene::Scene &scene, const std::string &actorName)
+    bool EditorCommands::CreateDirectionalLightActor(Scene::Scene& scene, const std::string& actorName)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
             Scene::Actor& actor = scene.CreateActor(actorName.empty() ? "Directional Light" : actorName);
-
-            actor.DirectionalLight = Scene::DirectionalLightComponent{};
-            actor.Transform.WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
+            actor.AddComponent<Scene::DirectionalLightComponent>();
+            actor.GetComponent<Scene::TransformComponent>().WorldTransform.RotationDegrees = { 45.0f, -35.0f, 0.0f };
 
             m_EditorController.GetState().Selection.SelectedActorID = actor.GetID();
             return true;
         });
     }
 
-    bool EditorCommands::AddDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
+    bool EditorCommands::AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || actor->DirectionalLight.has_value()) return false;
-
-            actor->DirectionalLight = Scene::DirectionalLightComponent{};
+            if (!actor || actor->HasComponent<Scene::DirectionalLightComponent>()) return false;
+            actor->AddComponent<Scene::DirectionalLightComponent>();
             return true;
         });
     }
@@ -764,22 +762,22 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->DirectionalLight.has_value()) return false;
-
-            actor->DirectionalLight.reset();
-            return true;
+            if (!actor || !actor->HasComponent<Scene::DirectionalLightComponent>()) return false;
+            return actor->RemoveComponent<Scene::DirectionalLightComponent>();
         });
     }
 
-    bool EditorCommands::ResetDirectionalLight(Scene::Scene &scene, Core::UUID actorID)
+    bool EditorCommands::ResetDirectionalLight(Scene::Scene& scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->DirectionalLight.has_value())
-                return false;
+            if (!actor) return false;
 
-            actor->DirectionalLight = Scene::DirectionalLightComponent{};
+            Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+            if (!light) return false;
+            *light = Scene::DirectionalLightComponent{};
+
             return true;
         });
     }
@@ -804,53 +802,43 @@ namespace Quiet::Editor
             std::clamp(directionalLight.Direction.y, -1.0f, 1.0f),
             std::clamp(directionalLight.Direction.z, -1.0f, 1.0f)
         };
-
         validatedLight.Color =
         {
             std::clamp(directionalLight.Color.x, 0.0f, 1.0f),
             std::clamp(directionalLight.Color.y, 0.0f, 1.0f),
             std::clamp(directionalLight.Color.z, 0.0f, 1.0f)
         };
-
         validatedLight.Intensity = std::clamp(directionalLight.Intensity, 0.0f, 10.0f);
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || !actor->DirectionalLight.has_value())
-                {
-                    return false;
-                }
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
 
-                actor->DirectionalLight = validatedLight;
-                return true;
-            }
-        );
+            Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+            if (!light) return false;
+            *light = validatedLight;
+
+            return true;
+        });
     }
 
     bool EditorCommands::SetDirectionalLightEnabled(Scene::Scene& scene, Core::UUID actorID, bool enabled)
     {
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || !actor->DirectionalLight.has_value())
-                {
-                    return false;
-                }
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
 
-                actor->DirectionalLight->Enabled = enabled;
-                return true;
-            }
-        );
+            Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+            if (!light) return false;
+            light->Enabled = enabled;
+
+            return true;
+        });
     }
 
-    bool EditorCommands::SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction)
+    bool EditorCommands::SetDirectionalLightDirection( Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction)
     {
         if (!CanEditScene() ||
             !std::isfinite(direction.x) ||
@@ -861,12 +849,12 @@ namespace Quiet::Editor
         }
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value())
-        {
-            return false;
-        }
+        if (!actor) return false;
 
-        actor->DirectionalLight->Direction =
+        Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+        if (!light) return false;
+
+        light->Direction =
         {
             std::clamp(direction.x, -1.0f, 1.0f),
             std::clamp(direction.y, -1.0f, 1.0f),
@@ -886,16 +874,13 @@ namespace Quiet::Editor
             return false;
         }
 
-        Scene::Actor* actor =
-            scene.FindActorByID(actorID);
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
 
-        if (!actor ||
-            !actor->DirectionalLight.has_value())
-        {
-            return false;
-        }
+        Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+        if (!light) return false;
 
-        actor->DirectionalLight->Color =
+        light->Color =
         {
             std::clamp(color.x, 0.0f, 1.0f),
             std::clamp(color.y, 0.0f, 1.0f),
@@ -907,18 +892,15 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity)
     {
-        if (!CanEditScene() || !std::isfinite(intensity))
-        {
-            return false;
-        }
+        if (!CanEditScene() || !std::isfinite(intensity)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->DirectionalLight.has_value())
-        {
-            return false;
-        }
+        if (!actor) return false;
 
-        actor->DirectionalLight->Intensity = std::clamp(intensity, 0.0f, 10.0f);
+        Scene::DirectionalLightComponent* light = actor->TryGetComponent<Scene::DirectionalLightComponent>();
+        if (!light) return false;
+
+        light->Intensity = std::clamp(intensity, 0.0f, 10.0f);
         return true;
     }
 
@@ -928,22 +910,16 @@ namespace Quiet::Editor
 
     bool EditorCommands::AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed)
     {
-        if (!std::isfinite(initialSpeed))
-            return false;
+        if (!std::isfinite(initialSpeed)) return false;
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || actor->Rotator.has_value())
-                    return false;
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::RotatorComponent>()) return false;
 
-                actor->Rotator = Scene::RotatorComponent{ initialSpeed };
-                return true;
-            }
-        );
+            actor->AddComponent<Scene::RotatorComponent>(Scene::RotatorComponent{ initialSpeed });
+            return true;
+        });
     }
 
     bool EditorCommands::RemoveRotator(Scene::Scene& scene, Core::UUID actorID)
@@ -951,62 +927,55 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Rotator.has_value()) return false;
+            if (!actor || !actor->HasComponent<Scene::RotatorComponent>()) return false;
 
-            actor->Rotator.reset();
+            return actor->RemoveComponent<Scene::RotatorComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetRotator(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            Scene::RotatorComponent* rotator = actor->TryGetComponent<Scene::RotatorComponent>();
+            if (!rotator) return false;
+
+            *rotator = Scene::RotatorComponent{ 45.0f };
             return true;
         });
     }
 
-    bool EditorCommands::ResetRotator(Scene::Scene &scene, Core::UUID actorID)
-    {
-        return ApplyImmediateMutation(m_EditorController, scene, [&]()
-       {
-           Scene::Actor* actor = scene.FindActorByID(actorID);
-           if (!actor || !actor->Rotator.has_value())
-               return false;
-
-           actor->Rotator = Scene::RotatorComponent{ 45.0f };
-           return true;
-       });
-    }
-
     bool EditorCommands::PasteRotatorValues(Scene::Scene& scene, Core::UUID actorID, const Scene::RotatorComponent& rotator)
     {
-        if (!std::isfinite(rotator.RotationSpeedDegreesPerSecond))
+        if (!std::isfinite(rotator.RotationSpeedDegreesPerSecond)) return false;
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
-            return false;
-        }
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || !actor->Rotator.has_value())
-                {
-                    return false;
-                }
+            Scene::RotatorComponent* existingRotator = actor->TryGetComponent<Scene::RotatorComponent>();
+            if (!existingRotator) return false;
+            *existingRotator = rotator;
 
-                actor->Rotator = rotator;
-                return true;
-            }
-        );
+            return true;
+        });
     }
 
     bool EditorCommands::SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed)
     {
-        if (!CanEditScene() || !std::isfinite(speed))
-        {
-            return false;
-        }
+        if (!CanEditScene() || !std::isfinite(speed)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Rotator.has_value())
-            return false;
+        if (!actor) return false;
 
-        actor->Rotator->RotationSpeedDegreesPerSecond = speed;
+        Scene::RotatorComponent* rotator = actor->TryGetComponent<Scene::RotatorComponent>();
+        if (!rotator) return false;
+        rotator->RotationSpeedDegreesPerSecond = speed;
+
         return true;
     }
 
@@ -1046,20 +1015,17 @@ namespace Quiet::Editor
 
 #pragma region Camera
 
-    bool EditorCommands::AddCamera(Scene::Scene &scene, Core::UUID actorID)
+    bool EditorCommands::AddCamera(Scene::Scene& scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || actor->Camera.has_value())
-            {
-                return false;
-            }
+            if (!actor || actor->HasComponent<Scene::CameraComponent>()) return false;
 
             Scene::CameraComponent camera{};
-            camera.Primary = (scene.FindPrimaryCameraActor() == nullptr);
+            camera.Primary = scene.FindPrimaryCameraActor() == nullptr;
 
-            actor->Camera = camera;
+            actor->AddComponent<Scene::CameraComponent>(camera);
             return true;
         });
     }
@@ -1069,53 +1035,52 @@ namespace Quiet::Editor
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Camera.has_value())
-            {
-                return false;
-            }
+            if (!actor) return false;
 
-            const bool wasPrimary = actor->Camera->Primary;
-            actor->Camera.reset();
+            Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+            if (!camera) return false;
+
+            const bool wasPrimary = camera->Primary;
+            actor->RemoveComponent<Scene::CameraComponent>();
 
             auto& editorState = m_EditorController.GetState();
-            if (editorState.Selection.PilotedCameraActorID.has_value() &&
-                editorState.Selection.PilotedCameraActorID.value() == actorID)
+            if (editorState.Selection.PilotedCameraActorID.has_value() && editorState.Selection.PilotedCameraActorID.value() == actorID)
             {
                 editorState.Selection.PilotedCameraActorID.reset();
             }
 
             if (wasPrimary)
             {
-                for (auto& other : scene.GetActors())
+                for (Scene::Actor& other : scene.GetActors())
                 {
-                    if (other.Camera.has_value())
-                    {
-                        other.Camera->Primary = true;
-                        break;
-                    }
+                    Scene::CameraComponent* otherCamera = other.TryGetComponent<Scene::CameraComponent>();
+
+                    if (!otherCamera) continue;
+                    otherCamera->Primary = true;
+
+                    break;
                 }
             }
             return true;
         });
     }
 
-    bool EditorCommands::ResetCamera(Scene::Scene &scene, Core::UUID actorID)
+    bool EditorCommands::ResetCamera(Scene::Scene& scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Camera.has_value())
-                return false;
+            if (!actor) return false;
 
-            const Scene::Actor* primaryCameraActor =
-                scene.FindPrimaryCameraActor();
+            Scene::CameraComponent* existingCamera = actor->TryGetComponent<Scene::CameraComponent>();
+            if (!existingCamera) return false;
+
+            const Scene::Actor* primaryCameraActor = scene.FindPrimaryCameraActor();
 
             Scene::CameraComponent camera{};
-            camera.Primary =
-                primaryCameraActor == nullptr ||
-                primaryCameraActor->ID == actorID;
+            camera.Primary = primaryCameraActor == nullptr || primaryCameraActor->GetID() == actorID;
 
-            actor->Camera = camera;
+            *existingCamera = camera;
             return true;
         });
     }
@@ -1136,110 +1101,118 @@ namespace Quiet::Editor
         const float minimumFarClip = std::max(1.0f, validatedCamera.NearClip + 0.001f);
         validatedCamera.FarClip = std::clamp(camera.FarClip, minimumFarClip, 100000.0f);
 
-        return ApplyImmediateMutation(
-            m_EditorController,
-            scene,
-            [&]()
-            {
-                Scene::Actor* actor = scene.FindActorByID(actorID);
-                if (!actor || !actor->Camera.has_value())
-                    return false;
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
 
-                if (validatedCamera.Primary)
+            Scene::CameraComponent* existingCamera = actor->TryGetComponent<Scene::CameraComponent>();
+            if (!existingCamera) return false;
+
+            if (validatedCamera.Primary)
+            {
+                for (Scene::Actor& other : scene.GetActors())
                 {
-                    for (Scene::Actor& other : scene.GetActors())
+                    Scene::CameraComponent* otherCamera = other.TryGetComponent<Scene::CameraComponent>();
+
+                    if (otherCamera)
                     {
-                        if (other.Camera.has_value())
-                            other.Camera->Primary = false;
+                        otherCamera->Primary = false;
                     }
                 }
-
-                actor->Camera = validatedCamera;
-                return true;
             }
-        );
+
+            *existingCamera = validatedCamera;
+            return true;
+        });
     }
 
-    bool EditorCommands::SetCameraPrimary(Scene::Scene &scene, Core::UUID actorID, bool primary)
+    bool EditorCommands::SetCameraPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || !actor->Camera.has_value()) return false;
+            if (!actor) return false;
+
+            Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+            if (!camera) return false;
 
             if (primary)
             {
-                for (auto& other : scene.GetActors())
+                for (Scene::Actor& other : scene.GetActors())
                 {
-                    if (other.Camera.has_value())
-                        other.Camera->Primary = false;
+                    Scene::CameraComponent* otherCamera = other.TryGetComponent<Scene::CameraComponent>();
+                    if (otherCamera)
+                    {
+                        otherCamera->Primary = false;
+                    }
                 }
             }
-            actor->Camera->Primary = primary;
+
+            camera->Primary = primary;
             return true;
         });
     }
 
     bool EditorCommands::SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees)
     {
-        if (!CanEditScene() || !std::isfinite(fovDegrees))
-        {
-            return false;
-        }
+        if (!CanEditScene() || !std::isfinite(fovDegrees)) return false;
 
-        Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value())
-            return false;
+        Scene::Actor* actor =  scene.FindActorByID(actorID);
+        if (!actor) return false;
 
-        actor->Camera->FieldOfViewDegrees = std::clamp(fovDegrees, 1.0f, 179.0f);
+        Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+        if (!camera) return false;
+
+        camera->FieldOfViewDegrees = std::clamp(fovDegrees, 1.0f, 179.0f);
         return true;
     }
 
     bool EditorCommands::SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip)
     {
-        if (!CanEditScene() || !std::isfinite(nearClip))
-        {
-            return false;
-        }
+        if (!CanEditScene() || !std::isfinite(nearClip)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value())
-            return false;
+        if (!actor) return false;
 
-        float validatedFarClip = actor->Camera->FarClip;
+        Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+        if (!camera) return false;
+
+        float validatedFarClip = camera->FarClip;
         if (!std::isfinite(validatedFarClip))
+        {
             validatedFarClip = 1000.0f;
+        }
 
         validatedFarClip = std::clamp(validatedFarClip, 1.0f, 100000.0f);
         const float maximumNearClip = std::clamp(validatedFarClip - 0.001f, 0.001f, 100.0f);
 
-        actor->Camera->FarClip = validatedFarClip;
-        actor->Camera->NearClip = std::clamp(nearClip, 0.001f, maximumNearClip);
-
+        camera->FarClip = validatedFarClip;
+        camera->NearClip = std::clamp(nearClip, 0.001f, maximumNearClip);
         return true;
     }
 
     bool EditorCommands::SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip)
     {
-        if (!CanEditScene() || !std::isfinite(farClip))
-        {
-            return false;
-        }
+        if (!CanEditScene() || !std::isfinite(farClip)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
-        if (!actor || !actor->Camera.has_value())
-            return false;
+        if (!actor) return false;
 
-        float validatedNearClip = actor->Camera->NearClip;
+        Scene::CameraComponent* camera = actor->TryGetComponent<Scene::CameraComponent>();
+        if (!camera) return false;
+
+        float validatedNearClip = camera->NearClip;
         if (!std::isfinite(validatedNearClip))
+        {
             validatedNearClip = 0.1f;
+        }
 
         validatedNearClip = std::clamp(validatedNearClip, 0.001f, 100.0f);
         const float minimumFarClip = std::max(1.0f, validatedNearClip + 0.001f);
 
-        actor->Camera->NearClip = validatedNearClip;
-        actor->Camera->FarClip = std::clamp(farClip, minimumFarClip, 100000.0f);
-
+        camera->NearClip = validatedNearClip;
+        camera->FarClip = std::clamp(farClip, minimumFarClip, 100000.0f);
         return true;
     }
 
