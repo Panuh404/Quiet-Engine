@@ -749,14 +749,14 @@ namespace Quiet::Scene
 
     void Scene::UpdateRuntime(float deltaTime)
     {
-        for (auto& actor : m_Actors)
-        {
-            RotatorComponent* rotator = actor.TryGetComponent<RotatorComponent>();
-            if (!rotator) continue;
+        auto view = m_Registry.view<TransformComponent, RotatorComponent>();
 
-            auto& transform = actor.GetComponent<TransformComponent>().WorldTransform;
-            transform.RotationDegrees.z += rotator->RotationSpeedDegreesPerSecond * deltaTime;
+        for (const entt::entity entity : view)
+        {
+            auto& transform = m_Registry.get<TransformComponent>(entity).WorldTransform;
+            const auto& rotator = m_Registry.get<RotatorComponent>(entity);
+
+            transform.RotationDegrees.z += rotator.RotationSpeedDegreesPerSecond * deltaTime;
         }
     }
-
 }
