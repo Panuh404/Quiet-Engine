@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cassert>
-#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
+
+#include <entt/entity/registry.hpp>
 
 #include "Quiet/Core/UUID.h"
 #include "Scene/Components/CameraComponent.h"
@@ -16,128 +17,87 @@
 
 namespace Quiet::Scene
 {
-    template<typename>
-    inline constexpr bool UnsupportedActorComponent = false;
+    class Scene;
 
-    struct Actor
+    class Actor
     {
-        Core::UUID ID{};
-        std::string Name;
+        friend class Scene;
 
-        TransformComponent Transform {};
-        std::optional<StaticMeshComponent> StaticMesh;
-        std::optional<MaterialComponent> Material;
-        std::optional<DirectionalLightComponent> DirectionalLight;
-        std::optional<RotatorComponent> Rotator;
-        std::optional<CameraComponent> Camera;
+    public:
+        Actor(const Actor&) = delete;
+        Actor& operator=(const Actor&) = delete;
 
-        [[nodiscard]] Core::UUID GetID() const { return ID; }
-        [[nodiscard]] std::string& GetName() { return Name; }
-        [[nodiscard]] const std::string& GetName() const { return Name; }
+        Actor(Actor&&) noexcept = default;
+        Actor& operator=(Actor&&) noexcept = default;
+
+        [[nodiscard]] Core::UUID GetID() const { return m_ID; }
+        [[nodiscard]] std::string& GetName() { return m_Name; }
+        [[nodiscard]] const std::string& GetName() const { return m_Name; }
 
         template<typename T>
         [[nodiscard]] bool HasComponent() const
         {
-            if constexpr (std::is_same_v<T, TransformComponent>)                return true;
-            else if constexpr (std::is_same_v<T, StaticMeshComponent>)          return StaticMesh.has_value();
-            else if constexpr (std::is_same_v<T, MaterialComponent>)            return Material.has_value();
-            else if constexpr (std::is_same_v<T, DirectionalLightComponent>)    return DirectionalLight.has_value();
-            else if constexpr (std::is_same_v<T, RotatorComponent>)             return Rotator.has_value();
-            else if constexpr (std::is_same_v<T, CameraComponent>)              return Camera.has_value();
-            else static_assert(UnsupportedActorComponent<T>, "Unsupported Quiet Actor component type.");
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return m_Registry ->all_of<T>(m_Entity);
         }
 
         template<typename T>
         [[nodiscard]] T& GetComponent()
         {
-            if constexpr (std::is_same_v<T, TransformComponent>)                return Transform;
-            else if constexpr (std::is_same_v<T, StaticMeshComponent>)          return StaticMesh.value();
-            else if constexpr (std::is_same_v<T, MaterialComponent>)            return Material.value();
-            else if constexpr (std::is_same_v<T, DirectionalLightComponent>)    return DirectionalLight.value();
-            else if constexpr (std::is_same_v<T, RotatorComponent>)             return Rotator.value();
-            else if constexpr (std::is_same_v<T, CameraComponent>)              return Camera.value();
-            else static_assert(UnsupportedActorComponent<T>, "Unsupported Quiet Actor component type.");
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return m_Registry->get<T>(m_Entity);
         }
 
         template<typename T>
         [[nodiscard]] const T& GetComponent() const
         {
-            if constexpr (std::is_same_v<T, TransformComponent>)                return Transform;
-            else if constexpr (std::is_same_v<T, StaticMeshComponent>)          return StaticMesh.value();
-            else if constexpr (std::is_same_v<T, MaterialComponent>)            return Material.value();
-            else if constexpr (std::is_same_v<T, DirectionalLightComponent>)    return DirectionalLight.value();
-            else if constexpr (std::is_same_v<T, RotatorComponent>)             return Rotator.value();
-            else if constexpr (std::is_same_v<T, CameraComponent>)              return Camera.value();
-            else static_assert(UnsupportedActorComponent<T>, "Unsupported Quiet Actor component type.");
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return static_cast<const entt::registry&>(*m_Registry).get<T>(m_Entity);
         }
 
         template<typename T>
         [[nodiscard]] T* TryGetComponent()
         {
-            if (!HasComponent<T>()) return nullptr;
-            return &GetComponent<T>();
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return m_Registry->try_get<T>(m_Entity);
         }
 
         template<typename T>
         [[nodiscard]] const T* TryGetComponent() const
         {
-            if (!HasComponent<T>()) return nullptr;
-            return &GetComponent<T>();
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return static_cast<const entt::registry&>(*m_Registry).try_get<T>(m_Entity);
         }
 
         template<typename T, typename... Args>
         T& AddComponent(Args&&... args)
         {
             static_assert(!std::is_same_v<T, TransformComponent>, "TransformComponent is mandatory and cannot be added.");
+            assert(m_Registry && m_Registry->valid(m_Entity));
             assert(!HasComponent<T>());
-
-            if constexpr (std::is_same_v<T, StaticMeshComponent>)               return StaticMesh.emplace(std::forward<Args>(args)...);
-            else if constexpr (std::is_same_v<T, MaterialComponent>)            return Material.emplace(std::forward<Args>(args)...);
-            else if constexpr (std::is_same_v<T, DirectionalLightComponent>)    return DirectionalLight.emplace(std::forward<Args>(args)...);
-            else if constexpr (std::is_same_v<T, RotatorComponent>)             return Rotator.emplace(std::forward<Args>(args)...);
-            else if constexpr (std::is_same_v<T, CameraComponent>)              return Camera.emplace(std::forward<Args>(args)...);
-            else static_assert(UnsupportedActorComponent<T>, "Unsupported Quiet Actor component type.");
+            return m_Registry->emplace<T>(m_Entity, std::forward<Args>(args)...);
         }
 
         template<typename T>
         bool RemoveComponent()
         {
             static_assert(!std::is_same_v<T, TransformComponent>, "TransformComponent is mandatory and cannot be removed.");
-
-            if constexpr (std::is_same_v<T, StaticMeshComponent>)
-            {
-                const bool existed = StaticMesh.has_value();
-                StaticMesh.reset();
-                return existed;
-            }
-            else if constexpr (std::is_same_v<T, MaterialComponent>)
-            {
-                const bool existed = Material.has_value();
-                Material.reset();
-                return existed;
-            }
-            else if constexpr (std::is_same_v<T, DirectionalLightComponent>)
-            {
-                const bool existed = DirectionalLight.has_value();
-                DirectionalLight.reset();
-                return existed;
-            }
-            else if constexpr (std::is_same_v<T, RotatorComponent>)
-            {
-                const bool existed = Rotator.has_value();
-                Rotator.reset();
-                return existed;
-            }
-            else if constexpr (std::is_same_v<T, CameraComponent>)
-            {
-                const bool existed = Camera.has_value();
-                Camera.reset();
-                return existed;
-            }
-            else
-            {
-                static_assert(UnsupportedActorComponent<T>, "Unsupported Quiet Actor component type.");
-            }
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return m_Registry->remove<T>(m_Entity) != 0;
         }
+
+    private:
+        Actor(entt::registry& registry, entt::entity entity, Core::UUID id, std::string name)
+            : m_Registry(&registry),
+              m_Entity(entity),
+              m_ID(id),
+              m_Name(std::move(name)) {}
+
+    private:
+        entt::registry* m_Registry = nullptr;
+        entt::entity m_Entity = entt::null;
+
+        Core::UUID m_ID{};
+        std::string m_Name;
     };
 }

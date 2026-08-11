@@ -62,8 +62,8 @@ namespace
     {
         using namespace Quiet;
 
-        const auto& transform = cameraActor.Transform.WorldTransform;
-        const auto& camera = cameraActor.Camera.value();
+        const auto& transform = cameraActor.GetComponent<Scene::TransformComponent>().WorldTransform;
+        const auto& camera = cameraActor.GetComponent<Scene::CameraComponent>();
 
         const float safeAspect = (aspect > 0.0f) ? aspect : 1.0f;
         const float safeFov = std::clamp(camera.FieldOfViewDegrees, 1.0f, 179.0f);
@@ -779,7 +779,7 @@ namespace Quiet::Core
     const Scene::Actor * Application::GetPreferredRenderCameraActor(const Scene::Scene &scene) const
     {
         const Scene::Actor* cameraActor = scene.FindPrimaryCameraActor();
-        if (!cameraActor || !cameraActor->Camera.has_value()) return nullptr;
+        if (!cameraActor || !cameraActor->HasComponent<Scene::CameraComponent>()) return nullptr;
 
         if (!m_Spec.IsEditor()) return cameraActor;
         if (!m_EditorController) return nullptr;
@@ -1177,7 +1177,7 @@ namespace Quiet::Core
     {
         if (const Scene::Actor* cameraActor = GetPreferredRenderCameraActor(scene))
         {
-            return cameraActor->Transform.WorldTransform.Position;
+            return cameraActor->GetComponent<Scene::TransformComponent>().WorldTransform.Position;
         }
 
         return m_FreeCamera->GetPosition();

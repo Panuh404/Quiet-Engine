@@ -812,28 +812,17 @@ namespace Quiet::Renderer::UI
 
             if (ImGui::BeginPopup("CreateActorPopup"))
             {
-                if (QUI::EditorMenuItem("Empty Actor"))
+                if (EditorMenuItem("Empty Actor"))
                     editorActions.Execute(Editor::EditorActionID::CreateEmptyActor);
 
-                if (QUI::EditorMenuItem("Directional Light"))
+                if (EditorMenuItem("Directional Light"))
                     editorCommands.CreateDirectionalLightActor(scene);
 
-                if (QUI::EditorMenuItem("Folder"))
+                if (EditorMenuItem("Folder"))
                     editorCommands.CreateHierarchyFolder(scene);
 
-                DrawPrimitiveCreateMenu(
-                    scene,
-                    editorCommands,
-                    projectContext,
-                    meshLibrary
-                );
-
-                DrawImportedMeshCreateMenu(
-                    scene,
-                    editorCommands,
-                    projectContext,
-                    meshLibrary
-                );
+                DrawPrimitiveCreateMenu(scene, editorCommands, projectContext, meshLibrary);
+                DrawImportedMeshCreateMenu(scene, editorCommands, projectContext, meshLibrary);
 
                 ImGui::EndPopup();
             }
@@ -895,14 +884,7 @@ namespace Quiet::Renderer::UI
                                 const bool wantsRootReorder = g_DraggedRootNode.has_value() && (dropBefore || dropAfter);
                                 if (wantsRootReorder)
                                 {
-                                    auto pendingMove = BuildRootNodeDropMove(
-                                        hierarchy,
-                                        rootNodeIndex,
-                                        dropAfter,
-                                        Scene::SceneHierarchyNodeType::Folder,
-                                        folder->ID
-                                    );
-
+                                    auto pendingMove = BuildRootNodeDropMove(hierarchy, rootNodeIndex, dropAfter, Scene::SceneHierarchyNodeType::Folder, folder->ID);
                                     if (pendingMove.has_value())
                                     {
                                         DrawActorDropMarker(folderRowMin, folderRowMax, dropAfter);
@@ -918,11 +900,7 @@ namespace Quiet::Renderer::UI
                                     DrawFolderDropHighlight(folderRowMin, folderRowMax);
                                     if (payload->IsDelivery())
                                     {
-                                        pendingActorMoveToFolder = std::make_pair(
-                                            g_DraggedActorID.value(),
-                                            folder->ID
-                                        );
-
+                                        pendingActorMoveToFolder = std::make_pair(g_DraggedActorID.value(), folder->ID);
                                         folder->Expanded = true;
                                         ResetHierarchyDragState();
                                     }
@@ -940,34 +918,32 @@ namespace Quiet::Renderer::UI
                             const bool canMoveUp = canEdit && rootNodeIndex > 0;
                             const bool canMoveDown = canEdit && rootNodeIndex + 1 < hierarchy.RootNodes.size();
 
-                            if (QUI::EditorMenuItem("Move Up", nullptr, false, canMoveUp))
+                            if (EditorMenuItem("Move Up", nullptr, false, canMoveUp))
                             {
-                                pendingRootNodeMove = std::make_tuple(
-                                    Scene::SceneHierarchyNodeType::Folder,
-                                    folder->ID,
-                                    rootNodeIndex - 1
-                                );
+                                pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Folder, folder->ID, rootNodeIndex - 1);
                             }
 
-                            if (QUI::EditorMenuItem("Move Down", nullptr, false, canMoveDown))
+                            if (EditorMenuItem("Move Down", nullptr, false, canMoveDown))
                             {
-                                pendingRootNodeMove = std::make_tuple(
-                                    Scene::SceneHierarchyNodeType::Folder,
-                                    folder->ID,
-                                    rootNodeIndex + 1
-                                );
+                                pendingRootNodeMove = std::make_tuple(Scene::SceneHierarchyNodeType::Folder, folder->ID, rootNodeIndex + 1);
                             }
 
                             ImGui::Separator();
 
-                            if (QUI::EditorMenuItem("Rename", nullptr, false, canEdit))
+                            if (EditorMenuItem("Rename", nullptr, false, canEdit))
+                            {
                                 BeginFolderRename(*folder);
+                            }
 
-                            if (QUI::EditorMenuItem("Delete Empty Folder", nullptr, false, canDelete))
+                            if (EditorMenuItem("Delete Empty Folder", nullptr, false, canDelete))
+                            {
                                 pendingFolderDelete = folder->ID;
+                            }
 
                             if (!folder->Children.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                            {
                                 ImGui::SetTooltip("Only empty folders can be deleted.");
+                            }
 
                             ImGui::EndPopup();
                         }
@@ -985,48 +961,46 @@ namespace Quiet::Renderer::UI
                             for (const Scene::SceneHierarchyNode& childNode : folder->Children)
                             {
                                 if (childNode.Type != Scene::SceneHierarchyNodeType::Actor) continue;
-
                                 Scene::Actor* childActor = scene.FindActorByID(childNode.ID);
                                 if (!childActor) continue;
 
+                                const Core::UUID childActorID = childActor->GetID();
+
                                 const bool isSelected =
                                     editorState.Selection.SelectedActorID.has_value() &&
-                                    editorState.Selection.SelectedActorID.value() == childActor->ID;
+                                    editorState.Selection.SelectedActorID.value() == childActorID;
 
                                 if (DrawActorRow(*childActor, isSelected, isEditMode))
-                                    editorState.Selection.SelectedActorID = childActor->ID;
+                                {
+                                    editorState.Selection.SelectedActorID = childActorID;
+                                }
 
-                                if (isEditMode) BeginActorDragSource(*childActor);
+                                if (isEditMode)
+                                {
+                                    BeginActorDragSource(*childActor);
+                                }
 
-                                const std::string childActorContextID =
-                                    "FolderChildActorContextMenu_" + Core::UUIDToString(childActor->ID);
-
+                                const std::string childActorContextID = "FolderChildActorContextMenu_" + Core::UUIDToString(childActorID);
                                 if (ImGui::BeginPopupContextItem(childActorContextID.c_str()))
                                 {
                                     const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
 
-                                    if (QUI::EditorMenuItem("Move To Root", nullptr, false, canEdit))
-                                        pendingActorMoveToRoot = childActor->ID;
+                                    if (EditorMenuItem("Move To Root", nullptr, false, canEdit))
+                                    {
+                                        pendingActorMoveToRoot = childActorID;
+                                    }
 
                                     ImGui::Separator();
 
-                                    if (QUI::EditorMenuItem(
-                                            "Duplicate",
-                                            editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected),
-                                            false,
-                                            canEdit))
+                                    if (EditorMenuItem("Duplicate", editorActions.GetShortcut(Editor::EditorActionID::DuplicateSelected), false, canEdit))
                                     {
-                                        pendingActorSelection = childActor->ID;
+                                        pendingActorSelection = childActorID;
                                         pendingAction = Editor::EditorActionID::DuplicateSelected;
                                     }
 
-                                    if (QUI::EditorMenuItem(
-                                            "Delete",
-                                            editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected),
-                                            false,
-                                            canEdit))
+                                    if (EditorMenuItem("Delete", editorActions.GetShortcut(Editor::EditorActionID::DeleteSelected), false, canEdit))
                                     {
-                                        pendingActorSelection = childActor->ID;
+                                        pendingActorSelection = childActorID;
                                         pendingAction = Editor::EditorActionID::DeleteSelected;
                                     }
 
@@ -1040,7 +1014,7 @@ namespace Quiet::Renderer::UI
                                 ImGui::GetWindowDrawList()->AddLine(
                                     ImVec2(childGuideX, childGuideY0),
                                     ImVec2(childGuideX, childGuideY1),
-                                    ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::BorderSoft),
+                                    ImGui::ColorConvertFloat4ToU32(EditorColor::BorderSoft),
                                     SZ::Px(1.0f)
                                 );
                             }
@@ -1183,7 +1157,7 @@ namespace Quiet::Renderer::UI
 
                                 drawList->AddText(
                                     hintPos,
-                                    ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::TextMuted),
+                                    ImGui::ColorConvertFloat4ToU32(EditorColor::TextMuted),
                                     hint
                                 );
 

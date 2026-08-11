@@ -1,5 +1,6 @@
 #include "Scene.h"
 
+#include <optional>
 #include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
@@ -17,25 +18,58 @@ namespace Quiet::Scene
         QUIET_CORE_INFO("Initialized scene");
     }
 
-    Actor& Scene::CreateActor(const std::string &name)
+    Scene::Scene(const Scene& other) : Scene()
     {
-        Actor actor{};
-        actor.ID = Core::UUIDGenerator::New();
-        actor.Name = name;
+        *this = other;
+    }
 
-        m_Actors.push_back(std::move(actor));
-        AddActorToHierarchyRoot(m_Actors.back().ID);
-        return m_Actors.back();
+    Scene& Scene::operator=(const Scene& other)
+    {
+        if (this == &other) return *this;
+
+        Clear();
+
+        m_RenderSettings = other.m_RenderSettings;
+        for (const Actor& source : other.m_Actors)
+        {
+            Actor& target = CreateActorWithID(source.GetID(), source.GetName());
+            target.GetComponent<TransformComponent>() = source.GetComponent<TransformComponent>();
+
+            if (const auto* component = source.TryGetComponent<StaticMeshComponent>())
+                target.AddComponent<StaticMeshComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<MaterialComponent>())
+                target.AddComponent<MaterialComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<DirectionalLightComponent>())
+                target.AddComponent<DirectionalLightComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<RotatorComponent>())
+                target.AddComponent<RotatorComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<CameraComponent>())
+                target.AddComponent<CameraComponent>(*component);
+        }
+
+        m_Hierarchy = other.m_Hierarchy;
+        m_RuntimeMode = other.m_RuntimeMode;
+        return *this;
+    }
+
+    Actor& Scene::CreateActor(const std::string& name)
+    {
+        return CreateActorWithID(Core::UUIDGenerator::New(), name);
     }
 
     Actor& Scene::CreateActorWithID(Core::UUID id, const std::string& name)
     {
-        Actor actor{};
-        actor.ID = id;
-        actor.Name = name;
-        
+        const entt::entity entity = m_Registry.create();
+        m_Registry.emplace<TransformComponent>(entity);
+
+        Actor actor(m_Registry, entity, id, name);
         m_Actors.push_back(std::move(actor));
-        AddActorToHierarchyRoot(m_Actors.back().ID);
+
+        AddActorToHierarchyRoot(id);
         return m_Actors.back();
     }
 
@@ -60,28 +94,60 @@ namespace Quiet::Scene
             return nullptr;
         }
 
-        Actor duplicate = *source;
-        duplicate.ID = Quiet::Core::UUIDGenerator::New();
-        duplicate.Name = source->Name.empty() ? "Actor Copy" : source->Name + " Copy";
+        const std::string duplicateName = source->GetName().empty() ? "Actor Copy" : source->GetName() + " Copy";
 
-        m_Actors.push_back(std::move(duplicate));
-        AddActorToHierarchyRoot(m_Actors.back().ID);
-        return &m_Actors.back();
+        const TransformComponent transform = source->GetComponent<TransformComponent>();
+        std::optional<StaticMeshComponent> staticMesh;
+        std::optional<MaterialComponent> material;
+        std::optional<DirectionalLightComponent> directionalLight;
+        std::optional<RotatorComponent> rotator;
+        std::optional<CameraComponent> camera;
+
+        if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
+            staticMesh = *component;
+
+        if (const auto* component = source->TryGetComponent<MaterialComponent>())
+            material = *component;
+
+        if (const auto* component = source->TryGetComponent<DirectionalLightComponent>())
+            directionalLight = *component;
+
+        if (const auto* component = source->TryGetComponent<RotatorComponent>())
+            rotator = *component;
+
+        if (const auto* component = source->TryGetComponent<CameraComponent>())
+            camera = *component;
+
+        Actor& duplicate = CreateActor(duplicateName);
+        duplicate.GetComponent<TransformComponent>() = transform;
+
+        if (staticMesh)         duplicate.AddComponent<StaticMeshComponent>(*staticMesh);
+        if (material)           duplicate.AddComponent<MaterialComponent>(*material);
+        if (directionalLight)   duplicate.AddComponent<DirectionalLightComponent>(*directionalLight);
+        if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
+        if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
+        return &duplicate;
     }
 
     bool Scene::DestroyActorByID(Core::UUID id)
     {
-        const auto it = std::find_if(
-            m_Actors.begin(),
-            m_Actors.end(),
-            [id](const Actor& actor)
-            {
-                return actor.ID == id;
-            }
-        );
+        const auto it =
+            std::find_if(
+                m_Actors.begin(),
+                m_Actors.end(),
+                [id](const Actor& actor)
+                {
+                    return actor.GetID() == id;
+                }
+            );
 
-        if (it == m_Actors.end())
-            return false;
+        if (it == m_Actors.end()) return false;
+
+        const entt::entity entity = it->m_Entity;
+        if (m_Registry.valid(entity))
+        {
+            m_Registry.destroy(entity);
+        }
 
         m_Actors.erase(it);
         RemoveActorFromHierarchy(id);
@@ -92,6 +158,7 @@ namespace Quiet::Scene
     {
         m_RenderSettings = SceneRenderSettings{};
         m_Hierarchy = SceneHierarchyState{};
+        m_Registry.clear();
         m_Actors.clear();
         m_RuntimeMode = RuntimeMode::None;
     }
@@ -104,7 +171,7 @@ namespace Quiet::Scene
 
         for (const Actor& actor : m_Actors)
         {
-            AddActorToHierarchyRoot(actor.ID);
+            AddActorToHierarchyRoot(actor.GetID());
         }
     }
 
@@ -352,10 +419,12 @@ namespace Quiet::Scene
 
         for (const Actor& actor : m_Actors)
         {
-            if (actor.ID.IsValid())
-                validActorIDs.insert(actor.ID);
+            const Core::UUID actorID = actor.GetID();
+            if (actorID.IsValid())
+            {
+                validActorIDs.insert(actorID);
+            }
         }
-
         std::unordered_set<Core::UUID> validFolderIDs;
         validFolderIDs.reserve(m_Hierarchy.Folders.size());
 
@@ -499,20 +568,14 @@ namespace Quiet::Scene
 
         for (const Actor& actor : m_Actors)
         {
-            if (!actor.ID.IsValid()) continue;
-            if (placedActorIDs.contains(actor.ID)) continue;
+            const Core::UUID actorID = actor.GetID();
+            if (!actorID.IsValid()) continue;
+            if (placedActorIDs.contains(actorID)) continue;
 
-            sanitizedRootNodes.push_back(SceneHierarchyNode{
-                SceneHierarchyNodeType::Actor,
-                actor.ID
-            });
+            sanitizedRootNodes.push_back(SceneHierarchyNode{ SceneHierarchyNodeType::Actor, actorID });
+            placedActorIDs.insert(actorID);
 
-            placedActorIDs.insert(actor.ID);
-
-            QUIET_CORE_WARN(
-                "Hierarchy metadata was missing actor '{}'. Appended actor to root.",
-                Core::UUIDToString(actor.ID)
-            );
+            QUIET_CORE_WARN("Hierarchy metadata was missing actor '{}'. Appended actor to root.", Core::UUIDToString(actorID));
         }
 
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);

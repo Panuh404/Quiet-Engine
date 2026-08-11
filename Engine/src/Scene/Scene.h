@@ -26,6 +26,8 @@ namespace Quiet::Scene
     {
     public:
         Scene();
+        Scene(const Scene& other);
+        Scene& operator=(const Scene& other);
         ~Scene() = default;
 
         Actor& CreateActor(const std::string& name);
@@ -92,6 +94,7 @@ namespace Quiet::Scene
         void UpdateRuntime(float deltaTime);
 
     private:
+        entt::registry m_Registry;
         SceneRenderSettings m_RenderSettings{};
         std::vector<Actor> m_Actors;
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
