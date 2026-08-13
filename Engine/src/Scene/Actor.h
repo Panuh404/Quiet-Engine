@@ -14,6 +14,7 @@
 #include "Scene/Components/RotatorComponent.h"
 #include "Scene/Components/StaticMeshComponent.h"
 #include "Scene/Components/TransformComponent.h"
+#include "Scene/Components/ActorIdentityComponent.h"
 
 namespace Quiet::Scene
 {
@@ -30,13 +31,14 @@ namespace Quiet::Scene
         Actor(Actor&&) noexcept = default;
         Actor& operator=(Actor&&) noexcept = default;
 
-        [[nodiscard]] Core::UUID GetID() const { return m_ID; }
-        [[nodiscard]] std::string& GetName() { return m_Name; }
-        [[nodiscard]] const std::string& GetName() const { return m_Name; }
+        [[nodiscard]] Core::UUID GetID() const { return GetIdentityComponent().ID; }
+        [[nodiscard]] std::string& GetName() { return GetIdentityComponent().Name; }
+        [[nodiscard]] const std::string& GetName() const { return GetIdentityComponent().Name; }
 
         template<typename T>
         [[nodiscard]] bool HasComponent() const
         {
+            static_assert(!std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>, "ActorIdentityComponent is internal to Scene.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return m_Registry ->all_of<T>(m_Entity);
         }
@@ -44,6 +46,7 @@ namespace Quiet::Scene
         template<typename T>
         [[nodiscard]] T& GetComponent()
         {
+            static_assert(!std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>, "ActorIdentityComponent is internal to Scene.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return m_Registry->get<T>(m_Entity);
         }
@@ -51,6 +54,7 @@ namespace Quiet::Scene
         template<typename T>
         [[nodiscard]] const T& GetComponent() const
         {
+            static_assert(!std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>, "ActorIdentityComponent is internal to Scene.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return static_cast<const entt::registry&>(*m_Registry).get<T>(m_Entity);
         }
@@ -58,6 +62,7 @@ namespace Quiet::Scene
         template<typename T>
         [[nodiscard]] T* TryGetComponent()
         {
+            static_assert(!std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>, "ActorIdentityComponent is internal to Scene.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return m_Registry->try_get<T>(m_Entity);
         }
@@ -65,6 +70,7 @@ namespace Quiet::Scene
         template<typename T>
         [[nodiscard]] const T* TryGetComponent() const
         {
+            static_assert(!std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>, "ActorIdentityComponent is internal to Scene.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return static_cast<const entt::registry&>(*m_Registry).try_get<T>(m_Entity);
         }
@@ -72,7 +78,10 @@ namespace Quiet::Scene
         template<typename T, typename... Args>
         T& AddComponent(Args&&... args)
         {
-            static_assert(!std::is_same_v<T, TransformComponent>, "TransformComponent is mandatory and cannot be added.");
+            static_assert(
+                !std::is_same_v<std::remove_cv_t<T>, TransformComponent> &&
+                !std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>,
+                "Mandatory Actor components cannot be added or removed.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             assert(!HasComponent<T>());
             return m_Registry->emplace<T>(m_Entity, std::forward<Args>(args)...);
@@ -81,23 +90,34 @@ namespace Quiet::Scene
         template<typename T>
         bool RemoveComponent()
         {
-            static_assert(!std::is_same_v<T, TransformComponent>, "TransformComponent is mandatory and cannot be removed.");
+            static_assert(
+                !std::is_same_v<std::remove_cv_t<T>, TransformComponent> &&
+                !std::is_same_v<std::remove_cv_t<T>, ActorIdentityComponent>,
+                "Mandatory Actor components cannot be added or removed.");
             assert(m_Registry && m_Registry->valid(m_Entity));
             return m_Registry->remove<T>(m_Entity) != 0;
         }
 
     private:
-        Actor(entt::registry& registry, entt::entity entity, Core::UUID id, std::string name)
-            : m_Registry(&registry),
-              m_Entity(entity),
-              m_ID(id),
-              m_Name(std::move(name)) {}
+        [[nodiscard]] ActorIdentityComponent& GetIdentityComponent()
+        {
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return m_Registry->get<ActorIdentityComponent>(m_Entity);
+        }
+
+        [[nodiscard]]
+        const ActorIdentityComponent&
+        GetIdentityComponent() const
+        {
+            assert(m_Registry && m_Registry->valid(m_Entity));
+            return static_cast<const entt::registry&>(*m_Registry) .get<ActorIdentityComponent>(m_Entity);
+        }
+
+        Actor(entt::registry& registry, entt::entity entity)
+            : m_Registry(&registry), m_Entity(entity) {}
 
     private:
         entt::registry* m_Registry = nullptr;
         entt::entity m_Entity = entt::null;
-
-        Core::UUID m_ID{};
-        std::string m_Name;
     };
 }

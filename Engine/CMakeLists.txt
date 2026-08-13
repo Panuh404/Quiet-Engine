@@ -1,5 +1,6 @@
 # ENGINE
-add_library(Quiet_Engine STATIC)
+add_library(Quiet_Engine STATIC
+        src/Scene/Components/ActorIdentityComponent.h)
 
 target_sources(Quiet_Engine
     PRIVATE

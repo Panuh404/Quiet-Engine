@@ -830,12 +830,13 @@ namespace Quiet::Renderer::Vulkan
 
             vkCmdEndRendering(commandBuffer);
 
-            // Selected Actor Pass
-            const Scene::Actor* selectedActor = nullptr;
+            // Selected Entity Pass
+            const entt::registry& registry = scene.GetRegistry();
+            entt::entity selectedEntity = entt::null;
 
             if (selectedActorID.has_value())
             {
-                selectedActor = scene.FindActorByID(selectedActorID.value());
+                selectedEntity = scene.FindEntityByID(selectedActorID.value());
             }
 
             if (m_EditorMode && m_SelectionMaskPipeline && m_SelectionMaskRenderSystem)
@@ -887,7 +888,8 @@ namespace Quiet::Renderer::Vulkan
                 maskContext.ImageIndex = imageIndex;
                 maskContext.Pipeline = m_SelectionMaskPipeline.get();
                 maskContext.Camera = m_CameraResources.get();
-                maskContext.SelectedActor = selectedActor;
+                maskContext.Registry = &registry;
+                maskContext.SelectedEntity = selectedEntity;
                 maskContext.Extent = m_SceneViewportTarget->GetExtent();
 
                 m_SelectionMaskRenderSystem->Record(maskContext);
@@ -904,7 +906,9 @@ namespace Quiet::Renderer::Vulkan
 
                 m_SceneViewportTarget->SetSelectionMaskLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                const Scene::StaticMeshComponent* selectedStaticMesh = selectedActor ? selectedActor->TryGetComponent<Scene::StaticMeshComponent>() : nullptr;
+                const Scene::StaticMeshComponent* selectedStaticMesh = selectedEntity != entt::null &&
+                    registry.valid(selectedEntity) ? registry.try_get<Scene::StaticMeshComponent>(selectedEntity) : nullptr;
+
                 const bool selectedStaticMeshVisible =
                     selectedStaticMesh &&
                     selectedStaticMesh->IsValid() &&

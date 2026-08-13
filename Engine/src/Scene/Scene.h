@@ -67,15 +67,18 @@ namespace Quiet::Scene
 
         [[nodiscard]] std::vector<Actor>& GetActors() { return m_Actors; }
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }
+        [[nodiscard]] const entt::registry& GetRegistry() const { return m_Registry; }
 
         [[nodiscard]] SceneRenderSettings& GetRenderSettings() { return m_RenderSettings; }
         [[nodiscard]] const SceneRenderSettings& GetRenderSettings() const { return m_RenderSettings; }
 
         [[nodiscard]] Actor* FindActorByID(Core::UUID id);
         [[nodiscard]] const Actor* FindActorByID(Core::UUID id) const;
+        [[nodiscard]] entt::entity FindEntityByID(Core::UUID id) const;
 
         [[nodiscard]] Actor* FindPrimaryCameraActor();
         [[nodiscard]] const Actor* FindPrimaryCameraActor() const;
+        [[nodiscard]] const DirectionalLightComponent* FindActiveDirectionalLight() const;
 
     private:
         void AddActorToHierarchyRoot(Core::UUID actorID);

@@ -5,27 +5,36 @@
 #include "Renderer/Vulkan/Editor/SelectionMaskPipeline.h"
 #include "Renderer/Vulkan/Frame/CameraResources.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
-#include "Scene/Actor.h"
+
+#include "Scene/Components/StaticMeshComponent.h"
+#include "Scene/Components/TransformComponent.h"
 
 namespace Quiet::Renderer::Vulkan
 {
-    void SelectionMaskRenderSystem::Record(const SelectionMaskRenderContext& context) const
+    void SelectionMaskRenderSystem::Record(
+        const SelectionMaskRenderContext& context) const
     {
         if (context.CommandBuffer == VK_NULL_HANDLE)
             throw std::runtime_error("SelectionMaskRenderSystem received a null command buffer.");
 
-        if (!context.Pipeline || !context.Camera)
+        if (!context.Pipeline || !context.Camera || !context.Registry)
             throw std::runtime_error("SelectionMaskRenderSystem received an invalid render context.");
 
-        if (!context.SelectedActor || context.Extent.width == 0 || context.Extent.height == 0)
+        if (context.SelectedEntity == entt::null || context.Extent.width == 0 || context.Extent.height == 0)
             return;
 
-        const Scene::Actor& actor = *context.SelectedActor;
-        const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
-        if (!staticMesh || !staticMesh->IsValid() || !staticMesh->Visible) return;
+        if (!context.Registry->valid(context.SelectedEntity))
+            return;
+
+        const Scene::StaticMeshComponent* staticMesh = context.Registry->try_get<Scene::StaticMeshComponent>(context.SelectedEntity);
+        const Scene::TransformComponent* transform = context.Registry->try_get<Scene::TransformComponent>(context.SelectedEntity);
+
+        if (!staticMesh || !transform || !staticMesh->IsValid() || !staticMesh->Visible)
+            return;
 
         const auto& mesh = staticMesh->Mesh;
-        if (!mesh || mesh->GetIndexCount() == 0) return;
+        if (!mesh || mesh->GetIndexCount() == 0)
+            return;
 
         vkCmdBindPipeline(context.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.Pipeline->GetHandle());
         const VkDescriptorSet cameraDescriptor = context.Camera->GetDescriptorSet(context.ImageIndex);
@@ -57,21 +66,27 @@ namespace Quiet::Renderer::Vulkan
 
         vkCmdSetScissor(context.CommandBuffer, 0, 1, &scissor);
 
-        const VkBuffer vertexBuffers[] =
-        {
-            mesh->GetVertexBuffer()
-        };
+        const VkBuffer vertexBuffers[] = { mesh->GetVertexBuffer() };
+        constexpr VkDeviceSize offsets[] = { 0 };
 
-        constexpr VkDeviceSize offsets[] =
-        {
-            0
-        };
+        vkCmdBindVertexBuffers(
+            context.CommandBuffer,
+            0,
+            1,
+            vertexBuffers,
+            offsets
+        );
 
-        vkCmdBindVertexBuffers(context.CommandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(context.CommandBuffer, mesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(
+            context.CommandBuffer,
+            mesh->GetIndexBuffer(),
+            0,
+            VK_INDEX_TYPE_UINT32
+        );
 
         SelectionMaskPushConstants push{};
-        push.Model = actor.GetComponent<Scene::TransformComponent>().WorldTransform.ToMatrix();
+
+        push.Model = transform->WorldTransform.ToMatrix();
 
         vkCmdPushConstants(
             context.CommandBuffer,

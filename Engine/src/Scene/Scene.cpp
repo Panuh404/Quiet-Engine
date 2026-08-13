@@ -64,9 +64,11 @@ namespace Quiet::Scene
     Actor& Scene::CreateActorWithID(Core::UUID id, const std::string& name)
     {
         const entt::entity entity = m_Registry.create();
+
+        m_Registry.emplace<ActorIdentityComponent>(entity, ActorIdentityComponent{ id, name });
         m_Registry.emplace<TransformComponent>(entity);
 
-        Actor actor(m_Registry, entity, id, name);
+        Actor actor(m_Registry, entity);
         m_Actors.push_back(std::move(actor));
 
         AddActorToHierarchyRoot(id);
@@ -650,6 +652,18 @@ namespace Quiet::Scene
         return nullptr;
     }
 
+    entt::entity Scene::FindEntityByID(Core::UUID id) const
+    {
+        auto view = m_Registry.view<const ActorIdentityComponent>();
+        for (const entt::entity entity : view)
+        {
+            const auto& identity = m_Registry.get<ActorIdentityComponent>(entity);
+            if (identity.ID == id) return entity;
+        }
+
+        return entt::null;
+    }
+
     Actor* Scene::FindPrimaryCameraActor()
     {
         for (auto& actor : m_Actors)
@@ -666,6 +680,16 @@ namespace Quiet::Scene
         {
             const CameraComponent* camera = actor.TryGetComponent<CameraComponent>();
             if (camera && camera->Primary) return &actor;
+        }
+        return nullptr;
+    }
+
+    const DirectionalLightComponent * Scene::FindActiveDirectionalLight() const
+    {
+        for (const Actor& actor : m_Actors)
+        {
+            const auto* light = actor.TryGetComponent<DirectionalLightComponent>();
+            if (light && light->Enabled) return light;
         }
         return nullptr;
     }

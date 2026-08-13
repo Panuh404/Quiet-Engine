@@ -1,12 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <vulkan/vulkan.h>
 
-namespace Quiet::Scene
-{
-    struct Actor;
-}
+#include <entt/entity/registry.hpp>
+#include <vulkan/vulkan.h>
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -20,7 +17,8 @@ namespace Quiet::Renderer::Vulkan
 
         const SelectionMaskPipeline* Pipeline = nullptr;
         const CameraResources* Camera = nullptr;
-        const Scene::Actor* SelectedActor = nullptr;
+        const entt::registry* Registry = nullptr;
+        entt::entity SelectedEntity = entt::null;
 
         VkExtent2D Extent{};
     };
