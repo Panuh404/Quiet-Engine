@@ -17,6 +17,7 @@ Quiet is in active prototype development. It is not a production engine yet. The
 Implemented foundations:
 
 * Vulkan renderer with swapchain, depth resources, frame synchronization, scene viewport render target, and static mesh rendering
+* EnTT-backed ECS foundation with registry-owned actor identity and components, lightweight Actor handles, ECS runtime iteration, and EnTT-driven static mesh rendering
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
@@ -38,7 +39,7 @@ Implemented foundations:
 
 ## Workspace Targets
 
-The workspace currently contains three main targets:
+The workspace currently contains four main targets:
 
 ```text
 Quiet_Engine     - core static engine library
@@ -606,10 +607,15 @@ Shift               Apply 2x Fly speed boost
 * isolated Launcher and Editor ImGui layout state
 * visible staged Editor project bootstrap
 * incremental startup mesh and texture loading
+* EnTT dependency and stable Actor component API
+* registry-backed Actor identity and component storage
+* lightweight Actor handles with explicit Scene cloning for Edit / Simulate / Play isolation
+* storage-independent scene history, serialization, Editor, Viewport, and Inspector workflows
+* EnTT runtime views for component-system iteration
+* EnTT-driven Static Mesh and selection-mask rendering paths
 
 ### Upcoming Areas
 
-* EnTT-based ECS foundation
 * Jolt Physics integration
 * Lua scripting foundation
 * audio system foundation

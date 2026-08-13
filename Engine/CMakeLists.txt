@@ -1,6 +1,5 @@
 # ENGINE
-add_library(Quiet_Engine STATIC
-        src/Scene/Components/ActorIdentityComponent.h)
+add_library(Quiet_Engine STATIC)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -44,6 +43,7 @@ target_sources(Quiet_Engine
         src/Scene/Camera/FreeCamera.h
 
         # Scene - Components
+        src/Scene/Components/ActorIdentityComponent.h
         src/Scene/Components/CameraComponent.h
         src/Scene/Components/DirectionalLightComponent.h
         src/Scene/Components/MaterialComponent.h
