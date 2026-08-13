@@ -121,7 +121,62 @@ FetchContent_Declare(
         GIT_TAG         v4.0.0
         GIT_SHALLOW     TRUE
 )
-FetchContent_MakeAvailable(glfw spdlog glm imgui imguizmo json assimp imgui_file_dialog stb entt)
+
+# Jolt Physics
+set(JPH_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+# Quiet currently does not use LTO. Jolt's default LTO setting
+# requires the parent application to use compatible LTO as well.
+set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+
+# Match Quiet's normal C++ RTTI configuration.
+set(CPP_RTTI_ENABLED ON CACHE BOOL "" FORCE)
+
+# Physics debug rendering will be integrated deliberately later.
+set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+set(DEBUG_RENDERER_IN_DISTRIBUTION OFF CACHE BOOL "" FORCE)
+
+# Quiet does not use Jolt's internal profiler yet.
+set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+set(PROFILER_IN_DISTRIBUTION OFF CACHE BOOL "" FORCE)
+
+# Not required by the runtime integration.
+set(ENABLE_OBJECT_STREAM OFF CACHE BOOL "" FORCE)
+set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+
+# Don't let third-party warnings block Quiet builds.
+set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+
+# These are Jolt compute backends, not the regular rigid-body solver.
+set(JPH_USE_DX12 OFF CACHE BOOL "" FORCE)
+set(JPH_USE_VK OFF CACHE BOOL "" FORCE)
+set(JPH_USE_MTL OFF CACHE BOOL "" FORCE)
+set(JPH_USE_CPU_COMPUTE OFF CACHE BOOL "" FORCE)
+
+# Keep floating-point exception handling under Quiet's control.
+set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+        jolt_physics
+        GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
+        GIT_TAG         v5.6.0
+        GIT_SHALLOW     TRUE
+        SOURCE_SUBDIR   Build
+)
+
+FetchContent_MakeAvailable(
+        glfw
+        spdlog
+        glm
+        imgui
+        imguizmo
+        json
+        assimp
+        imgui_file_dialog
+        stb
+        entt
+        jolt_physics
+)
 
 find_package(Vulkan REQUIRED)
 

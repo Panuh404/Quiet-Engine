@@ -23,6 +23,10 @@ target_sources(Quiet_Engine
         # Input
         src/Input/Input.cpp
 
+        # Physics
+        src/Physics/PhysicsSubsystem.h
+        src/Physics/PhysicsSubsystem.cpp
+
         # Scene
         src/Scene/Actor.h
         src/Scene/Scene.cpp
@@ -285,6 +289,7 @@ target_link_libraries(Quiet_Engine
 
     PRIVATE
         EnTT::EnTT
+        Jolt
 )
 
 if (MSVC)

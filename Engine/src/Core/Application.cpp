@@ -20,6 +20,7 @@
 #include "GLFW/glfw3.h"
 #include "Quiet/Editor/EditorCommands.h"
 #include "Quiet/Input/Input.h"
+#include "Physics/PhysicsSubsystem.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Quiet/Editor/EditorRuntimeController.h"
 #include "Quiet/Editor/EditorSceneWorkflow.h"
@@ -313,6 +314,7 @@ namespace Quiet::Core
         m_Input = std::make_unique<Input::Input>(*m_Window);
         SetMouseCaptureEnabled(m_Spec.IsSandbox());
 
+        m_PhysicsSubsystem = std::make_unique<Physics::PhysicsSubsystem>();
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
@@ -418,6 +420,7 @@ namespace Quiet::Core
         m_EditorController.reset();
         m_RuntimeScene.reset();
         m_Scene.reset();
+        m_PhysicsSubsystem.reset();
         m_FreeCamera.reset();
         m_Renderer.reset();
         m_Input.reset();
