@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "Physics/PhysicsWorld.h"
 #include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
 #include "Quiet/Core/Log.h"
@@ -52,9 +53,11 @@ namespace Quiet::Scene
         }
 
         m_Hierarchy = other.m_Hierarchy;
-        m_RuntimeMode = other.m_RuntimeMode;
+        m_RuntimeMode = RuntimeMode::None;
         return *this;
     }
+
+    Scene::~Scene() = default;
 
     Actor& Scene::CreateActor(const std::string& name)
     {
@@ -158,6 +161,7 @@ namespace Quiet::Scene
 
     void Scene::Clear()
     {
+        m_PhysicsWorld.reset();
         m_RenderSettings = SceneRenderSettings{};
         m_Hierarchy = SceneHierarchyState{};
         m_Registry.clear();
@@ -583,7 +587,7 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
-    void Scene::BeginRuntime(RuntimeMode mode)
+    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem)
     {
         if (mode == RuntimeMode::None)
         {
@@ -596,6 +600,7 @@ namespace Quiet::Scene
             QUIET_CORE_WARN("Scene runtime already active. Restarting runtime mode.");
             EndRuntime();
         }
+        m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem);
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
     }
@@ -605,6 +610,7 @@ namespace Quiet::Scene
         if (m_RuntimeMode == RuntimeMode::None) return;
         const RuntimeMode previousMode = m_RuntimeMode;
         OnRuntimeEnd(previousMode);
+        m_PhysicsWorld.reset();
         m_RuntimeMode = RuntimeMode::None;
     }
 
@@ -781,6 +787,11 @@ namespace Quiet::Scene
             const auto& rotator = m_Registry.get<RotatorComponent>(entity);
 
             transform.RotationDegrees.z += rotator.RotationSpeedDegreesPerSecond * deltaTime;
+        }
+
+        if (m_PhysicsWorld)
+        {
+            m_PhysicsWorld->Update(deltaTime);
         }
     }
 }

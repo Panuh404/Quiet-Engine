@@ -8,6 +8,11 @@ namespace Quiet::Scene
     class Scene;
 }
 
+namespace Quiet::Physics
+{
+    class PhysicsSubsystem;
+}
+
 namespace Quiet::Editor
 {
     class EditorController;
@@ -22,6 +27,7 @@ namespace Quiet::Editor
         EditorRuntimeController(EditorController& editorController,
                                 Scene::Scene& editorScene,
                                 std::unique_ptr<Scene::Scene>& runtimeScene,
+                                Physics::PhysicsSubsystem& physicsSubsystem,
                                 MouseCaptureSetter setMouseCaptureEnabled,
                                 MouseCaptureGetter getMouseCaptureEnabled);
 
@@ -45,6 +51,7 @@ namespace Quiet::Editor
         EditorController& m_EditorController;
         Scene::Scene& m_EditorScene;
         std::unique_ptr<Scene::Scene>& m_RuntimeScene;
+        Physics::PhysicsSubsystem& m_PhysicsSubsystem;
 
         MouseCaptureSetter m_SetMouseCaptureEnabled;
         MouseCaptureGetter m_GetMouseCaptureEnabled;

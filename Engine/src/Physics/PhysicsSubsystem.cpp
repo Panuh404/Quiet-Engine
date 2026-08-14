@@ -10,8 +10,8 @@
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Physics/PhysicsSettings.h>
 
-#include "../../../Build/Intermediate/Release-Editor/_deps/jolt_physics-src/Jolt/Physics/PhysicsSettings.h"
 #include "Quiet/Core/Log.h"
 
 namespace
@@ -63,7 +63,7 @@ namespace Quiet::Physics
         if (JPH::Factory::sInstance != nullptr)
             throw std::runtime_error("Jolt physics already initialized");
 
-        // Must happen before using other jold functionality
+        // Must happen before using other Jolt functionality.
         JPH::RegisterDefaultAllocator();
         JPH::Trace = JoltTraceImpl;
         JPH_IF_ENABLE_ASSERTS(JPH::AssertFailed = JoltAssertFailedImpl);
@@ -110,5 +110,24 @@ namespace Quiet::Physics
         m_Initialized = false;
 
         QUIET_CORE_INFO("Shut down Jolt Physics subsystem.");
+    }
+
+    JPH::TempAllocatorImpl& PhysicsSubsystem::GetTempAllocator()
+    {
+        if (!m_TempAllocator)
+        {
+            throw std::logic_error("Jolt temp allocator is not initialized.");
+        }
+        return *m_TempAllocator;
+    }
+
+    JPH::JobSystem& PhysicsSubsystem::GetJobSystem()
+    {
+        if (!m_JobSystem)
+        {
+            throw std::logic_error("Jolt job system is not initialized.");
+        }
+
+        return *m_JobSystem;
     }
 }

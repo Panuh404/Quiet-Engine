@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "Scene/Actor.h"
 #include "Scene/SceneHierarchy.h"
@@ -11,6 +12,12 @@
 namespace Quiet::Input
 {
     class Input;
+}
+
+namespace Quiet::Physics
+{
+    class PhysicsSubsystem;
+    class PhysicsWorld;
 }
 
 namespace Quiet::Scene
@@ -28,7 +35,7 @@ namespace Quiet::Scene
         Scene();
         Scene(const Scene& other);
         Scene& operator=(const Scene& other);
-        ~Scene() = default;
+        ~Scene();
 
         Actor& CreateActor(const std::string& name);
         Actor& CreateActorWithID(Core::UUID id, const std::string& name);
@@ -57,7 +64,7 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
-        void BeginRuntime(RuntimeMode mode);
+        void BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
@@ -102,5 +109,6 @@ namespace Quiet::Scene
         std::vector<Actor> m_Actors;
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
         SceneHierarchyState m_Hierarchy{};
+        std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;
     };
 }

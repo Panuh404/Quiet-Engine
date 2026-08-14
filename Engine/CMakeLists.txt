@@ -26,6 +26,8 @@ target_sources(Quiet_Engine
         # Physics
         src/Physics/PhysicsSubsystem.h
         src/Physics/PhysicsSubsystem.cpp
+        src/Physics/PhysicsWorld.cpp
+        src/Physics/PhysicsWorld.h
 
         # Scene
         src/Scene/Actor.h
