@@ -73,4 +73,14 @@ namespace Quiet::Renderer::UI
                            Editor::EditorState& editorState,
                            const TrackedInspectorInteraction& tracked,
                            bool isEditMode);
+
+    void DrawRigidBodySection(Scene::Scene& scene,
+                              Scene::Actor& actor,
+                              Editor::EditorCommands& commands,
+                              const TrackedInspectorInteraction& tracked);
+
+    void DrawBoxColliderSection(Scene::Scene& scene,
+                                Scene::Actor& actor,
+                                Editor::EditorCommands& commands,
+                                const TrackedInspectorInteraction& tracked);
 }

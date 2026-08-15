@@ -33,7 +33,9 @@ namespace
         Material,
         DirectionalLight,
         Rotator,
-        Camera
+        Camera,
+        RigidBody,
+        BoxCollider
     };
 
     struct InspectorComponentClipboardState
@@ -50,6 +52,8 @@ namespace
         Quiet::Scene::DirectionalLightComponent DirectionalLight{};
         Quiet::Scene::RotatorComponent Rotator{};
         Quiet::Scene::CameraComponent Camera{};
+        Quiet::Scene::RigidBodyComponent RigidBody{};
+        Quiet::Scene::BoxColliderComponent BoxCollider{};
     };
 
     InspectorComponentClipboardState g_InspectorComponentClipboard{};
@@ -413,6 +417,52 @@ namespace
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
         const bool changed = QUI::EditorCheckbox("##Value", &value);
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    const char* GetRigidBodyMotionTypeLabel(const Quiet::Scene::RigidBodyMotionType type)
+    {
+        using Quiet::Scene::RigidBodyMotionType;
+        switch (type)
+        {
+            case RigidBodyMotionType::Static:       return "Static";
+            case RigidBodyMotionType::Dynamic:      return "Dynamic";
+            case RigidBodyMotionType::Kinematic:    return "Kinematic";
+            default:                                return "Unknown";
+        }
+    }
+
+    bool DrawRigidBodyMotionTypePropertyRow(const char* label, Quiet::Scene::RigidBodyMotionType& value)
+    {
+        using Quiet::Scene::RigidBodyMotionType;
+
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const char* preview = GetRigidBodyMotionTypeLabel(value);
+        bool changed = false;
+
+        if (QUI::EditorBeginCombo("##Value", preview))
+        {
+            const auto drawOption = [&](const char* optionLabel, const RigidBodyMotionType option)
+            {
+                const bool selected = value == option;
+                if (QUI::EditorSelectable(optionLabel, selected))
+                {
+                    value = option;
+                    changed = true;
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            };
+
+            drawOption("Static", RigidBodyMotionType::Static);
+            drawOption("Dynamic", RigidBodyMotionType::Dynamic);
+            drawOption("Kinematic", RigidBodyMotionType::Kinematic);
+            ImGui::EndCombo();
+        }
 
         ImGui::PopID();
         return changed;
@@ -876,8 +926,17 @@ namespace Quiet::Renderer::UI
         const bool canAddDirectionalLight = !actor.HasComponent<Scene::DirectionalLightComponent>();
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
+        const bool canAddRigidBody = !actor.HasComponent<Scene::RigidBodyComponent>();
+        const bool canAddBoxCollider = !actor.HasComponent<Scene::BoxColliderComponent>();
 
-        const bool hasAnyAvailableComponent = canAddStaticMesh || canAddMaterial || canAddDirectionalLight || canAddRotator || canAddCamera;
+        const bool hasAnyAvailableComponent =
+            canAddStaticMesh ||
+            canAddMaterial ||
+            canAddDirectionalLight ||
+            canAddRotator ||
+            canAddCamera ||
+            canAddRigidBody ||
+            canAddBoxCollider;
 
         if (EditorButton("+ Add Component", ImVec2(-1.0f, 0.0f), hasAnyAvailableComponent))
         {
@@ -939,6 +998,20 @@ namespace Quiet::Renderer::UI
             if (EditorMenuItem("Camera", nullptr, false, canAddCamera))
             {
                 commands.AddCamera(scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::Separator();
+
+            if (EditorMenuItem("Rigid Body", nullptr, false, canAddRigidBody))
+            {
+                commands.AddRigidBody(scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("Box Collider", nullptr, false, canAddBoxCollider))
+            {
+                commands.AddBoxCollider(scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -1433,6 +1506,152 @@ namespace Quiet::Renderer::UI
         if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, minimumFarClip, 100000.0f, tracked))
         {
             commands.SetCameraFarClip(scene, actor.GetID(), farClip);
+        }
+    }
+
+    void DrawRigidBodySection(Scene::Scene& scene,
+                              Scene::Actor& actor,
+                              Editor::EditorCommands& commands,
+                              const TrackedInspectorInteraction& tracked)
+    {
+        Scene::RigidBodyComponent* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return;
+
+        const bool canPasteRigidBody = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::RigidBody;
+
+        const auto header = BeginInspectorComponent(
+            "Rigid Body",
+            "RigidBodyComponentOptions",
+            true,
+            true,
+            true,
+            canPasteRigidBody,
+            canPasteRigidBody ? nullptr : "Copy Rigid Body values first.");
+
+        if (header.RemoveRequested)
+        {
+            commands.RemoveRigidBody(scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type = InspectorComponentClipboardType::RigidBody;
+            g_InspectorComponentClipboard.RigidBody = *rigidBody;
+        }
+        if (header.PasteRequested && canPasteRigidBody)
+        {
+            commands.PasteRigidBodyValues(scene, actor.GetID(), g_InspectorComponentClipboard.RigidBody);
+        }
+        if (header.ResetRequested)
+        {
+            commands.ResetRigidBody(scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        Scene::RigidBodyMotionType motionType = rigidBody->MotionType;
+        if (DrawRigidBodyMotionTypePropertyRow("Motion Type", motionType))
+        {
+            commands.SetRigidBodyMotionType(scene, actor.GetID(), motionType);
+        }
+
+        float friction = rigidBody->Friction;
+        if (DrawFloatPropertyRow("Friction", friction, 0.01f, 0.0f, 0.0f, tracked))
+        {
+            commands.SetRigidBodyFriction(scene, actor.GetID(), friction);
+        }
+
+        float restitution = rigidBody->Restitution;
+        if (DrawFloatPropertyRow("Restitution", restitution, 0.01f, 0.0f, 1.0f, tracked))
+        {
+            commands.SetRigidBodyRestitution(scene, actor.GetID(), restitution);
+        }
+
+        float linearDamping = rigidBody->LinearDamping;
+        if (DrawFloatPropertyRow("Linear Damping", linearDamping, 0.01f, 0.0f, 0.0f, tracked))
+        {
+            commands.SetRigidBodyLinearDamping(scene, actor.GetID(), linearDamping);
+        }
+
+        float angularDamping = rigidBody->AngularDamping;
+        if (DrawFloatPropertyRow("Angular Damping", angularDamping, 0.01f, 0.0f, 0.0f, tracked))
+        {
+            commands.SetRigidBodyAngularDamping(scene, actor.GetID(), angularDamping);
+        }
+
+        float gravityFactor = rigidBody->GravityFactor;
+        if (DrawFloatPropertyRow("Gravity Factor", gravityFactor, 0.05f, 0.0f, 0.0f, tracked))
+        {
+            commands.SetRigidBodyGravityFactor(scene, actor.GetID(), gravityFactor);
+        }
+
+        bool allowSleeping = rigidBody->AllowSleeping;
+        if (DrawCheckboxPropertyRow("Allow Sleeping", allowSleeping))
+        {
+            commands.SetRigidBodyAllowSleeping(scene, actor.GetID(), allowSleeping);
+        }
+
+        if (!actor.HasComponent<Scene::BoxColliderComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This Rigid Body has no collider. It will not create a physics body until a supported collider is attached.");
+        }
+    }
+
+    void DrawBoxColliderSection(Scene::Scene& scene,
+                                Scene::Actor& actor,
+                                Editor::EditorCommands& commands,
+                                const TrackedInspectorInteraction& tracked)
+    {
+        Scene::BoxColliderComponent* collider = actor.TryGetComponent<Scene::BoxColliderComponent>();
+        if (!collider) return;
+
+        const bool canPasteBoxCollider = g_InspectorComponentClipboard.Type == InspectorComponentClipboardType::BoxCollider;
+
+        const auto header = BeginInspectorComponent(
+            "Box Collider",
+            "BoxColliderComponentOptions",
+            true,
+            true,
+            true,
+            canPasteBoxCollider,
+            canPasteBoxCollider ? nullptr : "Copy Box Collider values first.");
+
+        if (header.RemoveRequested)
+        {
+            commands.RemoveBoxCollider(scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            g_InspectorComponentClipboard.Type =InspectorComponentClipboardType::BoxCollider;
+            g_InspectorComponentClipboard.BoxCollider = *collider;
+        }
+        if (header.PasteRequested && canPasteBoxCollider)
+        {
+            commands.PasteBoxColliderValues(scene, actor.GetID(), g_InspectorComponentClipboard.BoxCollider);
+        }
+        if (header.ResetRequested)
+        {
+            commands.ResetBoxCollider(scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        glm::vec3 size = collider->Size;
+        if (DrawVec3PropertyRow("Size", size, 0.05f, 0.001f, 100000.0f, tracked))
+        {
+            commands.SetBoxColliderSize(scene, actor.GetID(), size);
+        }
+
+        glm::vec3 center = collider->Center;
+        if (DrawVec3PropertyRow("Center", center, 0.05f, 0.0f, 0.0f, tracked))
+        {
+            commands.SetBoxColliderCenter(scene, actor.GetID(), center);
+        }
+
+        if (!actor.HasComponent<Scene::RigidBodyComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
         }
     }
 }
