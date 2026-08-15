@@ -50,6 +50,12 @@ namespace Quiet::Scene
 
             if (const auto* component = source.TryGetComponent<CameraComponent>())
                 target.AddComponent<CameraComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<RigidBodyComponent>())
+                target.AddComponent<RigidBodyComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<BoxColliderComponent>())
+                target.AddComponent<BoxColliderComponent>(*component);
         }
 
         m_Hierarchy = other.m_Hierarchy;
@@ -107,6 +113,8 @@ namespace Quiet::Scene
         std::optional<DirectionalLightComponent> directionalLight;
         std::optional<RotatorComponent> rotator;
         std::optional<CameraComponent> camera;
+        std::optional<RigidBodyComponent> rigidBody;
+        std::optional<BoxColliderComponent> boxCollider;
 
         if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
             staticMesh = *component;
@@ -123,6 +131,12 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<CameraComponent>())
             camera = *component;
 
+        if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
+            rigidBody = *component;
+
+        if (const auto* component = source->TryGetComponent<BoxColliderComponent>())
+            boxCollider = *component;
+
         Actor& duplicate = CreateActor(duplicateName);
         duplicate.GetComponent<TransformComponent>() = transform;
 
@@ -131,6 +145,8 @@ namespace Quiet::Scene
         if (directionalLight)   duplicate.AddComponent<DirectionalLightComponent>(*directionalLight);
         if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
         if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
+        if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
+        if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
         return &duplicate;
     }
 

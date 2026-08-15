@@ -56,6 +56,8 @@ target_sources(Quiet_Engine
         src/Scene/Components/RotatorComponent.h
         src/Scene/Components/StaticMeshComponent.h
         src/Scene/Components/TransformComponent.h
+        src/Scene/Components/RigidBodyComponent.h
+        src/Scene/Components/BoxColliderComponent.h
 
         # Editor
         src/Editor/EditorActions.cpp

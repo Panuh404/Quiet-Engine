@@ -84,6 +84,33 @@ namespace
                AreFloatsEqual(lhs->FarClip, rhs->FarClip);
     }
 
+    bool AreRigidBodiesEqual(const std::optional<Quiet::Scene::RigidBodyComponent>& lhs,
+                             const std::optional<Quiet::Scene::RigidBodyComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            lhs->MotionType == rhs->MotionType &&
+            AreFloatsEqual(lhs->Friction, rhs->Friction) &&
+            AreFloatsEqual(lhs->Restitution, rhs->Restitution) &&
+            AreFloatsEqual(lhs->LinearDamping, rhs->LinearDamping) &&
+            AreFloatsEqual(lhs->AngularDamping, rhs->AngularDamping) &&
+            AreFloatsEqual(lhs->GravityFactor, rhs->GravityFactor) &&
+            lhs->AllowSleeping == rhs->AllowSleeping;
+    }
+
+    bool AreBoxCollidersEqual(const std::optional<Quiet::Scene::BoxColliderComponent>& lhs,
+                              const std::optional<Quiet::Scene::BoxColliderComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            AreVec3Equal(lhs->Size, rhs->Size) &&
+            AreVec3Equal(lhs->Center, rhs->Center);
+    }
+
     bool AreMaterialsEqual(const Quiet::Scene::MaterialComponent& lhs,
                            const Quiet::Scene::MaterialComponent& rhs)
     {
@@ -114,7 +141,7 @@ namespace
     }
 
     bool AreStaticMeshesEqual(const std::optional<Quiet::Scene::StaticMeshComponent>& lhs,
-                          const std::optional<Quiet::Scene::StaticMeshComponent>& rhs)
+                              const std::optional<Quiet::Scene::StaticMeshComponent>& rhs)
     {
         if (lhs.has_value() != rhs.has_value()) return false;
         if (!lhs.has_value()) return true;
@@ -124,7 +151,8 @@ namespace
                AreMaterialSlotsEqual(lhs->MaterialSlots, rhs->MaterialSlots);
     }
 
-    bool AreActorsEqual(const Quiet::Editor::EditorSceneHistory::ActorSnapshot& lhs, const Quiet::Editor::EditorSceneHistory::ActorSnapshot& rhs)
+    bool AreActorsEqual(const Quiet::Editor::EditorSceneHistory::ActorSnapshot& lhs,
+                        const Quiet::Editor::EditorSceneHistory::ActorSnapshot& rhs)
     {
         return
             lhs.ID == rhs.ID &&
@@ -134,7 +162,9 @@ namespace
             AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
             AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
             AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
-            AreCamerasEqual(lhs.Camera, rhs.Camera);
+            AreCamerasEqual(lhs.Camera, rhs.Camera)&&
+            AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
+            AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
@@ -279,6 +309,16 @@ namespace Quiet::Editor
                 actorSnapshot.Camera = *camera;
             }
 
+            if (const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>())
+            {
+                actorSnapshot.RigidBody = *rigidBody;
+            }
+
+            if (const auto* boxCollider = actor.TryGetComponent<Scene::BoxColliderComponent>())
+            {
+                actorSnapshot.BoxCollider = *boxCollider;
+            }
+
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
@@ -322,6 +362,17 @@ namespace Quiet::Editor
             {
                 actor.AddComponent<Scene::CameraComponent>(*actorSnapshot.Camera);
             }
+
+            if (actorSnapshot.RigidBody)
+            {
+                actor.AddComponent<Scene::RigidBodyComponent>(*actorSnapshot.RigidBody);
+            }
+
+            if (actorSnapshot.BoxCollider)
+            {
+                actor.AddComponent<Scene::BoxColliderComponent>(*actorSnapshot.BoxCollider);
+            }
+
         }
         scene.SetHierarchy(snapshot.Hierarchy);
         scene.GetRenderSettings() = snapshot.RenderSettings;

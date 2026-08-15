@@ -16,6 +16,8 @@ namespace Quiet::Scene
 {
     using json = nlohmann::json;
 
+#pragma region Serialization
+
     static json SerializeVec3(const glm::vec3& value)
     {
         return json::array({ value.x, value.y, value.z });
@@ -25,6 +27,101 @@ namespace Quiet::Scene
     {
         return json::array({ value.x, value.y, value.z, value.w });
     }
+
+    static const char* SerializeHierarchyNodeType(const SceneHierarchyNodeType type)
+    {
+        switch (type)
+        {
+            case SceneHierarchyNodeType::Actor:
+                return "actor";
+            case SceneHierarchyNodeType::Folder:
+                return "folder";
+            default:
+                return "actor";
+        }
+    }
+
+    static json SerializeHierarchyNode(const SceneHierarchyNode& node)
+    {
+        return
+        {
+                { "type", SerializeHierarchyNodeType(node.Type) },
+                { "id", Quiet::Core::UUIDToString(node.ID) }
+        };
+    }
+
+    static json SerializeHierarchyFolder(const SceneHierarchyFolder& folder)
+    {
+        json folderJson;
+        folderJson["id"] = Quiet::Core::UUIDToString(folder.ID);
+        folderJson["name"] = folder.Name;
+        folderJson["expanded"] = folder.Expanded;
+        folderJson["children"] = json::array();
+
+        for (const SceneHierarchyNode& child : folder.Children)
+        {
+            folderJson["children"].push_back(SerializeHierarchyNode(child));
+        }
+
+        return folderJson;
+    }
+
+    static json SerializeHierarchyState(const SceneHierarchyState& hierarchy)
+    {
+        json hierarchyJson;
+        hierarchyJson["root"] = json::array();
+        hierarchyJson["folders"] = json::array();
+
+        for (const SceneHierarchyNode& node : hierarchy.RootNodes)
+        {
+            hierarchyJson["root"].push_back(SerializeHierarchyNode(node));
+        }
+
+        for (const SceneHierarchyFolder& folder : hierarchy.Folders)
+        {
+            hierarchyJson["folders"].push_back(SerializeHierarchyFolder(folder));
+        }
+
+        return hierarchyJson;
+    }
+
+    nlohmann::json SceneSerializer::SerializeCamera(const CameraComponent& camera)
+    {
+        return {
+                { "Primary", camera.Primary },
+                { "FieldOfViewDegrees", camera.FieldOfViewDegrees },
+                { "NearClip", camera.NearClip },
+                { "FarClip", camera.FarClip }
+        };
+    }
+
+    nlohmann::json SceneSerializer::SerializeMaterial(const MaterialComponent &material)
+    {
+        return {
+                { "base_color", SerializeVec4(material.BaseColor) },
+                { "base_color_texture_asset_id", material.BaseColorTextureAssetID }
+        };
+    }
+
+    static const char* SerializeRigidBodyMotionType(const RigidBodyMotionType type)
+    {
+        switch (type)
+        {
+            case RigidBodyMotionType::Static:
+                return "static";
+
+            case RigidBodyMotionType::Kinematic:
+                return "kinematic";
+
+            case RigidBodyMotionType::Dynamic:
+            default:
+                return "dynamic";
+        }
+    }
+
+#pragma endregion
+
+#pragma region Deserialization
 
     static glm::vec3 DeserializeVec3(const json& value)
     {
@@ -45,32 +142,10 @@ namespace Quiet::Scene
         };
     }
 
-    static const char* SerializeHierarchyNodeType(const SceneHierarchyNodeType type)
-    {
-        switch (type)
-        {
-            case SceneHierarchyNodeType::Actor:
-                return "actor";
-            case SceneHierarchyNodeType::Folder:
-                return "folder";
-            default:
-                return "actor";
-        }
-    }
-
     static SceneHierarchyNodeType DeserializeHierarchyNodeType(const std::string& type)
     {
         if (type == "folder") return SceneHierarchyNodeType::Folder;
         return SceneHierarchyNodeType::Actor;
-    }
-
-    static json SerializeHierarchyNode(const SceneHierarchyNode& node)
-    {
-        return
-        {
-            { "type", SerializeHierarchyNodeType(node.Type) },
-            { "id", Quiet::Core::UUIDToString(node.ID) }
-        };
     }
 
     static std::optional<SceneHierarchyNode> DeserializeHierarchyNode(const json& nodeJson)
@@ -86,22 +161,6 @@ namespace Quiet::Scene
         }
 
         return node;
-    }
-
-    static json SerializeHierarchyFolder(const SceneHierarchyFolder& folder)
-    {
-        json folderJson;
-        folderJson["id"] = Quiet::Core::UUIDToString(folder.ID);
-        folderJson["name"] = folder.Name;
-        folderJson["expanded"] = folder.Expanded;
-        folderJson["children"] = json::array();
-
-        for (const SceneHierarchyNode& child : folder.Children)
-        {
-            folderJson["children"].push_back(SerializeHierarchyNode(child));
-        }
-
-        return folderJson;
     }
 
     static std::optional<SceneHierarchyFolder> DeserializeHierarchyFolder(const json& folderJson)
@@ -132,25 +191,6 @@ namespace Quiet::Scene
         return folder;
     }
 
-    static json SerializeHierarchyState(const SceneHierarchyState& hierarchy)
-    {
-        json hierarchyJson;
-        hierarchyJson["root"] = json::array();
-        hierarchyJson["folders"] = json::array();
-
-        for (const SceneHierarchyNode& node : hierarchy.RootNodes)
-        {
-            hierarchyJson["root"].push_back(SerializeHierarchyNode(node));
-        }
-
-        for (const SceneHierarchyFolder& folder : hierarchy.Folders)
-        {
-            hierarchyJson["folders"].push_back(SerializeHierarchyFolder(folder));
-        }
-
-        return hierarchyJson;
-    }
-
     static SceneHierarchyState DeserializeHierarchyState(const json& hierarchyJson)
     {
         SceneHierarchyState hierarchy{};
@@ -175,6 +215,58 @@ namespace Quiet::Scene
 
         return hierarchy;
     }
+
+    void SceneSerializer::DeserializeCamera(const nlohmann::json& json, Actor& actor)
+    {
+        CameraComponent camera{};
+
+        if (json.contains("Primary"))
+            camera.Primary = json["Primary"].get<bool>();
+
+        if (json.contains("FieldOfViewDegrees"))
+            camera.FieldOfViewDegrees = json["FieldOfViewDegrees"].get<float>();
+
+        if (json.contains("NearClip"))
+            camera.NearClip = json["NearClip"].get<float>();
+
+        if (json.contains("FarClip"))
+            camera.FarClip = json["FarClip"].get<float>();
+
+        actor.AddComponent<CameraComponent>(camera);
+    }
+
+    MaterialComponent SceneSerializer::DeserializeMaterial(const nlohmann::json &materialJson)
+    {
+        MaterialComponent material{};
+
+        if (materialJson.contains("base_color"))
+            material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
+
+        material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
+        return material;
+    }
+
+    static RigidBodyMotionType DeserializeRigidBodyMotionType(const std::string& type)
+    {
+        if (type == "static")
+        {
+            return RigidBodyMotionType::Static;
+        }
+
+        if (type == "kinematic")
+        {
+            return RigidBodyMotionType::Kinematic;
+        }
+
+        if (type != "dynamic")
+        {
+            QUIET_CORE_WARN("Unknown rigid body motion type '{}'. Using dynamic.", type);
+        }
+
+        return RigidBodyMotionType::Dynamic;
+    }
+
+#pragma endregion
 
     bool SceneSerializer::SaveToFile(const Scene &scene, const std::filesystem::path &path)
     {
@@ -251,6 +343,56 @@ namespace Quiet::Scene
             if (const CameraComponent* camera = actor.TryGetComponent<CameraComponent>())
             {
                 actorJson["camera"] = SerializeCamera(*camera);
+            }
+
+            if (const RigidBodyComponent* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
+            {
+                actorJson["rigid_body"] =
+                {
+                    {
+                        "motion_type",
+                        SerializeRigidBodyMotionType(rigidBody->MotionType)
+                    },
+                    {
+                        "friction",
+                        rigidBody->Friction
+                    },
+                    {
+                        "restitution",
+                        rigidBody->Restitution
+                    },
+                    {
+                        "linear_damping",
+                        rigidBody->LinearDamping
+                    },
+                    {
+                        "angular_damping",
+                        rigidBody->AngularDamping
+                    },
+                    {
+                        "gravity_factor",
+                        rigidBody->GravityFactor
+                    },
+                    {
+                        "allow_sleeping",
+                        rigidBody->AllowSleeping
+                    }
+                };
+            }
+
+            if (const BoxColliderComponent* boxCollider = actor.TryGetComponent<BoxColliderComponent>())
+            {
+                actorJson["box_collider"] =
+                {
+                    {
+                        "size",
+                        SerializeVec3(boxCollider->Size)
+                    },
+                    {
+                        "center",
+                        SerializeVec3(boxCollider->Center)
+                    }
+                };
             }
 
             root["actors"].push_back(std::move(actorJson));
@@ -389,6 +531,39 @@ namespace Quiet::Scene
             {
                 DeserializeCamera(actorJson["camera"], actor);
             }
+
+            if (actorJson.contains("rigid_body"))
+            {
+                const auto& rigidBodyJson = actorJson["rigid_body"];
+                RigidBodyComponent rigidBody{};
+
+                rigidBody.MotionType = DeserializeRigidBodyMotionType(rigidBodyJson.value("motion_type", std::string{ "dynamic" }));
+                rigidBody.Friction = rigidBodyJson.value("friction", rigidBody.Friction);
+                rigidBody.Restitution = rigidBodyJson.value("restitution", rigidBody.Restitution);
+                rigidBody.LinearDamping = rigidBodyJson.value("linear_damping", rigidBody.LinearDamping);
+                rigidBody.AngularDamping = rigidBodyJson.value("angular_damping", rigidBody.AngularDamping);
+                rigidBody.GravityFactor = rigidBodyJson.value("gravity_factor", rigidBody.GravityFactor);
+                rigidBody.AllowSleeping = rigidBodyJson.value("allow_sleeping", rigidBody.AllowSleeping);
+                actor.AddComponent<RigidBodyComponent>(rigidBody);
+            }
+
+            if (actorJson.contains("box_collider"))
+            {
+                const auto& boxColliderJson = actorJson["box_collider"];
+                BoxColliderComponent boxCollider{};
+
+                if (boxColliderJson.contains("size"))
+                {
+                    boxCollider.Size = DeserializeVec3(boxColliderJson.at("size"));
+                }
+
+                if (boxColliderJson.contains("center"))
+                {
+                    boxCollider.Center = DeserializeVec3(boxColliderJson.at("center"));
+                }
+
+                actor.AddComponent<BoxColliderComponent>(boxCollider);
+            }
         }
 
         if (root.contains("editor_hierarchy") && root["editor_hierarchy"].is_object())
@@ -414,51 +589,4 @@ namespace Quiet::Scene
         return true;
     }
 
-    nlohmann::json SceneSerializer::SerializeCamera(const CameraComponent& camera)
-    {
-        return {
-            { "Primary", camera.Primary },
-            { "FieldOfViewDegrees", camera.FieldOfViewDegrees },
-            { "NearClip", camera.NearClip },
-            { "FarClip", camera.FarClip }
-        };
-    }
-
-    void SceneSerializer::DeserializeCamera(const nlohmann::json& json, Actor& actor)
-    {
-        CameraComponent camera{};
-
-        if (json.contains("Primary"))
-            camera.Primary = json["Primary"].get<bool>();
-
-        if (json.contains("FieldOfViewDegrees"))
-            camera.FieldOfViewDegrees = json["FieldOfViewDegrees"].get<float>();
-
-        if (json.contains("NearClip"))
-            camera.NearClip = json["NearClip"].get<float>();
-
-        if (json.contains("FarClip"))
-            camera.FarClip = json["FarClip"].get<float>();
-
-        actor.AddComponent<CameraComponent>(camera);
-    }
-
-    nlohmann::json SceneSerializer::SerializeMaterial(const MaterialComponent &material)
-    {
-        return {
-            { "base_color", SerializeVec4(material.BaseColor) },
-            { "base_color_texture_asset_id", material.BaseColorTextureAssetID }
-        };
-    }
-
-    MaterialComponent SceneSerializer::DeserializeMaterial(const nlohmann::json &materialJson)
-    {
-        MaterialComponent material{};
-
-        if (materialJson.contains("base_color"))
-            material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
-
-        material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
-        return material;
-    }
 }

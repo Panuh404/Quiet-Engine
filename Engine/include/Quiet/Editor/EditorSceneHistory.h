@@ -34,6 +34,8 @@ namespace Quiet::Editor
             std::optional<Scene::DirectionalLightComponent> DirectionalLight;
             std::optional<Scene::RotatorComponent> Rotator;
             std::optional<Scene::CameraComponent> Camera;
+            std::optional<Scene::RigidBodyComponent> RigidBody;
+            std::optional<Scene::BoxColliderComponent> BoxCollider;
         };
 
         struct SceneSnapshot
