@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "Quiet/Core/UUID.h"
 #include "glm/vec3.hpp"
@@ -12,12 +13,15 @@
 namespace Quiet::Scene
 {
     class Scene;
+    enum class RigidBodyMotionType : std::uint8_t;
 
     struct CameraComponent;
     struct DirectionalLightComponent;
     struct MaterialComponent;
     struct RotatorComponent;
     struct TransformComponent;
+    struct RigidBodyComponent;
+    struct BoxColliderComponent;
 }
 
 namespace Quiet::Project
@@ -67,7 +71,6 @@ namespace Quiet::Editor
         bool MoveActorToHierarchyRoot(Scene::Scene& scene, Core::UUID actorID);
         bool MoveHierarchyRootNode(Scene::Scene& scene, Scene::SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex);
     #pragma endregion
-
 
     #pragma region Static Meshes
         bool CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
@@ -128,6 +131,33 @@ namespace Quiet::Editor
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);
         bool SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip);
+    #pragma endregion
+
+    #pragma region Physics
+
+        // RIGID BODY
+        bool AddRigidBody(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveRigidBody(Scene::Scene&scene, Core::UUID actorID);
+        bool ResetRigidBody(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteRigidBodyValues(Scene::Scene& scene, Core::UUID actorID, const Scene::RigidBodyComponent& rigidBody);
+
+        bool SetRigidBodyMotionType(Scene::Scene& scene, Core::UUID actorID, Scene::RigidBodyMotionType motionType);
+        bool SetRigidBodyFriction(Scene::Scene& scene, Core::UUID actorID, float friction);
+        bool SetRigidBodyRestitution(Scene::Scene& scene, Core::UUID actorID, float restitution);
+        bool SetRigidBodyLinearDamping(Scene::Scene& scene, Core::UUID actorID, float damping);
+        bool SetRigidBodyAngularDamping(Scene::Scene& scene, Core::UUID actorID, float damping);
+        bool SetRigidBodyGravityFactor(Scene::Scene& scene, Core::UUID actorID, float gravityFactor);
+        bool SetRigidBodyAllowSleeping(Scene::Scene& scene, Core::UUID actorID, bool allowSleeping);
+
+        // BOX COLLIDER
+        bool AddBoxCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveBoxCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetBoxCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteBoxColliderValues(Scene::Scene& scene, Core::UUID actorID, const Scene::BoxColliderComponent& collider);
+
+        bool SetBoxColliderSize(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& size);
+        bool SetBoxColliderCenter(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& center);
+
     #pragma endregion
 
     private:

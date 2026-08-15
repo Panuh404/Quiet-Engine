@@ -1217,4 +1217,305 @@ namespace Quiet::Editor
     }
 
 #pragma endregion
+
+#pragma region Physics
+
+    bool EditorCommands::AddRigidBody(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::RigidBodyComponent>()) return false;
+
+            actor->AddComponent<Scene::RigidBodyComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveRigidBody(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::RigidBodyComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::RigidBodyComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetRigidBody(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+            if (!rigidBody) return false;
+            *rigidBody = Scene::RigidBodyComponent{};
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteRigidBodyValues(Scene::Scene &scene, Core::UUID actorID, const Scene::RigidBodyComponent &rigidBody)
+    {
+        if (!std::isfinite(rigidBody.Friction) ||
+            !std::isfinite(rigidBody.Restitution) ||
+            !std::isfinite(rigidBody.LinearDamping) ||
+            !std::isfinite(rigidBody.AngularDamping) ||
+            !std::isfinite(rigidBody.GravityFactor))
+        {
+            return false;
+        }
+
+        Scene::RigidBodyComponent validated = rigidBody;
+        validated.Friction = std::max(rigidBody.Friction, 0.0f);
+        validated.Restitution = std::clamp(rigidBody.Restitution, 0.0f, 1.0f);
+        validated.LinearDamping = std::max(rigidBody.LinearDamping, 0.0f);
+        validated.AngularDamping = std::max(rigidBody.AngularDamping, 0.0f);
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::RigidBodyComponent>();
+            if (!existing) return false;
+            *existing = validated;
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetRigidBodyMotionType(Scene::Scene &scene, Core::UUID actorID, Scene::RigidBodyMotionType motionType)
+    {
+        switch (motionType)
+        {
+            case Scene::RigidBodyMotionType::Static:
+            case Scene::RigidBodyMotionType::Dynamic:
+            case Scene::RigidBodyMotionType::Kinematic:
+                break;
+
+            default:
+                return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+            if (!rigidBody) return false;
+            if (rigidBody->MotionType == motionType) return false;
+            rigidBody->MotionType = motionType;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetRigidBodyFriction(Scene::Scene& scene, Core::UUID actorID, float friction)
+    {
+        if (!CanEditScene() || !std::isfinite(friction)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return false;
+        rigidBody->Friction = std::max(friction, 0.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetRigidBodyRestitution(Scene::Scene &scene, Core::UUID actorID, float restitution)
+    {
+        if (!CanEditScene() || !std::isfinite(restitution)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return false;
+        rigidBody->Restitution = std::clamp(restitution, 0.0f, 1.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetRigidBodyLinearDamping(Scene::Scene &scene, Core::UUID actorID, float damping)
+    {
+        if (!CanEditScene() || !std::isfinite(damping)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return false;
+        rigidBody->LinearDamping = std::max(damping, 0.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetRigidBodyAngularDamping(Scene::Scene &scene, Core::UUID actorID, float damping)
+    {
+        if (!CanEditScene() || !std::isfinite(damping)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return false;
+        rigidBody->AngularDamping = std::max(damping, 0.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetRigidBodyGravityFactor(Scene::Scene &scene, Core::UUID actorID, float gravityFactor)
+    {
+        if (!CanEditScene() || !std::isfinite(gravityFactor)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+        if (!rigidBody) return false;
+         rigidBody->GravityFactor = gravityFactor;
+
+        return true;
+    }
+
+    bool EditorCommands::SetRigidBodyAllowSleeping(Scene::Scene &scene, Core::UUID actorID, bool allowSleeping)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+
+            if (!actor) return false;
+
+            auto* rigidBody = actor->TryGetComponent<Scene::RigidBodyComponent>();
+            if (!rigidBody || rigidBody->AllowSleeping == allowSleeping) return false;
+            rigidBody->AllowSleeping = allowSleeping;
+
+            return true;
+        });
+    }
+
+
+    bool EditorCommands::AddBoxCollider(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::BoxColliderComponent>()) return false;
+
+            actor->AddComponent<Scene::BoxColliderComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveBoxCollider(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::BoxColliderComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::BoxColliderComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetBoxCollider(Scene::Scene &scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* collider = actor->TryGetComponent<Scene::BoxColliderComponent>();
+            if (!collider) return false;
+            *collider = Scene::BoxColliderComponent{};
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteBoxColliderValues(Scene::Scene &scene, Core::UUID actorID, const Scene::BoxColliderComponent &collider)
+    {
+        if (!std::isfinite(collider.Size.x) ||
+           !std::isfinite(collider.Size.y) ||
+           !std::isfinite(collider.Size.z) ||
+           !std::isfinite(collider.Center.x) ||
+           !std::isfinite(collider.Center.y) ||
+           !std::isfinite(collider.Center.z))
+        {
+            return false;
+        }
+
+        Scene::BoxColliderComponent validated = collider;
+        validated.Size =
+        {
+            std::clamp(collider.Size.x, 0.001f, 100000.0f),
+            std::clamp(collider.Size.y, 0.001f, 100000.0f),
+            std::clamp(collider.Size.z, 0.001f, 100000.0f)
+        };
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::BoxColliderComponent>();
+            if (!existing) return false;
+            *existing = validated;
+
+            return true;
+        });
+    }
+
+
+    bool EditorCommands::SetBoxColliderSize(Scene::Scene &scene, Core::UUID actorID, const glm::vec3 &size)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(size.x) ||
+            !std::isfinite(size.y) ||
+            !std::isfinite(size.z))
+        {
+            return false;
+        }
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::BoxColliderComponent>();
+        if (!collider) return false;
+        collider->Size =
+        {
+            std::clamp(size.x, 0.001f, 100000.0f),
+            std::clamp(size.y, 0.001f, 100000.0f),
+            std::clamp(size.z, 0.001f, 100000.0f)
+        };
+
+        return true;
+    }
+
+    bool EditorCommands::SetBoxColliderCenter(Scene::Scene &scene, Core::UUID actorID, const glm::vec3 &center)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(center.x) ||
+            !std::isfinite(center.y) ||
+            !std::isfinite(center.z))
+        {
+            return false;
+        }
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::BoxColliderComponent>();
+        if (!collider) return false;
+        collider->Center = center;
+
+        return true;
+    }
+
+#pragma endregion
 }
