@@ -120,15 +120,23 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Assets/ImGuiAssetFileDialog.h
         src/Renderer/UI/Assets/ImGuiAssetFileDialog.cpp
 
+        # Renderer - UI - Inspector
+        src/Renderer/UI/Inspector/ImGuiInspectorContext.h
+        src/Renderer/UI/Inspector/ImGuiInspectorPanel.cpp
+        src/Renderer/UI/Inspector/ImGuiInspectorPanel.h
+        src/Renderer/UI/Inspector/ImGuiInspectorSections.cpp
+        src/Renderer/UI/Inspector/ImGuiInspectorSections.h
+        src/Renderer/UI/Inspector/ImGuiInspectorWidgets.cpp
+        src/Renderer/UI/Inspector/ImGuiInspectorWidgets.h
+        src/Renderer/UI/Inspector/ImGuiInspectorState.h
+
         # Renderer - UI - Panels
-        src/Renderer/UI/Panels/ImGuiAssetsPanel.cpp
+        src/Renderer/UI/Panels/ImGuiInspector.cpp
+        src/Renderer/UI/Panels/ImGuiAssetsBrowser.cpp
         src/Renderer/UI/Panels/ImGuiChrome.cpp
         src/Renderer/UI/Panels/ImGuiDiagnostics.cpp
         src/Renderer/UI/Panels/ImGuiDockspace.cpp
         src/Renderer/UI/Panels/ImGuiHierarchyPanel.cpp
-        src/Renderer/UI/Panels/ImGuiInspectorPanel.cpp
-        src/Renderer/UI/Panels/ImGuiInspectorSections.cpp
-        src/Renderer/UI/Panels/ImGuiInspectorSections.h
         src/Renderer/UI/Panels/ImGuiProjectManager.cpp
         src/Renderer/UI/Panels/ImGuiSceneSettingsPanel.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
