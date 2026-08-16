@@ -1,6 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <vector>
+
+#include <entt/entity/registry.hpp>
+
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyID.h>
 
 namespace JPH
 {
@@ -25,7 +31,18 @@ namespace Quiet::Physics
         PhysicsWorld(PhysicsWorld&&) = delete;
         PhysicsWorld& operator=(PhysicsWorld&&) = delete;
 
-        void Update(float deltaTime);
+        void BuildBodies(entt::registry& registry);
+        void Update(float deltaTime, entt::registry& registry);
+
+    private:
+        struct BodyBinding
+        {
+            entt::entity Entity = entt::null;
+            JPH::BodyID BodyID{};
+        };
+
+        void DestroyBodies();
+        void SyncDynamicBodies(entt::registry& registry);
 
     private:
         PhysicsSubsystem& m_Subsystem;
@@ -34,6 +51,8 @@ namespace Quiet::Physics
         std::unique_ptr<JPH::ObjectVsBroadPhaseLayerFilter> m_ObjectVsBroadPhaseLayerFilter;
         std::unique_ptr<JPH::ObjectLayerPairFilter> m_ObjectLayerPairFilter;
         std::unique_ptr<JPH::PhysicsSystem> m_PhysicsSystem;
+
+        std::vector<BodyBinding> m_Bodies;
 
         float m_Accumulator = 0.0f;
     };

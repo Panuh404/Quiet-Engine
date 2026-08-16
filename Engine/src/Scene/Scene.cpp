@@ -617,6 +617,7 @@ namespace Quiet::Scene
             EndRuntime();
         }
         m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem);
+        m_PhysicsWorld->BuildBodies(m_Registry);
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
     }
@@ -807,7 +808,7 @@ namespace Quiet::Scene
 
         if (m_PhysicsWorld)
         {
-            m_PhysicsWorld->Update(deltaTime);
+            m_PhysicsWorld->Update(deltaTime, m_Registry);
         }
     }
 }

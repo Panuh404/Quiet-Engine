@@ -63,9 +63,8 @@ namespace Quiet::Renderer::UI::Inspector
 
         DrawStaticMeshSection(context, state, actor);
         DrawMaterialSection(context, state, actor, tracked);
-
-        // Leave physics unwired until the
-        // Inspector refactor itself is complete.
+        DrawRigidBodySection(context, state, actor, tracked);
+        DrawBoxColliderSection(context, state, actor, tracked);
         DrawDirectionalLightSection(context, state, actor, tracked);
         DrawRotatorSection(context, state, actor, tracked);
         DrawCameraSection(context, state, actor, tracked, isEditMode);
