@@ -29,6 +29,12 @@
 namespace
 {
 #pragma region Helpers
+
+    bool IsFiniteVec3(const glm::vec3& value)
+    {
+        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+    }
+
     JPH::Vec3 ToJoltVec3(const glm::vec3& value)
     {
         return { value.x, value.y, value.z };
@@ -297,6 +303,46 @@ namespace Quiet::Physics
         {
             SyncDynamicBodies(registry);
         }
+    }
+
+    bool PhysicsWorld::ApplyImpulse(entt::entity entity, const glm::vec3 &impulse)
+    {
+        if (!m_PhysicsSystem || !IsFiniteVec3(impulse)) return false;
+
+        const BodyBinding* binding = FindBodyBinding(entity);
+        if (!binding || binding->BodyID.IsInvalid()) return false;
+
+        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
+        if (bodyInterface.GetMotionType(binding->BodyID) != JPH::EMotionType::Dynamic) return false;
+
+        bodyInterface.AddImpulse(binding->BodyID, ToJoltVec3(impulse));
+        return true;
+    }
+
+    bool PhysicsWorld::SetLinearVelocity(entt::entity entity, const glm::vec3 &velocity)
+    {
+        if (!m_PhysicsSystem || !IsFiniteVec3(velocity)) return false;
+
+        const BodyBinding* binding = FindBodyBinding(entity);
+        if (!binding || binding->BodyID.IsInvalid()) return false;
+
+        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
+        if (bodyInterface.GetMotionType(binding->BodyID) != JPH::EMotionType::Dynamic) return false;
+
+        bodyInterface.SetLinearVelocity(binding->BodyID, ToJoltVec3(velocity));
+        return true;
+    }
+
+    const PhysicsWorld::BodyBinding* PhysicsWorld::FindBodyBinding(const entt::entity entity) const
+    {
+        for (const BodyBinding& binding : m_Bodies)
+        {
+            if (binding.Entity == entity)
+            {
+                return &binding;
+            }
+        }
+        return nullptr;
     }
 
     void PhysicsWorld::DestroyBodies()

@@ -657,6 +657,26 @@ namespace Quiet::Scene
         UpdateRuntime(deltaTime);
     }
 
+    bool Scene::ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3 &impulse)
+    {
+        if (!m_PhysicsWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_PhysicsWorld->ApplyImpulse(entity, impulse);
+    }
+
+    bool Scene::SetPhysicsLinearVelocity(Core::UUID actorID, const glm::vec3 &velocity)
+    {
+        if (!m_PhysicsWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_PhysicsWorld->SetLinearVelocity(entity, velocity);
+    }
+
     Actor* Scene::FindActorByID(Core::UUID id)
     {
         for (auto& actor : m_Actors)

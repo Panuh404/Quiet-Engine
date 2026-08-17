@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <glm/vec3.hpp>
 
 #include <entt/entity/registry.hpp>
 
@@ -34,12 +35,16 @@ namespace Quiet::Physics
         void BuildBodies(entt::registry& registry);
         void Update(float deltaTime, entt::registry& registry);
 
+        bool ApplyImpulse(entt::entity entity, const glm::vec3& impulse);
+        bool SetLinearVelocity(entt::entity entity, const glm::vec3& velocity);
+
     private:
         struct BodyBinding
         {
             entt::entity Entity = entt::null;
             JPH::BodyID BodyID{};
         };
+        [[nodiscard]] const BodyBinding* FindBodyBinding(entt::entity entity) const;
 
         void DestroyBodies();
         void SyncKinematicBodies(entt::registry& registry, float timeStep);

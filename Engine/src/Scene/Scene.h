@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+#include <glm/vec3.hpp>
+
 #include "Scene/Actor.h"
 #include "Scene/SceneHierarchy.h"
 #include "Scene/SceneRenderSettings.h"
@@ -68,6 +70,9 @@ namespace Quiet::Scene
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
+
+        bool ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3& impulse);
+        bool SetPhysicsLinearVelocity(Core::UUID actorID, const glm::vec3& velocity);
 
         [[nodiscard]] bool IsRuntimeActive() const { return m_RuntimeMode != RuntimeMode::None; }
         [[nodiscard]] RuntimeMode GetRuntimeMode() const { return m_RuntimeMode; }
