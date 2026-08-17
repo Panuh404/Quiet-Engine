@@ -395,6 +395,21 @@ namespace Quiet::Scene
                 };
             }
 
+            if (const SphereColliderComponent* sphereCollider = actor.TryGetComponent<SphereColliderComponent>())
+            {
+                actorJson["sphere_collider"] =
+                {
+                    {
+                        "radius",
+                        sphereCollider->Radius
+                    },
+                    {
+                        "center",
+                        SerializeVec3(sphereCollider->Center)
+                    }
+                };
+            }
+
             root["actors"].push_back(std::move(actorJson));
         }
 
@@ -563,6 +578,21 @@ namespace Quiet::Scene
                 }
 
                 actor.AddComponent<BoxColliderComponent>(boxCollider);
+            }
+
+            if (actorJson.contains("sphere_collider"))
+            {
+                const auto& sphereColliderJson = actorJson["sphere_collider"];
+
+                SphereColliderComponent sphereCollider{};
+                sphereCollider.Radius = sphereColliderJson.value("radius", sphereCollider.Radius);
+
+                if (sphereColliderJson.contains("center"))
+                {
+                    sphereCollider.Center = DeserializeVec3(sphereColliderJson.at("center"));
+                }
+
+                actor.AddComponent<SphereColliderComponent>(sphereCollider);
             }
         }
 

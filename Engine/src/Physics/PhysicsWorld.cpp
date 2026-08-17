@@ -16,10 +16,12 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 
 #include "Scene/Components/ActorIdentityComponent.h"
 #include "Scene/Components/BoxColliderComponent.h"
+#include "Scene/Components/SphereColliderComponent.h"
 #include "Scene/Components/RigidBodyComponent.h"
 #include "Scene/Components/TransformComponent.h"
 
@@ -222,22 +224,47 @@ namespace Quiet::Physics
             const auto& identity = registry.get<Scene::ActorIdentityComponent>(entity);
             const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
             const auto& rigidBody = registry.get<Scene::RigidBodyComponent>(entity);
-            const auto* collider = registry.try_get<Scene::BoxColliderComponent>(entity);
+            const auto* boxCollider = registry.try_get<Scene::BoxColliderComponent>(entity);
+            const auto* sphereCollider = registry.try_get<Scene::SphereColliderComponent>(entity);
 
-            if (!collider)
+            if (boxCollider && sphereCollider)
+            {
+                QUIET_CORE_WARN("Skipping physics body for '{}': multiple collider components are attached.", identity.Name);
+                continue;
+            }
+
+            if (!boxCollider && !sphereCollider)
             {
                 QUIET_CORE_WARN("Skipping physics body for '{}': no supported collider.", identity.Name);
                 continue;
             }
 
-            constexpr float minimumSize = 0.001f;
-            glm::vec3 effectiveSize = glm::abs(collider->Size * transform.Scale);
-            effectiveSize = glm::max(effectiveSize, glm::vec3(minimumSize));
+            constexpr float minimumSize =
+                0.001f;
 
-            const glm::vec3 halfExtent = effectiveSize * 0.5f;
-            JPH::ShapeRefC shape = new JPH::BoxShape(ToJoltVec3(halfExtent));
+            JPH::ShapeRefC shape;
+            glm::vec3 effectiveCenter{ 0.0f, 0.0f, 0.0f };
 
-            const glm::vec3 effectiveCenter = collider->Center * transform.Scale;
+            if (boxCollider)
+            {
+                glm::vec3 effectiveSize = glm::abs(boxCollider->Size * transform.Scale);
+                effectiveSize = glm::max(effectiveSize, glm::vec3(minimumSize));
+
+                const glm::vec3 halfExtent = effectiveSize * 0.5f;
+                shape = new JPH::BoxShape(ToJoltVec3(halfExtent));
+                effectiveCenter = boxCollider->Center * transform.Scale;
+            }
+            else
+            {
+                const glm::vec3 absoluteScale = glm::abs(transform.Scale);
+                const float maximumScale = std::max({ absoluteScale.x, absoluteScale.y, absoluteScale.z });
+                const float authoredRadius = std::isfinite(sphereCollider->Radius) ? sphereCollider->Radius : 0.5f;
+                const float effectiveRadius = std::max(authoredRadius * maximumScale, minimumSize);
+
+                shape = new JPH::SphereShape(effectiveRadius);
+                effectiveCenter = sphereCollider->Center * transform.Scale;
+            }
+
             if (glm::dot(effectiveCenter, effectiveCenter) > 1.0e-12f)
             {
                 shape = new JPH::RotatedTranslatedShape(ToJoltVec3(effectiveCenter), JPH::Quat::sIdentity(), shape);

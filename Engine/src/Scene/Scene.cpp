@@ -56,6 +56,9 @@ namespace Quiet::Scene
 
             if (const auto* component = source.TryGetComponent<BoxColliderComponent>())
                 target.AddComponent<BoxColliderComponent>(*component);
+
+            if (const auto* component = source.TryGetComponent<SphereColliderComponent>())
+                target.AddComponent<SphereColliderComponent>(*component);
         }
 
         m_Hierarchy = other.m_Hierarchy;
@@ -115,6 +118,7 @@ namespace Quiet::Scene
         std::optional<CameraComponent> camera;
         std::optional<RigidBodyComponent> rigidBody;
         std::optional<BoxColliderComponent> boxCollider;
+        std::optional<SphereColliderComponent> sphereCollider;
 
         if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
             staticMesh = *component;
@@ -137,6 +141,9 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<BoxColliderComponent>())
             boxCollider = *component;
 
+        if (const auto* component = source->TryGetComponent<SphereColliderComponent>())
+            sphereCollider = *component;
+
         Actor& duplicate = CreateActor(duplicateName);
         duplicate.GetComponent<TransformComponent>() = transform;
 
@@ -147,6 +154,7 @@ namespace Quiet::Scene
         if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
         if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
         if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
+        if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
         return &duplicate;
     }
 

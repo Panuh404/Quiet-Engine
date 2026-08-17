@@ -111,6 +111,17 @@ namespace
             AreVec3Equal(lhs->Center, rhs->Center);
     }
 
+    bool AreSphereCollidersEqual(const std::optional<Quiet::Scene::SphereColliderComponent>& lhs,
+                                 const std::optional<Quiet::Scene::SphereColliderComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            AreFloatsEqual(lhs->Radius, rhs->Radius) &&
+            AreVec3Equal(lhs->Center, rhs->Center);
+    }
+
     bool AreMaterialsEqual(const Quiet::Scene::MaterialComponent& lhs,
                            const Quiet::Scene::MaterialComponent& rhs)
     {
@@ -162,9 +173,10 @@ namespace
             AreOptionalMaterialsEqual(lhs.Material, rhs.Material) &&
             AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
             AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
-            AreCamerasEqual(lhs.Camera, rhs.Camera)&&
+            AreCamerasEqual(lhs.Camera, rhs.Camera) &&
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
-            AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider);
+            AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
+            AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
@@ -319,6 +331,11 @@ namespace Quiet::Editor
                 actorSnapshot.BoxCollider = *boxCollider;
             }
 
+            if (const auto* sphereCollider = actor.TryGetComponent<Scene::SphereColliderComponent>())
+            {
+                actorSnapshot.SphereCollider = *sphereCollider;
+            }
+
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
@@ -373,6 +390,10 @@ namespace Quiet::Editor
                 actor.AddComponent<Scene::BoxColliderComponent>(*actorSnapshot.BoxCollider);
             }
 
+            if (actorSnapshot.SphereCollider)
+            {
+                actor.AddComponent<Scene::SphereColliderComponent>(*actorSnapshot.SphereCollider);
+            }
         }
         scene.SetHierarchy(snapshot.Hierarchy);
         scene.GetRenderSettings() = snapshot.RenderSettings;

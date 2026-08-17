@@ -58,6 +58,7 @@ target_sources(Quiet_Engine
         src/Scene/Components/TransformComponent.h
         src/Scene/Components/RigidBodyComponent.h
         src/Scene/Components/BoxColliderComponent.h
+        src/Scene/Components/SphereColliderComponent.h
 
         # Editor
         src/Editor/EditorActions.cpp

@@ -139,7 +139,13 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
         const bool canAddRigidBody = !actor.HasComponent<Scene::RigidBodyComponent>();
-        const bool canAddBoxCollider = !actor.HasComponent<Scene::BoxColliderComponent>();
+
+        const bool hasBoxCollider = actor.HasComponent<Scene::BoxColliderComponent>();
+        const bool hasSphereCollider = actor.HasComponent<Scene::SphereColliderComponent>();
+        const bool hasCollider = hasBoxCollider || hasSphereCollider;
+
+        const bool canAddBoxCollider = !hasCollider;
+        const bool canAddSphereCollider = !hasCollider;
 
         const bool hasAnyAvailableComponent =
             canAddStaticMesh ||
@@ -148,7 +154,8 @@ namespace Quiet::Renderer::UI::Inspector
             canAddRotator ||
             canAddCamera ||
             canAddRigidBody ||
-            canAddBoxCollider;
+            canAddBoxCollider ||
+            canAddSphereCollider;
 
         if (EditorButton("+ Add Component", ImVec2(-1.0f, 0.0f), hasAnyAvailableComponent))
         {
@@ -225,6 +232,22 @@ namespace Quiet::Renderer::UI::Inspector
             {
                 context.Commands.AddBoxCollider(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
+            }
+
+            if (hasCollider && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
+            {
+                ImGui::SetTooltip("An Actor can currently have only one collider.");
+            }
+
+            if (EditorMenuItem("Sphere Collider", nullptr, false, canAddSphereCollider))
+            {
+                context.Commands.AddSphereCollider(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (hasCollider && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
+            {
+                ImGui::SetTooltip("An Actor can currently have only one collider.");
             }
 
             ImGui::EndPopup();
@@ -780,7 +803,8 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.SetRigidBodyAllowSleeping(context.Scene, actor.GetID(), allowSleeping);
         }
 
-        if (!actor.HasComponent<Scene::BoxColliderComponent>())
+        const bool hasCollider = actor.HasComponent<Scene::BoxColliderComponent>() || actor.HasComponent<Scene::SphereColliderComponent>();
+        if (!hasCollider)
         {
             ImGui::Spacing();
             DrawInspectorWarning("This Rigid Body has no collider. It will not create a physics body until a supported collider is attached.");
@@ -840,6 +864,67 @@ namespace Quiet::Renderer::UI::Inspector
         {
             ImGui::Spacing();
             DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
+        }
+    }
+
+    void DrawSphereColliderSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)
+    {
+        Scene::SphereColliderComponent* collider = actor.TryGetComponent<Scene::SphereColliderComponent>();
+        if (!collider) return;
+
+        const bool canPasteSphereCollider = state.Clipboard.Type == ComponentClipboardType::SphereCollider;
+        const auto header = BeginInspectorComponent(
+            state,
+            "Sphere Collider",
+            "SphereColliderComponentOptions",
+            true,
+            true,
+            true,
+            canPasteSphereCollider,
+            canPasteSphereCollider ? nullptr : "Copy Sphere Collider values first.");
+
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveSphereCollider(context.Scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            state.Clipboard.Type = ComponentClipboardType::SphereCollider;
+            state.Clipboard.SphereCollider = *collider;
+        }
+        if (header.PasteRequested && canPasteSphereCollider)
+        {
+            context.Commands.PasteSphereColliderValues(context.Scene, actor.GetID(), state.Clipboard.SphereCollider);
+        }
+        if (header.ResetRequested)
+        {
+            context.Commands.ResetSphereCollider(context.Scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        float radius = collider->Radius;
+        if (DrawFloatPropertyRow("Radius", radius, 0.01f, 0.001f, 100000.0f, tracked))
+        {
+            context.Commands.SetSphereColliderRadius(context.Scene, actor.GetID(), radius);
+        }
+
+        glm::vec3 center = collider->Center;
+        if (DrawVec3PropertyRow("Center", center, 0.05f, 0.0f, 0.0f, tracked))
+        {
+            context.Commands.SetSphereColliderCenter(context.Scene, actor.GetID(), center);
+        }
+
+        if (!actor.HasComponent<Scene::RigidBodyComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
+        }
+
+        if (actor.HasComponent<Scene::BoxColliderComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This Actor has multiple collider components. Runtime physics will skip it.");
         }
     }
 }

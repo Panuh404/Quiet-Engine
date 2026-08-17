@@ -65,6 +65,7 @@ namespace Quiet::Renderer::UI::Inspector
         DrawMaterialSection(context, state, actor, tracked);
         DrawRigidBodySection(context, state, actor, tracked);
         DrawBoxColliderSection(context, state, actor, tracked);
+        DrawSphereColliderSection(context, state, actor, tracked);
         DrawDirectionalLightSection(context, state, actor, tracked);
         DrawRotatorSection(context, state, actor, tracked);
         DrawCameraSection(context, state, actor, tracked, isEditMode);

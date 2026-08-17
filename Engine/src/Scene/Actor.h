@@ -16,6 +16,7 @@
 #include "Scene/Components/TransformComponent.h"
 #include "Scene/Components/ActorIdentityComponent.h"
 #include "Scene/Components/BoxColliderComponent.h"
+#include "Scene/Components/SphereColliderComponent.h"
 #include "Scene/Components/RigidBodyComponent.h"
 
 namespace Quiet::Scene

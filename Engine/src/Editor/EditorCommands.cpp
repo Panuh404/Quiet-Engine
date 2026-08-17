@@ -492,7 +492,6 @@ namespace Quiet::Editor
 
 #pragma endregion
 
-
 #pragma region Material
 
     bool EditorCommands::AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor)
@@ -1399,13 +1398,19 @@ namespace Quiet::Editor
         });
     }
 
+    #pragma region BoxCollider
 
     bool EditorCommands::AddBoxCollider(Scene::Scene &scene, Core::UUID actorID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
-            if (!actor || actor->HasComponent<Scene::BoxColliderComponent>()) return false;
+            if (!actor ||
+                actor->HasComponent<Scene::BoxColliderComponent>() ||
+                actor->HasComponent<Scene::SphereColliderComponent>())
+            {
+                return false;
+            }
 
             actor->AddComponent<Scene::BoxColliderComponent>();
             return true;
@@ -1516,6 +1521,115 @@ namespace Quiet::Editor
 
         return true;
     }
+
+    #pragma endregion
+
+    #pragma region SphereCollider
+
+    bool EditorCommands::AddSphereCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor ||
+                actor->HasComponent<Scene::SphereColliderComponent>() ||
+                actor->HasComponent<Scene::BoxColliderComponent>())
+            {
+                return false;
+            }
+
+            actor->AddComponent<Scene::SphereColliderComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveSphereCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::SphereColliderComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::SphereColliderComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetSphereCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* collider = actor->TryGetComponent<Scene::SphereColliderComponent>();
+            if (!collider) return false;
+            *collider = Scene::SphereColliderComponent{};
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteSphereColliderValues(Scene::Scene& scene, Core::UUID actorID, const Scene::SphereColliderComponent& collider)
+    {
+        if (!std::isfinite(collider.Radius) ||
+            !std::isfinite(collider.Center.x) ||
+            !std::isfinite(collider.Center.y) ||
+            !std::isfinite(collider.Center.z))
+        {
+            return false;
+        }
+
+        Scene::SphereColliderComponent validated = collider;
+        validated.Radius = std::clamp(collider.Radius, 0.001f, 100000.0f);
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::SphereColliderComponent>();
+            if (!existing) return false;
+            *existing = validated;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetSphereColliderRadius(Scene::Scene& scene, Core::UUID actorID, const float radius)
+    {
+        if (!CanEditScene() || !std::isfinite(radius)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::SphereColliderComponent>();
+        if (!collider) return false;
+        collider->Radius = std::clamp(radius, 0.001f, 100000.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetSphereColliderCenter(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& center)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(center.x) ||
+            !std::isfinite(center.y) ||
+            !std::isfinite(center.z))
+        {
+            return false;
+        }
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::SphereColliderComponent>();
+        if (!collider) return false;
+        collider->Center = center;
+
+        return true;
+    }
+
+    #pragma endregion
 
 #pragma endregion
 }

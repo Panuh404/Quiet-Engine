@@ -11,6 +11,7 @@
 #include "Scene/Components/MaterialComponent.h"
 #include "Scene/Components/RigidBodyComponent.h"
 #include "Scene/Components/RotatorComponent.h"
+#include "Scene/Components/SphereColliderComponent.h"
 #include "Scene/Components/TransformComponent.h"
 
 namespace Quiet::Renderer::UI::Inspector
@@ -25,7 +26,8 @@ namespace Quiet::Renderer::UI::Inspector
         Rotator,
         Camera,
         RigidBody,
-        BoxCollider
+        BoxCollider,
+        SphereCollider
     };
 
     struct ComponentClipboardState
@@ -43,6 +45,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::CameraComponent Camera{};
         Scene::RigidBodyComponent RigidBody{};
         Scene::BoxColliderComponent BoxCollider{};
+        Scene::SphereColliderComponent SphereCollider{};
     };
 
     struct InspectorState
