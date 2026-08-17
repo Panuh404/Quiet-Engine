@@ -42,6 +42,7 @@ namespace Quiet::Physics
         };
 
         void DestroyBodies();
+        void SyncKinematicBodies(entt::registry& registry, float timeStep);
         void SyncDynamicBodies(entt::registry& registry);
 
     private:

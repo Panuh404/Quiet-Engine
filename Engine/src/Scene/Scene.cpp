@@ -800,6 +800,9 @@ namespace Quiet::Scene
 
         for (const entt::entity entity : view)
         {
+            const auto* rigidBody = m_Registry.try_get<RigidBodyComponent>(entity);
+            if (rigidBody && rigidBody->MotionType != RigidBodyMotionType::Kinematic) continue;
+
             auto& transform = m_Registry.get<TransformComponent>(entity).WorldTransform;
             const auto& rotator = m_Registry.get<RotatorComponent>(entity);
 

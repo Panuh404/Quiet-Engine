@@ -281,7 +281,9 @@ namespace Quiet::Physics
         bool stepped = false;
         while (m_Accumulator >= fixedTimeStep)
         {
+            SyncKinematicBodies(registry, fixedTimeStep);
             const JPH::EPhysicsUpdateError updateError = m_PhysicsSystem->Update(fixedTimeStep, 1, &m_Subsystem.GetTempAllocator(), &m_Subsystem.GetJobSystem());
+
             if (updateError != JPH::EPhysicsUpdateError::None)
             {
                 QUIET_CORE_WARN("Jolt physics update reported error mask={}.", static_cast<std::uint32_t>(updateError));
@@ -318,6 +320,25 @@ namespace Quiet::Physics
         }
 
         m_Bodies.clear();
+    }
+
+    void PhysicsWorld::SyncKinematicBodies(entt::registry &registry, float timeStep)
+    {
+        if (!m_PhysicsSystem || !std::isfinite(timeStep) || timeStep <= 0.0f) return;
+
+        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
+        for (const BodyBinding& binding : m_Bodies)
+        {
+            if (binding.BodyID.IsInvalid() || !registry.valid(binding.Entity)) continue;
+
+            const auto* rigidBody = registry.try_get<Scene::RigidBodyComponent>(binding.Entity);
+            const auto* transformComponent = registry.try_get<Scene::TransformComponent>(binding.Entity);
+
+            if (!rigidBody || !transformComponent || rigidBody->MotionType != Scene::RigidBodyMotionType::Kinematic) continue;
+            const auto& transform = transformComponent->WorldTransform;
+
+            bodyInterface.MoveKinematic(binding.BodyID, ToJoltPosition(transform.Position), ToJoltRotation(transform.RotationDegrees), timeStep);
+        }
     }
 
     void PhysicsWorld::SyncDynamicBodies(entt::registry& registry)
