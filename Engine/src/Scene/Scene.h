@@ -10,6 +10,7 @@
 #include "Scene/Actor.h"
 #include "Scene/SceneHierarchy.h"
 #include "Scene/SceneRenderSettings.h"
+#include "Physics/PhysicsContactEvent.h"
 
 namespace Quiet::Input
 {
@@ -73,6 +74,7 @@ namespace Quiet::Scene
 
         bool ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3& impulse);
         bool SetPhysicsLinearVelocity(Core::UUID actorID, const glm::vec3& velocity);
+        [[nodiscard]] const std::vector<Physics::PhysicsContactEvent>& GetPhysicsContactEvents() const { return m_PhysicsContactEvents;}
 
         [[nodiscard]] bool IsRuntimeActive() const { return m_RuntimeMode != RuntimeMode::None; }
         [[nodiscard]] RuntimeMode GetRuntimeMode() const { return m_RuntimeMode; }
@@ -115,5 +117,6 @@ namespace Quiet::Scene
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
         SceneHierarchyState m_Hierarchy{};
         std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;
+        std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
     };
 }

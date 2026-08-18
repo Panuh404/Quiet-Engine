@@ -194,6 +194,7 @@ namespace Quiet::Scene
     void Scene::Clear()
     {
         m_PhysicsWorld.reset();
+        m_PhysicsContactEvents.clear();
         m_RenderSettings = SceneRenderSettings{};
         m_Hierarchy = SceneHierarchyState{};
         m_Registry.clear();
@@ -632,6 +633,7 @@ namespace Quiet::Scene
             QUIET_CORE_WARN("Scene runtime already active. Restarting runtime mode.");
             EndRuntime();
         }
+        m_PhysicsContactEvents.clear();
         m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem);
         m_PhysicsWorld->BuildBodies(m_Registry);
         m_RuntimeMode = mode;
@@ -644,6 +646,7 @@ namespace Quiet::Scene
         const RuntimeMode previousMode = m_RuntimeMode;
         OnRuntimeEnd(previousMode);
         m_PhysicsWorld.reset();
+        m_PhysicsContactEvents.clear();
         m_RuntimeMode = RuntimeMode::None;
     }
 
@@ -845,9 +848,11 @@ namespace Quiet::Scene
             transform.RotationDegrees.z += rotator.RotationSpeedDegreesPerSecond * deltaTime;
         }
 
+        m_PhysicsContactEvents.clear();
         if (m_PhysicsWorld)
         {
             m_PhysicsWorld->Update(deltaTime, m_Registry);
+            m_PhysicsContactEvents = m_PhysicsWorld->ConsumeContactEvents();
         }
     }
 }
