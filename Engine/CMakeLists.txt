@@ -24,6 +24,7 @@ target_sources(Quiet_Engine
         src/Input/Input.cpp
 
         # Physics
+        src/Physics/PhysicsContactEvent.h
         src/Physics/PhysicsSubsystem.h
         src/Physics/PhysicsSubsystem.cpp
         src/Physics/PhysicsWorld.cpp

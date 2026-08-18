@@ -15,6 +15,9 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/Shape/SubShapeIDPair.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
@@ -171,6 +174,25 @@ namespace
 
 namespace Quiet::Physics
 {
+    class PhysicsWorld::ContactListenerImpl final : public JPH::ContactListener
+    {
+    public:
+        explicit ContactListenerImpl(PhysicsWorld& world) : m_World(world) {}
+
+        void OnContactAdded(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold&, JPH::ContactSettings&) override
+        {
+            m_World.QueueContactEvent(body1.GetID(), body2.GetID(), PhysicsContactEventType::Added);
+        }
+
+        void OnContactRemoved(const JPH::SubShapeIDPair& subShapePair) override
+        {
+            m_World.QueueContactEvent(subShapePair.GetBody1ID(), subShapePair.GetBody2ID(), PhysicsContactEventType::Removed);
+        }
+
+    private:
+        PhysicsWorld& m_World;
+    };
+
     PhysicsWorld::PhysicsWorld(PhysicsSubsystem &subsystem) : m_Subsystem(subsystem)
     {
         if (!m_Subsystem.IsInitialized())
@@ -196,6 +218,8 @@ namespace Quiet::Physics
             *m_ObjectLayerPairFilter
         );
 
+        m_ContactListener = std::make_unique<ContactListenerImpl>(*this);
+        m_PhysicsSystem->SetContactListener(m_ContactListener.get());
         m_PhysicsSystem->SetGravity(JPH::Vec3(0.0f, -9.81f, 0.0f));
 
         QUIET_CORE_INFO("Created physics world. gravity=(0.00, -9.81, 0.00), fixedStep=60Hz, maxBodies={}", maxBodies);
@@ -203,6 +227,12 @@ namespace Quiet::Physics
 
     PhysicsWorld::~PhysicsWorld()
     {
+        if (m_PhysicsSystem)
+        {
+            m_PhysicsSystem->SetContactListener(nullptr);
+        }
+        m_ContactListener.reset();
+
         DestroyBodies();
 
         m_PhysicsSystem.reset();
@@ -313,7 +343,7 @@ namespace Quiet::Physics
                 continue;
             }
 
-            m_Bodies.push_back(BodyBinding{ entity, bodyID });
+            m_Bodies.push_back(BodyBinding{ entity, bodyID, identity.ID });
         }
 
         if (!m_Bodies.empty())
@@ -383,6 +413,14 @@ namespace Quiet::Physics
         return true;
     }
 
+    std::vector<PhysicsContactEvent> PhysicsWorld::ConsumeContactEvents()
+    {
+        std::scoped_lock lock(m_ContactEventsMutex);
+        std::vector<PhysicsContactEvent> events;
+        events.swap(m_ContactEvents);
+        return events;
+    }
+
     const PhysicsWorld::BodyBinding* PhysicsWorld::FindBodyBinding(const entt::entity entity) const
     {
         for (const BodyBinding& binding : m_Bodies)
@@ -393,6 +431,31 @@ namespace Quiet::Physics
             }
         }
         return nullptr;
+    }
+
+    const PhysicsWorld::BodyBinding* PhysicsWorld::FindBodyBinding(const JPH::BodyID bodyID) const
+    {
+        for (const BodyBinding& binding : m_Bodies)
+        {
+            if (binding.BodyID == bodyID)
+            {
+                return &binding;
+            }
+        }
+        return nullptr;
+    }
+
+    void PhysicsWorld::QueueContactEvent(JPH::BodyID bodyA, JPH::BodyID bodyB, PhysicsContactEventType type)
+    {
+        const BodyBinding* bindingA = FindBodyBinding(bodyA);
+        const BodyBinding* bindingB = FindBodyBinding(bodyB);
+
+        if (!bindingA || !bindingB || !bindingA->ActorID.IsValid() || !bindingB->ActorID.IsValid()) return;
+
+        const PhysicsContactEvent event{ type, bindingA->ActorID, bindingB->ActorID };
+        std::scoped_lock lock(m_ContactEventsMutex);
+
+        m_ContactEvents.push_back(event);
     }
 
     void PhysicsWorld::DestroyBodies()
@@ -416,6 +479,10 @@ namespace Quiet::Physics
         }
 
         m_Bodies.clear();
+        {
+            std::scoped_lock lock(m_ContactEventsMutex);
+            m_ContactEvents.clear();
+        }
     }
 
     void PhysicsWorld::SyncKinematicBodies(entt::registry &registry, float timeStep)
