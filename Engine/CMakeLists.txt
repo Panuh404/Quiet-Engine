@@ -51,6 +51,7 @@ target_sources(Quiet_Engine
         # Scene - Components
         src/Scene/Components/ActorIdentityComponent.h
         src/Scene/Components/CameraComponent.h
+        src/Scene/Components/CapsuleColliderComponent.h
         src/Scene/Components/DirectionalLightComponent.h
         src/Scene/Components/MaterialComponent.h
         src/Scene/Components/RotatorComponent.h

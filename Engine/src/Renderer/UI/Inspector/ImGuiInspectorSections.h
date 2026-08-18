@@ -44,4 +44,5 @@ namespace Quiet::Renderer::UI::Inspector
     void DrawRigidBodySection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawBoxColliderSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawSphereColliderSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
+    void DrawCapsuleColliderSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
 }

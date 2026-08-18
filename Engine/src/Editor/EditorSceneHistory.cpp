@@ -122,6 +122,18 @@ namespace
             AreVec3Equal(lhs->Center, rhs->Center);
     }
 
+    bool AreCapsuleCollidersEqual(const std::optional<Quiet::Scene::CapsuleColliderComponent>& lhs,
+                                  const std::optional<Quiet::Scene::CapsuleColliderComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            AreFloatsEqual(lhs->Radius, rhs->Radius) &&
+            AreFloatsEqual(lhs->Height, rhs->Height) &&
+            AreVec3Equal(lhs->Center, rhs->Center);
+    }
+
     bool AreMaterialsEqual(const Quiet::Scene::MaterialComponent& lhs,
                            const Quiet::Scene::MaterialComponent& rhs)
     {
@@ -176,7 +188,8 @@ namespace
             AreCamerasEqual(lhs.Camera, rhs.Camera) &&
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
-            AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider);
+            AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
+            AreCapsuleCollidersEqual(lhs.CapsuleCollider, rhs.CapsuleCollider);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
@@ -336,6 +349,11 @@ namespace Quiet::Editor
                 actorSnapshot.SphereCollider = *sphereCollider;
             }
 
+            if (const auto* capsuleCollider = actor.TryGetComponent<Scene::CapsuleColliderComponent>())
+            {
+                actorSnapshot.CapsuleCollider = *capsuleCollider;
+            }
+
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
@@ -393,6 +411,11 @@ namespace Quiet::Editor
             if (actorSnapshot.SphereCollider)
             {
                 actor.AddComponent<Scene::SphereColliderComponent>(*actorSnapshot.SphereCollider);
+            }
+
+            if (actorSnapshot.CapsuleCollider)
+            {
+                actor.AddComponent<Scene::CapsuleColliderComponent>(*actorSnapshot.CapsuleCollider);
             }
         }
         scene.SetHierarchy(snapshot.Hierarchy);

@@ -7,6 +7,7 @@
 
 #include "Scene/Components/BoxColliderComponent.h"
 #include "Scene/Components/CameraComponent.h"
+#include "Scene/Components/CapsuleColliderComponent.h"
 #include "Scene/Components/DirectionalLightComponent.h"
 #include "Scene/Components/MaterialComponent.h"
 #include "Scene/Components/RigidBodyComponent.h"
@@ -25,9 +26,11 @@ namespace Quiet::Renderer::UI::Inspector
         DirectionalLight,
         Rotator,
         Camera,
+
         RigidBody,
         BoxCollider,
-        SphereCollider
+        SphereCollider,
+        CapsuleCollider
     };
 
     struct ComponentClipboardState
@@ -46,6 +49,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::RigidBodyComponent RigidBody{};
         Scene::BoxColliderComponent BoxCollider{};
         Scene::SphereColliderComponent SphereCollider{};
+        Scene::CapsuleColliderComponent CapsuleCollider{};
     };
 
     struct InspectorState

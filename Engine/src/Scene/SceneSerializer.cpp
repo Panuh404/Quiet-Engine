@@ -410,6 +410,25 @@ namespace Quiet::Scene
                 };
             }
 
+            if (const CapsuleColliderComponent* capsuleCollider = actor.TryGetComponent<CapsuleColliderComponent>())
+            {
+                actorJson["capsule_collider"] =
+                {
+                    {
+                        "radius",
+                        capsuleCollider->Radius
+                    },
+                    {
+                        "height",
+                        capsuleCollider->Height
+                    },
+                    {
+                        "center",
+                        SerializeVec3(capsuleCollider->Center)
+                    }
+                };
+            }
+
             root["actors"].push_back(std::move(actorJson));
         }
 
@@ -593,6 +612,22 @@ namespace Quiet::Scene
                 }
 
                 actor.AddComponent<SphereColliderComponent>(sphereCollider);
+            }
+
+            if (actorJson.contains("capsule_collider"))
+            {
+                const auto& colliderJson = actorJson["capsule_collider"];
+
+                CapsuleColliderComponent collider{};
+                collider.Radius = colliderJson.value("radius", collider.Radius);
+                collider.Height = colliderJson.value("height", collider.Height);
+
+                if (colliderJson.contains("center"))
+                {
+                    collider.Center = DeserializeVec3(colliderJson.at("center"));
+                }
+
+                actor.AddComponent<CapsuleColliderComponent>(collider);
             }
         }
 

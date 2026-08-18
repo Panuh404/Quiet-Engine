@@ -142,10 +142,12 @@ namespace Quiet::Renderer::UI::Inspector
 
         const bool hasBoxCollider = actor.HasComponent<Scene::BoxColliderComponent>();
         const bool hasSphereCollider = actor.HasComponent<Scene::SphereColliderComponent>();
-        const bool hasCollider = hasBoxCollider || hasSphereCollider;
+        const bool hasCapsuleCollider = actor.HasComponent<Scene::CapsuleColliderComponent>();
+        const bool hasCollider = hasBoxCollider || hasSphereCollider || hasCapsuleCollider;
 
         const bool canAddBoxCollider = !hasCollider;
         const bool canAddSphereCollider = !hasCollider;
+        const bool canAddCapsuleCollider = !hasCollider;
 
         const bool hasAnyAvailableComponent =
             canAddStaticMesh ||
@@ -155,7 +157,8 @@ namespace Quiet::Renderer::UI::Inspector
             canAddCamera ||
             canAddRigidBody ||
             canAddBoxCollider ||
-            canAddSphereCollider;
+            canAddSphereCollider ||
+            canAddCapsuleCollider;
 
         if (EditorButton("+ Add Component", ImVec2(-1.0f, 0.0f), hasAnyAvailableComponent))
         {
@@ -233,7 +236,6 @@ namespace Quiet::Renderer::UI::Inspector
                 context.Commands.AddBoxCollider(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
-
             if (hasCollider && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
             {
                 ImGui::SetTooltip("An Actor can currently have only one collider.");
@@ -244,7 +246,16 @@ namespace Quiet::Renderer::UI::Inspector
                 context.Commands.AddSphereCollider(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
+            if (hasCollider && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
+            {
+                ImGui::SetTooltip("An Actor can currently have only one collider.");
+            }
 
+            if (EditorMenuItem("Capsule Collider", nullptr, false, canAddCapsuleCollider))
+            {
+                context.Commands.AddCapsuleCollider(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
             if (hasCollider && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
             {
                 ImGui::SetTooltip("An Actor can currently have only one collider.");
@@ -803,7 +814,10 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.SetRigidBodyAllowSleeping(context.Scene, actor.GetID(), allowSleeping);
         }
 
-        const bool hasCollider = actor.HasComponent<Scene::BoxColliderComponent>() || actor.HasComponent<Scene::SphereColliderComponent>();
+        const bool hasCollider =
+            actor.HasComponent<Scene::BoxColliderComponent>() ||
+            actor.HasComponent<Scene::SphereColliderComponent>() ||
+            actor.HasComponent<Scene::CapsuleColliderComponent>();
         if (!hasCollider)
         {
             ImGui::Spacing();
@@ -865,6 +879,11 @@ namespace Quiet::Renderer::UI::Inspector
             ImGui::Spacing();
             DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
         }
+        if (actor.HasComponent<Scene::SphereColliderComponent>() || actor.HasComponent<Scene::CapsuleColliderComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This Actor has multiple collider components. Runtime physics will skip it.");
+        }
     }
 
     void DrawSphereColliderSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)
@@ -921,7 +940,77 @@ namespace Quiet::Renderer::UI::Inspector
             DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
         }
 
-        if (actor.HasComponent<Scene::BoxColliderComponent>())
+        if (actor.HasComponent<Scene::BoxColliderComponent>() || actor.HasComponent<Scene::CapsuleColliderComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This Actor has multiple collider components. Runtime physics will skip it.");
+        }
+    }
+
+    void DrawCapsuleColliderSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)
+    {
+        Scene::CapsuleColliderComponent* collider = actor.TryGetComponent<Scene::CapsuleColliderComponent>();
+        if (!collider) return;
+
+        const bool canPasteCapsuleCollider = state.Clipboard.Type == ComponentClipboardType::CapsuleCollider;
+        const auto header = BeginInspectorComponent(
+            state,
+            "Capsule Collider",
+            "CapsuleColliderComponentOptions",
+            true,
+            true,
+            true,
+            canPasteCapsuleCollider,
+            canPasteCapsuleCollider ? nullptr : "Copy Capsule Collider values first.");
+
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveCapsuleCollider(context.Scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            state.Clipboard.Type = ComponentClipboardType::CapsuleCollider;
+            state.Clipboard.CapsuleCollider = *collider;
+        }
+        if (header.PasteRequested && canPasteCapsuleCollider)
+        {
+            context.Commands.PasteCapsuleColliderValues(context.Scene, actor.GetID(), state.Clipboard.CapsuleCollider);
+        }
+        if (header.ResetRequested)
+        {
+            context.Commands.ResetCapsuleCollider(context.Scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        float radius = collider->Radius;
+
+        if (DrawFloatPropertyRow("Radius", radius, 0.01f, 0.001f, 49999.0f, tracked))
+        {
+            context.Commands.SetCapsuleColliderRadius(context.Scene, actor.GetID(), radius);
+        }
+
+        float height = collider->Height;
+        const float minimumHeight = collider->Radius * 2.0f + 0.001f;
+
+        if (DrawFloatPropertyRow("Height", height, 0.05f, minimumHeight, 100000.0f, tracked))
+        {
+            context.Commands.SetCapsuleColliderHeight(context.Scene, actor.GetID(), height);
+        }
+
+        glm::vec3 center = collider->Center;
+        if (DrawVec3PropertyRow("Center", center, 0.05f, 0.0f, 0.0f, tracked))
+        {
+            context.Commands.SetCapsuleColliderCenter(context.Scene, actor.GetID(), center);
+        }
+
+        if (!actor.HasComponent<Scene::RigidBodyComponent>())
+        {
+            ImGui::Spacing();
+            DrawInspectorWarning("This collider has no Rigid Body. It is authored but will not participate in runtime physics yet.");
+        }
+
+        if (actor.HasComponent<Scene::BoxColliderComponent>() || actor.HasComponent<Scene::SphereColliderComponent>())
         {
             ImGui::Spacing();
             DrawInspectorWarning("This Actor has multiple collider components. Runtime physics will skip it.");

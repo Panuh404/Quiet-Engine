@@ -1407,7 +1407,8 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor ||
                 actor->HasComponent<Scene::BoxColliderComponent>() ||
-                actor->HasComponent<Scene::SphereColliderComponent>())
+                actor->HasComponent<Scene::SphereColliderComponent>() ||
+                actor->HasComponent<Scene::CapsuleColliderComponent>())
             {
                 return false;
             }
@@ -1533,7 +1534,8 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor ||
                 actor->HasComponent<Scene::SphereColliderComponent>() ||
-                actor->HasComponent<Scene::BoxColliderComponent>())
+                actor->HasComponent<Scene::BoxColliderComponent>() ||
+                actor->HasComponent<Scene::CapsuleColliderComponent>())
             {
                 return false;
             }
@@ -1623,6 +1625,150 @@ namespace Quiet::Editor
         if (!actor) return false;
 
         auto* collider = actor->TryGetComponent<Scene::SphereColliderComponent>();
+        if (!collider) return false;
+        collider->Center = center;
+
+        return true;
+    }
+
+    #pragma endregion
+
+    #pragma region CapsuleCollider
+
+    bool EditorCommands::AddCapsuleCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+
+            if (!actor ||
+                actor->HasComponent<Scene::BoxColliderComponent>() ||
+                actor->HasComponent<Scene::SphereColliderComponent>() ||
+                actor->HasComponent<Scene::CapsuleColliderComponent>())
+            {
+                return false;
+            }
+
+            actor->AddComponent<Scene::CapsuleColliderComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveCapsuleCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::CapsuleColliderComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::CapsuleColliderComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetCapsuleCollider(Scene::Scene& scene, Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* collider = actor->TryGetComponent<Scene::CapsuleColliderComponent>();
+            if (!collider) return false;
+            *collider = Scene::CapsuleColliderComponent{};
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteCapsuleColliderValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CapsuleColliderComponent& collider)
+    {
+        if (!std::isfinite(collider.Radius) ||
+            !std::isfinite(collider.Height) ||
+            !std::isfinite(collider.Center.x) ||
+            !std::isfinite(collider.Center.y) ||
+            !std::isfinite(collider.Center.z))
+        {
+            return false;
+        }
+
+        constexpr float minimumDimension = 0.001f;
+        constexpr float maximumHeight = 100000.0f;
+        constexpr float maximumRadius = (maximumHeight - minimumDimension) * 0.5f;
+
+        Scene::CapsuleColliderComponent validated = collider;
+        validated.Radius = std::clamp(collider.Radius, minimumDimension, maximumRadius);
+
+        const float minimumHeight = validated.Radius * 2.0f + minimumDimension;
+        validated.Height = std::clamp(collider.Height, minimumHeight, maximumHeight);
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::CapsuleColliderComponent>();
+            if (!existing) return false;
+            *existing = validated;
+
+            return true;
+        });
+    }
+
+
+    bool EditorCommands::SetCapsuleColliderRadius(Scene::Scene& scene, Core::UUID actorID, const float radius)
+    {
+        if (!CanEditScene() || !std::isfinite(radius)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::CapsuleColliderComponent>();
+        if (!collider) return false;
+
+        constexpr float minimumDimension = 0.001f;
+        constexpr float maximumHeight = 100000.0f;
+        constexpr float maximumRadius = (maximumHeight - minimumDimension) * 0.5f;
+
+        collider->Radius = std::clamp(radius, minimumDimension, maximumRadius);
+        const float minimumHeight = collider->Radius * 2.0f + minimumDimension;
+        collider->Height = std::max(collider->Height, minimumHeight);
+
+        return true;
+    }
+
+    bool EditorCommands::SetCapsuleColliderHeight(Scene::Scene& scene, Core::UUID actorID, const float height)
+    {
+        if (!CanEditScene() || !std::isfinite(height)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::CapsuleColliderComponent>();
+        if (!collider) return false;
+
+        constexpr float minimumDimension = 0.001f;
+        constexpr float maximumHeight = 100000.0f;
+        const float minimumHeight = collider->Radius * 2.0f + minimumDimension;
+
+        collider->Height = std::clamp(height, minimumHeight, maximumHeight);
+
+        return true;
+    }
+
+    bool EditorCommands::SetCapsuleColliderCenter(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& center)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(center.x) ||
+            !std::isfinite(center.y) ||
+            !std::isfinite(center.z))
+        {
+            return false;
+        }
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* collider = actor->TryGetComponent<Scene::CapsuleColliderComponent>();
         if (!collider) return false;
         collider->Center = center;
 

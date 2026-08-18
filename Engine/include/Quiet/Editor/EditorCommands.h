@@ -23,6 +23,7 @@ namespace Quiet::Scene
     struct RigidBodyComponent;
     struct BoxColliderComponent;
     struct SphereColliderComponent;
+    struct CapsuleColliderComponent;
 }
 
 namespace Quiet::Project
@@ -167,6 +168,16 @@ namespace Quiet::Editor
 
         bool SetSphereColliderRadius(Scene::Scene& scene, Core::UUID actorID, float radius);
         bool SetSphereColliderCenter(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& center);
+
+        // CAPSULE COLLIDER
+        bool AddCapsuleCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveCapsuleCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetCapsuleCollider(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteCapsuleColliderValues(Scene::Scene& scene, Core::UUID actorID, const Scene::CapsuleColliderComponent& collider);
+
+        bool SetCapsuleColliderRadius(Scene::Scene& scene, Core::UUID actorID, float radius);
+        bool SetCapsuleColliderHeight(Scene::Scene& scene, Core::UUID actorID, float height);
+        bool SetCapsuleColliderCenter(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& center);
 
     #pragma endregion
 
