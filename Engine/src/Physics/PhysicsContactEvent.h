@@ -8,13 +8,13 @@ namespace Quiet::Physics
 {
     enum class PhysicsContactEventType : std::uint8_t
     {
-        Added,
-        Removed,
+        Started,
+        Ended
     };
 
     struct PhysicsContactEvent
     {
-        PhysicsContactEventType Type = PhysicsContactEventType::Added;
+        PhysicsContactEventType Type = PhysicsContactEventType::Started;
 
         Core::UUID ActorA{};
         Core::UUID ActorB{};

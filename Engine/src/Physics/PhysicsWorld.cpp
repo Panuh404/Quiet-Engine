@@ -181,12 +181,20 @@ namespace Quiet::Physics
 
         void OnContactAdded(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold&, JPH::ContactSettings&) override
         {
-            m_World.QueueContactEvent(body1.GetID(), body2.GetID(), PhysicsContactEventType::Added);
+            const JPH::BodyID bodyA = body1.GetID();
+            const JPH::BodyID bodyB = body2.GetID();
+
+            if (m_World.WereBodiesInContact(bodyA, bodyB)) return;
+            m_World.QueueContactEvent(bodyA, bodyB, PhysicsContactEventType::Started);
         }
 
         void OnContactRemoved(const JPH::SubShapeIDPair& subShapePair) override
         {
-            m_World.QueueContactEvent(subShapePair.GetBody1ID(), subShapePair.GetBody2ID(), PhysicsContactEventType::Removed);
+            const JPH::BodyID bodyA = subShapePair.GetBody1ID();
+            const JPH::BodyID bodyB = subShapePair.GetBody2ID();
+
+            if (m_World.WereBodiesInContact(bodyA, bodyB)) return;
+            m_World.QueueContactEvent(bodyA, bodyB, PhysicsContactEventType::Ended);
         }
 
     private:
@@ -443,6 +451,12 @@ namespace Quiet::Physics
             }
         }
         return nullptr;
+    }
+
+    bool PhysicsWorld::WereBodiesInContact(JPH::BodyID bodyA, JPH::BodyID bodyB) const
+    {
+        if (!m_PhysicsSystem || bodyA.IsInvalid() || bodyB.IsInvalid()) return false;
+        return m_PhysicsSystem->WereBodiesInContact(bodyA, bodyB);
     }
 
     void PhysicsWorld::QueueContactEvent(JPH::BodyID bodyA, JPH::BodyID bodyB, PhysicsContactEventType type)

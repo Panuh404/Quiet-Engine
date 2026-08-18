@@ -53,6 +53,7 @@ namespace Quiet::Physics
         };
         [[nodiscard]] const BodyBinding* FindBodyBinding(entt::entity entity) const;
         [[nodiscard]] const BodyBinding* FindBodyBinding(JPH::BodyID bodyID) const;
+        [[nodiscard]] bool WereBodiesInContact(JPH::BodyID bodyA, JPH::BodyID bodyB) const;
         void QueueContactEvent(JPH::BodyID bodyA, JPH::BodyID bodyB, PhysicsContactEventType type);
 
         void DestroyBodies();
