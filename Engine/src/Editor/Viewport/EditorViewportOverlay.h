@@ -48,6 +48,12 @@ namespace Quiet::Editor
                                          const EditorViewportState& viewportState,
                                          ImDrawList* drawList);
 
+    void DrawPhysicsColliderOverlay(const Scene::Actor& actor,
+                                    const Renderer::Vulkan::CameraUniformData& cameraData,
+                                    const EditorViewportState& viewportState,
+                                    ImDrawList* drawList,
+                                    bool selected);
+
     void DrawViewportMeshDropPreview(const Renderer::Vulkan::StaticMesh& mesh,
                                      const glm::vec3& worldPosition,
                                      const Renderer::Vulkan::CameraUniformData& cameraData,

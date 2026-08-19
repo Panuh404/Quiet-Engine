@@ -122,6 +122,7 @@ namespace Quiet::Editor
 
         bool ShowGrid = true;
         bool ShowDebugIcons = true;
+        bool ShowPhysicsColliders = false;
         bool ShowSelectionFeedback = true;
         bool ShowHoverFeedback = true;
         bool ShowNavigationHints = true;

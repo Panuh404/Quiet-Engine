@@ -196,6 +196,18 @@ namespace Quiet::Editor
 
         drawList->PushClipRect(viewportMin, viewportMax, true);
 
+        if (m_State.Viewport.ShowPhysicsColliders)
+        {
+            for (const Scene::Actor& actor : scene.GetActors())
+            {
+                const bool selected =
+                    m_State.Selection.SelectedActorID.has_value() &&
+                    m_State.Selection.SelectedActorID.value() == actor.GetID();
+
+                DrawPhysicsColliderOverlay(actor, cameraData, m_State.Viewport, drawList, selected);
+            }
+        }
+
         if (m_State.Viewport.ShowDebugIcons)
         {
             for (const Scene::Actor& actor : scene.GetActors())

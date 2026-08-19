@@ -4,6 +4,8 @@
 #include <array>
 #include <cmath>
 
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
@@ -14,8 +16,14 @@
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 #include "Scene/Actor.h"
+#include "Scene/Transform.h"
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/DirectionalLightComponent.h"
+#include "Scene/Components/BoxColliderComponent.h"
+#include "Scene/Components/CapsuleColliderComponent.h"
+#include "Scene/Components/RigidBodyComponent.h"
+#include "Scene/Components/SphereColliderComponent.h"
+
 
 namespace
 {
@@ -156,6 +164,132 @@ namespace
             thickness
         );
     }
+
+#pragma region Collider Drawing
+
+    glm::mat4 BuildPhysicsBodyModel(const Quiet::Scene::Transform& transform)
+    {
+        Quiet::Scene::Transform bodyTransform = transform;
+        bodyTransform.Scale = { 1.0f, 1.0f, 1.0f };
+        return bodyTransform.ToMatrix();
+    }
+
+    glm::vec3 TransformColliderPoint(const glm::mat4& bodyModel, const glm::vec3& localPoint)
+    {
+        return glm::vec3(bodyModel * glm::vec4(localPoint, 1.0f));
+    }
+
+    void DrawColliderWireCircle(ImDrawList* drawList,
+                                const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                const Quiet::Editor::EditorViewportState& viewportState,
+                                const glm::mat4& bodyModel,
+                                const glm::vec3& center,
+                                const glm::vec3& axisA,
+                                const glm::vec3& axisB,
+                                const float radius,
+                                const ImU32 color,
+                                const float thickness)
+    {
+        constexpr int segmentCount = 32;
+
+        glm::vec3 previous = center + axisA * radius;
+        for (int segment = 1; segment <= segmentCount; ++segment)
+        {
+            const float angle = glm::two_pi<float>() * static_cast<float>(segment) / static_cast<float>(segmentCount);
+            const glm::vec3 current =
+                center +
+                axisA * std::cos(angle) * radius +
+                axisB * std::sin(angle) * radius;
+
+            Quiet::Editor::DrawProjectedLine(
+                drawList,
+                cameraData,
+                viewportState,
+                TransformColliderPoint(bodyModel, previous),
+                TransformColliderPoint(bodyModel, current),
+                color,
+                thickness);
+
+            previous = current;
+        }
+    }
+
+    void DrawColliderCapsulePlane(ImDrawList* drawList,
+                                  const Quiet::Renderer::Vulkan::CameraUniformData& cameraData,
+                                  const Quiet::Editor::EditorViewportState& viewportState,
+                                  const glm::mat4& bodyModel,
+                                  const glm::vec3& center,
+                                  const glm::vec3& radialAxis,
+                                  const float halfCylinderHeight,
+                                  const float radius,
+                                  const ImU32 color,
+                                  const float thickness)
+    {
+        constexpr glm::vec3 up{ 0.0f, 1.0f, 0.0f };
+        constexpr int arcSegments = 16;
+
+        glm::vec3 previous = center + radialAxis * radius + up * halfCylinderHeight;
+
+        for (int segment = 1; segment <= arcSegments; ++segment)
+        {
+            const float angle = glm::pi<float>() * static_cast<float>(segment) / static_cast<float>(arcSegments);
+            const glm::vec3 current = center + radialAxis * std::cos(angle) * radius + up * (halfCylinderHeight + std::sin(angle) * radius);
+
+        Quiet::Editor::DrawProjectedLine(
+            drawList,
+            cameraData,
+            viewportState,
+            TransformColliderPoint(bodyModel, previous),
+            TransformColliderPoint(bodyModel, current),
+            color,
+            thickness);
+
+        previous = current;
+    }
+
+    previous = center - radialAxis * radius - up * halfCylinderHeight;
+    for (int segment = 1; segment <= arcSegments; ++segment)
+    {
+        const float angle = glm::pi<float>() + glm::pi<float>() * static_cast<float>(segment) / static_cast<float>(arcSegments);
+        const glm::vec3 current = center + radialAxis * std::cos(angle) * radius + up * (-halfCylinderHeight + std::sin(angle) * radius);
+
+        Quiet::Editor::DrawProjectedLine(
+            drawList,
+            cameraData,
+            viewportState,
+            TransformColliderPoint(bodyModel, previous),
+            TransformColliderPoint(bodyModel, current),
+            color,
+            thickness);
+
+        previous = current;
+    }
+
+    const glm::vec3 rightTop = center + radialAxis * radius + up * halfCylinderHeight;
+    const glm::vec3 rightBottom = center + radialAxis * radius - up * halfCylinderHeight;
+    const glm::vec3 leftTop = center - radialAxis * radius + up * halfCylinderHeight;
+    const glm::vec3 leftBottom = center - radialAxis * radius - up * halfCylinderHeight;
+
+    Quiet::Editor::DrawProjectedLine(
+        drawList,
+        cameraData,
+        viewportState,
+        TransformColliderPoint(bodyModel, rightTop),
+        TransformColliderPoint(bodyModel, rightBottom),
+        color,
+        thickness);
+
+    Quiet::Editor::DrawProjectedLine(
+        drawList,
+        cameraData,
+        viewportState,
+        TransformColliderPoint(bodyModel, leftTop),
+        TransformColliderPoint(bodyModel, leftBottom),
+        color,
+        thickness);
+}
+
+#pragma endregion
 }
 
 namespace Quiet::Editor
@@ -401,6 +535,191 @@ namespace Quiet::Editor
             DrawHoveredOriginMarker(drawList, actorScreenPosition);
             DrawHoveredActorName(drawList, actorScreenPosition, actorName);
         }
+    }
+
+    void DrawPhysicsColliderOverlay(const Scene::Actor &actor,
+                                    const Renderer::Vulkan::CameraUniformData &cameraData,
+                                    const EditorViewportState &viewportState,
+                                    ImDrawList *drawList,
+                                    bool selected)
+    {
+        const auto* boxCollider = actor.TryGetComponent<Scene::BoxColliderComponent>();
+        const auto* sphereCollider = actor.TryGetComponent<Scene::SphereColliderComponent>();
+        const auto* capsuleCollider = actor.TryGetComponent<Scene::CapsuleColliderComponent>();
+
+        const int colliderCount =
+            (boxCollider ? 1 : 0) +
+            (sphereCollider ? 1 : 0) +
+            (capsuleCollider ? 1 : 0);
+
+        if (colliderCount != 1) return;
+
+        const auto& transform = actor.GetComponent<Scene::TransformComponent>().WorldTransform;
+        const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>();
+
+        ImVec4 sourceColor = Renderer::UI::EditorColor::Error;
+        if (rigidBody)
+        {
+            switch (rigidBody->MotionType)
+            {
+                case Scene::RigidBodyMotionType::Static:
+                    sourceColor = Renderer::UI::EditorColor::TextMuted;
+                    break;
+
+                case Scene::RigidBodyMotionType::Dynamic:
+                    sourceColor = Renderer::UI::EditorColor::Success;
+                    break;
+
+                case Scene::RigidBodyMotionType::Kinematic:
+                    sourceColor = Renderer::UI::EditorColor::Warning;
+                    break;
+            }
+        }
+
+        sourceColor.w = selected ? 1.0f : 0.72f;
+
+        const ImU32 color = MakeOverlayColor(sourceColor);
+        const float thickness = Renderer::UI::EditorSizing::Px(selected ? 2.25f : 1.25f);
+
+        const glm::mat4 bodyModel = BuildPhysicsBodyModel(transform);
+        constexpr float minimumSize = 0.001f;
+
+        if (boxCollider)
+        {
+            glm::vec3 effectiveSize = glm::abs(boxCollider->Size * transform.Scale);
+            effectiveSize = glm::max(effectiveSize, glm::vec3(minimumSize));
+
+            const glm::vec3 halfExtent = effectiveSize * 0.5f;
+            const glm::vec3 center = boxCollider->Center * transform.Scale;
+
+            const auto corners = Math::BuildAABBCorners(center - halfExtent, center + halfExtent);
+            constexpr std::array<std::array<std::size_t, 2>, 12> edges =
+            {{
+                {{0, 1}}, {{0, 2}}, {{1, 3}}, {{2, 3}},
+
+                {{4, 5}}, {{4, 6}}, {{5, 7}}, {{6, 7}},
+
+                {{0, 4}}, {{1, 5}}, {{2, 6}}, {{3, 7}}
+            }};
+
+            for (const auto& edge : edges)
+            {
+                DrawProjectedLine(
+                    drawList,
+                    cameraData,
+                    viewportState,
+                    TransformColliderPoint(bodyModel, corners[edge[0]]),
+                    TransformColliderPoint(bodyModel, corners[edge[1]]),
+                    color,
+                    thickness);
+            }
+
+            return;
+        }
+
+        if (sphereCollider)
+        {
+            const glm::vec3 absoluteScale = glm::abs(transform.Scale);
+            const float maximumScale = std::max({ absoluteScale.x, absoluteScale.y, absoluteScale.z });
+            const float radius = std::max((std::isfinite(sphereCollider->Radius) ? sphereCollider->Radius : 0.5f) * maximumScale, minimumSize);
+            const glm::vec3 center = sphereCollider->Center * transform.Scale;
+
+            DrawColliderWireCircle(
+                drawList,
+                cameraData,
+                viewportState,
+                bodyModel,
+                center,
+                {1.0f, 0.0f, 0.0f},
+                {0.0f, 1.0f, 0.0f},
+                radius,
+                color,
+                thickness);
+
+            DrawColliderWireCircle(
+                drawList,
+                cameraData,
+                viewportState,
+                bodyModel,
+                center,
+                {1.0f, 0.0f, 0.0f},
+                {0.0f, 0.0f, 1.0f},
+                radius,
+                color,
+                thickness);
+
+            DrawColliderWireCircle(
+                drawList,
+                cameraData,
+                viewportState,
+                bodyModel,
+                center,
+                {0.0f, 1.0f, 0.0f},
+                {0.0f, 0.0f, 1.0f},
+                radius,
+                color,
+                thickness);
+
+            return;
+        }
+
+        const glm::vec3 absoluteScale = glm::abs(transform.Scale);
+        const float radialScale = std::max(absoluteScale.x, absoluteScale.z);
+        const float verticalScale = absoluteScale.y;
+        const float radius = std::max((std::isfinite(capsuleCollider->Radius) ? capsuleCollider->Radius : 0.5f) * radialScale, minimumSize);
+        const float minimumHeight = radius * 2.0f + minimumSize;
+        const float height = std::max((std::isfinite(capsuleCollider->Height) ? capsuleCollider->Height : 2.0f) * verticalScale, minimumHeight);
+        const float halfCylinderHeight = (height - radius * 2.0f) * 0.5f;
+
+        const glm::vec3 center = capsuleCollider->Center * transform.Scale;
+
+        DrawColliderWireCircle(
+            drawList,
+            cameraData,
+            viewportState,
+            bodyModel,
+            center + glm::vec3(0.0f, halfCylinderHeight, 0.0f),
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f},
+            radius,
+            color,
+            thickness);
+
+        DrawColliderWireCircle(
+            drawList,
+            cameraData,
+            viewportState,
+            bodyModel,
+            center - glm::vec3(0.0f, halfCylinderHeight, 0.0f),
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f},
+            radius,
+            color,
+            thickness);
+
+        DrawColliderCapsulePlane(
+            drawList,
+            cameraData,
+            viewportState,
+            bodyModel,
+            center,
+            {1.0f, 0.0f, 0.0f},
+            halfCylinderHeight,
+            radius,
+            color,
+            thickness);
+
+        DrawColliderCapsulePlane(
+            drawList,
+            cameraData,
+            viewportState,
+            bodyModel,
+            center,
+            {0.0f, 0.0f, 1.0f},
+            halfCylinderHeight,
+            radius,
+            color,
+            thickness);
     }
 
     void DrawViewportMeshDropPreview(const Renderer::Vulkan::StaticMesh &mesh,

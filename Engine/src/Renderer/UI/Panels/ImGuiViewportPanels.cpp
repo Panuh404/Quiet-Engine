@@ -285,6 +285,13 @@ namespace
 
         ImGui::Checkbox("Grid", &editorState.Viewport.ShowGrid);
         ImGui::Checkbox("Editor Icons", &editorState.Viewport.ShowDebugIcons);
+        ImGui::Checkbox("Physics Colliders", &editorState.Viewport.ShowPhysicsColliders);
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("Show Box, Sphere and Capsule collision geometry.");
+        }
+
         ImGui::Checkbox("Selection Feedback", &editorState.Viewport.ShowSelectionFeedback);
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
         {
@@ -301,6 +308,7 @@ namespace
         {
             editorState.Viewport.ShowGrid = true;
             editorState.Viewport.ShowDebugIcons = true;
+            editorState.Viewport.ShowPhysicsColliders = false;
             editorState.Viewport.ShowSelectionFeedback = true;
             editorState.Viewport.ShowHoverFeedback = true;
             editorState.Viewport.ShowNavigationHints = true;
@@ -537,6 +545,9 @@ namespace
 
         if (editorState.Viewport.ShowDebugIcons)
             statusText += "  |  Icons";
+
+        if (editorState.Viewport.ShowPhysicsColliders)
+            statusText += "  |  Colliders";
 
         const auto navigationMode = editorState.Viewport.NavigationMode;
         if (navigationMode != Quiet::Editor::ViewportNavigationMode::None)
