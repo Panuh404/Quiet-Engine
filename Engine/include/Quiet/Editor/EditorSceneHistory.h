@@ -7,6 +7,7 @@
 #include "Quiet/Core/UUID.h"
 #include "Scene/Actor.h"
 #include "Scene/SceneHierarchy.h"
+#include "Scene/ScenePhysicsSettings.h"
 #include "Scene/SceneRenderSettings.h"
 
 namespace Quiet::Editor
@@ -44,6 +45,7 @@ namespace Quiet::Editor
         {
             std::vector<ActorSnapshot> Actors;
             Scene::SceneHierarchyState Hierarchy;
+            Scene::ScenePhysicsSettings PhysicsSettings;
             Scene::SceneRenderSettings RenderSettings;
             std::optional<Core::UUID> SelectedActorID;
         };

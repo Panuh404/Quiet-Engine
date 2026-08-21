@@ -35,6 +35,11 @@ namespace
                AreFloatsEqual(lhs.w, rhs.w);
     }
 
+    bool ArePhysicsSettingsEqual(const Quiet::Scene::ScenePhysicsSettings& lhs, const Quiet::Scene::ScenePhysicsSettings& rhs)
+    {
+        return AreVec3Equal(lhs.Gravity, rhs.Gravity);
+    }
+
     bool AreRenderSettingsEqual(const Quiet::Scene::SceneRenderSettings& lhs, const Quiet::Scene::SceneRenderSettings& rhs)
     {
         return AreVec3Equal(lhs.LightDirection, rhs.LightDirection) &&
@@ -310,54 +315,37 @@ namespace Quiet::Editor
             actorSnapshot.Transform = actor.GetComponent<Scene::TransformComponent>();
 
             if (const auto* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>())
-            {
                 actorSnapshot.StaticMesh = *staticMesh;
-            }
 
             if (const auto* material = actor.TryGetComponent<Scene::MaterialComponent>())
-            {
                 actorSnapshot.Material = *material;
-            }
 
             if (const auto* directionalLight = actor.TryGetComponent<Scene::DirectionalLightComponent>())
-            {
                 actorSnapshot.DirectionalLight = *directionalLight;
-            }
 
             if (const auto* rotator = actor.TryGetComponent<Scene::RotatorComponent>())
-            {
                 actorSnapshot.Rotator = *rotator;
-            }
 
             if (const auto* camera = actor.TryGetComponent<Scene::CameraComponent>())
-            {
                 actorSnapshot.Camera = *camera;
-            }
 
             if (const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>())
-            {
                 actorSnapshot.RigidBody = *rigidBody;
-            }
 
             if (const auto* boxCollider = actor.TryGetComponent<Scene::BoxColliderComponent>())
-            {
                 actorSnapshot.BoxCollider = *boxCollider;
-            }
 
             if (const auto* sphereCollider = actor.TryGetComponent<Scene::SphereColliderComponent>())
-            {
                 actorSnapshot.SphereCollider = *sphereCollider;
-            }
 
             if (const auto* capsuleCollider = actor.TryGetComponent<Scene::CapsuleColliderComponent>())
-            {
                 actorSnapshot.CapsuleCollider = *capsuleCollider;
-            }
 
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
         snapshot.Hierarchy = scene.GetHierarchy();
+        snapshot.PhysicsSettings = scene.GetPhysicsSettings();
         snapshot.RenderSettings = scene.GetRenderSettings();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
 
@@ -374,51 +362,34 @@ namespace Quiet::Editor
             actor.GetComponent<Scene::TransformComponent>() = actorSnapshot.Transform;
 
             if (actorSnapshot.StaticMesh)
-            {
                 actor.AddComponent<Scene::StaticMeshComponent>(*actorSnapshot.StaticMesh);
-            }
 
             if (actorSnapshot.Material)
-            {
                 actor.AddComponent<Scene::MaterialComponent>(*actorSnapshot.Material);
-            }
 
             if (actorSnapshot.DirectionalLight)
-            {
                 actor.AddComponent<Scene::DirectionalLightComponent>(*actorSnapshot.DirectionalLight);
-            }
 
             if (actorSnapshot.Rotator)
-            {
                 actor.AddComponent<Scene::RotatorComponent>(*actorSnapshot.Rotator);
-            }
 
             if (actorSnapshot.Camera)
-            {
                 actor.AddComponent<Scene::CameraComponent>(*actorSnapshot.Camera);
-            }
 
             if (actorSnapshot.RigidBody)
-            {
                 actor.AddComponent<Scene::RigidBodyComponent>(*actorSnapshot.RigidBody);
-            }
 
             if (actorSnapshot.BoxCollider)
-            {
                 actor.AddComponent<Scene::BoxColliderComponent>(*actorSnapshot.BoxCollider);
-            }
 
             if (actorSnapshot.SphereCollider)
-            {
                 actor.AddComponent<Scene::SphereColliderComponent>(*actorSnapshot.SphereCollider);
-            }
 
             if (actorSnapshot.CapsuleCollider)
-            {
                 actor.AddComponent<Scene::CapsuleColliderComponent>(*actorSnapshot.CapsuleCollider);
-            }
         }
         scene.SetHierarchy(snapshot.Hierarchy);
+        scene.GetPhysicsSettings() = snapshot.PhysicsSettings;
         scene.GetRenderSettings() = snapshot.RenderSettings;
         state.Selection.SelectedActorID = snapshot.SelectedActorID;
     }
@@ -428,7 +399,8 @@ namespace Quiet::Editor
         return lhs.SelectedActorID == rhs.SelectedActorID &&
                AreActorListsEqual(lhs.Actors, rhs.Actors) &&
                lhs.Hierarchy == rhs.Hierarchy &&
-               AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings);
+               AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings) &&
+               ArePhysicsSettingsEqual(lhs.PhysicsSettings, rhs.PhysicsSettings);
     }
 
     void EditorSceneHistory::PushUndoSnapshot(SceneSnapshot snapshot)
@@ -467,6 +439,7 @@ namespace Quiet::Editor
         state.Scene.Dirty =
             !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors) ||
             m_CleanSnapshot->Hierarchy != currentSnapshot.Hierarchy ||
-            !AreRenderSettingsEqual(m_CleanSnapshot->RenderSettings, currentSnapshot.RenderSettings);
+            !AreRenderSettingsEqual(m_CleanSnapshot->RenderSettings, currentSnapshot.RenderSettings) ||
+            !ArePhysicsSettingsEqual(m_CleanSnapshot->PhysicsSettings, currentSnapshot.PhysicsSettings);
     }
 }

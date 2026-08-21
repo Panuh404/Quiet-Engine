@@ -280,6 +280,10 @@ namespace Quiet::Scene
             { "ambient_color", SerializeVec3(renderSettings.AmbientColor) },
             { "ambient_intensity", renderSettings.AmbientIntensity }
         };
+        const ScenePhysicsSettings& physicsSettings = scene.GetPhysicsSettings();
+        root["physics_settings"] = {
+            { "gravity", SerializeVec3(physicsSettings.Gravity) }
+        };
         root["editor_hierarchy"] = SerializeHierarchyState(scene.GetHierarchy());
 
         for (const Actor& actor : scene.GetActors())
@@ -482,6 +486,17 @@ namespace Quiet::Scene
             }
 
             renderSettings.AmbientIntensity = renderSettingsJson.value("ambient_intensity", renderSettings.AmbientIntensity);
+        }
+
+        if (root.contains("physics_settings"))
+        {
+            const auto& physicsSettingsJson = root["physics_settings"];
+            ScenePhysicsSettings& physicsSettings = scene.GetPhysicsSettings();
+
+            if (physicsSettingsJson.contains("gravity"))
+            {
+                physicsSettings.Gravity = DeserializeVec3(physicsSettingsJson.at("gravity"));
+            }
         }
 
         for (const auto& actorJson : root["actors"])

@@ -201,7 +201,7 @@ namespace Quiet::Physics
         PhysicsWorld& m_World;
     };
 
-    PhysicsWorld::PhysicsWorld(PhysicsSubsystem &subsystem) : m_Subsystem(subsystem)
+    PhysicsWorld::PhysicsWorld(PhysicsSubsystem &subsystem, const glm::vec3& gravity) : m_Subsystem(subsystem)
     {
         if (!m_Subsystem.IsInitialized())
             throw std::runtime_error("Cannot create PhysicsWorld before PhysicsSubsystem initialization.");
@@ -228,9 +228,18 @@ namespace Quiet::Physics
 
         m_ContactListener = std::make_unique<ContactListenerImpl>(*this);
         m_PhysicsSystem->SetContactListener(m_ContactListener.get());
-        m_PhysicsSystem->SetGravity(JPH::Vec3(0.0f, -9.81f, 0.0f));
 
-        QUIET_CORE_INFO("Created physics world. gravity=(0.00, -9.81, 0.00), fixedStep=60Hz, maxBodies={}", maxBodies);
+        glm::vec3 worldGravity = gravity;
+        if (!IsFiniteVec3(worldGravity))
+        {
+            QUIET_CORE_WARN("Invalid scene gravity. Using default gravity.");
+            worldGravity = { 0.0f, -9.81f, 0.0f };
+        }
+
+        m_PhysicsSystem->SetGravity(ToJoltVec3(worldGravity));
+
+        QUIET_CORE_INFO("Created physics world. gravity=({:.2f}, {:.2f}, {:.2f}), fixedStep=60Hz, maxBodies={}",
+            worldGravity.x, worldGravity.y, worldGravity.z, maxBodies);
     }
 
     PhysicsWorld::~PhysicsWorld()

@@ -36,6 +36,7 @@ target_sources(Quiet_Engine
         src/Scene/Scene.h
         src/Scene/SceneDocument.cpp
         src/Scene/SceneHierarchy.h
+        src/Scene/ScenePhysicsSettings.h
         src/Scene/SceneRenderSettings.h
         src/Scene/SceneSerializer.cpp
         src/Scene/SceneSerializer.h

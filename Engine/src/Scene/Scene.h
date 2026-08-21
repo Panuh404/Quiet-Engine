@@ -9,6 +9,7 @@
 
 #include "Scene/Actor.h"
 #include "Scene/SceneHierarchy.h"
+#include "Scene/ScenePhysicsSettings.h"
 #include "Scene/SceneRenderSettings.h"
 #include "Physics/PhysicsContactEvent.h"
 
@@ -83,6 +84,9 @@ namespace Quiet::Scene
         [[nodiscard]] const std::vector<Actor>& GetActors() const { return m_Actors; }
         [[nodiscard]] const entt::registry& GetRegistry() const { return m_Registry; }
 
+        [[nodiscard]] ScenePhysicsSettings& GetPhysicsSettings() { return m_PhysicsSettings; }
+        [[nodiscard]] const ScenePhysicsSettings& GetPhysicsSettings() const { return m_PhysicsSettings; }
+
         [[nodiscard]] SceneRenderSettings& GetRenderSettings() { return m_RenderSettings; }
         [[nodiscard]] const SceneRenderSettings& GetRenderSettings() const { return m_RenderSettings; }
 
@@ -112,10 +116,11 @@ namespace Quiet::Scene
 
     private:
         entt::registry m_Registry;
-        SceneRenderSettings m_RenderSettings{};
         std::vector<Actor> m_Actors;
-        RuntimeMode m_RuntimeMode = RuntimeMode::None;
         SceneHierarchyState m_Hierarchy{};
+        ScenePhysicsSettings m_PhysicsSettings{};
+        SceneRenderSettings m_RenderSettings{};
+        RuntimeMode m_RuntimeMode = RuntimeMode::None;
         std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;
         std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
     };

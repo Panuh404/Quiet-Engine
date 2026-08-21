@@ -27,7 +27,7 @@ namespace Quiet::Physics
     class PhysicsWorld
     {
     public:
-        explicit PhysicsWorld(PhysicsSubsystem & subsystem);
+        explicit PhysicsWorld(PhysicsSubsystem & subsystem, const glm::vec3& gravity);
         ~PhysicsWorld();
 
         PhysicsWorld(const PhysicsWorld&) = delete;

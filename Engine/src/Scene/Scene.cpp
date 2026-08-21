@@ -30,6 +30,7 @@ namespace Quiet::Scene
 
         Clear();
 
+        m_PhysicsSettings = other.m_PhysicsSettings;
         m_RenderSettings = other.m_RenderSettings;
         for (const Actor& source : other.m_Actors)
         {
@@ -195,6 +196,7 @@ namespace Quiet::Scene
     {
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
+        m_PhysicsSettings = ScenePhysicsSettings{};
         m_RenderSettings = SceneRenderSettings{};
         m_Hierarchy = SceneHierarchyState{};
         m_Registry.clear();
@@ -634,7 +636,7 @@ namespace Quiet::Scene
             EndRuntime();
         }
         m_PhysicsContactEvents.clear();
-        m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem);
+        m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem, m_PhysicsSettings.Gravity);
         m_PhysicsWorld->BuildBodies(m_Registry);
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
