@@ -1012,6 +1012,25 @@ namespace Quiet::Editor
 
 #pragma endregion
 
+#pragma region Scene Physics
+
+    bool EditorCommands::SetSceneGravity(Scene::Scene &scene, const glm::vec3 &gravity)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(gravity.x) ||
+            !std::isfinite(gravity.y) ||
+            !std::isfinite(gravity.z))
+        {
+            return false;
+        }
+
+        scene.GetPhysicsSettings().Gravity = gravity;
+
+        return true;
+    }
+
+#pragma endregion
+
 #pragma region Camera
 
     bool EditorCommands::AddCamera(Scene::Scene& scene, Core::UUID actorID)

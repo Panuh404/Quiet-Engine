@@ -117,10 +117,18 @@ namespace Quiet::Editor
     #pragma endregion
 
     #pragma region Scene Lighting
+
         bool SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction);
         bool SetSceneLightIntensity(Scene::Scene& scene, float intensity);
         bool SetSceneAmbientColor(Scene::Scene& scene, const glm::vec3& color);
         bool SetSceneAmbientIntensity(Scene::Scene& scene, float intensity);
+
+    #pragma endregion
+
+    #pragma region Scene Physics
+
+        bool SetSceneGravity(Scene::Scene& scene, const glm::vec3& gravity);
+
     #pragma endregion
 
     #pragma region Camera

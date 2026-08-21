@@ -10,6 +10,7 @@
 #include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneRenderSettings.h"
+#include "Scene/ScenePhysicsSettings.h"
 
 
 namespace
@@ -71,10 +72,7 @@ namespace
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped(
-                "Edit scene-wide lighting and ambient render settings. "
-                "These values are saved with the scene."
-            );
+            ImGui::TextWrapped("Edit scene-wide rendering and physics settings. These values are saved with the scene.");
             ImGui::PopStyleColor();
         }
         ImGui::EndChild();
@@ -115,14 +113,7 @@ namespace
         BeginPropertyRow(label);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
-        const bool changed = ImGui::DragFloat(
-            "##Value",
-            &value,
-            speed,
-            minValue,
-            maxValue,
-            "%.3f"
-        );
+        const bool changed = ImGui::DragFloat("##Value", &value, speed, minValue, maxValue, "%.3f");
 
         tracked.Begin();
         tracked.End();
@@ -159,14 +150,7 @@ namespace
 
             ImGui::SetNextItemWidth(fieldWidth);
 
-            changed |= ImGui::DragFloat(
-                "##Axis",
-                &axisValue,
-                speed,
-                minValue,
-                maxValue,
-                "%.3f"
-            );
+            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f");
 
             tracked.Begin();
             tracked.End();
@@ -270,16 +254,29 @@ namespace
         commands.EndInteraction(scene);
     }
 
-    void ResetSceneLighting(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    void ResetScenePhysics(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
     {
-        const Quiet::Scene::SceneRenderSettings defaults{};
+        const Quiet::Scene::ScenePhysicsSettings defaults{};
+        commands.BeginInteraction(scene);
+        commands.SetSceneGravity(scene, defaults.Gravity);
+        commands.EndInteraction(scene);
+    }
+
+    void ResetAllSceneSettings(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    {
+        const Quiet::Scene::SceneRenderSettings renderDefaults{};
+        const Quiet::Scene::ScenePhysicsSettings physicsDefaults{};
 
         commands.BeginInteraction(scene);
 
-        commands.SetSceneLightDirection(scene, defaults.LightDirection);
-        commands.SetSceneLightIntensity(scene, defaults.LightIntensity);
-        commands.SetSceneAmbientColor(scene, defaults.AmbientColor);
-        commands.SetSceneAmbientIntensity(scene, defaults.AmbientIntensity);
+        // Scene Rendering
+        commands.SetSceneLightDirection(scene, renderDefaults.LightDirection);
+        commands.SetSceneLightIntensity(scene, renderDefaults.LightIntensity);
+        commands.SetSceneAmbientColor(scene, renderDefaults.AmbientColor);
+        commands.SetSceneAmbientIntensity(scene, renderDefaults.AmbientIntensity);
+
+        // Scene Physics
+        commands.SetSceneGravity(scene, physicsDefaults.Gravity);
 
         commands.EndInteraction(scene);
     }
@@ -308,35 +305,46 @@ namespace Quiet::Renderer::UI
                 isEditMode
             };
 
-            Scene::SceneRenderSettings& settings = scene.GetRenderSettings();
+            Scene::SceneRenderSettings& renderSettings = scene.GetRenderSettings();
+            Scene::ScenePhysicsSettings& physicsSettings = scene.GetPhysicsSettings();
 
             if (BeginSettingsCard("Lighting"))
             {
                 ImGui::PushID("SceneSettingsLighting");
 
-                glm::vec3 lightDirection = settings.LightDirection;
+                glm::vec3 lightDirection = renderSettings.LightDirection;
                 if (DrawVec3Row("Direction", lightDirection, 0.01f, -1.0f, 1.0f, tracked))
+                {
                     editorCommands.SetSceneLightDirection(scene, lightDirection);
+                }
 
-                float lightIntensity = settings.LightIntensity;
+                float lightIntensity = renderSettings.LightIntensity;
                 if (DrawFloatRow("Intensity", lightIntensity, 0.01f, 0.0f, 10.0f, tracked))
+                {
                     editorCommands.SetSceneLightIntensity(scene, lightIntensity);
+                }
 
                 ImGui::Spacing();
 
                 const float normalizeButtonWidth = SZ::Px(172.0f);
                 const float resetLightingButtonWidth = SZ::Px(132.0f);
 
-                if (QUI::EditorButton("Normalize Direction", ImVec2(normalizeButtonWidth, 0.0f), isEditMode))
+                if (EditorButton("Normalize Direction", ImVec2(normalizeButtonWidth, 0.0f), isEditMode))
+                {
                     NormalizeSceneLightDirection(scene, editorCommands);
+                }
 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                {
                     ImGui::SetTooltip("Normalize the scene light direction vector.");
+                }
 
                 SameLineIfEnoughWidth(resetLightingButtonWidth);
 
-                if (QUI::EditorButton("Reset Lighting", ImVec2(resetLightingButtonWidth, 0.0f), isEditMode))
+                if (EditorButton("Reset Lighting", ImVec2(resetLightingButtonWidth, 0.0f), isEditMode))
+                {
                     ResetSceneDirectionalLighting(scene, editorCommands);
+                }
 
                 ImGui::PopID();
             }
@@ -347,11 +355,11 @@ namespace Quiet::Renderer::UI
             {
                 ImGui::PushID("SceneSettingsAmbient");
 
-                glm::vec3 ambientColor = settings.AmbientColor;
+                glm::vec3 ambientColor = renderSettings.AmbientColor;
                 if (DrawColor3Row("Color", ambientColor, tracked))
                     editorCommands.SetSceneAmbientColor(scene, ambientColor);
 
-                float ambientIntensity = settings.AmbientIntensity;
+                float ambientIntensity = renderSettings.AmbientIntensity;
                 if (DrawFloatRow("Intensity", ambientIntensity, 0.01f, 0.0f, 5.0f, tracked))
                     editorCommands.SetSceneAmbientIntensity(scene, ambientIntensity);
 
@@ -363,10 +371,39 @@ namespace Quiet::Renderer::UI
                 ImGui::PopID();
             }
 
+            ImGui::Spacing();
+
+            if (BeginSettingsCard("Physics"))
+            {
+                ImGui::PushID("SceneSettingsPhysics");
+
+                glm::vec3 gravity = physicsSettings.Gravity;
+                if (DrawVec3Row("Gravity", gravity, 0.05f, 0.0f, 0.0f, tracked))
+                {
+                    editorCommands.SetSceneGravity(scene, gravity);
+                }
+
+                ImGui::Spacing();
+
+                if (EditorButton("Reset Physics", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+                {
+                    ResetScenePhysics(scene, editorCommands);
+                }
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                {
+                    ImGui::SetTooltip("Restore gravity to (0, -9.81, 0).");
+                }
+
+                ImGui::PopID();
+            }
+
             ImGui::Separator();
 
-            if (QUI::EditorButton("Reset All", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
-                ResetSceneLighting(scene, editorCommands);
+            if (EditorButton("Reset All", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+            {
+                ResetAllSceneSettings(scene, editorCommands);
+            }
 
             if (!isEditMode) ImGui::EndDisabled();
         }
