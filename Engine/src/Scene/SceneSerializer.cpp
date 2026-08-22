@@ -349,6 +349,37 @@ namespace Quiet::Scene
                 actorJson["camera"] = SerializeCamera(*camera);
             }
 
+            if (const AudioSourceComponent* audioSource = actor.TryGetComponent<AudioSourceComponent>())
+            {
+                actorJson["audio_source"] =
+                {
+                    {
+                        "audio_asset_id",
+                        audioSource->AudioAssetID
+                    },
+                    {
+                        "volume",
+                        audioSource->Volume
+                    },
+                    {
+                        "pitch",
+                        audioSource->Pitch
+                    },
+                    {
+                        "play_on_start",
+                        audioSource->PlayOnStart
+                    },
+                    {
+                        "loop",
+                        audioSource->Loop
+                    },
+                    {
+                        "spatial",
+                        audioSource->Spatial
+                    }
+                };
+            }
+
             if (const RigidBodyComponent* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
             {
                 actorJson["rigid_body"] =
@@ -579,6 +610,21 @@ namespace Quiet::Scene
             if (actorJson.contains("camera"))
             {
                 DeserializeCamera(actorJson["camera"], actor);
+            }
+
+            if (actorJson.contains("audio_source"))
+            {
+                const auto& audioSourceJson = actorJson["audio_source"];
+                AudioSourceComponent audioSource{};
+
+                audioSource.AudioAssetID = audioSourceJson.value("audio_asset_id", std::string{});
+                audioSource.Volume = audioSourceJson.value("volume", audioSource.Volume);
+                audioSource.Pitch = audioSourceJson.value("pitch", audioSource.Pitch);
+                audioSource.PlayOnStart = audioSourceJson.value("play_on_start", audioSource.PlayOnStart);
+                audioSource.Loop = audioSourceJson.value("loop", audioSource.Loop);
+                audioSource.Spatial = audioSourceJson.value("spatial", audioSource.Spatial);
+
+                actor.AddComponent<AudioSourceComponent>(audioSource);
             }
 
             if (actorJson.contains("rigid_body"))

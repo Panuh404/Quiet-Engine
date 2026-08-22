@@ -89,6 +89,21 @@ namespace
                AreFloatsEqual(lhs->FarClip, rhs->FarClip);
     }
 
+    bool AreAudioSourcesEqual(const std::optional<Quiet::Scene::AudioSourceComponent>& lhs,
+                              const std::optional<Quiet::Scene::AudioSourceComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            lhs->AudioAssetID == rhs->AudioAssetID &&
+            AreFloatsEqual(lhs->Volume, rhs->Volume) &&
+            AreFloatsEqual(lhs->Pitch, rhs->Pitch) &&
+            lhs->PlayOnStart == rhs->PlayOnStart &&
+            lhs->Loop == rhs->Loop &&
+            lhs->Spatial == rhs->Spatial;
+    }
+
     bool AreRigidBodiesEqual(const std::optional<Quiet::Scene::RigidBodyComponent>& lhs,
                              const std::optional<Quiet::Scene::RigidBodyComponent>& rhs)
     {
@@ -191,6 +206,7 @@ namespace
             AreDirectionalLightsEqual(lhs.DirectionalLight, rhs.DirectionalLight) &&
             AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
             AreCamerasEqual(lhs.Camera, rhs.Camera) &&
+            AreAudioSourcesEqual(lhs.AudioSource, rhs.AudioSource) &&
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
             AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
@@ -329,6 +345,9 @@ namespace Quiet::Editor
             if (const auto* camera = actor.TryGetComponent<Scene::CameraComponent>())
                 actorSnapshot.Camera = *camera;
 
+            if (const auto* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>())
+                actorSnapshot.AudioSource = *audioSource;
+
             if (const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>())
                 actorSnapshot.RigidBody = *rigidBody;
 
@@ -375,6 +394,9 @@ namespace Quiet::Editor
 
             if (actorSnapshot.Camera)
                 actor.AddComponent<Scene::CameraComponent>(*actorSnapshot.Camera);
+
+            if (actorSnapshot.AudioSource)
+                actor.AddComponent<Scene::AudioSourceComponent>(*actorSnapshot.AudioSource);
 
             if (actorSnapshot.RigidBody)
                 actor.AddComponent<Scene::RigidBodyComponent>(*actorSnapshot.RigidBody);

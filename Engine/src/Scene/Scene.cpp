@@ -52,6 +52,9 @@ namespace Quiet::Scene
             if (const auto* component = source.TryGetComponent<CameraComponent>())
                 target.AddComponent<CameraComponent>(*component);
 
+            if (const auto* component = source.TryGetComponent<AudioSourceComponent>())
+                target.AddComponent<AudioSourceComponent>(*component);
+
             if (const auto* component = source.TryGetComponent<RigidBodyComponent>())
                 target.AddComponent<RigidBodyComponent>(*component);
 
@@ -120,6 +123,7 @@ namespace Quiet::Scene
         std::optional<DirectionalLightComponent> directionalLight;
         std::optional<RotatorComponent> rotator;
         std::optional<CameraComponent> camera;
+        std::optional<AudioSourceComponent> audioSource;
         std::optional<RigidBodyComponent> rigidBody;
         std::optional<BoxColliderComponent> boxCollider;
         std::optional<SphereColliderComponent> sphereCollider;
@@ -139,6 +143,9 @@ namespace Quiet::Scene
 
         if (const auto* component = source->TryGetComponent<CameraComponent>())
             camera = *component;
+
+        if (const auto* component = source->TryGetComponent<AudioSourceComponent>())
+            audioSource = *component;
 
         if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
             rigidBody = *component;
@@ -160,6 +167,7 @@ namespace Quiet::Scene
         if (directionalLight)   duplicate.AddComponent<DirectionalLightComponent>(*directionalLight);
         if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
         if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
+        if (audioSource)        duplicate.AddComponent<AudioSourceComponent>(*audioSource);
         if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
         if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
         if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);

@@ -999,7 +999,8 @@ namespace Quiet::Renderer::UI::Assets
 
                 case Project::AssetType::Audio:
                 {
-                    // AudioSourceComponent goes right here
+                    const Scene::AudioSourceComponent* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>();
+                    referenced = audioSource && audioSource->AudioAssetID == record.ID;
                     break;
                 }
 
