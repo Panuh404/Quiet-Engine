@@ -23,6 +23,10 @@ target_sources(Quiet_Engine
         # Input
         src/Input/Input.cpp
 
+        # Audio
+        src/Audio/AudioSubsystem.h
+        src/Audio/AudioSubsystem.cpp
+
         # Physics
         src/Physics/PhysicsContactEvent.h
         src/Physics/PhysicsSubsystem.h
@@ -305,6 +309,7 @@ target_link_libraries(Quiet_Engine
 
     PRIVATE
         EnTT::EnTT
+        miniaudio
         Jolt
 )
 

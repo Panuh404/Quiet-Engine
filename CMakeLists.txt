@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Quiet VERSION 0.1.0 LANGUAGES CXX)
+project(Quiet VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -164,6 +164,27 @@ FetchContent_Declare(
         SOURCE_SUBDIR   Build
 )
 
+# miniaudio
+set(MINIAUDIO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(MINIAUDIO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(MINIAUDIO_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(MINIAUDIO_INSTALL OFF CACHE BOOL "" FORCE)
+
+# Quiet will add optional DSP/acoustic integrations deliberately.
+set(MINIAUDIO_NO_EXTRA_NODES ON CACHE BOOL "" FORCE)
+
+# Initial Quiet audio support targets miniaudio's built-in
+# WAV, FLAC and MP3 decoders. Vorbis/Opus can be added later.
+set(MINIAUDIO_NO_LIBVORBIS ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_NO_LIBOPUS ON CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+        miniaudio
+        GIT_REPOSITORY  https://github.com/mackron/miniaudio.git
+        GIT_TAG         0.11.25
+        GIT_SHALLOW     TRUE
+)
+
 FetchContent_MakeAvailable(
         glfw
         spdlog
@@ -175,6 +196,7 @@ FetchContent_MakeAvailable(
         imgui_file_dialog
         stb
         entt
+        miniaudio
         jolt_physics
 )
 

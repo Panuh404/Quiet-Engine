@@ -32,6 +32,11 @@ namespace Quiet::Input
     class Input;
 }
 
+namespace Quiet::Audio
+{
+    class AudioSubsystem;
+}
+
 namespace Quiet::Physics
 {
     class PhysicsSubsystem;
@@ -172,6 +177,7 @@ namespace Quiet::Core
         std::unique_ptr<Platform::Window> m_Window;
         std::unique_ptr<Input::Input> m_Input;
         std::unique_ptr<Physics::PhysicsSubsystem> m_PhysicsSubsystem;
+        std::unique_ptr<Audio::AudioSubsystem> m_AudioSubsystem;
         std::unique_ptr<Scene::FreeCamera> m_FreeCamera;
         std::unique_ptr<Scene::Scene> m_Scene;
         std::unique_ptr<Scene::Scene> m_RuntimeScene;
