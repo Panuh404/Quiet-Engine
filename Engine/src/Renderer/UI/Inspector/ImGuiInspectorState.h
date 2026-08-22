@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "Scene/Components/AudioSourceComponent.h"
 #include "Scene/Components/BoxColliderComponent.h"
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/CapsuleColliderComponent.h"
@@ -26,6 +27,7 @@ namespace Quiet::Renderer::UI::Inspector
         DirectionalLight,
         Rotator,
         Camera,
+        AudioSource,
 
         RigidBody,
         BoxCollider,
@@ -46,6 +48,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::DirectionalLightComponent DirectionalLight{};
         Scene::RotatorComponent Rotator{};
         Scene::CameraComponent Camera{};
+        Scene::AudioSourceComponent AudioSource{};
         Scene::RigidBodyComponent RigidBody{};
         Scene::BoxColliderComponent BoxCollider{};
         Scene::SphereColliderComponent SphereCollider{};

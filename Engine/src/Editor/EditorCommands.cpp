@@ -342,6 +342,7 @@ namespace Quiet::Editor
 #pragma endregion
 
 #pragma region Static Meshes
+
     bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID,
                                                const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary,
                                                const glm::vec3& position)
@@ -1025,7 +1026,6 @@ namespace Quiet::Editor
         }
 
         scene.GetPhysicsSettings().Gravity = gravity;
-
         return true;
     }
 
@@ -1072,7 +1072,6 @@ namespace Quiet::Editor
                 for (Scene::Actor& other : scene.GetActors())
                 {
                     Scene::CameraComponent* otherCamera = other.TryGetComponent<Scene::CameraComponent>();
-
                     if (!otherCamera) continue;
                     otherCamera->Primary = true;
 
@@ -1232,6 +1231,171 @@ namespace Quiet::Editor
         camera->NearClip = validatedNearClip;
         camera->FarClip = std::clamp(farClip, minimumFarClip, 100000.0f);
         return true;
+    }
+
+ #pragma endregion
+
+#pragma region Audio
+
+    bool EditorCommands::AddAudioSource(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::AudioSourceComponent>()) return false;
+
+            actor->AddComponent<Scene::AudioSourceComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveAudioSource(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::AudioSourceComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::AudioSourceComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetAudioSource(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource) return false;
+            *audioSource = Scene::AudioSourceComponent{};
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteAudioSourceValues(Scene::Scene& scene, const Core::UUID actorID, const Scene::AudioSourceComponent& audioSource, const Project::ProjectContext& projectContext)
+    {
+        if (!std::isfinite(audioSource.Volume) ||
+            !std::isfinite(audioSource.Pitch))
+            return false;
+
+        if (!audioSource.AudioAssetID.empty())
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), audioSource.AudioAssetID);
+            if (!record || record->Type != Project::AssetType::Audio) return false;
+        }
+
+        Scene::AudioSourceComponent validated = audioSource;
+        validated.Volume = std::clamp(audioSource.Volume, 0.0f, 4.0f);
+        validated.Pitch = std::clamp(audioSource.Pitch, 0.01f, 4.0f);
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!existing) return false;
+            *existing = validated;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioSourceAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext)
+    {
+        if (!audioAssetID.empty())
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), audioAssetID);
+            if (!record || record->Type != Project::AssetType::Audio) return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource || audioSource->AudioAssetID == audioAssetID) return false;
+            audioSource->AudioAssetID = audioAssetID;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioSourceVolume(Scene::Scene& scene, const Core::UUID actorID, const float volume)
+    {
+        if (!CanEditScene() || !std::isfinite(volume)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+        audioSource->Volume = std::clamp(volume, 0.0f, 4.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourcePitch(Scene::Scene& scene, const Core::UUID actorID, const float pitch)
+    {
+        if (!CanEditScene() || !std::isfinite(pitch)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+        audioSource->Pitch = std::clamp(pitch, 0.01f, 4.0f);
+
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourcePlayOnStart(Scene::Scene& scene, const Core::UUID actorID, const bool playOnStart)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource) return false;
+            audioSource->PlayOnStart = playOnStart;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioSourceLoop(Scene::Scene& scene, const Core::UUID actorID, const bool loop)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource) return false;
+            audioSource->Loop = loop;
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioSourceSpatial(Scene::Scene& scene, const Core::UUID actorID, const bool spatial)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource) return false;
+            audioSource->Spatial = spatial;
+
+            return true;
+        });
     }
 
 #pragma endregion

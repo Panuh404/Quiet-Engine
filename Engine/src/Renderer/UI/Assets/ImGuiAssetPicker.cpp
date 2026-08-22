@@ -75,10 +75,8 @@ namespace
         );
     }
 
-    void DrawTexturePickerFallback(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const ImVec4& color)
+    void DrawAssetPickerFallback(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const char* label, const ImVec4& color)
     {
-        const char* label = "TEX";
-
         const ImVec2 textSize = ImGui::CalcTextSize(label);
         const ImVec2 textPosition(min.x + ((max.x - min.x) - textSize.x) * 0.5f, min.y + ((max.y - min.y) - textSize.y) * 0.5f);
 
@@ -228,7 +226,8 @@ namespace
             }
             else
             {
-                DrawTexturePickerFallback(drawList, iconMin, iconMax, assignable ? QUI::EditorColor::AccentHover : QUI::EditorColor::TextDim);
+                const char* label = record.Type == Quiet::Project::AssetType::Audio ? "AUD" : "TEX";
+                DrawAssetPickerFallback(drawList, iconMin, iconMax, label, assignable ? QUI::EditorColor::AccentHover : QUI::EditorColor::TextDim);
             }
         }
 

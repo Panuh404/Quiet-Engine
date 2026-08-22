@@ -15,6 +15,7 @@ namespace Quiet::Scene
     class Scene;
     enum class RigidBodyMotionType : std::uint8_t;
 
+    struct AudioSourceComponent;
     struct CameraComponent;
     struct DirectionalLightComponent;
     struct MaterialComponent;
@@ -141,6 +142,22 @@ namespace Quiet::Editor
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);
         bool SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip);
+    #pragma endregion
+
+    #pragma region Audio
+
+        bool AddAudioSource(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveAudioSource(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetAudioSource(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteAudioSourceValues(Scene::Scene& scene, Core::UUID actorID, const Scene::AudioSourceComponent& audioSource, const Project::ProjectContext& projectContext);
+
+        bool SetAudioSourceAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext);
+        bool SetAudioSourceVolume(Scene::Scene& scene, Core::UUID actorID, float volume);
+        bool SetAudioSourcePitch(Scene::Scene& scene, Core::UUID actorID, float pitch);
+        bool SetAudioSourcePlayOnStart(Scene::Scene& scene, Core::UUID actorID, bool playOnStart);
+        bool SetAudioSourceLoop(Scene::Scene& scene, Core::UUID actorID, bool loop);
+        bool SetAudioSourceSpatial(Scene::Scene& scene, Core::UUID actorID, bool spatial);
+
     #pragma endregion
 
     #pragma region Physics

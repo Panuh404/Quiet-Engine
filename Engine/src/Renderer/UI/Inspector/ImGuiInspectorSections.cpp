@@ -138,6 +138,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddDirectionalLight = !actor.HasComponent<Scene::DirectionalLightComponent>();
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
+        const bool canAddAudioSource = !actor.HasComponent<Scene::AudioSourceComponent>();
         const bool canAddRigidBody = !actor.HasComponent<Scene::RigidBodyComponent>();
 
         const bool hasBoxCollider = actor.HasComponent<Scene::BoxColliderComponent>();
@@ -155,6 +156,7 @@ namespace Quiet::Renderer::UI::Inspector
             canAddDirectionalLight ||
             canAddRotator ||
             canAddCamera ||
+            canAddAudioSource ||
             canAddRigidBody ||
             canAddBoxCollider ||
             canAddSphereCollider ||
@@ -220,6 +222,12 @@ namespace Quiet::Renderer::UI::Inspector
             if (EditorMenuItem("Camera", nullptr, false, canAddCamera))
             {
                 context.Commands.AddCamera(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("Audio Source", nullptr, false, canAddAudioSource))
+            {
+                context.Commands.AddAudioSource(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -732,6 +740,96 @@ namespace Quiet::Renderer::UI::Inspector
         if (DrawFloatPropertyRow("Far Clip", farClip, 1.0f, minimumFarClip, 100000.0f, tracked))
         {
             context.Commands.SetCameraFarClip(context.Scene, actor.GetID(), farClip);
+        }
+    }
+
+    void DrawAudioSourceSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)
+    {
+        Scene::AudioSourceComponent* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return;
+
+        const bool canPasteAudioSource = state.Clipboard.Type == ComponentClipboardType::AudioSource;
+        const auto header = BeginInspectorComponent(
+            state,
+            "Audio Source",
+            "AudioSourceComponentOptions",
+            true,
+            true,
+            true,
+            canPasteAudioSource,
+            canPasteAudioSource ? nullptr : "Copy Audio Source values first.");
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveAudioSource(context.Scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            state.Clipboard.Type = ComponentClipboardType::AudioSource;
+            state.Clipboard.AudioSource = *audioSource;
+        }
+        if (header.PasteRequested && canPasteAudioSource)
+        {
+            context.Commands.PasteAudioSourceValues(context.Scene, actor.GetID(), state.Clipboard.AudioSource, context.ProjectContext);
+        }
+        if (header.ResetRequested)
+        {
+            context.Commands.ResetAudioSource(context.Scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        Assets::AssetPickerOptions audioPickerOptions{};
+        audioPickerOptions.Type = Project::AssetType::Audio;
+        audioPickerOptions.AllowNone = true;
+
+        std::string selectedAudioAssetID;
+        if (DrawAssetPickerPropertyRow("Audio", context.ProjectContext, audioPickerOptions, audioSource->AudioAssetID, selectedAudioAssetID))
+        {
+            context.Commands.SetAudioSourceAsset(context.Scene, actor.GetID(), selectedAudioAssetID, context.ProjectContext);
+        }
+
+        float volume = audioSource->Volume;
+        if (DrawFloatPropertyRow("Volume", volume, 0.01f, 0.0f, 4.0f, tracked))
+        {
+            context.Commands.SetAudioSourceVolume(context.Scene, actor.GetID(), volume);
+        }
+
+        float pitch = audioSource->Pitch;
+        if (DrawFloatPropertyRow("Pitch", pitch, 0.01f, 0.01f, 4.0f, tracked))
+        {
+            context.Commands.SetAudioSourcePitch(context.Scene, actor.GetID(), pitch);
+        }
+
+        bool playOnStart = audioSource->PlayOnStart;
+        if (DrawCheckboxPropertyRow("Play On Start", playOnStart))
+        {
+            context.Commands.SetAudioSourcePlayOnStart(context.Scene, actor.GetID(), playOnStart);
+        }
+
+        bool loop = audioSource->Loop;
+        if (DrawCheckboxPropertyRow("Loop", loop))
+        {
+            context.Commands.SetAudioSourceLoop(context.Scene, actor.GetID(), loop);
+        }
+
+        bool spatial = audioSource->Spatial;
+        if (DrawCheckboxPropertyRow("Spatial", spatial))
+        {
+            context.Commands.SetAudioSourceSpatial(context.Scene, actor.GetID(), spatial);
+        }
+
+        if (audioSource->AudioAssetID.empty())
+        {
+            ImGui::Spacing();
+
+            if (context.ProjectContext.EnumerateAudioAssetIDs().empty())
+            {
+                DrawInspectorHint("No audio assets are registered.");
+            }
+            else
+            {
+                DrawInspectorHint("Assign an Audio asset to this source.");
+            }
         }
     }
 

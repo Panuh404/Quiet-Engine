@@ -41,6 +41,7 @@ namespace Quiet::Renderer::UI::Inspector
     void DrawDirectionalLightSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawRotatorSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawCameraSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked, bool isEditMode);
+    void DrawAudioSourceSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawRigidBodySection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawBoxColliderSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
     void DrawSphereColliderSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked);
