@@ -68,7 +68,7 @@ namespace Quiet::Project
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
-        bool LoadExternalMesh(const Project::AssetRecord& record, bool forceReimport);
+        bool LoadExternalMesh(const AssetRecord& record, bool forceReimport);
         bool LoadExternalTexture(const AssetRecord& record, bool forceReimport);
 
         void PrepareIncrementalMeshAssets();

@@ -24,21 +24,23 @@ namespace
     namespace Vulkan = Quiet::Renderer::Vulkan;
 
     std::string MakeAssetTypeFilterDropdownLabel(
-         const Quiet::Renderer::UI::Assets::AssetBrowserTypeFilter filter,
-         const std::size_t meshCount,
-         const std::size_t textureCount)
+        const Assets::AssetBrowserTypeFilter filter,
+        const std::size_t meshCount,
+        const std::size_t textureCount,
+        const std::size_t audioCount)
     {
-        using Quiet::Renderer::UI::Assets::AssetBrowserTypeFilter;
+        using Assets::AssetBrowserTypeFilter;
         switch (filter)
         {
             case AssetBrowserTypeFilter::Meshes:    return "Filter: Meshes " + std::to_string(meshCount);
             case AssetBrowserTypeFilter::Textures:  return "Filter: Textures " + std::to_string(textureCount);
+            case AssetBrowserTypeFilter::Audio:     return "Filter: Audio " + std::to_string(audioCount);
             case AssetBrowserTypeFilter::All:
             default:                                return "Filter: All";
         }
     }
 
-    const char* ToAssetBrowserViewModeLabel(const Quiet::Renderer::UI::Assets::AssetBrowserViewMode viewMode)
+    const char* ToAssetBrowserViewModeLabel(const Assets::AssetBrowserViewMode viewMode)
     {
         using Quiet::Renderer::UI::Assets::AssetBrowserViewMode;
         switch (viewMode)
@@ -49,9 +51,9 @@ namespace
         }
     }
 
-    const char* ToAssetBrowserThumbnailSizeLabel(const Quiet::Renderer::UI::Assets::AssetBrowserThumbnailSize thumbnailSize)
+    const char* ToAssetBrowserThumbnailSizeLabel(const Assets::AssetBrowserThumbnailSize thumbnailSize)
     {
-        using Quiet::Renderer::UI::Assets:: AssetBrowserThumbnailSize;
+        using Assets:: AssetBrowserThumbnailSize;
         switch (thumbnailSize)
         {
             case AssetBrowserThumbnailSize::Tiny:       return "Tiny";
@@ -72,7 +74,7 @@ namespace
     }
 
     std::string MakeDiagnosticsDropdownLabel(
-        const Quiet::Renderer::UI::Assets::AssetBrowserDiagnosticsFilter filter,
+        const Assets::AssetBrowserDiagnosticsFilter filter,
         const std::size_t issueCount,
         const std::size_t missingCount,
         const std::size_t externalCount)
@@ -163,6 +165,7 @@ namespace Quiet::Renderer::UI::Assets
         const bool projectSourceActive = state.CurrentSource == AssetBrowserSource::Project;
         const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh, state.CurrentSource);
         const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture, state.CurrentSource);
+        const std::size_t audioCount = CountAssetByType(registry, Project::AssetType::Audio, state.CurrentSource);
         const AssetDiagnosticsCounts diagnosticsCounts = CountAssetDiagnostics(projectContext, state.CurrentSource);
         const std::size_t issueCount = diagnosticsCounts.Issues;
         const std::size_t missingCount = diagnosticsCounts.Missing;
@@ -326,13 +329,14 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        const std::size_t totalAssetCount = meshCount + textureCount;
-        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount);
+        const std::size_t totalAssetCount = meshCount + textureCount + audioCount;
+        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount, audioCount);
         if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
         {
             const std::string allLabel = "All " + std::to_string(totalAssetCount);
             const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
             const std::string texturesLabel = "Textures " + std::to_string(textureCount);
+            const std::string audioLabel = "Audio " + std::to_string(audioCount);
 
             // All
             if (EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::All))
@@ -345,6 +349,10 @@ namespace Quiet::Renderer::UI::Assets
             // Textures
             if (EditorMenuItem(texturesLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Textures))
                 typeFilter = AssetBrowserTypeFilter::Textures;
+
+            // Audio
+            if (EditorMenuItem(audioLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Audio))
+                typeFilter = AssetBrowserTypeFilter::Audio;
 
             ImGui::EndPopup();
         }

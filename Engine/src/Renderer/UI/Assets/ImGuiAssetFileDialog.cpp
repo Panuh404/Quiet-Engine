@@ -20,9 +20,14 @@ namespace
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
     constexpr const char* kAssetFileDialogKey = "Quiet_SelectAssetFile";
     constexpr const char* kSupportedAssetFilters =
-        "All Supported" "{.obj,.fbx,.gltf,.glb,.dae,.png,.jpg,.jpeg,.tga,.bmp},"
-        "Meshes (*.obj *.fbx *.gltf *.glb *.dae)" "{.obj,.fbx,.gltf,.glb,.dae},"
-        "Textures (*.png *.jpg *.jpeg *.tga *.bmp)" "{.png,.jpg,.jpeg,.tga,.bmp}";
+        "All Supported"
+        "{.obj,.fbx,.gltf,.glb,.dae,.png,.jpg,.jpeg,.tga,.bmp,.wav,.flac,.mp3},"
+        "Meshes (*.obj *.fbx *.gltf *.glb *.dae)"
+        "{.obj,.fbx,.gltf,.glb,.dae},"
+        "Textures (*.png *.jpg *.jpeg *.tga *.bmp)"
+        "{.png,.jpg,.jpeg,.tga,.bmp},"
+        "Audio (*.wav *.flac *.mp3)"
+        "{.wav,.flac,.mp3}";
 
 
     void ConfigureAssetFileDialogStyles()
@@ -34,20 +39,28 @@ namespace
         const ImVec4 folderColor  = ImVec4(0.34f, 0.58f, 0.92f, 1.0f);
         const ImVec4 meshColor    = ImVec4(0.35f, 0.78f, 0.50f, 1.0f);
         const ImVec4 textureColor = ImVec4(0.72f, 0.58f, 0.96f, 1.0f);
+        const ImVec4 audioColor   = ImVec4(0.92f, 0.63f, 0.26f, 1.0f);
 
         dialog->SetFileStyle(IGFD_FileStyleByTypeDir, "", folderColor, "");
 
+        // Mesh
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".obj",  meshColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".fbx",  meshColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gltf", meshColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".glb",  meshColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".dae",  meshColor, "");
 
+        // Texture
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png",  textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".jpg",  textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".jpeg", textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".tga",  textureColor, "");
         dialog->SetFileStyle(IGFD_FileStyleByExtention, ".bmp",  textureColor, "");
+
+        // Audio
+        dialog->SetFileStyle(IGFD_FileStyleByExtention, ".wav",  audioColor, "");
+        dialog->SetFileStyle(IGFD_FileStyleByExtention, ".flac", audioColor, "");
+        dialog->SetFileStyle(IGFD_FileStyleByExtention, ".mp3",  audioColor, "");
     }
 }
 
@@ -58,6 +71,7 @@ namespace Quiet::Renderer::UI
         const std::string ext = Assets::ToLowerCopy(path.extension().string());
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" || ext == ".dae") return Project::AssetType::Mesh;
         if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp") return Project::AssetType::Texture;
+        if (ext == ".wav" || ext == ".flac" || ext == ".mp3") return Project::AssetType::Audio; 
         return Project::AssetType::Unknown;
     }
 

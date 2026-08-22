@@ -16,7 +16,7 @@ namespace
 
     constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_ASSET_ID";
 
-    std::vector<std::string> BuildDragAssetIDs(const Quiet::Project::AssetRecord& record, const Quiet::Renderer::UI::Assets::AssetBrowserState& state)
+    std::vector<std::string> BuildDragAssetIDs(const Quiet::Project::AssetRecord& record, const Assets::AssetBrowserState& state)
     {
         std::vector<std::string> assetIDs;
         assetIDs.push_back(record.ID);
@@ -162,6 +162,10 @@ namespace Quiet::Renderer::UI::Assets
 
             case Project::AssetType::Texture:
                 DrawPillLabel("Texture", EditorColor::Success, ImVec4(0.035f, 0.105f, 0.065f, 1.0f));
+                break;
+
+            case Project::AssetType::Audio:
+                DrawPillLabel("Audio", EditorColor::Warning, ImVec4(0.130f, 0.085f, 0.025f, 1.0f));
                 break;
 
             case Project::AssetType::Unknown:

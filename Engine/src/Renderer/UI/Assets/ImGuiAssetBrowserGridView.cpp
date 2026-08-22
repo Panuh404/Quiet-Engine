@@ -142,13 +142,25 @@ namespace
         }
 
         const char* fallbackLabel = nullptr;
-        if (metrics.CompactPreview)
+
+        switch (record.Type)
         {
-            fallbackLabel = record.Type == Quiet::Project::AssetType::Texture ? "TEX" : "?";
-        }
-        else
-        {
-            fallbackLabel = record.Type == Quiet::Project::AssetType::Texture ? "TEXTURE" : "ASSET";
+            case Quiet::Project::AssetType::Texture:
+                fallbackLabel = metrics.CompactPreview ? "TEX" : "TEXTURE";
+                break;
+
+            case Quiet::Project::AssetType::Audio:
+                fallbackLabel = metrics.CompactPreview ? "AUD" : "AUDIO";
+                break;
+
+            case Quiet::Project::AssetType::Mesh:
+                fallbackLabel = metrics.CompactPreview ? "MESH" : "MESH";
+                break;
+
+            case Quiet::Project::AssetType::Unknown:
+            default:
+                fallbackLabel = metrics.CompactPreview ? "?" : "ASSET";
+                break;
         }
 
         const ImVec2 textSize = ImGui::CalcTextSize(fallbackLabel);

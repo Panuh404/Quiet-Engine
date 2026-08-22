@@ -630,6 +630,10 @@ namespace Quiet::Renderer::UI::Assets
                     registered = projectContext.RegisterTextureAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
                     break;
 
+                case Project::AssetType::Audio:
+                    registered = projectContext.RegisterAudioAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    break;
+
                 case Project::AssetType::Unknown:
                 default:
                     registered = false;

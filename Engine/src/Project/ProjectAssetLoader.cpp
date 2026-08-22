@@ -205,12 +205,7 @@ namespace
             Quiet::Renderer::Vulkan::ImportedMaterial& material = importResult.Materials[materialIndex];
             if (material.BaseColorTexturePath.empty()) continue;
 
-            const std::string textureAssetID =
-                MakeImportedMaterialTextureAssetID(
-                    meshAssetID,
-                    material.Name,
-                    materialIndex
-                );
+            const std::string textureAssetID = MakeImportedMaterialTextureAssetID(meshAssetID, material.Name, materialIndex);
 
             if (material.BaseColorTextureEmbedded)
             {
@@ -410,6 +405,12 @@ namespace Quiet::Project
                     return false;
                 }
                 return LoadExternalTexture(*record, forceReimport);
+            }
+
+            case AssetType::Audio:
+            {
+                QUIET_CORE_WARN("Cannot reimport audio asset '{}': audio runtime loading is not implemented yet.", record->ID);
+                return false;
             }
 
             case AssetType::Unknown:

@@ -8,7 +8,8 @@ namespace Quiet::Project
     {
         Unknown = 0,
         Mesh,
-        Texture
+        Texture,
+        Audio
     };
 
     [[nodiscard]] constexpr std::string_view ToString(const AssetType type)
@@ -17,6 +18,7 @@ namespace Quiet::Project
         {
             case AssetType::Mesh: return "Mesh";
             case AssetType::Texture: return "Texture";
+            case AssetType::Audio: return "Audio";
             case AssetType::Unknown:
             default:
                 return "Unknown";
@@ -34,6 +36,12 @@ namespace Quiet::Project
         if (value == "Texture")
         {
             outType = AssetType::Texture;
+            return true;
+        }
+
+        if (value == "Audio")
+        {
+            outType = AssetType::Audio;
             return true;
         }
 

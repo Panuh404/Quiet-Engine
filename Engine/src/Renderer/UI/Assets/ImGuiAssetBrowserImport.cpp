@@ -170,6 +170,10 @@ namespace
                 registered = projectContext.RegisterTextureAsset(assetID, destinationPath, false);
                 break;
 
+            case Project::AssetType::Audio:
+                registered = projectContext.RegisterAudioAsset(assetID, destinationPath, false);
+                break;
+
             case Project::AssetType::Unknown:
             default:
                 registered = false;
@@ -242,7 +246,7 @@ namespace Quiet::Renderer::UI::Assets
         const float browseWidth = SZ::Px(96.0f);
         ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
 
-        ImGui::InputTextWithHint("##AssetPath", "Select a mesh or texture file", assetPathBuffer.data(), assetPathBuffer.size());
+        ImGui::InputTextWithHint("##AssetPath", "Select a mesh, texture, or audio file", assetPathBuffer.data(), assetPathBuffer.size());
         ImGui::SameLine();
 
         if (EditorButton("Browse", ImVec2(browseWidth, 0.0f)))
@@ -356,11 +360,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-        ImGui::TextWrapped(
-            "Choose a supported source file. Quiet will copy it "
-            "into the selected project Assets folder and register "
-            "its project-relative path."
-        );
+        ImGui::TextWrapped("Choose a supported source file. Quiet will copy it into the selected project Assets folder and register its project-relative path.");
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);

@@ -477,6 +477,7 @@ namespace Quiet::Renderer::UI::Assets
         std::uint32_t validCount = 0;
         std::uint32_t meshCount = 0;
         std::uint32_t textureCount = 0;
+        std::uint32_t audioCount = 0;
         std::uint32_t builtInCount = 0;
         std::uint32_t issueCount = 0;
         std::uint32_t missingCount = 0;
@@ -490,6 +491,7 @@ namespace Quiet::Renderer::UI::Assets
             ++validCount;
             if (record->Type == Project::AssetType::Mesh) ++meshCount;
             else if (record->Type == Project::AssetType::Texture) ++textureCount;
+            else if (record->Type == Project::AssetType::Audio) ++audioCount;
 
             if (record->BuiltIn) ++builtInCount;
 
@@ -521,6 +523,7 @@ namespace Quiet::Renderer::UI::Assets
             DrawDetailRowUInt("Valid", validCount, labelWidth);
             DrawDetailRowUInt("Meshes", meshCount, labelWidth);
             DrawDetailRowUInt("Textures", textureCount, labelWidth);
+            DrawDetailRowUInt("Audio", audioCount, labelWidth);
             DrawDetailRowUInt("Built In", builtInCount, labelWidth);
             DrawDetailRowUInt("Issues", issueCount, labelWidth);
             DrawDetailRowUInt("Missing", missingCount, labelWidth);

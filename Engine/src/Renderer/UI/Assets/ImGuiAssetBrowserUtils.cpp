@@ -123,6 +123,7 @@ namespace Quiet::Renderer::UI::Assets
             case AssetBrowserTypeFilter::All:       return true;
             case AssetBrowserTypeFilter::Meshes:    return record.Type == Project::AssetType::Mesh;
             case AssetBrowserTypeFilter::Textures:  return record.Type == Project::AssetType::Texture;
+            case AssetBrowserTypeFilter::Audio:     return record.Type == Project::AssetType::Audio;
             default:                                return true;
         }
     }
@@ -900,6 +901,10 @@ namespace Quiet::Renderer::UI::Assets
             }
             return "Registered";
         }
+        if (record.Type == Project::AssetType::Audio)
+        {
+            return "Registered";
+        }
         return "Unknown";
     }
 
@@ -987,7 +992,12 @@ namespace Quiet::Renderer::UI::Assets
                             }
                         }
                     }
+                    break;
+                }
 
+                case Project::AssetType::Audio:
+                {
+                    // AudioSourceComponent goes right here
                     break;
                 }
 

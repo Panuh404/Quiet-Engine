@@ -10,7 +10,8 @@ namespace Quiet::Renderer::UI::Assets
     {
         All,
         Meshes,
-        Textures
+        Textures,
+        Audio
     };
 
     enum class AssetBrowserViewMode
