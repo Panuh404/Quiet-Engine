@@ -11,6 +11,11 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 #include "Scene/Scene.h"
 
+namespace Quiet::Audio
+{
+    class AudioLibrary;
+}
+
 namespace Quiet::Renderer::UI::Assets
 {
     void DrawAssetBrowserList(
@@ -21,6 +26,7 @@ namespace Quiet::Renderer::UI::Assets
         const Scene::Scene& scene,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
+        const Audio::AudioLibrary& audioLibrary,
         AssetBrowserState& state,
         std::string& pendingNavigateFolder,
         AssetBrowserFolderActionRequest& folderActionRequest,

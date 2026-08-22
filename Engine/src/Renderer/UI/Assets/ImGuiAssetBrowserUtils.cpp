@@ -1,5 +1,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 
+#include "Audio/AudioLibrary.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
@@ -871,11 +873,11 @@ namespace Quiet::Renderer::UI::Assets
         return !resolvedPath.empty() && std::filesystem::exists(resolvedPath);
     }
 
-    std::string MakeStatusLabel(
-        const Project::ProjectContext& projectContext,
-        const Project::AssetRecord& record,
-        const Vulkan::MeshLibrary& meshLibrary,
-        const Vulkan::TextureLibrary& textureLibrary)
+    std::string MakeStatusLabel(const Project::ProjectContext& projectContext,
+                                const Project::AssetRecord& record,
+                                const Vulkan::MeshLibrary& meshLibrary,
+                                const Vulkan::TextureLibrary& textureLibrary,
+                                const Audio::AudioLibrary& audioLibrary)
     {
         const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
         if (!record.BuiltIn)
@@ -903,7 +905,7 @@ namespace Quiet::Renderer::UI::Assets
         }
         if (record.Type == Project::AssetType::Audio)
         {
-            return "Registered";
+            return audioLibrary.Has(record.ID) ? "Loaded Metadata" : "Registered";
         }
         return "Unknown";
     }

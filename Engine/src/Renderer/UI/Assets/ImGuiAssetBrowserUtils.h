@@ -15,6 +15,11 @@
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
+namespace Quiet::Audio
+{
+    class AudioLibrary;
+}
+
 namespace Quiet::Renderer::UI::Assets
 {
     // Text / string helpers
@@ -36,21 +41,15 @@ namespace Quiet::Renderer::UI::Assets
     bool MatchesAssetSource(const Project::AssetRecord& record, AssetBrowserSource source);
     bool MatchesAssetFolder(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const std::string& currentAssetFolder);
 
-    std::vector<const Project::AssetRecord*> BuildAssetFolderList(
-        const Project::ProjectContext& projectContext,
-        const Project::AssetRegistry& registry,
-        const std::string& currentAssetFolder
-    );
-
+    std::vector<const Project::AssetRecord*> BuildAssetFolderList(const Project::ProjectContext& projectContext,
+                                                                  const Project::AssetRegistry& registry,
+                                                                  const std::string& currentAssetFolder);
     std::vector<const Project::AssetRecord*> BuildBuiltInAssetList(const Project::AssetRegistry& registry);
-
-    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(
-        const Project::ProjectContext& projectContext,
-        const std::vector<const Project::AssetRecord*>& folderAssets,
-        AssetBrowserTypeFilter typeFilter,
-        AssetBrowserDiagnosticsFilter diagnosticsFilter,
-        const std::string& searchQuery
-    );
+    std::vector<const Project::AssetRecord*> BuildVisibleAssetList(const Project::ProjectContext& projectContext,
+                                                                   const std::vector<const Project::AssetRecord*>& folderAssets,
+                                                                   AssetBrowserTypeFilter typeFilter,
+                                                                   AssetBrowserDiagnosticsFilter diagnosticsFilter,
+                                                                   const std::string& searchQuery);
 
     std::size_t CountAssetByType(const Project::AssetRegistry& registry, Project::AssetType type, AssetBrowserSource source);
 
@@ -87,13 +86,11 @@ namespace Quiet::Renderer::UI::Assets
 
     void ClearAssetSelection(AssetBrowserState& state);
     void SelectSingleAsset(AssetBrowserState& state, const std::string& assetID);
-    void HandleAssetSelectionClick(
-        AssetBrowserState& state,
-        const std::vector<const Project::AssetRecord*>& orderedAssets,
-        const std::string& assetID,
-        bool toggleModifier,
-        bool rangeModifier
-    );
+    void HandleAssetSelectionClick(AssetBrowserState& state,
+                                   const std::vector<const Project::AssetRecord*>& orderedAssets,
+                                   const std::string& assetID,
+                                   bool toggleModifier,
+                                   bool rangeModifier);
 
     void RemoveAssetFromSelection(AssetBrowserState& state, const std::string& assetID);
     void RepairAssetSelection(AssetBrowserState& state, const std::vector<const Project::AssetRecord*>& folderAssets);
@@ -141,8 +138,11 @@ namespace Quiet::Renderer::UI::Assets
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext,const std::string& assetPath);
 
     // Asset display/status helpers
-    std::string MakeStatusLabel(const Project::ProjectContext& projectContext, const Project::AssetRecord& record,
-        const Vulkan::MeshLibrary& meshLibrary, const Vulkan::TextureLibrary& textureLibrary);
+    std::string MakeStatusLabel(const Project::ProjectContext& projectContext,
+                                const Project::AssetRecord& record,
+                                const Vulkan::MeshLibrary& meshLibrary,
+                                const Vulkan::TextureLibrary& textureLibrary,
+                                const Audio::AudioLibrary& audioLibrary);
     std::string MakeAssetDisplayName(const Project::AssetRecord& record);
 
     bool IsAssetReadyStatus(const std::string& status);

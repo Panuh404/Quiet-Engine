@@ -12,6 +12,11 @@
 struct GLFWwindow;
 struct ImDrawData;
 
+namespace Quiet::Audio
+{
+    class AudioLibrary;
+}
+
 namespace Quiet::Editor
 {
     class EditorActions;
@@ -88,6 +93,7 @@ namespace Quiet::Renderer::UI
                            const Project::ProjectRegistry &projectRegistry,
                            const Vulkan::MeshLibrary &meshLibrary,
                            const Vulkan::TextureLibrary &textureLibrary,
+                           const Audio::AudioLibrary& audioLibrary,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()> &viewportOverlayCallback);
 
@@ -149,7 +155,8 @@ namespace Quiet::Renderer::UI
                               Editor::EditorState& editorState,
                               Scene::Scene& scene,
                               const Vulkan::MeshLibrary& meshLibrary,
-                              const Vulkan::TextureLibrary& textureLibrary);
+                              const Vulkan::TextureLibrary& textureLibrary,
+                              const Audio::AudioLibrary& audioLibrary);
 
         // Viewport Panels
         void BuildViewportToolbar(Editor::EditorState& editorState,

@@ -10,6 +10,11 @@
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
+namespace Quiet::Audio
+{
+    class AudioLibrary;
+}
+
 namespace Quiet::Renderer::UI::Assets
 {
     void DrawDetailRow(const char* label, const char* value, float labelWidth);
@@ -21,6 +26,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
+        const Audio::AudioLibrary& audioLibrary,
         const Scene::Scene& scene,
         const std::string& selectedAssetID,
         float uiScale
@@ -30,6 +36,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
+        const Audio::AudioLibrary& audioLibrary,
         const std::string& selectedAssetID,
         float uiScale
     );

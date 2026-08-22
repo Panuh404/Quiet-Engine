@@ -10,7 +10,8 @@ namespace Quiet::Renderer::UI
         Editor::EditorState& editorState,
         Scene::Scene& scene,
         const Vulkan::MeshLibrary& meshLibrary,
-        const Vulkan::TextureLibrary& textureLibrary)
+        const Vulkan::TextureLibrary& textureLibrary,
+        const Audio::AudioLibrary& audioLibrary)
     {
         static Assets::AssetBrowserState assetBrowserState{};
         Assets::AssetBrowserContext assetBrowserContext{
@@ -19,6 +20,7 @@ namespace Quiet::Renderer::UI
             scene,
             meshLibrary,
             textureLibrary,
+            audioLibrary,
             GetUIScale()
         };
 

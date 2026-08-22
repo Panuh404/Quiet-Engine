@@ -9,6 +9,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
 #include "Renderer/UI/ImGuiTheme.h"
+#include "Audio/AudioLibrary.h"
 
 namespace
 {
@@ -26,6 +27,7 @@ namespace Quiet::Renderer::UI::Assets
         const Scene::Scene& scene,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
+        const Audio::AudioLibrary& audioLibrary,
         AssetBrowserState& state,
         std::string& pendingNavigateFolder,
         AssetBrowserFolderActionRequest& folderActionRequest,
@@ -162,7 +164,7 @@ namespace Quiet::Renderer::UI::Assets
                 const Project::AssetRecord& record = *recordPtr;
                 const std::uint32_t referenceCount = CountAssetReferences(scene, record);
                 const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
-                const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary);
+                const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary, audioLibrary);
                 const std::string browserState = MakeAssetBrowserStateLabel(diagnostics, record, status, runtimeModeActive, referenceCount);
                 const std::string displayName = MakeAssetDisplayName(record);
                 const bool isSelectedAsset = IsAssetSelected(state, record.ID);

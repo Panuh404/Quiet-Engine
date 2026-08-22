@@ -1262,6 +1262,7 @@ namespace Quiet::Core
             m_ProjectRegistry,
             m_Renderer->GetMeshLibrary(),
             m_Renderer->GetTextureLibrary(),
+            m_AudioSubsystem->GetLibrary(),
             m_Renderer->GetSceneViewportTextureID(),
             BuildEditorViewportOverlayCallback()
         );

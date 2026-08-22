@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <string>
+#include <cstdio>
+
+#include "Audio/AudioLibrary.h"
 
 #include <glm/vec3.hpp>
 #include <imgui.h>
@@ -140,6 +143,13 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
     }
 
+    static std::string FormatAudioDuration(const double seconds)
+    {
+        char buffer[64]{};
+        std::snprintf(buffer, sizeof(buffer), "%.2f s", seconds);
+        return buffer;
+    }
+
     void DrawAssetSourceDiagnostics(const Project::ProjectContext& projectContext, const Project::AssetRecord& record, const float labelWidth)
     {
         const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
@@ -186,6 +196,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetDetailsInline(const Project::ProjectContext& projectContext,
                                 const Vulkan::MeshLibrary& meshLibrary,
                                 const Vulkan::TextureLibrary& textureLibrary,
+                                const Audio::AudioLibrary& audioLibrary,
                                 const Scene::Scene& scene,
                                 const std::string& assetID,
                                 const float uiScale)
@@ -203,7 +214,7 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary);
         const ImVec4 statusColor = MakeStatusColor(status);
         const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
 
@@ -305,6 +316,33 @@ namespace Quiet::Renderer::UI::Assets
                     }
                 }
             }
+            else if (record->Type == Project::AssetType::Audio)
+            {
+                DrawDetailsSectionTitle("Audio");
+
+                const auto audio = audioLibrary.Get(record->ID);
+                if (!audio.has_value())
+                {
+                    ImGui::TextDisabled("Audio metadata is not currently loaded.");
+                }
+                else
+                {
+                    DrawDetailRow("Format", audio->Encoding.c_str(), labelWidth);
+                    DrawDetailRowUInt("Channels", audio->Channels, labelWidth);
+                    DrawDetailRowWrapped("Sample Rate", std::to_string(audio->SampleRate) + " Hz", labelWidth);
+
+                    if (audio->DurationValid)
+                    {
+                        DrawDetailRowWrapped("Duration", FormatAudioDuration(audio->DurationSeconds), labelWidth);
+                    }
+                    else
+                    {
+                        DrawDetailRow("Duration", "Unknown", labelWidth);
+                    }
+
+                    DrawDetailRowWrapped("File Size", std::to_string(audio->FileSizeBytes) + " bytes", labelWidth);
+                }
+            }
         }
         ImGui::EndChild();
 
@@ -315,6 +353,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetDetailsPopup(const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary,
                                const Vulkan::TextureLibrary& textureLibrary,
+                               const Audio::AudioLibrary& audioLibrary,
                                const std::string& assetID,
                                const float uiScale)
     {
@@ -324,7 +363,7 @@ namespace Quiet::Renderer::UI::Assets
         if (!record) return;
 
         const auto stats = meshLibrary.GetStats(record->ID);
-        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary);
 
         const ImVec4 statusColor = MakeStatusColor(status);
 
@@ -456,6 +495,24 @@ namespace Quiet::Renderer::UI::Assets
 
                     DrawDetailsSectionTitle("Runtime Texture");
                     ImGui::TextDisabled("GPU texture resource is loaded and available for material sampling.");
+                }
+            }
+            else if (record->Type == Project::AssetType::Audio)
+            {
+                DrawDetailsSectionTitle("Source Audio");
+
+                const auto audio = audioLibrary.Get(record->ID);
+                if (!audio.has_value())
+                {
+                    ImGui::TextDisabled("Audio metadata is not loaded.");
+                }
+                else
+                {
+                    DrawDetailRow("Format", audio->Encoding.c_str(), labelWidth);
+                    DrawDetailRowUInt("Channels", audio->Channels, labelWidth);
+                    DrawDetailRowWrapped("Sample Rate", std::to_string(audio->SampleRate) + " Hz", labelWidth);
+                    DrawDetailRowWrapped("Duration", audio->DurationValid ? FormatAudioDuration(audio->DurationSeconds) : std::string("Unknown"), labelWidth);
+                    DrawDetailRowWrapped("File Size", std::to_string(audio->FileSizeBytes) + " bytes", labelWidth);
                 }
             }
 
