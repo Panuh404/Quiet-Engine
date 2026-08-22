@@ -325,6 +325,7 @@ namespace Quiet::Core
             m_ProjectContext,
             m_Renderer->GetMeshLibrary(),
             m_Renderer->GetTextureLibrary(),
+            m_AudioSubsystem->GetLibrary(),
             m_Renderer->GetPhysicalDevice(),
             m_Renderer->GetLogicalDevice(),
             m_Renderer->GetGraphicsCommands()
@@ -1043,12 +1044,17 @@ namespace Quiet::Core
                         if (assetProgress.Stage == Project::AssetReloadStage::Meshes)
                         {
                             statusText = assetProgress.CurrentAssetID.empty() ? "Loading meshes..." : "Loading mesh: " + assetProgress.CurrentAssetID;
-                            progress = 0.15f + stageProgress * 0.45f;
+                            progress = 0.15f + stageProgress * 0.35f;
                         }
                         else if (assetProgress.Stage == Project::AssetReloadStage::Textures)
                         {
                             statusText = assetProgress.CurrentAssetID.empty() ? "Loading textures..." : "Loading texture: " + assetProgress.CurrentAssetID;
-                            progress = 0.60f + stageProgress * 0.30f;
+                            progress = 0.50f + stageProgress * 0.30f;
+                        }
+                        else if (assetProgress.Stage == Project::AssetReloadStage::Audio)
+                        {
+                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading audio..." : "Loading audio: " + assetProgress.CurrentAssetID;
+                            progress = 0.80f + stageProgress * 0.10f;
                         }
                         else
                         {

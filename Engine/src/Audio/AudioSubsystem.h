@@ -1,12 +1,15 @@
 #pragma once
 
-#include <memory>
 #include <filesystem>
+#include <memory>
+#include <string_view>
 
 struct ma_engine;
 
 namespace Quiet::Audio
 {
+    class AudioLibrary;
+
     class AudioSubsystem
     {
     public:
@@ -19,7 +22,12 @@ namespace Quiet::Audio
         AudioSubsystem& operator=(AudioSubsystem&&) = delete;
 
         [[nodiscard]] bool IsInitialized() const { return m_Initialized; }
+
+        [[nodiscard]] AudioLibrary& GetLibrary();
+        [[nodiscard]] const AudioLibrary& GetLibrary() const;
+
         [[nodiscard]] bool PlayOneShot(const std::filesystem::path& filepath) const;
+        [[nodiscard]] bool PlayOneShotAsset(std::string_view assetID) const;
 
     private:
         void Initialize();
@@ -27,6 +35,8 @@ namespace Quiet::Audio
 
     private:
         std::unique_ptr<ma_engine> m_Engine;
+        std::unique_ptr<AudioLibrary> m_Library;
+
         bool m_Initialized = false;
     };
 }

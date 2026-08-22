@@ -1,4 +1,5 @@
 #include "Audio/AudioSubsystem.h"
+#include "Audio/AudioLibrary.h"
 
 #include <stdexcept>
 #include <string>
@@ -19,6 +20,16 @@ namespace Quiet::Audio
         Shutdown();
     }
 
+    AudioLibrary & AudioSubsystem::GetLibrary()
+    {
+        return *m_Library;
+    }
+
+    const AudioLibrary & AudioSubsystem::GetLibrary() const
+    {
+        return *m_Library;
+    }
+
     bool AudioSubsystem::PlayOneShot(const std::filesystem::path &filepath) const
     {
         if (!m_Initialized || !m_Engine || filepath.empty()) return false;
@@ -36,12 +47,27 @@ namespace Quiet::Audio
         return true;
     }
 
+    bool AudioSubsystem::PlayOneShotAsset(const std::string_view assetID) const
+    {
+        if (!m_Library) return false;
+        const auto asset = m_Library->Get(assetID);
+
+        if (!asset.has_value())
+        {
+            QUIET_CORE_WARN("Cannot play audio asset '{}': asset is not loaded.", assetID);
+            return false;
+        }
+
+        return PlayOneShot(asset->SourcePath);
+    }
+
     void AudioSubsystem::Initialize()
     {
         if (m_Initialized) return;
 
         m_Engine = std::make_unique<ma_engine>();
         ma_engine_config config = ma_engine_config_init();
+        m_Library = std::make_unique<AudioLibrary>();
 
         const ma_result result = ma_engine_init(&config, m_Engine.get());
         if (result != MA_SUCCESS)
@@ -80,6 +106,7 @@ namespace Quiet::Audio
 
         if (m_Initialized)
         {
+            m_Library.reset();
             ma_engine_uninit(m_Engine.get());
         }
 

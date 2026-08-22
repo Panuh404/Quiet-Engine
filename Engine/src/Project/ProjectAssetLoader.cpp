@@ -18,6 +18,8 @@
 #include "Renderer/Vulkan/Texture/TextureImportResult.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Renderer/Vulkan/Texture/TexturePixelData.h"
+#include "Audio/AudioLibrary.h"
+
 
 namespace
 {
@@ -296,12 +298,14 @@ namespace Quiet::Project
     ProjectAssetLoader::ProjectAssetLoader(ProjectContext& projectContext,
                                            Renderer::Vulkan::MeshLibrary& meshLibrary,
                                            Renderer::Vulkan::TextureLibrary& textureLibrary,
+                                           Audio::AudioLibrary& audioLibrary,
                                            const Renderer::Vulkan::PhysicalDevice& physicalDevice,
                                            const Renderer::Vulkan::LogicalDevice& logicalDevice,
                                            const Renderer::Vulkan::GraphicsCommands& graphicsCommands)
                                                : m_ProjectContext(projectContext)
                                                , m_MeshLibrary(meshLibrary)
                                                , m_TextureLibrary(textureLibrary)
+                                               , m_AudioLibrary(audioLibrary)
     {
         BindRendererResources(physicalDevice, logicalDevice, graphicsCommands);
     }
@@ -372,11 +376,37 @@ namespace Quiet::Project
         return allSupportedAssetsLoaded;
     }
 
+    bool ProjectAssetLoader::ReloadAudioAssets(bool forceReimport)
+    {
+        const auto assetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Audio);
+        std::vector<AssetRecord> assets;
+        assets.reserve(assetPointers.size());
+
+        for (const AssetRecord* record : assetPointers)
+        {
+            if (!record || record->BuiltIn) continue;
+            assets.push_back(*record);
+        }
+
+        bool allLoaded = true;
+
+        for (const AssetRecord& record : assets)
+        {
+            if (!LoadExternalAudio(record, forceReimport))
+            {
+                allLoaded = false;
+            }
+        }
+
+        return allLoaded;
+    }
+
     bool ProjectAssetLoader::ReloadAssets(bool forceReimport)
     {
         const bool meshesLoaded = ReloadMeshAssets(forceReimport);
         const bool texturesLoaded = ReloadTextureAssets(forceReimport);
-        return meshesLoaded && texturesLoaded;
+        const bool audioLoaded = ReloadAudioAssets(forceReimport);
+        return meshesLoaded && texturesLoaded && audioLoaded;
     }
 
     bool ProjectAssetLoader::ReloadAssetByID(std::string_view assetID, bool forceReimport)
@@ -409,8 +439,12 @@ namespace Quiet::Project
 
             case AssetType::Audio:
             {
-                QUIET_CORE_WARN("Cannot reimport audio asset '{}': audio runtime loading is not implemented yet.", record->ID);
-                return false;
+                if (record->BuiltIn)
+                {
+                    QUIET_CORE_WARN("Cannot reimport built-in audio asset '{}'.", record->ID);
+                    return false;
+                }
+                return LoadExternalAudio(*record, forceReimport);
             }
 
             case AssetType::Unknown:
@@ -427,6 +461,7 @@ namespace Quiet::Project
         m_IncrementalForceReimport = forceReimport;
         m_IncrementalReloadProgress = {};
         m_IncrementalReloadProgress.Stage = AssetReloadStage::Meshes;
+        m_AudioLibrary.Clear();
         PrepareIncrementalMeshAssets();
     }
 
@@ -444,6 +479,10 @@ namespace Quiet::Project
             {
                 PrepareIncrementalTextureAssets();
             }
+            else if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Textures)
+            {
+                PrepareIncrementalAudioAssets();
+            }
             else
             {
                 m_IncrementalReloadProgress.Stage = AssetReloadStage::Complete;
@@ -454,7 +493,6 @@ namespace Quiet::Project
 
         const AssetRecord record = m_IncrementalReloadAssets[m_IncrementalReloadIndex];
         bool loaded = true;
-
         switch (m_IncrementalReloadProgress.Stage)
         {
             case AssetReloadStage::Meshes:
@@ -466,6 +504,12 @@ namespace Quiet::Project
             case AssetReloadStage::Textures:
             {
                 loaded = LoadExternalTexture(record, m_IncrementalForceReimport);
+                break;
+            }
+
+            case AssetReloadStage::Audio:
+            {
+                loaded = LoadExternalAudio(record, m_IncrementalForceReimport);
                 break;
             }
 
@@ -486,9 +530,11 @@ namespace Quiet::Project
         {
             if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Meshes)
             {
-                // Important: query textures only now.
-                // Mesh import may have registered new ones.
                 PrepareIncrementalTextureAssets();
+            }
+            else if (m_IncrementalReloadProgress.Stage == AssetReloadStage::Textures)
+            {
+                PrepareIncrementalAudioAssets();
             }
             else
             {
@@ -772,6 +818,28 @@ namespace Quiet::Project
         return true;
     }
 
+    bool ProjectAssetLoader::LoadExternalAudio(const AssetRecord &record, bool forceReimport)
+    {
+        if (record.Path.empty())
+        {
+            QUIET_CORE_WARN("Audio asset '{}' is registered without a source path.", record.ID);
+            return false;
+        }
+
+        const std::filesystem::path rawPath = record.Path;
+        const std::filesystem::path assetPath = rawPath.is_absolute()
+            ? rawPath.lexically_normal()
+            : (m_ProjectContext.GetRootPath() / rawPath).lexically_normal();
+
+        if (!std::filesystem::exists(assetPath))
+        {
+            QUIET_CORE_WARN("Audio asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
+            return false;
+        }
+
+        return m_AudioLibrary.LoadFromFile(record.ID, assetPath, forceReimport);
+    }
+
     void ProjectAssetLoader::PrepareIncrementalMeshAssets()
     {
         m_IncrementalReloadAssets.clear();
@@ -813,6 +881,31 @@ namespace Quiet::Project
         }
 
         m_IncrementalReloadProgress.Stage = AssetReloadStage::Textures;
+        m_IncrementalReloadProgress.Completed = 0;
+        m_IncrementalReloadProgress.Total = m_IncrementalReloadAssets.size();
+        m_IncrementalReloadProgress.CurrentAssetID = m_IncrementalReloadAssets.empty() ? std::string{} : m_IncrementalReloadAssets.front().ID;
+
+        if (m_IncrementalReloadAssets.empty())
+        {
+            PrepareIncrementalAudioAssets();
+        }
+    }
+
+    void ProjectAssetLoader::PrepareIncrementalAudioAssets()
+    {
+        m_IncrementalReloadAssets.clear();
+        m_IncrementalReloadIndex = 0;
+
+        const auto assetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Audio);
+        m_IncrementalReloadAssets.reserve(assetPointers.size());
+
+        for (const AssetRecord* record : assetPointers)
+        {
+            if (!record || record->BuiltIn) continue;
+            m_IncrementalReloadAssets.push_back(*record);
+        }
+
+        m_IncrementalReloadProgress.Stage = AssetReloadStage::Audio;
         m_IncrementalReloadProgress.Completed = 0;
         m_IncrementalReloadProgress.Total = m_IncrementalReloadAssets.size();
         m_IncrementalReloadProgress.CurrentAssetID = m_IncrementalReloadAssets.empty() ? std::string{} : m_IncrementalReloadAssets.front().ID;

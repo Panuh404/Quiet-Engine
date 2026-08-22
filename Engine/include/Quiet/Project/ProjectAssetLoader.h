@@ -13,6 +13,11 @@ namespace Quiet::Project
     class ProjectContext;
 }
 
+namespace Quiet::Audio
+{
+    class AudioLibrary;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class MeshLibrary;
@@ -29,6 +34,7 @@ namespace Quiet::Project
         Idle,
         Meshes,
         Textures,
+        Audio,
         Complete
     };
 
@@ -47,6 +53,7 @@ namespace Quiet::Project
         ProjectAssetLoader(ProjectContext& projectContext,
                            Renderer::Vulkan::MeshLibrary& meshLibrary,
                            Renderer::Vulkan::TextureLibrary& textureLibrary,
+                           Audio::AudioLibrary& audioLibrary,
                            const Renderer::Vulkan::PhysicalDevice& physicalDevice,
                            const Renderer::Vulkan::LogicalDevice& logicalDevice,
                            const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
@@ -57,6 +64,7 @@ namespace Quiet::Project
 
         bool ReloadMeshAssets(bool forceReimport = false);
         bool ReloadTextureAssets(bool forceReimport = false);
+        bool ReloadAudioAssets(bool forceReimport = false);
         bool ReloadAssets(bool forceReimport = false);
         bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
@@ -70,14 +78,17 @@ namespace Quiet::Project
         bool LoadBuiltInMesh(const AssetRecord& record);
         bool LoadExternalMesh(const AssetRecord& record, bool forceReimport);
         bool LoadExternalTexture(const AssetRecord& record, bool forceReimport);
+        bool LoadExternalAudio(const AssetRecord& record, bool forceReimport);
 
         void PrepareIncrementalMeshAssets();
         void PrepareIncrementalTextureAssets();
+        void PrepareIncrementalAudioAssets();
 
     private:
         ProjectContext& m_ProjectContext;
         Renderer::Vulkan::MeshLibrary& m_MeshLibrary;
         Renderer::Vulkan::TextureLibrary& m_TextureLibrary;
+        Audio::AudioLibrary& m_AudioLibrary;
         const Renderer::Vulkan::PhysicalDevice* m_PhysicalDevice = nullptr;
         const Renderer::Vulkan::LogicalDevice* m_LogicalDevice = nullptr;
         const Renderer::Vulkan::GraphicsCommands* m_GraphicsCommands = nullptr;
