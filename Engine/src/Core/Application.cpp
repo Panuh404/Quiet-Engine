@@ -317,6 +317,8 @@ namespace Quiet::Core
 
         m_PhysicsSubsystem = std::make_unique<Physics::PhysicsSubsystem>();
         m_AudioSubsystem = std::make_unique<Audio::AudioSubsystem>();
+        //TEST
+        m_AudioSubsystem->PlayOneShot("Resources/Audio/Test.wav");
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);

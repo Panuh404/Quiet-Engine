@@ -19,6 +19,23 @@ namespace Quiet::Audio
         Shutdown();
     }
 
+    bool AudioSubsystem::PlayOneShot(const std::filesystem::path &filepath) const
+    {
+        if (!m_Initialized || !m_Engine || filepath.empty()) return false;
+
+        const std::string path = filepath.string();
+        const ma_result result = ma_engine_play_sound(m_Engine.get(), path.c_str(), nullptr);
+
+        if (result != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to play audio '{}': {}", path, ma_result_description(result));
+            return false;
+        }
+
+        QUIET_CORE_INFO("Playing one-shot audio '{}'.", path);
+        return true;
+    }
+
     void AudioSubsystem::Initialize()
     {
         if (m_Initialized) return;

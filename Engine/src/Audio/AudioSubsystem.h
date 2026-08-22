@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <filesystem>
 
 struct ma_engine;
 
@@ -18,6 +19,7 @@ namespace Quiet::Audio
         AudioSubsystem& operator=(AudioSubsystem&&) = delete;
 
         [[nodiscard]] bool IsInitialized() const { return m_Initialized; }
+        [[nodiscard]] bool PlayOneShot(const std::filesystem::path& filepath) const;
 
     private:
         void Initialize();
