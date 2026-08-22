@@ -61,6 +61,83 @@ namespace Quiet::Audio
         return PlayOneShot(asset->SourcePath);
     }
 
+    bool AudioSubsystem::StartPreviewAsset(
+        const std::string_view assetID)
+    {
+        if (!m_Initialized || !m_Engine || !m_Library) return false;
+
+        const auto asset = m_Library->Get(assetID);
+        if (!asset.has_value())
+        {
+            QUIET_CORE_WARN("Cannot preview audio asset '{}': asset metadata is not loaded.", assetID);
+            return false;
+        }
+
+        StopPreview();
+
+        auto previewSound = std::make_unique<ma_sound>();
+        const std::string path = asset->SourcePath.string();
+        constexpr ma_uint32 flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
+
+        const ma_result initializeResult =
+            ma_sound_init_from_file(
+                m_Engine.get(),
+                path.c_str(),
+                flags,
+                nullptr,
+                nullptr,
+                previewSound.get());
+
+        if (initializeResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to initialize preview for audio asset '{}': {}", assetID, ma_result_description(initializeResult));
+            return false;
+        }
+
+        const ma_result startResult = ma_sound_start(previewSound.get());
+        if (startResult != MA_SUCCESS)
+        {
+            ma_sound_uninit(previewSound.get());
+            QUIET_CORE_WARN("Failed to start preview for audio asset '{}': {}", assetID, ma_result_description(startResult));
+            return false;
+        }
+
+        m_PreviewSound = std::move(previewSound);
+        m_PreviewAssetID = std::string(assetID);
+
+        QUIET_CORE_INFO("Started audio preview '{}'.", m_PreviewAssetID);
+        return true;
+    }
+
+    void AudioSubsystem::StopPreview()
+    {
+        if (!m_PreviewSound)
+        {
+            m_PreviewAssetID.clear();
+            return;
+        }
+
+        ma_sound_stop(m_PreviewSound.get());
+        ma_sound_uninit(m_PreviewSound.get());
+
+        m_PreviewSound.reset();
+        if (!m_PreviewAssetID.empty())
+        {
+            QUIET_CORE_INFO("Stopped audio preview '{}'.", m_PreviewAssetID);
+        }
+        m_PreviewAssetID.clear();
+    }
+
+    bool AudioSubsystem::IsPreviewPlaying() const
+    {
+        return m_PreviewSound && ma_sound_is_playing(m_PreviewSound.get()) == MA_TRUE;
+    }
+
+    bool AudioSubsystem::IsPreviewingAsset(std::string_view assetID) const
+    {
+        return IsPreviewPlaying() && m_PreviewAssetID == assetID;
+    }
+
     void AudioSubsystem::Initialize()
     {
         if (m_Initialized) return;
@@ -98,6 +175,9 @@ namespace Quiet::Audio
 
     void AudioSubsystem::Shutdown()
     {
+        StopPreview();
+        m_Library.reset();
+
         if (!m_Engine)
         {
             m_Initialized = false;
@@ -106,7 +186,6 @@ namespace Quiet::Audio
 
         if (m_Initialized)
         {
-            m_Library.reset();
             ma_engine_uninit(m_Engine.get());
         }
 

@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include "Audio/AudioSubsystem.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContext.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
@@ -325,7 +326,9 @@ namespace Quiet::Renderer::UI::Assets
         auto& scene = context.Scene;
         const auto& meshLibrary = context.MeshLibrary;
         const auto& textureLibrary = context.TextureLibrary;
-        const auto& audioLibrary = context.AudioLibrary;
+
+        auto& audioSubsystem = context.AudioSubsystem;
+        const auto& audioLibrary = audioSubsystem.GetLibrary();
 
         auto& assetIDBuffer = state.AssetIDBuffer;
         auto& assetPathBuffer = state.AssetPathBuffer;
@@ -591,7 +594,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
                     else
                     {
-                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, audioLibrary, scene, selectedDetailsAssetID, context.UIScale);
+                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, audioSubsystem, scene, selectedDetailsAssetID, context.UIScale);
                     }
                     if (useSplitDetailsLayout) ImGui::EndChild();
                 }
@@ -623,7 +626,7 @@ namespace Quiet::Renderer::UI::Assets
 
             // POPUPS
             if (openAssetDetailsPopup) ImGui::OpenPopup("Asset Details");
-            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, audioLibrary, selectedDetailsAssetID,context.UIScale);
+            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, audioSubsystem, selectedDetailsAssetID,context.UIScale);
             DrawRemoveAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
             DrawDeleteAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
             DrawAssetRenamePopup(projectContext, editorState, state);

@@ -8,7 +8,7 @@
 
 namespace Quiet::Audio
 {
-    class AudioLibrary;
+    class AudioSubsystem;
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -21,7 +21,7 @@ namespace Quiet::Renderer::UI::Assets
 
         const Vulkan::MeshLibrary& MeshLibrary;
         const Vulkan::TextureLibrary& TextureLibrary;
-        const Audio::AudioLibrary& AudioLibrary;
+        Audio::AudioSubsystem& AudioSubsystem;
 
         float UIScale = 1.0f;
     };

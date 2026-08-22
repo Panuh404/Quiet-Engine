@@ -11,6 +11,7 @@
 #include <algorithm>
 
 #include "ImGuiToolbarCommon.h"
+#include "Audio/AudioSubsystem.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 
@@ -145,7 +146,7 @@ namespace Quiet::Renderer::UI
                                    const Project::ProjectRegistry &projectRegistry,
                                    const Vulkan::MeshLibrary &meshLibrary,
                                    const Vulkan::TextureLibrary &textureLibrary,
-                                   const Audio::AudioLibrary& audioLibrary,
+                                   Audio::AudioSubsystem& audioSubsystem,
                                    ImTextureID sceneViewportTexture,
                                    const std::function<void()> &viewportOverlayCallback)
     {
@@ -158,7 +159,7 @@ namespace Quiet::Renderer::UI
         BuildInspector(scene, commands, editorState, projectContext, meshLibrary, textureLibrary);
         BuildSceneSettings(scene, commands, editorState);
 
-        BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary, textureLibrary, audioLibrary);
+        BuildAssetsPanel(projectContext, editorState, scene,  meshLibrary, textureLibrary, audioSubsystem);
         BuildMainMenuBar(actions, editorState);
         BuildProjectManagerPopup(editorState, projectContext, projectRegistry);
 

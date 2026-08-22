@@ -12,7 +12,7 @@
 
 namespace Quiet::Audio
 {
-    class AudioLibrary;
+    class AudioSubsystem;
 }
 
 namespace Quiet::Renderer::UI::Assets
@@ -26,7 +26,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
-        const Audio::AudioLibrary& audioLibrary,
+        Audio::AudioSubsystem& audioSubsystem,
         const Scene::Scene& scene,
         const std::string& selectedAssetID,
         float uiScale
@@ -36,7 +36,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
-        const Audio::AudioLibrary& audioLibrary,
+        Audio::AudioSubsystem& audioSubsystem,
         const std::string& selectedAssetID,
         float uiScale
     );

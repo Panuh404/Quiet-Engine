@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdio>
 
+#include "Audio/AudioSubsystem.h"
 #include "Audio/AudioLibrary.h"
 
 #include <glm/vec3.hpp>
@@ -196,11 +197,12 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetDetailsInline(const Project::ProjectContext& projectContext,
                                 const Vulkan::MeshLibrary& meshLibrary,
                                 const Vulkan::TextureLibrary& textureLibrary,
-                                const Audio::AudioLibrary& audioLibrary,
+                                Audio::AudioSubsystem& audioSubsystem,
                                 const Scene::Scene& scene,
                                 const std::string& assetID,
                                 const float uiScale)
     {
+        const auto& audioLibrary = audioSubsystem.GetLibrary();
         if (assetID.empty())
         {
             DrawAssetSelectionEmptyState();
@@ -342,6 +344,23 @@ namespace Quiet::Renderer::UI::Assets
 
                     DrawDetailRowWrapped("File Size", std::to_string(audio->FileSizeBytes) + " bytes", labelWidth);
                 }
+
+                ImGui::Spacing();
+
+                const bool metadataLoaded = audio.has_value();
+                const bool previewingThisAsset = audioSubsystem.IsPreviewingAsset(record->ID);
+
+                if (QUI::EditorButton(previewingThisAsset ? "Restart Preview" : "Preview", SZ::Px(ImVec2(120.0f, 0.0f)), metadataLoaded))
+                {
+                    audioSubsystem.StartPreviewAsset(record->ID);
+                }
+
+                ImGui::SameLine();
+
+                if (EditorButton("Stop", SZ::Px(ImVec2(80.0f, 0.0f)), audioSubsystem.IsPreviewPlaying()))
+                {
+                    audioSubsystem.StopPreview();
+                }
             }
         }
         ImGui::EndChild();
@@ -353,10 +372,11 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetDetailsPopup(const Project::ProjectContext& projectContext,
                                const Vulkan::MeshLibrary& meshLibrary,
                                const Vulkan::TextureLibrary& textureLibrary,
-                               const Audio::AudioLibrary& audioLibrary,
+                               Audio::AudioSubsystem& audioSubsystem,
                                const std::string& assetID,
                                const float uiScale)
     {
+        const auto& audioLibrary = audioSubsystem.GetLibrary();
         if (assetID.empty()) return;
 
         const auto* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
@@ -513,6 +533,21 @@ namespace Quiet::Renderer::UI::Assets
                     DrawDetailRowWrapped("Sample Rate", std::to_string(audio->SampleRate) + " Hz", labelWidth);
                     DrawDetailRowWrapped("Duration", audio->DurationValid ? FormatAudioDuration(audio->DurationSeconds) : std::string("Unknown"), labelWidth);
                     DrawDetailRowWrapped("File Size", std::to_string(audio->FileSizeBytes) + " bytes", labelWidth);
+                }
+
+                ImGui::Spacing();
+
+                const bool previewingThisAsset = audioSubsystem.IsPreviewingAsset(record->ID);
+                if (EditorButton(previewingThisAsset ? "Restart Preview" : "Preview", SZ::Px(ImVec2(120.0f, 0.0f)), audio.has_value()))
+                {
+                    audioSubsystem.StartPreviewAsset(record->ID);
+                }
+
+                ImGui::SameLine();
+
+                if (EditorButton("Stop", SZ::Px(ImVec2(80.0f, 0.0f)), !audioSubsystem.GetPreviewAssetID().empty()))
+                {
+                    audioSubsystem.StopPreview();
                 }
             }
 

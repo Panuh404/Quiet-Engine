@@ -2,6 +2,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContext.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserPanel.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
+#include "Audio/AudioSubsystem.h"
 
 namespace Quiet::Renderer::UI
 {
@@ -11,7 +12,7 @@ namespace Quiet::Renderer::UI
         Scene::Scene& scene,
         const Vulkan::MeshLibrary& meshLibrary,
         const Vulkan::TextureLibrary& textureLibrary,
-        const Audio::AudioLibrary& audioLibrary)
+        Audio::AudioSubsystem& audioSubsystem)
     {
         static Assets::AssetBrowserState assetBrowserState{};
         Assets::AssetBrowserContext assetBrowserContext{
@@ -20,7 +21,7 @@ namespace Quiet::Renderer::UI
             scene,
             meshLibrary,
             textureLibrary,
-            audioLibrary,
+            audioSubsystem,
             GetUIScale()
         };
 

@@ -14,7 +14,7 @@ struct ImDrawData;
 
 namespace Quiet::Audio
 {
-    class AudioLibrary;
+    class AudioSubsystem;
 }
 
 namespace Quiet::Editor
@@ -93,7 +93,7 @@ namespace Quiet::Renderer::UI
                            const Project::ProjectRegistry &projectRegistry,
                            const Vulkan::MeshLibrary &meshLibrary,
                            const Vulkan::TextureLibrary &textureLibrary,
-                           const Audio::AudioLibrary& audioLibrary,
+                           Audio::AudioSubsystem& audioSubsystem,
                            ImTextureID sceneViewportTexture,
                            const std::function<void()> &viewportOverlayCallback);
 
@@ -156,7 +156,7 @@ namespace Quiet::Renderer::UI
                               Scene::Scene& scene,
                               const Vulkan::MeshLibrary& meshLibrary,
                               const Vulkan::TextureLibrary& textureLibrary,
-                              const Audio::AudioLibrary& audioLibrary);
+                              Audio::AudioSubsystem& audioSubsystem);
 
         // Viewport Panels
         void BuildViewportToolbar(Editor::EditorState& editorState,
