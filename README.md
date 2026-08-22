@@ -18,6 +18,7 @@ Implemented foundations:
 
 * Vulkan renderer with swapchain, depth resources, frame synchronization, scene viewport render target, and static mesh rendering
 * EnTT-backed ECS foundation with registry-owned actor identity and components, lightweight Actor handles, ECS runtime iteration, and EnTT-driven static mesh rendering
+* Jolt Physics runtime foundation with fixed-step simulation, Static / Dynamic / Kinematic rigid bodies, primitive colliders, scene gravity, contact events, and runtime body controls
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
@@ -28,10 +29,10 @@ Implemented foundations:
 * dual-source Asset Browser with editable physical Project content, read-only Engine resources, and a project-local asset registry
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
-* dedicated Scene Settings panel for scene-wide lighting and ambient controls
+* dedicated Scene Settings panel for scene-wide rendering and physics controls
 * inspector with validated component editing, reset, copy/paste, undo/redo, and dirty-state integration
 * undo/redo and dirty-state tracking
-* Edit / Simulate / Play runtime mode groundwork
+* Edit / Simulate / Play runtime modes with isolated runtime scene copies and Jolt physics simulation
 * console and diagnostics panels
 * editor branding with application icon, window icon, README logo, and topbar logo
 
@@ -86,6 +87,9 @@ The editor target is currently the primary development target.
 * selected actor origin markers and names
 * Camera and Directional Light editor icons and overlays
 * configurable Viewport display options with selection-feedback control
+* editor-only Box, Sphere, and Capsule collider wireframe visualization
+* collider visualization matched to runtime physics scaling and local Center offsets
+* motion-type visualization for Static, Dynamic, and Kinematic rigid bodies
 * formal cursor capture with focus-loss cancellation and cursor restoration
 * RMB Fly navigation
 * Alt+LMB Orbit navigation around selected bounds or a resolved scene pivot
@@ -139,10 +143,16 @@ Folders are editor organization nodes only. They do not change runtime transform
 * Directional Light component editing
 * Rotator component editing
 * Camera component editing and piloting controls
+* Rigid Body component editing for Static, Dynamic, and Kinematic motion
+* rigid-body friction, restitution, damping, gravity-factor, and sleeping controls
+* Box Collider authoring with Size and Center
+* Sphere Collider authoring with Radius and Center
+* Capsule Collider authoring with Radius, total Height, and Center
+* one-collider-per-Actor authoring validation
 * Add Component menu
 * consistent component action menus
-* Reset Component support for Transform, Material, Directional Light, Rotator, and Camera
-* typed component-value clipboard for Transform, Static Mesh, Material, Directional Light, Rotator, and Camera
+* Reset Component support across Transform, rendering, Camera, Rigid Body, and collider components
+* typed component-value clipboard for Transform, rendering, Camera, Rigid Body, and collider components
 * cross-actor Copy Component and Paste Component Values workflows
 * asset, slot-count, and component-type validation for pasted values
 * contextual explanations for unavailable Paste actions
@@ -155,7 +165,7 @@ Folders are editor organization nodes only. They do not change runtime transform
 
 ### Scene Settings
 
-Scene-wide render settings live in a dedicated panel instead of the actor Inspector.
+Scene-wide rendering and physics settings live in a dedicated panel instead of the actor Inspector.
 
 Current controls:
 
@@ -163,10 +173,12 @@ Current controls:
 * directional scene light intensity
 * ambient color
 * ambient intensity
+* scene gravity vector
 * normalize light direction
 * reset directional lighting
 * reset ambient
-* reset all scene lighting settings
+* reset physics
+* reset all scene settings
 
 Scene Settings are serialized with the scene and are tracked by dirty-state and undo/redo.
 
@@ -262,6 +274,52 @@ Runtime play-testing mode.
 
 ---
 
+## Physics
+
+Quiet uses Jolt Physics for runtime rigid-body simulation.
+
+Current physics foundation:
+
+* Jolt subsystem initialization and shutdown owned by the engine
+* isolated PhysicsWorld owned by each active runtime Scene
+* fixed 60 Hz simulation with bounded catch-up stepping
+* Static, Dynamic, and Kinematic rigid-body motion types
+* ECS-authored Rigid Body components with no persistent Jolt types
+* Box Collider support
+* Sphere Collider support
+* Capsule Collider support
+* one primitive collider per Actor
+* friction and restitution
+* linear and angular damping
+* gravity factor
+* sleeping control
+* scene-wide configurable gravity
+* runtime impulse application
+* runtime linear-velocity control
+* Dynamic body transform synchronization from physics to ECS
+* Kinematic body synchronization from ECS to physics
+* normalized Actor-pair contact Started / Ended events
+* editor collider wireframe visualization
+
+Physics data is authored as Quiet scene/component data. Jolt body identifiers and runtime objects remain internal to the physics runtime.
+
+Current transform authority is:
+
+```text
+Static
+    authored Transform → physics body
+
+Dynamic
+    physics body → Transform
+
+Kinematic
+    Transform → physics body
+```
+
+Physics runtime state belongs to the Simulate / Play scene copy and does not modify the Edit scene.
+
+---
+
 ## Project Workflow
 
 Quiet uses `.quiet` project files.
@@ -342,7 +400,12 @@ Current serialized data includes:
 * directional light components
 * rotator components
 * camera components
+* rigid body components
+* Box Collider components
+* Sphere Collider components
+* Capsule Collider components
 * scene render settings
+* scene physics settings
 * editor hierarchy metadata
 
 Example hierarchy section:
@@ -448,6 +511,8 @@ Fetched automatically by CMake:
 * nlohmann/json
 * Assimp
 * stb
+* EnTT
+* Jolt Physics
 
 ---
 
@@ -613,13 +678,23 @@ Shift               Apply 2x Fly speed boost
 * storage-independent scene history, serialization, Editor, Viewport, and Inspector workflows
 * EnTT runtime views for component-system iteration
 * EnTT-driven Static Mesh and selection-mask rendering paths
+* Jolt Physics subsystem and per-runtime-scene PhysicsWorld
+* fixed-step rigid-body simulation
+* Static, Dynamic, and Kinematic transform-authority model
+* persistent Rigid Body authoring and serialization
+* Box, Sphere, and Capsule collider authoring and runtime shapes
+* runtime impulse and linear-velocity controls
+* Actor-pair contact Started / Ended event foundation
+* editor collider debug visualization
+* serialized scene gravity with Scene Settings controls
 
 ### Upcoming Areas
 
-* Jolt Physics integration
+* audio system foundation with miniaudio
 * Lua scripting foundation
-* audio system foundation
+* asset cooking and runtime pipeline
 * runtime rendering expansion
+* advanced acoustics with Steam Audio later
 
 ---
 
