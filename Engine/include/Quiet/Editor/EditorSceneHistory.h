@@ -36,6 +36,7 @@ namespace Quiet::Editor
             std::optional<Scene::RotatorComponent> Rotator;
             std::optional<Scene::CameraComponent> Camera;
             std::optional<Scene::AudioSourceComponent> AudioSource;
+            std::optional<Scene::AudioListenerComponent> AudioListener;
             std::optional<Scene::RigidBodyComponent> RigidBody;
             std::optional<Scene::BoxColliderComponent> BoxCollider;
             std::optional<Scene::SphereColliderComponent> SphereCollider;

@@ -96,6 +96,10 @@ namespace Quiet::Scene
 
         [[nodiscard]] Actor* FindPrimaryCameraActor();
         [[nodiscard]] const Actor* FindPrimaryCameraActor() const;
+
+        [[nodiscard]] Actor* FindPrimaryAudioListenerActor();
+        [[nodiscard]] const Actor* FindPrimaryAudioListenerActor() const;
+
         [[nodiscard]] const DirectionalLightComponent* FindActiveDirectionalLight() const;
 
     private:

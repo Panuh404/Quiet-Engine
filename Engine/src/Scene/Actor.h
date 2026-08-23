@@ -20,6 +20,7 @@
 #include "Scene/Components/CapsuleColliderComponent.h"
 #include "Scene/Components/RigidBodyComponent.h"
 #include "Scene/Components/AudioSourceComponent.h"
+#include "Scene/Components/AudioListenerComponent.h"
 
 namespace Quiet::Scene
 {

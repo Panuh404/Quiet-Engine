@@ -104,6 +104,16 @@ namespace
             lhs->Spatial == rhs->Spatial;
     }
 
+    bool AreAudioListenersEqual(const std::optional<Quiet::Scene::AudioListenerComponent>& lhs,
+                                const std::optional<Quiet::Scene::AudioListenerComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return
+            lhs->Primary == rhs->Primary;
+    }
+
     bool AreRigidBodiesEqual(const std::optional<Quiet::Scene::RigidBodyComponent>& lhs,
                              const std::optional<Quiet::Scene::RigidBodyComponent>& rhs)
     {
@@ -207,6 +217,7 @@ namespace
             AreRotatorsEqual(lhs.Rotator, rhs.Rotator) &&
             AreCamerasEqual(lhs.Camera, rhs.Camera) &&
             AreAudioSourcesEqual(lhs.AudioSource, rhs.AudioSource) &&
+            AreAudioListenersEqual(lhs.AudioListener, rhs.AudioListener) &&
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
             AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
@@ -348,6 +359,9 @@ namespace Quiet::Editor
             if (const auto* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>())
                 actorSnapshot.AudioSource = *audioSource;
 
+            if (const auto* audioListener = actor.TryGetComponent<Scene::AudioListenerComponent>())
+                actorSnapshot.AudioListener = *audioListener;
+
             if (const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>())
                 actorSnapshot.RigidBody = *rigidBody;
 
@@ -397,6 +411,9 @@ namespace Quiet::Editor
 
             if (actorSnapshot.AudioSource)
                 actor.AddComponent<Scene::AudioSourceComponent>(*actorSnapshot.AudioSource);
+
+            if (actorSnapshot.AudioListener)
+                actor.AddComponent<Scene::AudioListenerComponent>(*actorSnapshot.AudioListener);
 
             if (actorSnapshot.RigidBody)
                 actor.AddComponent<Scene::RigidBodyComponent>(*actorSnapshot.RigidBody);

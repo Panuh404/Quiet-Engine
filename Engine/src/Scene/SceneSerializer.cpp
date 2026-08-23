@@ -353,30 +353,20 @@ namespace Quiet::Scene
             {
                 actorJson["audio_source"] =
                 {
-                    {
-                        "audio_asset_id",
-                        audioSource->AudioAssetID
-                    },
-                    {
-                        "volume",
-                        audioSource->Volume
-                    },
-                    {
-                        "pitch",
-                        audioSource->Pitch
-                    },
-                    {
-                        "play_on_start",
-                        audioSource->PlayOnStart
-                    },
-                    {
-                        "loop",
-                        audioSource->Loop
-                    },
-                    {
-                        "spatial",
-                        audioSource->Spatial
-                    }
+                    { "audio_asset_id", audioSource->AudioAssetID },
+                    { "volume", audioSource->Volume },
+                    { "pitch", audioSource->Pitch },
+                    { "play_on_start", audioSource->PlayOnStart },
+                    { "loop", audioSource->Loop },
+                    { "spatial", audioSource->Spatial }
+                };
+            }
+
+            if (const AudioListenerComponent* audioListener = actor.TryGetComponent<AudioListenerComponent>())
+            {
+                actorJson["audio_listener"] =
+                {
+                    { "primary", audioListener->Primary }
                 };
             }
 
@@ -384,34 +374,13 @@ namespace Quiet::Scene
             {
                 actorJson["rigid_body"] =
                 {
-                    {
-                        "motion_type",
-                        SerializeRigidBodyMotionType(rigidBody->MotionType)
-                    },
-                    {
-                        "friction",
-                        rigidBody->Friction
-                    },
-                    {
-                        "restitution",
-                        rigidBody->Restitution
-                    },
-                    {
-                        "linear_damping",
-                        rigidBody->LinearDamping
-                    },
-                    {
-                        "angular_damping",
-                        rigidBody->AngularDamping
-                    },
-                    {
-                        "gravity_factor",
-                        rigidBody->GravityFactor
-                    },
-                    {
-                        "allow_sleeping",
-                        rigidBody->AllowSleeping
-                    }
+                    { "motion_type", SerializeRigidBodyMotionType(rigidBody->MotionType) },
+                    { "friction", rigidBody->Friction },
+                    { "restitution", rigidBody->Restitution },
+                    { "linear_damping", rigidBody->LinearDamping },
+                    { "angular_damping", rigidBody->AngularDamping },
+                    { "gravity_factor", rigidBody->GravityFactor },
+                    { "allow_sleeping", rigidBody->AllowSleeping }
                 };
             }
 
@@ -419,14 +388,8 @@ namespace Quiet::Scene
             {
                 actorJson["box_collider"] =
                 {
-                    {
-                        "size",
-                        SerializeVec3(boxCollider->Size)
-                    },
-                    {
-                        "center",
-                        SerializeVec3(boxCollider->Center)
-                    }
+                    { "size", SerializeVec3(boxCollider->Size) },
+                    { "center", SerializeVec3(boxCollider->Center) }
                 };
             }
 
@@ -434,14 +397,8 @@ namespace Quiet::Scene
             {
                 actorJson["sphere_collider"] =
                 {
-                    {
-                        "radius",
-                        sphereCollider->Radius
-                    },
-                    {
-                        "center",
-                        SerializeVec3(sphereCollider->Center)
-                    }
+                    { "radius", sphereCollider->Radius },
+                    { "center", SerializeVec3(sphereCollider->Center) }
                 };
             }
 
@@ -449,18 +406,9 @@ namespace Quiet::Scene
             {
                 actorJson["capsule_collider"] =
                 {
-                    {
-                        "radius",
-                        capsuleCollider->Radius
-                    },
-                    {
-                        "height",
-                        capsuleCollider->Height
-                    },
-                    {
-                        "center",
-                        SerializeVec3(capsuleCollider->Center)
-                    }
+                    { "radius", capsuleCollider->Radius },
+                    { "height", capsuleCollider->Height },
+                    { "center", SerializeVec3(capsuleCollider->Center) }
                 };
             }
 
@@ -625,6 +573,16 @@ namespace Quiet::Scene
                 audioSource.Spatial = audioSourceJson.value("spatial", audioSource.Spatial);
 
                 actor.AddComponent<AudioSourceComponent>(audioSource);
+            }
+
+            if (actorJson.contains("audio_listener"))
+            {
+                const auto& audioListenerJson = actorJson["audio_listener"];
+                AudioListenerComponent audioListener{};
+
+                audioListener.Primary = audioListenerJson.value("primary", audioListener.Primary);
+
+                actor.AddComponent<AudioListenerComponent>(audioListener);
             }
 
             if (actorJson.contains("rigid_body"))

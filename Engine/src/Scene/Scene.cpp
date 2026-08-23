@@ -55,6 +55,9 @@ namespace Quiet::Scene
             if (const auto* component = source.TryGetComponent<AudioSourceComponent>())
                 target.AddComponent<AudioSourceComponent>(*component);
 
+            if (const auto* component = source.TryGetComponent<AudioListenerComponent>())
+                target.AddComponent<AudioListenerComponent>(*component);
+
             if (const auto* component = source.TryGetComponent<RigidBodyComponent>())
                 target.AddComponent<RigidBodyComponent>(*component);
 
@@ -124,6 +127,7 @@ namespace Quiet::Scene
         std::optional<RotatorComponent> rotator;
         std::optional<CameraComponent> camera;
         std::optional<AudioSourceComponent> audioSource;
+        std::optional<AudioListenerComponent> audioListener;
         std::optional<RigidBodyComponent> rigidBody;
         std::optional<BoxColliderComponent> boxCollider;
         std::optional<SphereColliderComponent> sphereCollider;
@@ -147,6 +151,9 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<AudioSourceComponent>())
             audioSource = *component;
 
+        if (const auto* component = source->TryGetComponent<AudioListenerComponent>())
+            audioListener = *component;
+
         if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
             rigidBody = *component;
 
@@ -168,6 +175,7 @@ namespace Quiet::Scene
         if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
         if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
         if (audioSource)        duplicate.AddComponent<AudioSourceComponent>(*audioSource);
+        if (audioListener)      duplicate.AddComponent<AudioListenerComponent>(*audioListener);
         if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
         if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
         if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
@@ -753,6 +761,27 @@ namespace Quiet::Scene
             const CameraComponent* camera = actor.TryGetComponent<CameraComponent>();
             if (camera && camera->Primary) return &actor;
         }
+        return nullptr;
+    }
+
+    const Actor* Scene::FindPrimaryAudioListenerActor() const
+    {
+        for (const Actor& actor : m_Actors)
+        {
+            const AudioListenerComponent* listener = actor.TryGetComponent<AudioListenerComponent>();
+            if (listener && listener->Primary) return &actor;
+        }
+        return nullptr;
+    }
+
+    Actor* Scene::FindPrimaryAudioListenerActor()
+    {
+        for (Actor& actor : m_Actors)
+        {
+            const AudioListenerComponent* listener = actor.TryGetComponent<AudioListenerComponent>();
+            if (listener && listener->Primary) return &actor;
+        }
+
         return nullptr;
     }
 
