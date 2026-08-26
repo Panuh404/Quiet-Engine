@@ -1304,6 +1304,7 @@ namespace Quiet::Editor
         });
     }
 
+
     bool EditorCommands::SetAudioSourceAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext)
     {
         if (!audioAssetID.empty())
@@ -1394,6 +1395,114 @@ namespace Quiet::Editor
             if (!audioSource) return false;
             audioSource->Spatial = spatial;
 
+            return true;
+        });
+    }
+
+
+    bool EditorCommands::AddAudioListener(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::AudioListenerComponent>()) return false;
+
+            Scene::AudioListenerComponent listener{};
+            listener.Primary = scene.FindPrimaryAudioListenerActor() == nullptr;
+
+            actor->AddComponent<Scene::AudioListenerComponent>(listener);
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveAudioListener(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            Scene::AudioListenerComponent* listener = actor->TryGetComponent<Scene::AudioListenerComponent>();
+            if (!listener) return false;
+            const bool wasPrimary = listener->Primary;
+
+            actor->RemoveComponent<Scene::AudioListenerComponent>();
+            if (wasPrimary)
+            {
+                for (Scene::Actor& other : scene.GetActors())
+                {
+                    auto* otherListener = other.TryGetComponent<Scene::AudioListenerComponent>();
+                    if (!otherListener) continue;
+                    otherListener->Primary = true;
+                    break;
+                }
+            }
+            return true;
+        });
+    }
+
+    bool EditorCommands::ResetAudioListener(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* listener = actor->TryGetComponent<Scene::AudioListenerComponent>();
+            if (!listener) return false;
+
+            const Scene::Actor* primaryListener = scene.FindPrimaryAudioListenerActor();
+            Scene::AudioListenerComponent reset{};
+
+            reset.Primary = primaryListener == nullptr || primaryListener->GetID() == actorID;
+            *listener = reset;
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteAudioListenerValues(Scene::Scene& scene, const Core::UUID actorID, const Scene::AudioListenerComponent& audioListener)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::AudioListenerComponent>();
+            if (!existing) return false;
+
+            if (audioListener.Primary)
+            {
+                for (Scene::Actor& other : scene.GetActors())
+                {
+                    auto* otherListener = other.TryGetComponent<Scene::AudioListenerComponent>();
+                    if (otherListener) otherListener->Primary = false;
+                }
+            }
+            *existing = audioListener;
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioListenerPrimary(Scene::Scene& scene, const Core::UUID actorID, const bool primary)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* listener = actor->TryGetComponent<Scene::AudioListenerComponent>();
+            if (!listener) return false;
+
+            if (primary)
+            {
+                for (Scene::Actor& other : scene.GetActors())
+                {
+                    auto* otherListener = other.TryGetComponent<Scene::AudioListenerComponent>();
+                    if (otherListener) otherListener->Primary = false;
+                }
+            }
+
+            listener->Primary = primary;
             return true;
         });
     }

@@ -15,6 +15,7 @@ namespace Quiet::Scene
     class Scene;
     enum class RigidBodyMotionType : std::uint8_t;
 
+    struct AudioListenerComponent;
     struct AudioSourceComponent;
     struct CameraComponent;
     struct DirectionalLightComponent;
@@ -145,7 +146,7 @@ namespace Quiet::Editor
     #pragma endregion
 
     #pragma region Audio
-
+        // AUDIO SOURCE
         bool AddAudioSource(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveAudioSource(Scene::Scene& scene, Core::UUID actorID);
         bool ResetAudioSource(Scene::Scene& scene, Core::UUID actorID);
@@ -157,6 +158,14 @@ namespace Quiet::Editor
         bool SetAudioSourcePlayOnStart(Scene::Scene& scene, Core::UUID actorID, bool playOnStart);
         bool SetAudioSourceLoop(Scene::Scene& scene, Core::UUID actorID, bool loop);
         bool SetAudioSourceSpatial(Scene::Scene& scene, Core::UUID actorID, bool spatial);
+
+        // AUDIO LISTENER
+        bool AddAudioListener(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveAudioListener(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetAudioListener(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteAudioListenerValues(Scene::Scene& scene, Core::UUID actorID, const Scene::AudioListenerComponent& audioListener);
+
+        bool SetAudioListenerPrimary(Scene::Scene& scene, Core::UUID actorID, bool primary);
 
     #pragma endregion
 

@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "Scene/Components/AudioListenerComponent.h"
 #include "Scene/Components/AudioSourceComponent.h"
 #include "Scene/Components/BoxColliderComponent.h"
 #include "Scene/Components/CameraComponent.h"
@@ -28,7 +29,7 @@ namespace Quiet::Renderer::UI::Inspector
         Rotator,
         Camera,
         AudioSource,
-
+        AudioListener,
         RigidBody,
         BoxCollider,
         SphereCollider,
@@ -49,6 +50,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::RotatorComponent Rotator{};
         Scene::CameraComponent Camera{};
         Scene::AudioSourceComponent AudioSource{};
+        Scene::AudioListenerComponent AudioListener{};
         Scene::RigidBodyComponent RigidBody{};
         Scene::BoxColliderComponent BoxCollider{};
         Scene::SphereColliderComponent SphereCollider{};

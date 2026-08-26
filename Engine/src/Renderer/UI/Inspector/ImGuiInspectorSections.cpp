@@ -139,6 +139,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
         const bool canAddAudioSource = !actor.HasComponent<Scene::AudioSourceComponent>();
+        const bool canAddAudioListener = !actor.HasComponent<Scene::AudioListenerComponent>();
         const bool canAddRigidBody = !actor.HasComponent<Scene::RigidBodyComponent>();
 
         const bool hasBoxCollider = actor.HasComponent<Scene::BoxColliderComponent>();
@@ -157,6 +158,7 @@ namespace Quiet::Renderer::UI::Inspector
             canAddRotator ||
             canAddCamera ||
             canAddAudioSource ||
+            canAddAudioListener ||
             canAddRigidBody ||
             canAddBoxCollider ||
             canAddSphereCollider ||
@@ -228,6 +230,12 @@ namespace Quiet::Renderer::UI::Inspector
             if (EditorMenuItem("Audio Source", nullptr, false, canAddAudioSource))
             {
                 context.Commands.AddAudioSource(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("Audio Listener", nullptr, false, canAddAudioListener))
+            {
+                context.Commands.AddAudioListener(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -830,6 +838,56 @@ namespace Quiet::Renderer::UI::Inspector
             {
                 DrawInspectorHint("Assign an Audio asset to this source.");
             }
+        }
+    }
+
+    void DrawAudioListenerSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor)
+    {
+        Scene::AudioListenerComponent* listener = actor.TryGetComponent<Scene::AudioListenerComponent>();
+        if (!listener) return;
+
+        const bool canPasteAudioListener = state.Clipboard.Type == ComponentClipboardType::AudioListener;
+
+        const auto header = BeginInspectorComponent(
+            state,
+            "Audio Listener",
+            "AudioListenerComponentOptions",
+            true,
+            true,
+            true,
+            canPasteAudioListener,
+            canPasteAudioListener ? nullptr : "Copy Audio Listener values first.");
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveAudioListener(context.Scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            state.Clipboard.Type = ComponentClipboardType::AudioListener;
+            state.Clipboard.AudioListener = *listener;
+        }
+        if (header.PasteRequested && canPasteAudioListener)
+        {
+            context.Commands.PasteAudioListenerValues(context.Scene, actor.GetID(), state.Clipboard.AudioListener);
+        }
+        if (header.ResetRequested)
+        {
+            context.Commands.ResetAudioListener(context.Scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        bool primary = listener->Primary;
+
+        if (DrawCheckboxPropertyRow("Primary", primary))
+        {
+            context.Commands.SetAudioListenerPrimary(context.Scene, actor.GetID(), primary);
+        }
+
+        if (listener->Primary)
+        {
+            ImGui::Spacing();
+            DrawInspectorHint("This listener will be used for runtime spatial audio.");
         }
     }
 
