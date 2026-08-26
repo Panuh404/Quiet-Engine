@@ -99,6 +99,162 @@ namespace Quiet::Audio
         QUIET_CORE_INFO("Created {} runtime audio sources. playOnStart={}", m_Sources.size(), startedCount);
     }
 
+    bool AudioWorld::PlaySource(const entt::entity entity)
+    {
+        SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound) return false;
+
+        // Always restart from the beginning.
+        const ma_result stopResult = ma_sound_stop(binding->Sound.get());
+        if (stopResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to prepare runtime audio source '{}' for actor '{}' for playback: {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
+            return false;
+        }
+
+        binding->Paused = false;
+
+        const ma_result seekResult = ma_sound_seek_to_pcm_frame(binding->Sound.get(), 0);
+        if (seekResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to rewind runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
+            return false;
+        }
+
+        const ma_result startResult = ma_sound_start(binding->Sound.get());
+        if (startResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to play runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(startResult));
+            return false;
+        }
+
+        return true;
+    }
+
+    bool AudioWorld::StopSource(const entt::entity entity)
+    {
+        SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound) return false;
+
+        const ma_result stopResult = ma_sound_stop(binding->Sound.get());
+        if (stopResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to stop runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
+            return false;
+        }
+
+        binding->Paused = false;
+
+        // miniaudio stop preserves the cursor.
+        // Quiet Stop semantics explicitly rewind it.
+        const ma_result seekResult = ma_sound_seek_to_pcm_frame(binding->Sound.get(), 0);
+        if (seekResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to rewind stopped runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
+            return false;
+        }
+        return true;
+    }
+
+    bool AudioWorld::PauseSource(const entt::entity entity)
+    {
+        SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound) return false;
+
+        if (ma_sound_is_playing(binding->Sound.get()) != MA_TRUE)
+            return false;
+
+        const ma_result result = ma_sound_stop(binding->Sound.get());
+        if (result != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to pause runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(result));
+            return false;
+        }
+
+        binding->Paused = true;
+        return true;
+    }
+
+    bool AudioWorld::ResumeSource(const entt::entity entity)
+    {
+        SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound || !binding->Paused)
+            return false;
+
+        const ma_result result = ma_sound_start(binding->Sound.get());
+        if (result != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to resume runtime audio source '{}' for actor '{}': {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(result));
+            return false;
+        }
+
+        binding->Paused = false;
+        return true;
+    }
+
+    bool AudioWorld::SeekSource(const entt::entity entity, const float seconds)
+    {
+        if (!std::isfinite(seconds) || seconds < 0.0f)
+            return false;
+
+        SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound) return false;
+
+        const ma_result result = ma_sound_seek_to_second(binding->Sound.get(), seconds);
+        if (result != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to seek runtime audio source '{}' for actor '{}' to {:.3f}s: {}",
+                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), seconds, ma_result_description(result));
+            return false;
+        }
+
+        return true;
+    }
+
+    AudioPlaybackState AudioWorld::GetSourcePlaybackState(const entt::entity entity) const
+    {
+        const SourceBinding* binding = FindSourceBinding(entity);
+        if (!binding || !binding->Sound)
+            return AudioPlaybackState::Unavailable;
+
+        if (ma_sound_is_playing(binding->Sound.get()) == MA_TRUE)
+            return AudioPlaybackState::Playing;
+
+        if (binding->Paused)
+            return AudioPlaybackState::Paused;
+
+        return AudioPlaybackState::Stopped;
+    }
+
+    AudioWorld::SourceBinding* AudioWorld::FindSourceBinding(const entt::entity entity)
+    {
+        for (SourceBinding& binding : m_Sources)
+        {
+            if (binding.Entity == entity)
+                return &binding;
+        }
+
+        return nullptr;
+    }
+
+    const AudioWorld::SourceBinding* AudioWorld::FindSourceBinding(const entt::entity entity) const
+    {
+        for (const SourceBinding& binding : m_Sources)
+        {
+            if (binding.Entity == entity)
+                return &binding;
+        }
+
+        return nullptr;
+    }
+
     void AudioWorld::DestroySources()
     {
         for (SourceBinding& source : m_Sources)

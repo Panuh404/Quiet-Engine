@@ -701,6 +701,8 @@ namespace Quiet::Scene
         UpdateRuntime(deltaTime);
     }
 
+#pragma region Physics Runtime API
+
     bool Scene::ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3 &impulse)
     {
         if (!m_PhysicsWorld || !IsRuntimeActive()) return false;
@@ -720,6 +722,74 @@ namespace Quiet::Scene
 
         return m_PhysicsWorld->SetLinearVelocity(entity, velocity);
     }
+
+#pragma endregion
+
+#pragma region Audio Runtime API
+
+    bool Scene::PlayAudioSource(const Core::UUID actorID)
+    {
+        if (!m_AudioWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_AudioWorld->PlaySource(entity);
+    }
+
+    bool Scene::StopAudioSource(const Core::UUID actorID)
+    {
+        if (!m_AudioWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_AudioWorld->StopSource(entity);
+    }
+
+    bool Scene::PauseAudioSource(const Core::UUID actorID)
+    {
+        if (!m_AudioWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_AudioWorld->PauseSource(entity);
+    }
+
+    bool Scene::ResumeAudioSource(const Core::UUID actorID)
+    {
+        if (!m_AudioWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_AudioWorld->ResumeSource(entity);
+    }
+
+    bool Scene::SeekAudioSource(const Core::UUID actorID, const float seconds)
+    {
+        if (!m_AudioWorld || !IsRuntimeActive()) return false;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null) return false;
+
+        return m_AudioWorld->SeekSource(entity, seconds);
+    }
+
+    Audio::AudioPlaybackState Scene::GetAudioSourcePlaybackState(const Core::UUID actorID) const
+    {
+        if (!m_AudioWorld || !IsRuntimeActive())
+            return Audio::AudioPlaybackState::Unavailable;
+
+        const entt::entity entity = FindEntityByID(actorID);
+        if (entity == entt::null)
+            return Audio::AudioPlaybackState::Unavailable;
+
+        return m_AudioWorld->GetSourcePlaybackState(entity);
+    }
+
+#pragma endregion
 
     Actor* Scene::FindActorByID(Core::UUID id)
     {

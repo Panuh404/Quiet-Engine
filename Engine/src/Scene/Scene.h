@@ -15,6 +15,8 @@
 
 namespace Quiet::Audio
 {
+    enum class AudioPlaybackState;
+
     class AudioSubsystem;
     class AudioWorld;
 }
@@ -79,9 +81,18 @@ namespace Quiet::Scene
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
 
+        // Physics Runtime API
         bool ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3& impulse);
         bool SetPhysicsLinearVelocity(Core::UUID actorID, const glm::vec3& velocity);
         [[nodiscard]] const std::vector<Physics::PhysicsContactEvent>& GetPhysicsContactEvents() const { return m_PhysicsContactEvents;}
+
+        // Audio Runtime API
+        bool PlayAudioSource(Core::UUID actorID);
+        bool StopAudioSource(Core::UUID actorID);
+        bool PauseAudioSource(Core::UUID actorID);
+        bool ResumeAudioSource(Core::UUID actorID);
+        bool SeekAudioSource(Core::UUID actorID, float seconds);
+        [[nodiscard]] Audio::AudioPlaybackState GetAudioSourcePlaybackState(Core::UUID actorID) const;
 
         [[nodiscard]] bool IsRuntimeActive() const { return m_RuntimeMode != RuntimeMode::None; }
         [[nodiscard]] RuntimeMode GetRuntimeMode() const { return m_RuntimeMode; }

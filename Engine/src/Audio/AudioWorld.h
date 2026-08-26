@@ -14,6 +14,14 @@ namespace Quiet::Audio
 {
     class AudioSubsystem;
 
+    enum class AudioPlaybackState
+    {
+        Unavailable,
+        Stopped,
+        Playing,
+        Paused
+    };
+
     class AudioWorld
     {
     public:
@@ -27,6 +35,13 @@ namespace Quiet::Audio
 
         void BuildSources(entt::registry& registry);
 
+        bool PlaySource(entt::entity entity);
+        bool StopSource(entt::entity entity);
+        bool PauseSource(entt::entity entity);
+        bool ResumeSource(entt::entity entity);
+        bool SeekSource(entt::entity entity, float seconds);
+
+        [[nodiscard]] AudioPlaybackState GetSourcePlaybackState(entt::entity entity) const;
         [[nodiscard]] std::size_t GetSourceCount() const { return m_Sources.size(); }
 
     private:
@@ -37,7 +52,12 @@ namespace Quiet::Audio
 
             std::string AudioAssetID;
             std::unique_ptr<ma_sound> Sound;
+
+            bool Paused = false;
         };
+
+        [[nodiscard]] SourceBinding* FindSourceBinding(entt::entity entity);
+        [[nodiscard]] const SourceBinding* FindSourceBinding(entt::entity entity) const;
 
         void DestroySources();
 
