@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "Audio/AudioWorld.h"
 #include "Physics/PhysicsWorld.h"
 #include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
@@ -210,6 +211,7 @@ namespace Quiet::Scene
 
     void Scene::Clear()
     {
+        m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
         m_PhysicsSettings = ScenePhysicsSettings{};
@@ -638,7 +640,7 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
-    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem)
+    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem)
     {
         if (mode == RuntimeMode::None)
         {
@@ -654,6 +656,10 @@ namespace Quiet::Scene
         m_PhysicsContactEvents.clear();
         m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem, m_PhysicsSettings.Gravity);
         m_PhysicsWorld->BuildBodies(m_Registry);
+
+        m_AudioWorld = std::make_unique<Audio::AudioWorld>(audioSubsystem);
+        m_AudioWorld->BuildSources(m_Registry);
+
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
     }
@@ -663,6 +669,7 @@ namespace Quiet::Scene
         if (m_RuntimeMode == RuntimeMode::None) return;
         const RuntimeMode previousMode = m_RuntimeMode;
         OnRuntimeEnd(previousMode);
+        m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
         m_RuntimeMode = RuntimeMode::None;

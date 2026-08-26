@@ -2,6 +2,11 @@
 #include <functional>
 #include <memory>
 
+namespace Quiet::Audio
+{
+    class AudioSubsystem;
+}
+
 namespace Quiet::Scene
 {
     enum class RuntimeMode;
@@ -28,6 +33,7 @@ namespace Quiet::Editor
                                 Scene::Scene& editorScene,
                                 std::unique_ptr<Scene::Scene>& runtimeScene,
                                 Physics::PhysicsSubsystem& physicsSubsystem,
+                                Audio::AudioSubsystem& audioSubsystem,
                                 MouseCaptureSetter setMouseCaptureEnabled,
                                 MouseCaptureGetter getMouseCaptureEnabled);
 
@@ -51,7 +57,9 @@ namespace Quiet::Editor
         EditorController& m_EditorController;
         Scene::Scene& m_EditorScene;
         std::unique_ptr<Scene::Scene>& m_RuntimeScene;
+
         Physics::PhysicsSubsystem& m_PhysicsSubsystem;
+        Audio::AudioSubsystem& m_AudioSubsystem;
 
         MouseCaptureSetter m_SetMouseCaptureEnabled;
         MouseCaptureGetter m_GetMouseCaptureEnabled;

@@ -13,6 +13,12 @@
 #include "Scene/SceneRenderSettings.h"
 #include "Physics/PhysicsContactEvent.h"
 
+namespace Quiet::Audio
+{
+    class AudioSubsystem;
+    class AudioWorld;
+}
+
 namespace Quiet::Input
 {
     class Input;
@@ -68,7 +74,7 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
-        void BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem);
+        void BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
@@ -125,7 +131,12 @@ namespace Quiet::Scene
         ScenePhysicsSettings m_PhysicsSettings{};
         SceneRenderSettings m_RenderSettings{};
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
+
         std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;
+        std::unique_ptr<Audio::AudioWorld> m_AudioWorld;
+
         std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
+
+
     };
 }

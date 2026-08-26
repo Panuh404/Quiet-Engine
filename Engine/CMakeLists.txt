@@ -29,6 +29,8 @@ target_sources(Quiet_Engine
         src/Audio/AudioLibrary.h
         src/Audio/AudioSubsystem.h
         src/Audio/AudioSubsystem.cpp
+        src/Audio/AudioWorld.h
+        src/Audio/AudioWorld.cpp
 
         # Physics
         src/Physics/PhysicsContactEvent.h

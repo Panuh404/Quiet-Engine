@@ -1,5 +1,6 @@
 #include "Quiet/Editor/EditorRuntimeController.h"
 
+#include "Audio/AudioSubsystem.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Editor/EditorController.h"
 #include "Scene/Scene.h"
@@ -12,11 +13,13 @@ namespace Quiet::Editor
                                                      Scene::Scene &editorScene,
                                                      std::unique_ptr<Scene::Scene> &runtimeScene,
                                                      Physics::PhysicsSubsystem& physicsSubsystem,
+                                                     Audio::AudioSubsystem& audioSubsystem,
                                                      MouseCaptureSetter setMouseCaptureEnabled,
                                                      MouseCaptureGetter getMouseCaptureEnabled)
                                                         : m_EditorController(editorController)
                                                         , m_EditorScene(editorScene)
                                                         , m_RuntimeScene(runtimeScene)
+                                                        , m_AudioSubsystem(audioSubsystem)
                                                         , m_PhysicsSubsystem(physicsSubsystem)
                                                         , m_SetMouseCaptureEnabled(std::move(setMouseCaptureEnabled))
                                                         , m_GetMouseCaptureEnabled(std::move(getMouseCaptureEnabled)) {}
@@ -102,9 +105,10 @@ namespace Quiet::Editor
     void EditorRuntimeController::CreateRuntimeScene(Scene::RuntimeMode runtimeMode)
     {
         DestroyRuntimeScene();
+        m_AudioSubsystem.StopPreview();
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(m_EditorScene);
-        m_RuntimeScene->BeginRuntime(runtimeMode, m_PhysicsSubsystem);
+        m_RuntimeScene->BeginRuntime(runtimeMode, m_PhysicsSubsystem, m_AudioSubsystem);
     }
 
     void EditorRuntimeController::DestroyRuntimeScene()

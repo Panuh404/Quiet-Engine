@@ -11,6 +11,7 @@ struct ma_sound;
 namespace Quiet::Audio
 {
     class AudioLibrary;
+    class AudioWorld;
 
     class AudioSubsystem
     {
@@ -49,7 +50,8 @@ namespace Quiet::Audio
         std::unique_ptr<ma_sound> m_PreviewSound;
 
         std::string m_PreviewAssetID;
-
         bool m_Initialized = false;
+
+        friend class AudioWorld;
     };
 }
