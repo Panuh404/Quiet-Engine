@@ -33,7 +33,8 @@ namespace Quiet::Audio
         AudioWorld(AudioWorld&&) = delete;
         AudioWorld& operator=(AudioWorld&&) = delete;
 
-        void BuildSources(entt::registry& registry);
+        void BuildSources(entt::registry& registry, entt::entity listenerEntity);
+        void Update(entt::registry& registry, entt::entity listenerEntity);
 
         bool PlaySource(entt::entity entity);
         bool StopSource(entt::entity entity);
@@ -53,12 +54,14 @@ namespace Quiet::Audio
             std::string AudioAssetID;
             std::unique_ptr<ma_sound> Sound;
 
+            bool Spatial = false;
             bool Paused = false;
         };
 
         [[nodiscard]] SourceBinding* FindSourceBinding(entt::entity entity);
         [[nodiscard]] const SourceBinding* FindSourceBinding(entt::entity entity) const;
 
+        void UpdateListener(entt::registry& registry, entt::entity listenerEntity);
         void DestroySources();
 
     private:

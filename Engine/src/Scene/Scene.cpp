@@ -250,10 +250,7 @@ namespace Quiet::Scene
         const Core::UUID folderID = folder.ID;
 
         m_Hierarchy.Folders.push_back(std::move(folder));
-        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{
-            SceneHierarchyNodeType::Folder,
-            folderID
-        });
+        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{ SceneHierarchyNodeType::Folder, folderID });
 
         return folderID;
     }
@@ -318,8 +315,7 @@ namespace Quiet::Scene
                     nodes.end(),
                     [folderID](const SceneHierarchyNode& node)
                     {
-                        return node.Type == SceneHierarchyNodeType::Folder &&
-                               node.ID == folderID;
+                        return node.Type == SceneHierarchyNodeType::Folder && node.ID == folderID;
                     }
                 ),
                 nodes.end()
@@ -347,8 +343,7 @@ namespace Quiet::Scene
             targetFolder->Children.end(),
             [actorID](const SceneHierarchyNode& node)
             {
-                return node.Type == SceneHierarchyNodeType::Actor &&
-                       node.ID == actorID;
+                return node.Type == SceneHierarchyNodeType::Actor && node.ID == actorID;
             }
         );
 
@@ -358,11 +353,7 @@ namespace Quiet::Scene
         targetFolder = FindHierarchyFolder(folderID);
         if (!targetFolder) return false;
 
-        targetFolder->Children.push_back(SceneHierarchyNode{
-            SceneHierarchyNodeType::Actor,
-            actorID
-        });
-
+        targetFolder->Children.push_back(SceneHierarchyNode{ SceneHierarchyNodeType::Actor, actorID });
         return true;
     }
 
@@ -375,8 +366,7 @@ namespace Quiet::Scene
             m_Hierarchy.RootNodes.end(),
             [actorID](const SceneHierarchyNode& node)
             {
-                return node.Type == SceneHierarchyNodeType::Actor &&
-                       node.ID == actorID;
+                return node.Type == SceneHierarchyNodeType::Actor && node.ID == actorID;
             }
         );
 
@@ -397,17 +387,12 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes.end(),
         [nodeType, nodeID](const SceneHierarchyNode& node)
             {
-                return node.Type == nodeType &&
-                       node.ID == nodeID;
+                return node.Type == nodeType && node.ID == nodeID;
             }
         );
 
         if (sourceIt == m_Hierarchy.RootNodes.end()) return false;
-
-        const std::size_t sourceIndex = static_cast<std::size_t>(
-            std::distance(m_Hierarchy.RootNodes.begin(), sourceIt)
-        );
-
+        const std::size_t sourceIndex = static_cast<std::size_t>(std::distance(m_Hierarchy.RootNodes.begin(), sourceIt));
         if (sourceIndex == destinationIndex) return false;
 
         SceneHierarchyNode movedNode = *sourceIt;
@@ -415,12 +400,7 @@ namespace Quiet::Scene
 
         using DifferenceType = std::vector<SceneHierarchyNode>::difference_type;
 
-        m_Hierarchy.RootNodes.insert(
-            m_Hierarchy.RootNodes.begin() +
-                static_cast<DifferenceType>(destinationIndex),
-            movedNode
-        );
-
+        m_Hierarchy.RootNodes.insert(m_Hierarchy.RootNodes.begin() + static_cast<DifferenceType>(destinationIndex), movedNode);
         return true;
     }
 
@@ -433,17 +413,12 @@ namespace Quiet::Scene
             m_Hierarchy.RootNodes.end(),
             [actorID](const SceneHierarchyNode& node)
             {
-                return node.Type == SceneHierarchyNodeType::Actor &&
-                       node.ID == actorID;
+                return node.Type == SceneHierarchyNodeType::Actor && node.ID == actorID;
             }
         );
 
         if (alreadyInRoot) return;
-
-        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{
-            SceneHierarchyNodeType::Actor,
-            actorID
-        });
+        m_Hierarchy.RootNodes.push_back(SceneHierarchyNode{ SceneHierarchyNodeType::Actor, actorID });
     }
 
     void Scene::RemoveActorFromHierarchy(const Core::UUID actorID)
@@ -456,8 +431,7 @@ namespace Quiet::Scene
                     nodes.end(),
                     [actorID](const SceneHierarchyNode& node)
                     {
-                        return node.Type == SceneHierarchyNodeType::Actor &&
-                               node.ID == actorID;
+                        return node.Type == SceneHierarchyNodeType::Actor && node.ID == actorID;
                     }
                 ),
                 nodes.end()
@@ -529,21 +503,13 @@ namespace Quiet::Scene
 
                 if (childActorIDs.contains(childNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping duplicate actor '{}' inside hierarchy folder '{}'.",
-                        Core::UUIDToString(childNode.ID),
-                        Core::UUIDToString(folder.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping duplicate actor '{}' inside hierarchy folder '{}'.", Core::UUIDToString(childNode.ID), Core::UUIDToString(folder.ID));
                     continue;
                 }
 
                 if (placedActorIDs.contains(childNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping actor '{}' in hierarchy folder '{}' because it is already placed elsewhere.",
-                        Core::UUIDToString(childNode.ID),
-                        Core::UUIDToString(folder.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping actor '{}' in hierarchy folder '{}' because it is already placed elsewhere.", Core::UUIDToString(childNode.ID), Core::UUIDToString(folder.ID));
                     continue;
                 }
 
@@ -578,19 +544,13 @@ namespace Quiet::Scene
             {
                 if (!validActorIDs.contains(rootNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping hierarchy root actor '{}' because the actor does not exist.",
-                        Core::UUIDToString(rootNode.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping hierarchy root actor '{}' because the actor does not exist.", Core::UUIDToString(rootNode.ID));
                     continue;
                 }
 
                 if (placedActorIDs.contains(rootNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping duplicate hierarchy root actor '{}'.",
-                        Core::UUIDToString(rootNode.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping duplicate hierarchy root actor '{}'.", Core::UUIDToString(rootNode.ID));
                     continue;
                 }
 
@@ -603,19 +563,13 @@ namespace Quiet::Scene
             {
                 if (!validFolderIDs.contains(rootNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping hierarchy root folder '{}' because the folder does not exist.",
-                        Core::UUIDToString(rootNode.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping hierarchy root folder '{}' because the folder does not exist.", Core::UUIDToString(rootNode.ID));
                     continue;
                 }
 
                 if (placedFolderIDs.contains(rootNode.ID))
                 {
-                    QUIET_CORE_WARN(
-                        "Skipping duplicate hierarchy root folder '{}'.",
-                        Core::UUIDToString(rootNode.ID)
-                    );
+                    QUIET_CORE_WARN("Skipping duplicate hierarchy root folder '{}'.", Core::UUIDToString(rootNode.ID));
                     continue;
                 }
 
@@ -653,12 +607,21 @@ namespace Quiet::Scene
             QUIET_CORE_WARN("Scene runtime already active. Restarting runtime mode.");
             EndRuntime();
         }
+
+        // Physics
         m_PhysicsContactEvents.clear();
         m_PhysicsWorld = std::make_unique<Physics::PhysicsWorld>(physicsSubsystem, m_PhysicsSettings.Gravity);
         m_PhysicsWorld->BuildBodies(m_Registry);
 
+        // Audio
         m_AudioWorld = std::make_unique<Audio::AudioWorld>(audioSubsystem);
-        m_AudioWorld->BuildSources(m_Registry);
+        entt::entity audioListenerEntity = entt::null;
+
+        if (const Actor* listener = FindPrimaryAudioListenerActor())
+        {
+            audioListenerEntity = FindEntityByID(listener->GetID());
+        }
+        m_AudioWorld->BuildSources(m_Registry, audioListenerEntity);
 
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
@@ -969,6 +932,16 @@ namespace Quiet::Scene
         {
             m_PhysicsWorld->Update(deltaTime, m_Registry);
             m_PhysicsContactEvents = m_PhysicsWorld->ConsumeContactEvents();
+        }
+
+        if (m_AudioWorld)
+        {
+            entt::entity audioListenerEntity = entt::null;
+            if (const Actor* listener = FindPrimaryAudioListenerActor())
+            {
+                audioListenerEntity = FindEntityByID(listener->GetID());
+            }
+            m_AudioWorld->Update(m_Registry, audioListenerEntity);
         }
     }
 }

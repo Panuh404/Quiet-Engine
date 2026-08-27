@@ -12,6 +12,7 @@
 #include "Quiet/Core/Log.h"
 #include "Scene/Components/ActorIdentityComponent.h"
 #include "Scene/Components/AudioSourceComponent.h"
+#include "Scene/Components/TransformComponent.h"
 
 namespace Quiet::Audio
 {
@@ -26,7 +27,7 @@ namespace Quiet::Audio
         QUIET_CORE_INFO("Destroyed audio world.");
     }
 
-    void AudioWorld::BuildSources(entt::registry& registry)
+    void AudioWorld::BuildSources(entt::registry& registry, const entt::entity listenerEntity)
     {
         DestroySources();
 
@@ -36,8 +37,12 @@ namespace Quiet::Audio
             return;
         }
 
+        // Establish the runtime listener before PlayOnStart sources can begin.
+        UpdateListener(registry, listenerEntity);
+
         auto view = registry.view<Scene::ActorIdentityComponent, Scene::AudioSourceComponent>();
         std::size_t startedCount = 0;
+        std::size_t spatialCount = 0;
 
         for (const entt::entity entity : view)
         {
@@ -45,8 +50,8 @@ namespace Quiet::Audio
             const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
 
             if (source.AudioAssetID.empty()) continue;
-            const auto asset = m_AudioSubsystem.GetLibrary().Get(source.AudioAssetID);
 
+            const auto asset = m_AudioSubsystem.GetLibrary().Get(source.AudioAssetID);
             if (!asset.has_value())
             {
                 QUIET_CORE_WARN("Cannot create runtime audio source for actor '{}': audio asset '{}' is not loaded.",
@@ -57,7 +62,11 @@ namespace Quiet::Audio
             auto sound = std::make_unique<ma_sound>();
             const std::string path = asset->SourcePath.string();
 
-            constexpr ma_uint32 flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_NO_SPATIALIZATION;
+            ma_uint32 flags = MA_SOUND_FLAG_STREAM;
+            if (!source.Spatial)
+            {
+                flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
+            }
 
             const ma_result initializeResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, nullptr, nullptr, sound.get());
             if (initializeResult != MA_SUCCESS)
@@ -74,6 +83,17 @@ namespace Quiet::Audio
             ma_sound_set_pitch(sound.get(), pitch);
             ma_sound_set_looping(sound.get(), source.Loop ? MA_TRUE : MA_FALSE);
 
+            if (source.Spatial)
+            {
+                const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
+                ma_sound_set_position(sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
+
+                // Velocity synchronization is intentionally deferred.
+                // Prevent Doppler from becoming part of F1 accidentally.
+                ma_sound_set_doppler_factor(sound.get(), 0.0f);
+                ++spatialCount;
+            }
+
             if (source.PlayOnStart)
             {
                 const ma_result startResult = ma_sound_start(sound.get());
@@ -84,6 +104,7 @@ namespace Quiet::Audio
                         source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(startResult));
                     continue;
                 }
+
                 ++startedCount;
             }
 
@@ -92,11 +113,35 @@ namespace Quiet::Audio
             binding.ActorID = identity.ID;
             binding.AudioAssetID = source.AudioAssetID;
             binding.Sound = std::move(sound);
+            binding.Spatial = source.Spatial;
 
             m_Sources.push_back(std::move(binding));
         }
 
-        QUIET_CORE_INFO("Created {} runtime audio sources. playOnStart={}", m_Sources.size(), startedCount);
+        QUIET_CORE_INFO(
+            "Created {} runtime audio sources. spatial={}, playOnStart={}",
+            m_Sources.size(),
+            spatialCount,
+            startedCount
+        );
+    }
+
+    void AudioWorld::Update(entt::registry &registry, entt::entity listenerEntity)
+    {
+        if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine) return;
+        UpdateListener(registry, listenerEntity);
+
+        for (SourceBinding& binding : m_Sources)
+        {
+            if (!binding.Sound || !binding.Spatial) continue;
+            if (!registry.valid(binding.Entity)) continue;
+
+            const auto* transformComponent = registry.try_get<Scene::TransformComponent>(binding.Entity);
+            if (!transformComponent) continue;
+
+            const auto& position = transformComponent->WorldTransform.Position;
+            ma_sound_set_position(binding.Sound.get(), position.x, position.y, position.z);
+        }
     }
 
     bool AudioWorld::PlaySource(const entt::entity entity)
@@ -253,6 +298,40 @@ namespace Quiet::Audio
         }
 
         return nullptr;
+    }
+
+    void AudioWorld::UpdateListener(entt::registry &registry, entt::entity listenerEntity)
+    {
+        if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine) return;
+
+        constexpr ma_uint32 listenerIndex = 0;
+        if (listenerEntity == entt::null || !registry.valid(listenerEntity))
+        {
+            ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_FALSE);
+            return;
+        }
+
+        const auto* transformComponent = registry.try_get<Scene::TransformComponent>(listenerEntity);
+        if (!transformComponent)
+        {
+            ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_FALSE);
+            return;
+        }
+
+        const auto& transform = transformComponent->WorldTransform;
+        glm::mat4 rotation(1.0f);
+
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        const glm::vec3 forward = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        const glm::vec3 up = glm::normalize(glm::vec3( rotation * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+
+        ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_TRUE);
+        ma_engine_listener_set_position(m_AudioSubsystem.m_Engine.get(), listenerIndex, transform.Position.x, transform.Position.y, transform.Position.z);
+        ma_engine_listener_set_direction(m_AudioSubsystem.m_Engine.get(), listenerIndex, forward.x, forward.y, forward.z);
+        ma_engine_listener_set_world_up(m_AudioSubsystem.m_Engine.get(), listenerIndex, up.x, up.y, up.z);
     }
 
     void AudioWorld::DestroySources()
