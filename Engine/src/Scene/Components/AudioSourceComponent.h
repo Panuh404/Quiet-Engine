@@ -18,5 +18,9 @@ namespace Quiet::Scene
         float MinDistance = 1.0f;
         float MaxDistance = 100000.0f;
         float Rolloff = 1.0f;
+
+        float ConeInnerAngleDegrees = 360.0f;
+        float ConeOuterAngleDegrees = 360.0f;
+        float ConeOuterGain = 0.0f;
     };
 }

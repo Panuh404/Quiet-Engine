@@ -104,7 +104,10 @@ namespace
             lhs->Spatial == rhs->Spatial &&
             AreFloatsEqual(lhs->MinDistance, rhs->MinDistance) &&
             AreFloatsEqual(lhs->MaxDistance, rhs->MaxDistance) &&
-            AreFloatsEqual(lhs->Rolloff, rhs->Rolloff);
+            AreFloatsEqual(lhs->Rolloff, rhs->Rolloff) &&
+            AreFloatsEqual(lhs->ConeInnerAngleDegrees, rhs->ConeInnerAngleDegrees) &&
+            AreFloatsEqual(lhs->ConeOuterAngleDegrees, rhs->ConeOuterAngleDegrees) &&
+            AreFloatsEqual(lhs->ConeOuterGain, rhs->ConeOuterGain);
     }
 
     bool AreAudioListenersEqual(const std::optional<Quiet::Scene::AudioListenerComponent>& lhs,

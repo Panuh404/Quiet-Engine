@@ -361,7 +361,10 @@ namespace Quiet::Scene
                     { "spatial", audioSource->Spatial },
                     { "min_distance", audioSource->MinDistance },
                     { "max_distance", audioSource->MaxDistance },
-                    { "rolloff", audioSource->Rolloff }
+                    { "rolloff", audioSource->Rolloff },
+                    { "cone_inner_angle_degrees", audioSource->ConeInnerAngleDegrees },
+                    { "cone_outer_angle_degrees", audioSource->ConeOuterAngleDegrees },
+                    { "cone_outer_gain", audioSource->ConeOuterGain }
                 };
             }
 
@@ -577,6 +580,9 @@ namespace Quiet::Scene
                 audioSource.MinDistance = audioSourceJson.value("min_distance", audioSource.MinDistance);
                 audioSource.MaxDistance = audioSourceJson.value("max_distance", audioSource.MaxDistance);
                 audioSource.Rolloff = audioSourceJson.value("rolloff", audioSource.Rolloff);
+                audioSource.ConeInnerAngleDegrees = audioSourceJson.value("cone_inner_angle_degrees", audioSource.ConeInnerAngleDegrees);
+                audioSource.ConeOuterAngleDegrees = audioSourceJson.value("cone_outer_angle_degrees", audioSource.ConeOuterAngleDegrees);
+                audioSource.ConeOuterGain = audioSourceJson.value("cone_outer_gain", audioSource.ConeOuterGain);
 
                 actor.AddComponent<AudioSourceComponent>(audioSource);
             }

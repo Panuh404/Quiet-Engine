@@ -97,6 +97,19 @@ namespace Quiet::Audio
                 ma_sound_set_max_distance(sound.get(), maxDistance);
                 ma_sound_set_rolloff(sound.get(), rolloff);
 
+                const float coneInnerAngleDegrees = std::isfinite(source.ConeInnerAngleDegrees) ? std::clamp(source.ConeInnerAngleDegrees, 0.0f, 360.0f) : 360.0f;
+                const float coneOuterAngleDegrees = std::isfinite(source.ConeOuterAngleDegrees) ? std::clamp(source.ConeOuterAngleDegrees, coneInnerAngleDegrees, 360.0f) : 360.0f;
+                const float coneOuterGain = std::isfinite(source.ConeOuterGain) ? std::clamp(source.ConeOuterGain, 0.0f, 1.0f) : 0.0f;
+
+                glm::mat4 sourceRotation(1.0f);
+                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
+                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
+                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
+
+                const glm::vec3 sourceForward = glm::normalize(glm::vec3(sourceRotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+                ma_sound_set_direction(sound.get(), sourceForward.x, sourceForward.y, sourceForward.z);
+                ma_sound_set_cone(sound.get(), glm::radians(coneInnerAngleDegrees), glm::radians(coneOuterAngleDegrees), coneOuterGain);
+
                 // Velocity synchronization is intentionally deferred.
                 // Prevent Doppler from becoming part of this step.
                 ma_sound_set_doppler_factor(sound.get(), 0.0f);
@@ -148,9 +161,16 @@ namespace Quiet::Audio
 
             const auto* transformComponent = registry.try_get<Scene::TransformComponent>(binding.Entity);
             if (!transformComponent) continue;
+            const auto& transform = transformComponent->WorldTransform;
+            ma_sound_set_position(binding.Sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
 
-            const auto& position = transformComponent->WorldTransform.Position;
-            ma_sound_set_position(binding.Sound.get(), position.x, position.y, position.z);
+            glm::mat4 rotation(1.0f);
+            rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
+
+            const glm::vec3 forward = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+            ma_sound_set_direction(binding.Sound.get(), forward.x, forward.y, forward.z);
         }
     }
 

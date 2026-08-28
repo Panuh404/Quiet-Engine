@@ -833,7 +833,6 @@ namespace Quiet::Renderer::UI::Inspector
             const float currentMaxDistance = std::isfinite(audioSource->MaxDistance) ? std::clamp(audioSource->MaxDistance, 0.02f, 100000.0f) : 100000.0f;
             const float maximumMinDistance = std::clamp(currentMaxDistance - 0.01f, 0.01f, 99999.99f);
             float minDistance = audioSource->MinDistance;
-
             if (DrawFloatPropertyRow("Min Distance", minDistance, 0.1f, 0.01f, maximumMinDistance, tracked))
             {
                 context.Commands.SetAudioSourceMinDistance(context.Scene, actor.GetID(), minDistance);
@@ -842,17 +841,35 @@ namespace Quiet::Renderer::UI::Inspector
             const float currentMinDistance = std::isfinite(audioSource->MinDistance) ? std::clamp(audioSource->MinDistance, 0.01f, 99999.99f) : 1.0f;
             const float minimumMaxDistance = std::min(100000.0f, currentMinDistance + 0.01f);
             float maxDistance = audioSource->MaxDistance;
-
             if (DrawFloatPropertyRow("Max Distance", maxDistance, 1.0f, minimumMaxDistance, 100000.0f, tracked))
             {
                 context.Commands.SetAudioSourceMaxDistance(context.Scene, actor.GetID(), maxDistance);
             }
 
             float rolloff = audioSource->Rolloff;
-
             if (DrawFloatPropertyRow("Rolloff", rolloff, 0.05f, 0.0f, 10.0f, tracked))
             {
                 context.Commands.SetAudioSourceRolloff(context.Scene, actor.GetID(), rolloff);
+            }
+
+            const float currentOuterAngle = std::isfinite(audioSource->ConeOuterAngleDegrees) ? std::clamp(audioSource->ConeOuterAngleDegrees, 0.0f, 360.0f) : 360.0f;
+            float coneInnerAngle = audioSource->ConeInnerAngleDegrees;
+            if (DrawFloatPropertyRow("Cone Inner Angle", coneInnerAngle, 1.0f, 0.0f, currentOuterAngle, tracked))
+            {
+                context.Commands.SetAudioSourceConeInnerAngle(context.Scene, actor.GetID(), coneInnerAngle);
+            }
+
+            const float currentInnerAngle = std::isfinite(audioSource->ConeInnerAngleDegrees) ? std::clamp(audioSource->ConeInnerAngleDegrees, 0.0f, 360.0f) : 360.0f;
+            float coneOuterAngle = audioSource->ConeOuterAngleDegrees;
+            if (DrawFloatPropertyRow("Cone Outer Angle", coneOuterAngle, 1.0f, currentInnerAngle, 360.0f, tracked))
+            {
+                context.Commands.SetAudioSourceConeOuterAngle(context.Scene, actor.GetID(), coneOuterAngle);
+            }
+
+            float coneOuterGain = audioSource->ConeOuterGain;
+            if (DrawFloatPropertyRow("Cone Outer Gain", coneOuterGain, 0.01f, 0.0f, 1.0f, tracked))
+            {
+                context.Commands.SetAudioSourceConeOuterGain(context.Scene, actor.GetID(), coneOuterGain);
             }
         }
 

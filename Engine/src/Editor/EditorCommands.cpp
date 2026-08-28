@@ -1281,7 +1281,10 @@ namespace Quiet::Editor
             !std::isfinite(audioSource.Pitch) ||
             !std::isfinite(audioSource.MinDistance) ||
             !std::isfinite(audioSource.MaxDistance) ||
-            !std::isfinite(audioSource.Rolloff))
+            !std::isfinite(audioSource.Rolloff) ||
+            !std::isfinite(audioSource.ConeInnerAngleDegrees) ||
+            !std::isfinite(audioSource.ConeOuterAngleDegrees) ||
+            !std::isfinite(audioSource.ConeOuterGain))
             return false;
 
         if (!audioSource.AudioAssetID.empty())
@@ -1296,6 +1299,9 @@ namespace Quiet::Editor
         validated.MinDistance = std::clamp(audioSource.MinDistance, 0.01f, 99999.99f);
         validated.MaxDistance = std::clamp(audioSource.MaxDistance, validated.MinDistance + 0.01f, 100000.0f);
         validated.Rolloff = std::clamp(audioSource.Rolloff, 0.0f, 10.0f);
+        validated.ConeInnerAngleDegrees = std::clamp(audioSource.ConeInnerAngleDegrees, 0.0f, 360.0f);
+        validated.ConeOuterAngleDegrees = std::clamp(audioSource.ConeOuterAngleDegrees, validated.ConeInnerAngleDegrees, 360.0f);
+        validated.ConeOuterGain = std::clamp(audioSource.ConeOuterGain, 0.0f, 1.0f);
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -1462,6 +1468,51 @@ namespace Quiet::Editor
         auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
         if (!audioSource) return false;
         audioSource->Rolloff = std::clamp(rolloff, 0.0f, 10.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceConeInnerAngle(Scene::Scene& scene, const Core::UUID actorID, const float angleDegrees)
+    {
+        if (!CanEditScene() || !std::isfinite(angleDegrees)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+
+        const float outerAngle = std::isfinite(audioSource->ConeOuterAngleDegrees) ? std::clamp(audioSource->ConeOuterAngleDegrees, 0.0f, 360.0f) : 360.0f;
+        audioSource->ConeOuterAngleDegrees = outerAngle;
+        audioSource->ConeInnerAngleDegrees = std::clamp(angleDegrees, 0.0f, outerAngle);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceConeOuterAngle(Scene::Scene& scene, const Core::UUID actorID, const float angleDegrees)
+    {
+        if (!CanEditScene() || !std::isfinite(angleDegrees)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+
+        const float innerAngle = std::isfinite(audioSource->ConeInnerAngleDegrees) ? std::clamp(audioSource->ConeInnerAngleDegrees, 0.0f, 360.0f) : 360.0f;
+        audioSource->ConeInnerAngleDegrees = innerAngle;
+        audioSource->ConeOuterAngleDegrees = std::clamp(angleDegrees, innerAngle, 360.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceConeOuterGain(Scene::Scene& scene, const Core::UUID actorID, const float gain)
+    {
+        if (!CanEditScene() || !std::isfinite(gain)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+        audioSource->ConeOuterGain = std::clamp(gain, 0.0f, 1.0f);
         return true;
     }
 
