@@ -698,6 +698,7 @@ namespace Quiet::Renderer::UI::Inspector
         }
         if (!header.Open) return;
 
+        ImGui::PushID("CameraComponentContent");
         const bool isPilotingThisCamera =
             context.EditorState.Selection.PilotedCameraActorID.has_value() &&
             context.EditorState.Selection.PilotedCameraActorID.value() == actor.GetID();
@@ -749,6 +750,7 @@ namespace Quiet::Renderer::UI::Inspector
         {
             context.Commands.SetCameraFarClip(context.Scene, actor.GetID(), farClip);
         }
+        ImGui::PopID();
     }
 
     void DrawAudioSourceSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)
@@ -904,6 +906,7 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.ResetAudioListener(context.Scene, actor.GetID());
         }
         if (!header.Open) return;
+        ImGui::PushID("AudioListenerComponentContent");
 
         bool primary = listener->Primary;
 
@@ -917,6 +920,7 @@ namespace Quiet::Renderer::UI::Inspector
             ImGui::Spacing();
             DrawInspectorHint("This listener will be used for runtime spatial audio.");
         }
+        ImGui::PopID();
     }
 
     void DrawRigidBodySection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)
