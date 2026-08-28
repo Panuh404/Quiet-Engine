@@ -88,9 +88,19 @@ namespace Quiet::Audio
                 const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
                 ma_sound_set_position(sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
 
+                const float minDistance = std::isfinite(source.MinDistance) ? std::clamp(source.MinDistance, 0.01f, 99999.99f) : 1.0f;
+                const float maxDistance = std::isfinite(source.MaxDistance) ? std::clamp(source.MaxDistance, minDistance + 0.01f, 100000.0f) : 100000.0f;
+                const float rolloff = std::isfinite(source.Rolloff) ? std::clamp(source.Rolloff, 0.0f, 10.0f) : 1.0f;
+
+                ma_sound_set_attenuation_model(sound.get(), ma_attenuation_model_inverse);
+                ma_sound_set_min_distance(sound.get(), minDistance);
+                ma_sound_set_max_distance(sound.get(), maxDistance);
+                ma_sound_set_rolloff(sound.get(), rolloff);
+
                 // Velocity synchronization is intentionally deferred.
-                // Prevent Doppler from becoming part of F1 accidentally.
+                // Prevent Doppler from becoming part of this step.
                 ma_sound_set_doppler_factor(sound.get(), 0.0f);
+
                 ++spatialCount;
             }
 

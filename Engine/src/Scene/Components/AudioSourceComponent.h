@@ -14,5 +14,9 @@ namespace Quiet::Scene
         bool PlayOnStart = false;
         bool Loop = false;
         bool Spatial = true;
+
+        float MinDistance = 1.0f;
+        float MaxDistance = 100000.0f;
+        float Rolloff = 1.0f;
     };
 }

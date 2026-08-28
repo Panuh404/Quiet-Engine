@@ -101,7 +101,10 @@ namespace
             AreFloatsEqual(lhs->Pitch, rhs->Pitch) &&
             lhs->PlayOnStart == rhs->PlayOnStart &&
             lhs->Loop == rhs->Loop &&
-            lhs->Spatial == rhs->Spatial;
+            lhs->Spatial == rhs->Spatial &&
+            AreFloatsEqual(lhs->MinDistance, rhs->MinDistance) &&
+            AreFloatsEqual(lhs->MaxDistance, rhs->MaxDistance) &&
+            AreFloatsEqual(lhs->Rolloff, rhs->Rolloff);
     }
 
     bool AreAudioListenersEqual(const std::optional<Quiet::Scene::AudioListenerComponent>& lhs,

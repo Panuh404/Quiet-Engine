@@ -1278,7 +1278,10 @@ namespace Quiet::Editor
     bool EditorCommands::PasteAudioSourceValues(Scene::Scene& scene, const Core::UUID actorID, const Scene::AudioSourceComponent& audioSource, const Project::ProjectContext& projectContext)
     {
         if (!std::isfinite(audioSource.Volume) ||
-            !std::isfinite(audioSource.Pitch))
+            !std::isfinite(audioSource.Pitch) ||
+            !std::isfinite(audioSource.MinDistance) ||
+            !std::isfinite(audioSource.MaxDistance) ||
+            !std::isfinite(audioSource.Rolloff))
             return false;
 
         if (!audioSource.AudioAssetID.empty())
@@ -1290,6 +1293,9 @@ namespace Quiet::Editor
         Scene::AudioSourceComponent validated = audioSource;
         validated.Volume = std::clamp(audioSource.Volume, 0.0f, 4.0f);
         validated.Pitch = std::clamp(audioSource.Pitch, 0.01f, 4.0f);
+        validated.MinDistance = std::clamp(audioSource.MinDistance, 0.01f, 99999.99f);
+        validated.MaxDistance = std::clamp(audioSource.MaxDistance, validated.MinDistance + 0.01f, 100000.0f);
+        validated.Rolloff = std::clamp(audioSource.Rolloff, 0.0f, 10.0f);
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -1298,8 +1304,8 @@ namespace Quiet::Editor
 
             auto* existing = actor->TryGetComponent<Scene::AudioSourceComponent>();
             if (!existing) return false;
-            *existing = validated;
 
+            *existing = validated;
             return true;
         });
     }
@@ -1397,6 +1403,66 @@ namespace Quiet::Editor
 
             return true;
         });
+    }
+
+    bool EditorCommands::SetAudioSourceMinDistance(Scene::Scene& scene, const Core::UUID actorID, const float minDistance)
+    {
+        if (!CanEditScene() || !std::isfinite(minDistance)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+
+        float validatedMaxDistance = audioSource->MaxDistance;
+        if (!std::isfinite(validatedMaxDistance))
+        {
+            validatedMaxDistance = 100000.0f;
+        }
+
+        validatedMaxDistance = std::clamp(validatedMaxDistance, 0.02f, 100000.0f);
+        const float maximumMinDistance = std::clamp(validatedMaxDistance - 0.01f, 0.01f, 99999.99f);
+
+        audioSource->MaxDistance = validatedMaxDistance;
+        audioSource->MinDistance = std::clamp(minDistance, 0.01f, maximumMinDistance);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceMaxDistance(Scene::Scene& scene, const Core::UUID actorID, const float maxDistance)
+    {
+        if (!CanEditScene() || !std::isfinite(maxDistance)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+
+        float validatedMinDistance = audioSource->MinDistance;
+        if (!std::isfinite(validatedMinDistance))
+        {
+            validatedMinDistance = 1.0f;
+        }
+        validatedMinDistance = std::clamp(validatedMinDistance, 0.01f, 99999.99f);
+
+        const float minimumMaxDistance = std::min(100000.0f, validatedMinDistance + 0.01f);
+        audioSource->MinDistance = validatedMinDistance;
+        audioSource->MaxDistance = std::clamp(maxDistance, minimumMaxDistance, 100000.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceRolloff(Scene::Scene& scene, const Core::UUID actorID, const float rolloff)
+    {
+        if (!CanEditScene() || !std::isfinite(rolloff)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+        audioSource->Rolloff = std::clamp(rolloff, 0.0f, 10.0f);
+        return true;
     }
 
 

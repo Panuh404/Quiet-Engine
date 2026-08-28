@@ -826,6 +826,34 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.SetAudioSourceSpatial(context.Scene, actor.GetID(), spatial);
         }
 
+        if (audioSource->Spatial)
+        {
+            const float currentMaxDistance = std::isfinite(audioSource->MaxDistance) ? std::clamp(audioSource->MaxDistance, 0.02f, 100000.0f) : 100000.0f;
+            const float maximumMinDistance = std::clamp(currentMaxDistance - 0.01f, 0.01f, 99999.99f);
+            float minDistance = audioSource->MinDistance;
+
+            if (DrawFloatPropertyRow("Min Distance", minDistance, 0.1f, 0.01f, maximumMinDistance, tracked))
+            {
+                context.Commands.SetAudioSourceMinDistance(context.Scene, actor.GetID(), minDistance);
+            }
+
+            const float currentMinDistance = std::isfinite(audioSource->MinDistance) ? std::clamp(audioSource->MinDistance, 0.01f, 99999.99f) : 1.0f;
+            const float minimumMaxDistance = std::min(100000.0f, currentMinDistance + 0.01f);
+            float maxDistance = audioSource->MaxDistance;
+
+            if (DrawFloatPropertyRow("Max Distance", maxDistance, 1.0f, minimumMaxDistance, 100000.0f, tracked))
+            {
+                context.Commands.SetAudioSourceMaxDistance(context.Scene, actor.GetID(), maxDistance);
+            }
+
+            float rolloff = audioSource->Rolloff;
+
+            if (DrawFloatPropertyRow("Rolloff", rolloff, 0.05f, 0.0f, 10.0f, tracked))
+            {
+                context.Commands.SetAudioSourceRolloff(context.Scene, actor.GetID(), rolloff);
+            }
+        }
+
         if (audioSource->AudioAssetID.empty())
         {
             ImGui::Spacing();

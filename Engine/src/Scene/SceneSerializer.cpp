@@ -358,7 +358,10 @@ namespace Quiet::Scene
                     { "pitch", audioSource->Pitch },
                     { "play_on_start", audioSource->PlayOnStart },
                     { "loop", audioSource->Loop },
-                    { "spatial", audioSource->Spatial }
+                    { "spatial", audioSource->Spatial },
+                    { "min_distance", audioSource->MinDistance },
+                    { "max_distance", audioSource->MaxDistance },
+                    { "rolloff", audioSource->Rolloff }
                 };
             }
 
@@ -571,6 +574,9 @@ namespace Quiet::Scene
                 audioSource.PlayOnStart = audioSourceJson.value("play_on_start", audioSource.PlayOnStart);
                 audioSource.Loop = audioSourceJson.value("loop", audioSource.Loop);
                 audioSource.Spatial = audioSourceJson.value("spatial", audioSource.Spatial);
+                audioSource.MinDistance = audioSourceJson.value("min_distance", audioSource.MinDistance);
+                audioSource.MaxDistance = audioSourceJson.value("max_distance", audioSource.MaxDistance);
+                audioSource.Rolloff = audioSourceJson.value("rolloff", audioSource.Rolloff);
 
                 actor.AddComponent<AudioSourceComponent>(audioSource);
             }

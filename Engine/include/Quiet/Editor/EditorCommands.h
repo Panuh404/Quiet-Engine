@@ -158,6 +158,9 @@ namespace Quiet::Editor
         bool SetAudioSourcePlayOnStart(Scene::Scene& scene, Core::UUID actorID, bool playOnStart);
         bool SetAudioSourceLoop(Scene::Scene& scene, Core::UUID actorID, bool loop);
         bool SetAudioSourceSpatial(Scene::Scene& scene, Core::UUID actorID, bool spatial);
+        bool SetAudioSourceMinDistance(Scene::Scene& scene, Core::UUID actorID, float minDistance);
+        bool SetAudioSourceMaxDistance(Scene::Scene& scene, Core::UUID actorID, float maxDistance);
+        bool SetAudioSourceRolloff(Scene::Scene& scene, Core::UUID actorID, float rolloff);
 
         // AUDIO LISTENER
         bool AddAudioListener(Scene::Scene& scene, Core::UUID actorID);
