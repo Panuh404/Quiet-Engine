@@ -941,7 +941,7 @@ namespace Quiet::Scene
             {
                 audioListenerEntity = FindEntityByID(listener->GetID());
             }
-            m_AudioWorld->Update(m_Registry, audioListenerEntity);
+            m_AudioWorld->Update(m_Registry, audioListenerEntity, deltaTime);
         }
     }
 }

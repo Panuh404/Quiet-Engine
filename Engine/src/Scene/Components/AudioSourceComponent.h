@@ -22,5 +22,7 @@ namespace Quiet::Scene
         float ConeInnerAngleDegrees = 360.0f;
         float ConeOuterAngleDegrees = 360.0f;
         float ConeOuterGain = 0.0f;
+
+        float DopplerFactor = 1.0f;
     };
 }

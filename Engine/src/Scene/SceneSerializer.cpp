@@ -364,7 +364,8 @@ namespace Quiet::Scene
                     { "rolloff", audioSource->Rolloff },
                     { "cone_inner_angle_degrees", audioSource->ConeInnerAngleDegrees },
                     { "cone_outer_angle_degrees", audioSource->ConeOuterAngleDegrees },
-                    { "cone_outer_gain", audioSource->ConeOuterGain }
+                    { "cone_outer_gain", audioSource->ConeOuterGain },
+                    { "doppler_factor", audioSource->DopplerFactor }
                 };
             }
 
@@ -583,6 +584,7 @@ namespace Quiet::Scene
                 audioSource.ConeInnerAngleDegrees = audioSourceJson.value("cone_inner_angle_degrees", audioSource.ConeInnerAngleDegrees);
                 audioSource.ConeOuterAngleDegrees = audioSourceJson.value("cone_outer_angle_degrees", audioSource.ConeOuterAngleDegrees);
                 audioSource.ConeOuterGain = audioSourceJson.value("cone_outer_gain", audioSource.ConeOuterGain);
+                audioSource.DopplerFactor = audioSourceJson.value("doppler_factor", audioSource.DopplerFactor);
 
                 actor.AddComponent<AudioSourceComponent>(audioSource);
             }

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include <glm/vec3.hpp>
 #include <entt/entt.hpp>
 
 #include "Quiet/Core/UUID.h"
@@ -34,7 +35,7 @@ namespace Quiet::Audio
         AudioWorld& operator=(AudioWorld&&) = delete;
 
         void BuildSources(entt::registry& registry, entt::entity listenerEntity);
-        void Update(entt::registry& registry, entt::entity listenerEntity);
+        void Update(entt::registry& registry, entt::entity listenerEntity, float deltaTime);
 
         bool PlaySource(entt::entity entity);
         bool StopSource(entt::entity entity);
@@ -54,18 +55,25 @@ namespace Quiet::Audio
             std::string AudioAssetID;
             std::unique_ptr<ma_sound> Sound;
 
+            glm::vec3 PreviousPosition{ 0.0f };
+
             bool Spatial = false;
+            bool HasPreviousPosition = false;
             bool Paused = false;
         };
 
         [[nodiscard]] SourceBinding* FindSourceBinding(entt::entity entity);
         [[nodiscard]] const SourceBinding* FindSourceBinding(entt::entity entity) const;
 
-        void UpdateListener(entt::registry& registry, entt::entity listenerEntity);
+        void UpdateListener(entt::registry& registry, entt::entity listenerEntity, float deltaTime);
         void DestroySources();
 
     private:
         AudioSubsystem& m_AudioSubsystem;
         std::vector<SourceBinding> m_Sources;
+
+        entt::entity m_ListenerEntity = entt::null;
+        glm::vec3 m_PreviousListenerPosition{ 0.0f };
+        bool m_HasPreviousListenerPosition = false;
     };
 }

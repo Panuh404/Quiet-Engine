@@ -1284,7 +1284,8 @@ namespace Quiet::Editor
             !std::isfinite(audioSource.Rolloff) ||
             !std::isfinite(audioSource.ConeInnerAngleDegrees) ||
             !std::isfinite(audioSource.ConeOuterAngleDegrees) ||
-            !std::isfinite(audioSource.ConeOuterGain))
+            !std::isfinite(audioSource.ConeOuterGain) ||
+            !std::isfinite(audioSource.DopplerFactor))
             return false;
 
         if (!audioSource.AudioAssetID.empty())
@@ -1302,6 +1303,7 @@ namespace Quiet::Editor
         validated.ConeInnerAngleDegrees = std::clamp(audioSource.ConeInnerAngleDegrees, 0.0f, 360.0f);
         validated.ConeOuterAngleDegrees = std::clamp(audioSource.ConeOuterAngleDegrees, validated.ConeInnerAngleDegrees, 360.0f);
         validated.ConeOuterGain = std::clamp(audioSource.ConeOuterGain, 0.0f, 1.0f);
+        validated.DopplerFactor = std::clamp(audioSource.DopplerFactor, 0.0f, 10.0f);
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -1513,6 +1515,19 @@ namespace Quiet::Editor
         auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
         if (!audioSource) return false;
         audioSource->ConeOuterGain = std::clamp(gain, 0.0f, 1.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetAudioSourceDopplerFactor(Scene::Scene &scene, Core::UUID actorID, float dopplerFactor)
+    {
+        if (!CanEditScene() || !std::isfinite(dopplerFactor)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+        if (!audioSource) return false;
+        audioSource->DopplerFactor = std::clamp(dopplerFactor, 0.0f, 10.0f);
         return true;
     }
 

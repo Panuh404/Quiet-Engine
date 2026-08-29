@@ -164,6 +164,7 @@ namespace Quiet::Editor
         bool SetAudioSourceConeInnerAngle(Scene::Scene& scene, Core::UUID actorID, float angleDegrees);
         bool SetAudioSourceConeOuterAngle(Scene::Scene& scene, Core::UUID actorID, float angleDegrees);
         bool SetAudioSourceConeOuterGain(Scene::Scene& scene, Core::UUID actorID, float gain);
+        bool SetAudioSourceDopplerFactor(Scene::Scene& scene, Core::UUID actorID, float dopplerFactor);
 
         // AUDIO LISTENER
         bool AddAudioListener(Scene::Scene& scene, Core::UUID actorID);

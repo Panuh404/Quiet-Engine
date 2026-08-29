@@ -871,6 +871,12 @@ namespace Quiet::Renderer::UI::Inspector
             {
                 context.Commands.SetAudioSourceConeOuterGain(context.Scene, actor.GetID(), coneOuterGain);
             }
+
+            float dopplerFactor = audioSource->DopplerFactor;
+            if (DrawFloatPropertyRow("Doppler Factor", dopplerFactor, 0.05f, 0.0f, 10.0f, tracked))
+            {
+                context.Commands.SetAudioSourceDopplerFactor(context.Scene, actor.GetID(), dopplerFactor);
+            }
         }
 
         if (audioSource->AudioAssetID.empty())

@@ -107,7 +107,8 @@ namespace
             AreFloatsEqual(lhs->Rolloff, rhs->Rolloff) &&
             AreFloatsEqual(lhs->ConeInnerAngleDegrees, rhs->ConeInnerAngleDegrees) &&
             AreFloatsEqual(lhs->ConeOuterAngleDegrees, rhs->ConeOuterAngleDegrees) &&
-            AreFloatsEqual(lhs->ConeOuterGain, rhs->ConeOuterGain);
+            AreFloatsEqual(lhs->ConeOuterGain, rhs->ConeOuterGain) &&
+            AreFloatsEqual(lhs->DopplerFactor, rhs->DopplerFactor);
     }
 
     bool AreAudioListenersEqual(const std::optional<Quiet::Scene::AudioListenerComponent>& lhs,

@@ -38,7 +38,7 @@ namespace Quiet::Audio
         }
 
         // Establish the runtime listener before PlayOnStart sources can begin.
-        UpdateListener(registry, listenerEntity);
+        UpdateListener(registry, listenerEntity, 0.0f);
 
         auto view = registry.view<Scene::ActorIdentityComponent, Scene::AudioSourceComponent>();
         std::size_t startedCount = 0;
@@ -110,9 +110,9 @@ namespace Quiet::Audio
                 ma_sound_set_direction(sound.get(), sourceForward.x, sourceForward.y, sourceForward.z);
                 ma_sound_set_cone(sound.get(), glm::radians(coneInnerAngleDegrees), glm::radians(coneOuterAngleDegrees), coneOuterGain);
 
-                // Velocity synchronization is intentionally deferred.
-                // Prevent Doppler from becoming part of this step.
-                ma_sound_set_doppler_factor(sound.get(), 0.0f);
+                const float dopplerFactor = std::isfinite(source.DopplerFactor) ? std::clamp(source.DopplerFactor, 0.0f, 10.0f) : 1.0f;
+                ma_sound_set_velocity(sound.get(), 0.0f, 0.0f, 0.0f);
+                ma_sound_set_doppler_factor(sound.get(), dopplerFactor);
 
                 ++spatialCount;
             }
@@ -138,21 +138,25 @@ namespace Quiet::Audio
             binding.Sound = std::move(sound);
             binding.Spatial = source.Spatial;
 
+            if (source.Spatial)
+            {
+                const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
+                binding.PreviousPosition = transform.Position;
+                binding.HasPreviousPosition = true;
+            }
+
             m_Sources.push_back(std::move(binding));
         }
 
-        QUIET_CORE_INFO(
-            "Created {} runtime audio sources. spatial={}, playOnStart={}",
-            m_Sources.size(),
-            spatialCount,
-            startedCount
-        );
+        QUIET_CORE_INFO("Created {} runtime audio sources. spatial={}, playOnStart={}", m_Sources.size(), spatialCount, startedCount);
     }
 
-    void AudioWorld::Update(entt::registry &registry, entt::entity listenerEntity)
+    void AudioWorld::Update(entt::registry& registry, const entt::entity listenerEntity, const float deltaTime)
     {
         if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine) return;
-        UpdateListener(registry, listenerEntity);
+
+        const bool validDeltaTime = std::isfinite(deltaTime) && deltaTime > 0.0f;
+        UpdateListener(registry, listenerEntity, deltaTime);
 
         for (SourceBinding& binding : m_Sources)
         {
@@ -161,8 +165,39 @@ namespace Quiet::Audio
 
             const auto* transformComponent = registry.try_get<Scene::TransformComponent>(binding.Entity);
             if (!transformComponent) continue;
+
             const auto& transform = transformComponent->WorldTransform;
-            ma_sound_set_position(binding.Sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
+            const glm::vec3 currentPosition = transform.Position;
+            ma_sound_set_position(binding.Sound.get(), currentPosition.x, currentPosition.y, currentPosition.z);
+
+            glm::vec3 velocity{ 0.0f };
+
+            const bool currentPositionValid =
+                std::isfinite(currentPosition.x) &&
+                std::isfinite(currentPosition.y) &&
+                std::isfinite(currentPosition.z);
+
+            const bool previousPositionValid =
+                std::isfinite(binding.PreviousPosition.x) &&
+                std::isfinite(binding.PreviousPosition.y) &&
+                std::isfinite(binding.PreviousPosition.z);
+
+            if (validDeltaTime && binding.HasPreviousPosition && currentPositionValid && previousPositionValid)
+            {
+                velocity = (currentPosition - binding.PreviousPosition) / deltaTime;
+            }
+
+            ma_sound_set_velocity(binding.Sound.get(), velocity.x, velocity.y, velocity.z);
+
+            if (currentPositionValid)
+            {
+                binding.PreviousPosition = currentPosition;
+                binding.HasPreviousPosition = true;
+            }
+            else
+            {
+                binding.HasPreviousPosition = false;
+            }
 
             glm::mat4 rotation(1.0f);
             rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -330,38 +365,80 @@ namespace Quiet::Audio
         return nullptr;
     }
 
-    void AudioWorld::UpdateListener(entt::registry &registry, entt::entity listenerEntity)
+   void AudioWorld::UpdateListener(entt::registry& registry, const entt::entity listenerEntity, const float deltaTime)
     {
         if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine) return;
 
         constexpr ma_uint32 listenerIndex = 0;
         if (listenerEntity == entt::null || !registry.valid(listenerEntity))
         {
+            ma_engine_listener_set_velocity(m_AudioSubsystem.m_Engine.get(), listenerIndex, 0.0f, 0.0f, 0.0f);
             ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_FALSE);
+
+            m_ListenerEntity = entt::null;
+            m_HasPreviousListenerPosition = false;
             return;
         }
 
         const auto* transformComponent = registry.try_get<Scene::TransformComponent>(listenerEntity);
         if (!transformComponent)
         {
+            ma_engine_listener_set_velocity(m_AudioSubsystem.m_Engine.get(), listenerIndex, 0.0f, 0.0f, 0.0f);
             ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_FALSE);
+
+            m_ListenerEntity = entt::null;
+            m_HasPreviousListenerPosition = false;
             return;
         }
 
         const auto& transform = transformComponent->WorldTransform;
-        glm::mat4 rotation(1.0f);
+        const glm::vec3 currentPosition = transform.Position;
+        glm::vec3 velocity{ 0.0f };
 
+        const bool validDeltaTime = std::isfinite(deltaTime) && deltaTime > 0.0f;
+
+        const bool currentPositionValid =
+            std::isfinite(currentPosition.x) &&
+            std::isfinite(currentPosition.y) &&
+            std::isfinite(currentPosition.z);
+
+        const bool previousPositionValid =
+            std::isfinite(m_PreviousListenerPosition.x) &&
+            std::isfinite(m_PreviousListenerPosition.y) &&
+            std::isfinite(m_PreviousListenerPosition.z);
+
+        const bool sameListener = m_ListenerEntity == listenerEntity;
+        if (sameListener && validDeltaTime && m_HasPreviousListenerPosition && currentPositionValid && previousPositionValid)
+        {
+            velocity = (currentPosition - m_PreviousListenerPosition) / deltaTime;
+        }
+
+        ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_TRUE);
+        ma_engine_listener_set_position(m_AudioSubsystem.m_Engine.get(), listenerIndex, currentPosition.x, currentPosition.y, currentPosition.z);
+        ma_engine_listener_set_velocity(m_AudioSubsystem.m_Engine.get(), listenerIndex, velocity.x, velocity.y, velocity.z);
+
+        glm::mat4 rotation(1.0f);
         rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
         rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
         rotation = glm::rotate(rotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
 
         const glm::vec3 forward = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
-        const glm::vec3 up = glm::normalize(glm::vec3( rotation * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+        const glm::vec3 up = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
 
-        ma_engine_listener_set_enabled(m_AudioSubsystem.m_Engine.get(), listenerIndex, MA_TRUE);
-        ma_engine_listener_set_position(m_AudioSubsystem.m_Engine.get(), listenerIndex, transform.Position.x, transform.Position.y, transform.Position.z);
         ma_engine_listener_set_direction(m_AudioSubsystem.m_Engine.get(), listenerIndex, forward.x, forward.y, forward.z);
         ma_engine_listener_set_world_up(m_AudioSubsystem.m_Engine.get(), listenerIndex, up.x, up.y, up.z);
+
+        m_ListenerEntity = listenerEntity;
+
+        if (currentPositionValid)
+        {
+            m_PreviousListenerPosition = currentPosition;
+            m_HasPreviousListenerPosition = true;
+        }
+        else
+        {
+            m_HasPreviousListenerPosition = false;
+        }
     }
 
     void AudioWorld::DestroySources()
