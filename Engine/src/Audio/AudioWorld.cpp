@@ -303,7 +303,6 @@ namespace Quiet::Audio
         }
 
         const ma_result initializedResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, nullptr, nullptr, sound.get());
-
         if (initializedResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(initializedResult));
@@ -311,7 +310,7 @@ namespace Quiet::Audio
         }
 
         const float volume = std::isfinite(source.Volume) ? std::clamp(source.Volume, 0.0f, 4.0f) : 1.0f;
-        const float pitch = std::isfinite(source.Pitch) ? std::clamp(source.Pitch, 0.0f, 4.0f) : 1.0f;
+        const float pitch = std::isfinite(source.Pitch) ? std::clamp(source.Pitch, 0.01f, 4.0f) : 1.0f;
 
         ma_sound_set_volume(sound.get(), volume);
         ma_sound_set_pitch(sound.get(), pitch);
@@ -321,7 +320,7 @@ namespace Quiet::Audio
         {
             ma_sound_set_position(sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
 
-            const float minDistance = std::isfinite(source.MinDistance) ? std::clamp(source.MinDistance, 0.01f, 99999.9f) : 1.0f;
+            const float minDistance = std::isfinite(source.MinDistance) ? std::clamp(source.MinDistance, 0.01f, 99999.99f) : 1.0f;
             const float maxDistance = std::isfinite(source.MaxDistance) ? std::clamp(source.MaxDistance, minDistance + 0.01f, 100000.0f) : 100000.0f;
             const float rolloff = std::isfinite(source.Rolloff) ? std::clamp(source.Rolloff, 0.0f, 10.0f) : 1.0f;
 
