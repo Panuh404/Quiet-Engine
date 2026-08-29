@@ -37,115 +37,23 @@ namespace Quiet::Audio
             return;
         }
 
-        // Establish the runtime listener before PlayOnStart sources can begin.
+        // Establish the runtime listener before PlayOnStart sources begin.
         UpdateListener(registry, listenerEntity, 0.0f);
 
-        auto view = registry.view<Scene::ActorIdentityComponent, Scene::AudioSourceComponent>();
+        auto view = registry.view<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::AudioSourceComponent>();
+
         std::size_t startedCount = 0;
         std::size_t spatialCount = 0;
 
         for (const entt::entity entity : view)
         {
-            const auto& identity = registry.get<Scene::ActorIdentityComponent>(entity);
             const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
 
             if (source.AudioAssetID.empty()) continue;
+            if (!CreateSourceBinding(registry, entity)) continue;
 
-            const auto asset = m_AudioSubsystem.GetLibrary().Get(source.AudioAssetID);
-            if (!asset.has_value())
-            {
-                QUIET_CORE_WARN("Cannot create runtime audio source for actor '{}': audio asset '{}' is not loaded.",
-                    Core::UUIDToString(identity.ID), source.AudioAssetID);
-                continue;
-            }
-
-            auto sound = std::make_unique<ma_sound>();
-            const std::string path = asset->SourcePath.string();
-
-            ma_uint32 flags = MA_SOUND_FLAG_STREAM;
-            if (!source.Spatial)
-            {
-                flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
-            }
-
-            const ma_result initializeResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, nullptr, nullptr, sound.get());
-            if (initializeResult != MA_SUCCESS)
-            {
-                QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}",
-                    source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(initializeResult));
-                continue;
-            }
-
-            const float volume = std::isfinite(source.Volume) ? std::clamp(source.Volume, 0.0f, 4.0f) : 1.0f;
-            const float pitch = std::isfinite(source.Pitch) ? std::clamp(source.Pitch, 0.01f, 4.0f) : 1.0f;
-
-            ma_sound_set_volume(sound.get(), volume);
-            ma_sound_set_pitch(sound.get(), pitch);
-            ma_sound_set_looping(sound.get(), source.Loop ? MA_TRUE : MA_FALSE);
-
-            if (source.Spatial)
-            {
-                const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
-                ma_sound_set_position(sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
-
-                const float minDistance = std::isfinite(source.MinDistance) ? std::clamp(source.MinDistance, 0.01f, 99999.99f) : 1.0f;
-                const float maxDistance = std::isfinite(source.MaxDistance) ? std::clamp(source.MaxDistance, minDistance + 0.01f, 100000.0f) : 100000.0f;
-                const float rolloff = std::isfinite(source.Rolloff) ? std::clamp(source.Rolloff, 0.0f, 10.0f) : 1.0f;
-
-                ma_sound_set_attenuation_model(sound.get(), ma_attenuation_model_inverse);
-                ma_sound_set_min_distance(sound.get(), minDistance);
-                ma_sound_set_max_distance(sound.get(), maxDistance);
-                ma_sound_set_rolloff(sound.get(), rolloff);
-
-                const float coneInnerAngleDegrees = std::isfinite(source.ConeInnerAngleDegrees) ? std::clamp(source.ConeInnerAngleDegrees, 0.0f, 360.0f) : 360.0f;
-                const float coneOuterAngleDegrees = std::isfinite(source.ConeOuterAngleDegrees) ? std::clamp(source.ConeOuterAngleDegrees, coneInnerAngleDegrees, 360.0f) : 360.0f;
-                const float coneOuterGain = std::isfinite(source.ConeOuterGain) ? std::clamp(source.ConeOuterGain, 0.0f, 1.0f) : 0.0f;
-
-                glm::mat4 sourceRotation(1.0f);
-                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
-                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
-                sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
-
-                const glm::vec3 sourceForward = glm::normalize(glm::vec3(sourceRotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
-                ma_sound_set_direction(sound.get(), sourceForward.x, sourceForward.y, sourceForward.z);
-                ma_sound_set_cone(sound.get(), glm::radians(coneInnerAngleDegrees), glm::radians(coneOuterAngleDegrees), coneOuterGain);
-
-                const float dopplerFactor = std::isfinite(source.DopplerFactor) ? std::clamp(source.DopplerFactor, 0.0f, 10.0f) : 1.0f;
-                ma_sound_set_velocity(sound.get(), 0.0f, 0.0f, 0.0f);
-                ma_sound_set_doppler_factor(sound.get(), dopplerFactor);
-
-                ++spatialCount;
-            }
-
-            if (source.PlayOnStart)
-            {
-                const ma_result startResult = ma_sound_start(sound.get());
-                if (startResult != MA_SUCCESS)
-                {
-                    ma_sound_uninit(sound.get());
-                    QUIET_CORE_WARN("Failed to start runtime audio source '{}' for actor '{}': {}",
-                        source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(startResult));
-                    continue;
-                }
-
-                ++startedCount;
-            }
-
-            SourceBinding binding{};
-            binding.Entity = entity;
-            binding.ActorID = identity.ID;
-            binding.AudioAssetID = source.AudioAssetID;
-            binding.Sound = std::move(sound);
-            binding.Spatial = source.Spatial;
-
-            if (source.Spatial)
-            {
-                const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
-                binding.PreviousPosition = transform.Position;
-                binding.HasPreviousPosition = true;
-            }
-
-            m_Sources.push_back(std::move(binding));
+            if (source.Spatial) ++spatialCount;
+            if (source.PlayOnStart) ++startedCount;
         }
 
         QUIET_CORE_INFO("Created {} runtime audio sources. spatial={}, playOnStart={}", m_Sources.size(), spatialCount, startedCount);
@@ -157,6 +65,7 @@ namespace Quiet::Audio
 
         const bool validDeltaTime = std::isfinite(deltaTime) && deltaTime > 0.0f;
         UpdateListener(registry, listenerEntity, deltaTime);
+        SynchronizeSources(registry);
 
         for (SourceBinding& binding : m_Sources)
         {
@@ -240,7 +149,6 @@ namespace Quiet::Audio
                 binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(startResult));
             return false;
         }
-
         return true;
     }
 
@@ -324,7 +232,6 @@ namespace Quiet::Audio
                 binding->AudioAssetID, Core::UUIDToString(binding->ActorID), seconds, ma_result_description(result));
             return false;
         }
-
         return true;
     }
 
@@ -350,7 +257,6 @@ namespace Quiet::Audio
             if (binding.Entity == entity)
                 return &binding;
         }
-
         return nullptr;
     }
 
@@ -361,11 +267,180 @@ namespace Quiet::Audio
             if (binding.Entity == entity)
                 return &binding;
         }
-
         return nullptr;
     }
 
-   void AudioWorld::UpdateListener(entt::registry& registry, const entt::entity listenerEntity, const float deltaTime)
+    bool AudioWorld::CreateSourceBinding(entt::registry &registry, entt::entity entity)
+    {
+        if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine || !registry.valid(entity))
+            return false;
+
+        if (!registry.all_of<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::AudioSourceComponent>(entity))
+            return false;
+
+        if (FindSourceBinding(entity)) return false;
+
+        const auto& identity = registry.get<Scene::ActorIdentityComponent>(entity);
+        const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
+        const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
+
+        if (source.AudioAssetID.empty()) return false;
+        const auto asset = m_AudioSubsystem.GetLibrary().Get(source.AudioAssetID);
+
+        if (!asset.has_value())
+        {
+            QUIET_CORE_WARN("Cannot create runtime audio source for actor '{}': audio asset '{}' is not loaded.", Core::UUIDToString(identity.ID), source.AudioAssetID);
+            return false;
+        }
+
+        auto sound = std::make_unique<ma_sound>();
+        const std::string path = asset->SourcePath.string();
+
+        ma_uint32 flags = MA_SOUND_FLAG_STREAM;
+        if (!source.Spatial)
+        {
+            flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
+        }
+
+        const ma_result initializedResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, nullptr, nullptr, sound.get());
+
+        if (initializedResult != MA_SUCCESS)
+        {
+            QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(initializedResult));
+            return false;
+        }
+
+        const float volume = std::isfinite(source.Volume) ? std::clamp(source.Volume, 0.0f, 4.0f) : 1.0f;
+        const float pitch = std::isfinite(source.Pitch) ? std::clamp(source.Pitch, 0.0f, 4.0f) : 1.0f;
+
+        ma_sound_set_volume(sound.get(), volume);
+        ma_sound_set_pitch(sound.get(), pitch);
+        ma_sound_set_looping(sound.get(), source.Loop ? MA_TRUE : MA_FALSE);
+
+        if (source.Spatial)
+        {
+            ma_sound_set_position(sound.get(), transform.Position.x, transform.Position.y, transform.Position.z);
+
+            const float minDistance = std::isfinite(source.MinDistance) ? std::clamp(source.MinDistance, 0.01f, 99999.9f) : 1.0f;
+            const float maxDistance = std::isfinite(source.MaxDistance) ? std::clamp(source.MaxDistance, minDistance + 0.01f, 100000.0f) : 100000.0f;
+            const float rolloff = std::isfinite(source.Rolloff) ? std::clamp(source.Rolloff, 0.0f, 10.0f) : 1.0f;
+
+            ma_sound_set_attenuation_model(sound.get(), ma_attenuation_model_inverse);
+            ma_sound_set_min_distance(sound.get(), minDistance);
+            ma_sound_set_max_distance(sound.get(), maxDistance);
+            ma_sound_set_rolloff(sound.get(), rolloff);
+
+            const float coneInnerAngleDegrees = std::isfinite(source.ConeInnerAngleDegrees) ? std::clamp(source.ConeInnerAngleDegrees, 0.0f, 360.0f) : 360.0f;
+            const float coneOuterAngleDegrees = std::isfinite(source.ConeOuterAngleDegrees) ? std::clamp(source.ConeOuterAngleDegrees, coneInnerAngleDegrees, 360.0f) : 360.0f;
+            const float coneOuterGain = std::isfinite(source.ConeOuterGain) ? std::clamp(source.ConeOuterGain, 0.0f, 1.0f) : 0.0f;
+
+            glm::mat4 sourceRotation(1.0f);
+            sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            sourceRotation = glm::rotate(sourceRotation, glm::radians(transform.RotationDegrees.x), glm::vec3(1.0f, 0.0f, 0.0f));
+
+            const glm::vec3 sourceForward = glm::normalize(glm::vec3(sourceRotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+
+            ma_sound_set_direction(sound.get(), sourceForward.x, sourceForward.y, sourceForward.z);
+            ma_sound_set_cone(sound.get(), glm::radians(coneInnerAngleDegrees), glm::radians(coneOuterAngleDegrees), coneOuterGain);
+
+            const float dopplerFactor = std::isfinite(source.DopplerFactor) ? std::clamp(source.DopplerFactor, 0.0f, 10.0f) : 1.0f;
+
+            ma_sound_set_velocity(sound.get(), 0.0f, 0.0f, 0.0f);
+            ma_sound_set_doppler_factor(sound.get(), dopplerFactor);
+        }
+
+        if (source.PlayOnStart)
+        {
+            const ma_result startResult = ma_sound_start(sound.get());
+            if (startResult != MA_SUCCESS)
+            {
+                ma_sound_uninit(sound.get());
+
+                QUIET_CORE_WARN("Failed to start runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(startResult));
+                return false;
+            }
+        }
+
+        SourceBinding binding{};
+        binding.Entity = entity;
+        binding.ActorID = identity.ID;
+        binding.AudioAssetID = source.AudioAssetID;
+        binding.Sound = std::move(sound);
+        binding.Spatial = source.Spatial;
+
+        if (source.Spatial)
+        {
+            binding.PreviousPosition = transform.Position;
+            binding.HasPreviousPosition = true;
+        }
+
+        m_Sources.push_back(std::move(binding));
+        return true;
+    }
+
+    void AudioWorld::DestroySourceBinding(SourceBinding &binding)
+    {
+        if (!binding.Sound) return;
+
+        (void)ma_sound_stop(binding.Sound.get());
+
+        ma_sound_uninit(binding.Sound.get());
+        binding.Sound.reset();
+        binding.Paused = false;
+        binding.HasPreviousPosition = false;
+    }
+
+    void AudioWorld::SynchronizeSources(entt::registry &registry)
+    {
+        std::size_t removedCount = 0;
+        std::size_t createdCount = 0;
+
+        // Remove bindings which no longer correspond to the current runtime ECS state.
+        for (std::size_t index = 0; index < m_Sources.size();)
+        {
+            SourceBinding& binding = m_Sources[index];
+            bool removeBinding = !registry.valid(binding.Entity);
+            if (!removeBinding)
+            {
+                const auto* source = registry.try_get<Scene::AudioSourceComponent>(binding.Entity);
+                removeBinding = source == nullptr || source->AudioAssetID.empty() || source->AudioAssetID != binding.AudioAssetID;
+            }
+            if (!removeBinding)
+            {
+                ++index;
+                continue;
+            }
+
+            DestroySourceBinding(binding);
+            m_Sources.erase(m_Sources.begin() + static_cast<std::ptrdiff_t>(index));
+            ++removedCount;
+        }
+
+        // New runtime AudioSourceComponents.
+        auto view = registry.view<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::AudioSourceComponent>();
+        for (const entt::entity entity : view)
+        {
+            if (FindSourceBinding(entity)) continue;
+
+            const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
+            if (source.AudioAssetID.empty()) continue;
+
+            // Skip unresolved IDs without attempting backend initialization every frame.
+            if (!m_AudioSubsystem.GetLibrary().Has(source.AudioAssetID)) continue;
+            if (CreateSourceBinding(registry, entity))
+            {
+                ++createdCount;
+            }
+        }
+
+        if (createdCount > 0 || removedCount > 0)
+        {
+            QUIET_CORE_INFO("Synchronized runtime audio sources. created={}, removed={}, active={}", createdCount, removedCount, m_Sources.size());
+        }
+    }
+
+    void AudioWorld::UpdateListener(entt::registry& registry, const entt::entity listenerEntity, const float deltaTime)
     {
         if (!m_AudioSubsystem.IsInitialized() || !m_AudioSubsystem.m_Engine) return;
 
@@ -443,14 +518,10 @@ namespace Quiet::Audio
 
     void AudioWorld::DestroySources()
     {
-        for (SourceBinding& source : m_Sources)
+        for (SourceBinding& binding : m_Sources)
         {
-            if (!source.Sound) continue;
-            (void)ma_sound_stop(source.Sound.get());
-            ma_sound_uninit(source.Sound.get());
-            source.Sound.reset();
+            DestroySourceBinding(binding);
         }
-
         m_Sources.clear();
     }
 }

@@ -65,6 +65,10 @@ namespace Quiet::Audio
         [[nodiscard]] SourceBinding* FindSourceBinding(entt::entity entity);
         [[nodiscard]] const SourceBinding* FindSourceBinding(entt::entity entity) const;
 
+        bool CreateSourceBinding(entt::registry& registry, entt::entity entity);
+        void DestroySourceBinding(SourceBinding& binding);
+        void SynchronizeSources(entt::registry& registry);
+
         void UpdateListener(entt::registry& registry, entt::entity listenerEntity, float deltaTime);
         void DestroySources();
 
