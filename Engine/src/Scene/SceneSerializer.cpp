@@ -103,6 +103,18 @@ namespace Quiet::Scene
         };
     }
 
+    static const char* SerializeAudioBus(const Audio::AudioBus bus)
+    {
+        switch (bus)
+        {
+            case Audio::AudioBus::Master:   return "master";
+            case Audio::AudioBus::Music:    return "music";
+            case Audio::AudioBus::SFX:      return "sfx";
+            case Audio::AudioBus::UI:       return "ui";
+            default:                        return "sfx";
+        }
+    }
+
     static const char* SerializeRigidBodyMotionType(const RigidBodyMotionType type)
     {
         switch (type)
@@ -246,6 +258,19 @@ namespace Quiet::Scene
         return material;
     }
 
+    static Audio::AudioBus DeserializeAudioBus(const std::string& bus)
+    {
+        if (bus == "master")    return Audio::AudioBus::Master;
+        if (bus == "music")     return Audio::AudioBus::Music;
+        if (bus == "ui")        return Audio::AudioBus::UI;
+        if (bus != "sfx")
+        {
+            QUIET_CORE_WARN("Unknown audio bus '{}'. Using SFX.", bus);
+        }
+
+        return Audio::AudioBus::SFX;
+    }
+
     static RigidBodyMotionType DeserializeRigidBodyMotionType(const std::string& type)
     {
         if (type == "static")
@@ -354,6 +379,7 @@ namespace Quiet::Scene
                 actorJson["audio_source"] =
                 {
                     { "audio_asset_id", audioSource->AudioAssetID },
+                    { "bus", SerializeAudioBus(audioSource->Bus) },
                     { "volume", audioSource->Volume },
                     { "pitch", audioSource->Pitch },
                     { "play_on_start", audioSource->PlayOnStart },
@@ -573,6 +599,7 @@ namespace Quiet::Scene
                 AudioSourceComponent audioSource{};
 
                 audioSource.AudioAssetID = audioSourceJson.value("audio_asset_id", std::string{});
+                audioSource.Bus = DeserializeAudioBus(audioSourceJson.value("bus", std::string{ "sfx" }));
                 audioSource.Volume = audioSourceJson.value("volume", audioSource.Volume);
                 audioSource.Pitch = audioSourceJson.value("pitch", audioSource.Pitch);
                 audioSource.PlayOnStart = audioSourceJson.value("play_on_start", audioSource.PlayOnStart);

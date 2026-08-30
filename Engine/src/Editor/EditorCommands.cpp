@@ -1294,6 +1294,17 @@ namespace Quiet::Editor
             if (!record || record->Type != Project::AssetType::Audio) return false;
         }
 
+        switch (audioSource.Bus)
+        {
+            case Audio::AudioBus::Master:
+            case Audio::AudioBus::Music:
+            case Audio::AudioBus::SFX:
+            case Audio::AudioBus::UI:
+                break;
+            default:
+                return false;
+        }
+
         Scene::AudioSourceComponent validated = audioSource;
         validated.Volume = std::clamp(audioSource.Volume, 0.0f, 4.0f);
         validated.Pitch = std::clamp(audioSource.Pitch, 0.01f, 4.0f);
@@ -1336,6 +1347,32 @@ namespace Quiet::Editor
             if (!audioSource || audioSource->AudioAssetID == audioAssetID) return false;
             audioSource->AudioAssetID = audioAssetID;
 
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetAudioSourceBus(Scene::Scene& scene, const Core::UUID actorID, const Audio::AudioBus bus)
+    {
+        switch (bus)
+        {
+            case Audio::AudioBus::Master:
+            case Audio::AudioBus::Music:
+            case Audio::AudioBus::SFX:
+            case Audio::AudioBus::UI:
+                break;
+            default:
+                return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* audioSource = actor->TryGetComponent<Scene::AudioSourceComponent>();
+            if (!audioSource || audioSource->Bus == bus) return false;
+
+            audioSource->Bus = bus;
             return true;
         });
     }

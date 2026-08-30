@@ -19,8 +19,8 @@ namespace Quiet::Editor
                                                         : m_EditorController(editorController)
                                                         , m_EditorScene(editorScene)
                                                         , m_RuntimeScene(runtimeScene)
-                                                        , m_AudioSubsystem(audioSubsystem)
                                                         , m_PhysicsSubsystem(physicsSubsystem)
+                                                        , m_AudioSubsystem(audioSubsystem)
                                                         , m_SetMouseCaptureEnabled(std::move(setMouseCaptureEnabled))
                                                         , m_GetMouseCaptureEnabled(std::move(getMouseCaptureEnabled)) {}
 

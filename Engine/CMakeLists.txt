@@ -25,6 +25,7 @@ target_sources(Quiet_Engine
 
         # Audio
         src/Audio/AudioAsset.h
+        src/Audio/AudioBus.h
         src/Audio/AudioLibrary.cpp
         src/Audio/AudioLibrary.h
         src/Audio/AudioSubsystem.h

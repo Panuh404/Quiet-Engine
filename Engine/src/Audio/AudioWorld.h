@@ -7,6 +7,7 @@
 #include <glm/vec3.hpp>
 #include <entt/entt.hpp>
 
+#include "Audio/AudioBus.h"
 #include "Quiet/Core/UUID.h"
 
 struct ma_sound;
@@ -50,6 +51,7 @@ namespace Quiet::Audio
         struct SourceBinding
         {
             entt::entity Entity = entt::null;
+            AudioBus Bus = AudioBus::SFX;
             Core::UUID ActorID{};
 
             std::string AudioAssetID;

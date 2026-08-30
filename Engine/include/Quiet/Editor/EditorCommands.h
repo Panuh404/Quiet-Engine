@@ -10,6 +10,11 @@
 #include "glm/vec4.hpp"
 #include "Scene/SceneHierarchy.h"
 
+namespace Quiet::Audio
+{
+    enum class AudioBus : std::uint8_t;
+}
+
 namespace Quiet::Scene
 {
     class Scene;
@@ -153,6 +158,7 @@ namespace Quiet::Editor
         bool PasteAudioSourceValues(Scene::Scene& scene, Core::UUID actorID, const Scene::AudioSourceComponent& audioSource, const Project::ProjectContext& projectContext);
 
         bool SetAudioSourceAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext);
+        bool SetAudioSourceBus(Scene::Scene& scene, Core::UUID actorID, Audio::AudioBus bus);
         bool SetAudioSourceVolume(Scene::Scene& scene, Core::UUID actorID, float volume);
         bool SetAudioSourcePitch(Scene::Scene& scene, Core::UUID actorID, float pitch);
         bool SetAudioSourcePlayOnStart(Scene::Scene& scene, Core::UUID actorID, bool playOnStart);

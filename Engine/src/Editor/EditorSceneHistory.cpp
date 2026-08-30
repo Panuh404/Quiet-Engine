@@ -97,6 +97,7 @@ namespace
 
         return
             lhs->AudioAssetID == rhs->AudioAssetID &&
+            lhs->Bus == rhs->Bus &&
             AreFloatsEqual(lhs->Volume, rhs->Volume) &&
             AreFloatsEqual(lhs->Pitch, rhs->Pitch) &&
             lhs->PlayOnStart == rhs->PlayOnStart &&

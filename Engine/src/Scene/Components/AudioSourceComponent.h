@@ -1,12 +1,14 @@
 #pragma once
 
 #include <string>
+#include <Audio/AudioBus.h>
 
 namespace Quiet::Scene
 {
     struct AudioSourceComponent
     {
         std::string AudioAssetID;
+        Audio::AudioBus Bus = Audio::AudioBus::SFX;
 
         float Volume = 1.0f;
         float Pitch = 1.0f;

@@ -798,6 +798,53 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.SetAudioSourceAsset(context.Scene, actor.GetID(), selectedAudioAssetID, context.ProjectContext);
         }
 
+        const auto getAudioBusLabel = [](const Audio::AudioBus bus)
+        {
+            switch (bus)
+            {
+                case Audio::AudioBus::Master:   return "Master";
+                case Audio::AudioBus::Music:    return "Music";
+                case Audio::AudioBus::SFX:      return "SFX";
+                case Audio::AudioBus::UI:       return "UI";
+                default:                        return "SFX";
+            }
+        };
+
+        Audio::AudioBus bus = audioSource->Bus;
+        bool busChanged = false;
+
+        ImGui::PushID("AudioSourceBus");
+        BeginInspectorPropertyRow("Bus");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        if (EditorBeginCombo("##Value", getAudioBusLabel(bus)))
+        {
+            const auto drawBusOption = [&](const char* label, const Audio::AudioBus option)
+            {
+                const bool selected = bus == option;
+                if (EditorSelectable(label, selected))
+                {
+                    bus = option;
+                    busChanged = true;
+                }
+                if (selected)ImGui::SetItemDefaultFocus();
+            };
+
+            drawBusOption("Master", Audio::AudioBus::Master);
+            drawBusOption("Music", Audio::AudioBus::Music);
+            drawBusOption("SFX", Audio::AudioBus::SFX);
+            drawBusOption("UI", Audio::AudioBus::UI);
+
+            ImGui::EndCombo();
+        }
+
+        ImGui::PopID();
+
+        if (busChanged)
+        {
+            context.Commands.SetAudioSourceBus(context.Scene, actor.GetID(), bus);
+        }
+
         float volume = audioSource->Volume;
         if (DrawFloatPropertyRow("Volume", volume, 0.01f, 0.0f, 4.0f, tracked))
         {

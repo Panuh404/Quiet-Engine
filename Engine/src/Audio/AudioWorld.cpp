@@ -302,7 +302,9 @@ namespace Quiet::Audio
             flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
         }
 
-        const ma_result initializedResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, nullptr, nullptr, sound.get());
+        ma_sound_group* soundGroup = m_AudioSubsystem.GetSoundGroup(source.Bus);
+
+        const ma_result initializedResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, soundGroup, nullptr, sound.get());
         if (initializedResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(initializedResult));
@@ -365,6 +367,7 @@ namespace Quiet::Audio
         binding.Entity = entity;
         binding.ActorID = identity.ID;
         binding.AudioAssetID = source.AudioAssetID;
+        binding.Bus = source.Bus;
         binding.Sound = std::move(sound);
         binding.Spatial = source.Spatial;
 
@@ -403,7 +406,7 @@ namespace Quiet::Audio
             if (!removeBinding)
             {
                 const auto* source = registry.try_get<Scene::AudioSourceComponent>(binding.Entity);
-                removeBinding = source == nullptr || source->AudioAssetID.empty() || source->AudioAssetID != binding.AudioAssetID;
+                removeBinding = source == nullptr || source->AudioAssetID.empty() || source->AudioAssetID != binding.AudioAssetID || source->Bus != binding.Bus;
             }
             if (!removeBinding)
             {

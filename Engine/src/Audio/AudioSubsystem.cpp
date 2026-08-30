@@ -3,6 +3,8 @@
 
 #include <stdexcept>
 #include <string>
+#include <algorithm>
+#include <cmath>
 
 #include <miniaudio.h>
 
@@ -28,6 +30,64 @@ namespace Quiet::Audio
     const AudioLibrary & AudioSubsystem::GetLibrary() const
     {
         return *m_Library;
+    }
+
+    bool AudioSubsystem::SetBusVolume(AudioBus bus, float volume)
+    {
+        if (!m_Initialized || !m_Engine || !std::isfinite(volume)) return false;
+        const float validatedVolume = std::clamp(volume, 0.0f, 4.0f);
+
+        switch (bus)
+        {
+            case AudioBus::Master:
+            {
+                const ma_result result = ma_engine_set_volume(m_Engine.get(), validatedVolume);
+                if (result != MA_SUCCESS)
+                {
+                    QUIET_CORE_WARN("Failed to set Master audio bus volume: {}", ma_result_description(result));
+                    return false;
+                }
+
+                m_MasterVolume = validatedVolume;
+                return true;
+            }
+
+            case AudioBus::Music:
+                if (!m_MusicGroup) return false;
+                ma_sound_group_set_volume(m_MusicGroup.get(), validatedVolume);
+
+                m_MusicVolume = validatedVolume;
+                return true;
+
+            case AudioBus::SFX:
+                if (!m_SfxGroup) return false;
+                ma_sound_group_set_volume(m_SfxGroup.get(), validatedVolume);
+
+                m_SfxVolume = validatedVolume;
+                return true;
+
+            case AudioBus::UI:
+                if (!m_UIGroup) return false;
+                ma_sound_group_set_volume(m_UIGroup.get(), validatedVolume);
+
+                m_UIVolume = validatedVolume;
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    float AudioSubsystem::GetBusVolume(AudioBus bus) const
+    {
+        switch (bus)
+        {
+            case AudioBus::Master:  return m_MasterVolume;
+            case AudioBus::Music:   return m_MusicVolume;
+            case AudioBus::SFX:     return m_SfxVolume;
+            case AudioBus::UI:      return m_UIVolume;
+            default:                return 1.0f;
+        }
     }
 
     bool AudioSubsystem::PlayOneShot(const std::filesystem::path &filepath) const
@@ -61,8 +121,7 @@ namespace Quiet::Audio
         return PlayOneShot(asset->SourcePath);
     }
 
-    bool AudioSubsystem::StartPreviewAsset(
-        const std::string_view assetID)
+    bool AudioSubsystem::StartPreviewAsset(const std::string_view assetID)
     {
         if (!m_Initialized || !m_Engine || !m_Library) return false;
 
@@ -154,6 +213,29 @@ namespace Quiet::Audio
             throw std::runtime_error("Failed to initialize miniaudio: " + error);
         }
 
+        const auto initializeSoundGroup = [&](std::unique_ptr<ma_sound_group>& group, const char* name)
+        {
+            group = std::make_unique<ma_sound_group>();
+
+            const ma_result groupResult = ma_sound_group_init(m_Engine.get(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, group.get());
+            if (groupResult == MA_SUCCESS) return;
+
+            const std::string error = ma_result_description(groupResult);
+            group.reset();
+
+            ShutdownSoundGroups();
+
+            ma_engine_uninit(m_Engine.get());
+            m_Engine.reset();
+            m_Library.reset();
+
+            throw std::runtime_error(std::string("Failed to initialize ") + name + " audio bus: " + error);
+        };
+
+        initializeSoundGroup(m_MusicGroup, "Music");
+        initializeSoundGroup(m_SfxGroup, "SFX");
+        initializeSoundGroup(m_UIGroup, "UI");
+
         m_Initialized = true;
 
         ma_device* device = ma_engine_get_device(m_Engine.get());
@@ -177,6 +259,7 @@ namespace Quiet::Audio
     {
         StopPreview();
         m_Library.reset();
+        ShutdownSoundGroups();
 
         if (!m_Engine)
         {
@@ -195,4 +278,34 @@ namespace Quiet::Audio
         QUIET_CORE_INFO("Shut down miniaudio audio subsystem.");
     }
 
+    ma_sound_group* AudioSubsystem::GetSoundGroup(const AudioBus bus) const
+    {
+        switch (bus)
+        {
+            case AudioBus::Master:  return nullptr;
+            case AudioBus::Music:   return m_MusicGroup.get();
+            case AudioBus::SFX:     return m_SfxGroup.get();
+            case AudioBus::UI:      return m_UIGroup.get();
+            default:                return m_SfxGroup.get();
+        }
+    }
+
+    void AudioSubsystem::ShutdownSoundGroups()
+    {
+        if (m_UIGroup)
+        {
+            ma_sound_group_uninit(m_UIGroup.get());
+            m_UIGroup.reset();
+        }
+        if (m_SfxGroup)
+        {
+            ma_sound_group_uninit(m_SfxGroup.get());
+            m_SfxGroup.reset();
+        }
+        if (m_MusicGroup)
+        {
+            ma_sound_group_uninit(m_MusicGroup.get());
+            m_MusicGroup.reset();
+        }
+    }
 }
