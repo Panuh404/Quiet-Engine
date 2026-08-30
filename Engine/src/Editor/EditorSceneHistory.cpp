@@ -35,6 +35,14 @@ namespace
                AreFloatsEqual(lhs.w, rhs.w);
     }
 
+    bool AreAudioSettingsEqual(const Quiet::Scene::SceneAudioSettings& lhs, const Quiet::Scene::SceneAudioSettings& rhs)
+    {
+        return AreFloatsEqual(lhs.MasterVolume, rhs.MasterVolume) &&
+               AreFloatsEqual(lhs.MusicVolume, rhs.MusicVolume) &&
+               AreFloatsEqual(lhs.SFXVolume, rhs.SFXVolume) &&
+               AreFloatsEqual(lhs.UIVolume, rhs.UIVolume);
+    }
+
     bool ArePhysicsSettingsEqual(const Quiet::Scene::ScenePhysicsSettings& lhs, const Quiet::Scene::ScenePhysicsSettings& rhs)
     {
         return AreVec3Equal(lhs.Gravity, rhs.Gravity);
@@ -386,6 +394,7 @@ namespace Quiet::Editor
         }
 
         snapshot.Hierarchy = scene.GetHierarchy();
+        snapshot.AudioSettings = scene.GetAudioSettings();
         snapshot.PhysicsSettings = scene.GetPhysicsSettings();
         snapshot.RenderSettings = scene.GetRenderSettings();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
@@ -436,6 +445,7 @@ namespace Quiet::Editor
                 actor.AddComponent<Scene::CapsuleColliderComponent>(*actorSnapshot.CapsuleCollider);
         }
         scene.SetHierarchy(snapshot.Hierarchy);
+        scene.GetAudioSettings() = snapshot.AudioSettings;
         scene.GetPhysicsSettings() = snapshot.PhysicsSettings;
         scene.GetRenderSettings() = snapshot.RenderSettings;
         state.Selection.SelectedActorID = snapshot.SelectedActorID;
@@ -446,6 +456,7 @@ namespace Quiet::Editor
         return lhs.SelectedActorID == rhs.SelectedActorID &&
                AreActorListsEqual(lhs.Actors, rhs.Actors) &&
                lhs.Hierarchy == rhs.Hierarchy &&
+               AreAudioSettingsEqual(lhs.AudioSettings, rhs.AudioSettings) &&
                AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings) &&
                ArePhysicsSettingsEqual(lhs.PhysicsSettings, rhs.PhysicsSettings);
     }
@@ -486,6 +497,7 @@ namespace Quiet::Editor
         state.Scene.Dirty =
             !AreActorListsEqual(m_CleanSnapshot->Actors, currentSnapshot.Actors) ||
             m_CleanSnapshot->Hierarchy != currentSnapshot.Hierarchy ||
+            !AreAudioSettingsEqual(m_CleanSnapshot->AudioSettings, currentSnapshot.AudioSettings) ||
             !AreRenderSettingsEqual(m_CleanSnapshot->RenderSettings, currentSnapshot.RenderSettings) ||
             !ArePhysicsSettingsEqual(m_CleanSnapshot->PhysicsSettings, currentSnapshot.PhysicsSettings);
     }

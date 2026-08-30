@@ -31,6 +31,7 @@ namespace Quiet::Scene
 
         Clear();
 
+        m_AudioSettings = other.m_AudioSettings;
         m_PhysicsSettings = other.m_PhysicsSettings;
         m_RenderSettings = other.m_RenderSettings;
         for (const Actor& source : other.m_Actors)
@@ -214,6 +215,7 @@ namespace Quiet::Scene
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
+        m_AudioSettings = SceneAudioSettings{};
         m_PhysicsSettings = ScenePhysicsSettings{};
         m_RenderSettings = SceneRenderSettings{};
         m_Hierarchy = SceneHierarchyState{};
@@ -615,6 +617,7 @@ namespace Quiet::Scene
 
         // Audio
         m_AudioWorld = std::make_unique<Audio::AudioWorld>(audioSubsystem);
+        m_AudioWorld->ApplyMixSettings(m_AudioSettings);
         entt::entity audioListenerEntity = entt::null;
 
         if (const Actor* listener = FindPrimaryAudioListenerActor())

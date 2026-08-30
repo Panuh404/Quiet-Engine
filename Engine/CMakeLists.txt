@@ -44,6 +44,7 @@ target_sources(Quiet_Engine
         src/Scene/Actor.h
         src/Scene/Scene.cpp
         src/Scene/Scene.h
+        src/Scene/SceneAudioSettings.h
         src/Scene/SceneDocument.cpp
         src/Scene/SceneHierarchy.h
         src/Scene/ScenePhysicsSettings.h

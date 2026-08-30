@@ -10,6 +10,7 @@
 #include "Audio/AudioLibrary.h"
 #include "Audio/AudioSubsystem.h"
 #include "Quiet/Core/Log.h"
+#include "Scene/SceneAudioSettings.h"
 #include "Scene/Components/ActorIdentityComponent.h"
 #include "Scene/Components/AudioSourceComponent.h"
 #include "Scene/Components/TransformComponent.h"
@@ -24,6 +25,7 @@ namespace Quiet::Audio
     AudioWorld::~AudioWorld()
     {
         DestroySources();
+        RestoreMixSettings();
         QUIET_CORE_INFO("Destroyed audio world.");
     }
 
@@ -57,6 +59,34 @@ namespace Quiet::Audio
         }
 
         QUIET_CORE_INFO("Created {} runtime audio sources. spatial={}, playOnStart={}", m_Sources.size(), spatialCount, startedCount);
+    }
+
+    void AudioWorld::ApplyMixSettings(const Scene::SceneAudioSettings &settings)
+    {
+        if (!m_AudioSubsystem.IsInitialized()) return;
+        if (!m_MixSettingsApplied)
+        {
+            m_PreviousMasterVolume = m_AudioSubsystem.GetBusVolume(AudioBus::Master);
+            m_PreviousMusicVolume = m_AudioSubsystem.GetBusVolume(AudioBus::Music);
+            m_PreviousSFXVolume = m_AudioSubsystem.GetBusVolume(AudioBus::SFX);
+            m_PreviousUIVolume = m_AudioSubsystem.GetBusVolume(AudioBus::UI);
+            m_MixSettingsApplied = true;
+        }
+
+        const auto validatedVolume = [](const float value)
+        {
+            return std::isfinite(value) ? std::clamp(value, 0.0f, 4.0f) : 1.0f;
+        };
+
+        const bool masterApplied = m_AudioSubsystem.SetBusVolume(AudioBus::Master, validatedVolume(settings.MasterVolume));
+        const bool musicApplied = m_AudioSubsystem.SetBusVolume(AudioBus::Music, validatedVolume(settings.MusicVolume));
+        const bool sfxApplied = m_AudioSubsystem.SetBusVolume(AudioBus::SFX, validatedVolume(settings.SFXVolume));
+        const bool uiApplied = m_AudioSubsystem.SetBusVolume(AudioBus::UI, validatedVolume(settings.UIVolume));
+
+        if (!masterApplied || !musicApplied || !sfxApplied || !uiApplied)
+        {
+            QUIET_CORE_WARN("One or more runtime audio mix levels could not be applied.");
+        }
     }
 
     void AudioWorld::Update(entt::registry& registry, const entt::entity listenerEntity, const float deltaTime)
@@ -516,6 +546,20 @@ namespace Quiet::Audio
         {
             m_HasPreviousListenerPosition = false;
         }
+    }
+
+    void AudioWorld::RestoreMixSettings()
+    {
+        if (!m_MixSettingsApplied) return;
+        if (m_AudioSubsystem.IsInitialized())
+        {
+            (void)m_AudioSubsystem.SetBusVolume(AudioBus::Master, m_PreviousMasterVolume);
+            (void)m_AudioSubsystem.SetBusVolume(AudioBus::Music, m_PreviousMusicVolume);
+            (void)m_AudioSubsystem.SetBusVolume(AudioBus::SFX, m_PreviousSFXVolume);
+            (void)m_AudioSubsystem.SetBusVolume(AudioBus::UI, m_PreviousUIVolume);
+        }
+
+        m_MixSettingsApplied = false;
     }
 
     void AudioWorld::DestroySources()

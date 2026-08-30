@@ -12,6 +12,11 @@
 
 struct ma_sound;
 
+namespace Quiet::Scene
+{
+    struct SceneAudioSettings;
+}
+
 namespace Quiet::Audio
 {
     class AudioSubsystem;
@@ -36,6 +41,7 @@ namespace Quiet::Audio
         AudioWorld& operator=(AudioWorld&&) = delete;
 
         void BuildSources(entt::registry& registry, entt::entity listenerEntity);
+        void ApplyMixSettings(const Scene::SceneAudioSettings& settings);
         void Update(entt::registry& registry, entt::entity listenerEntity, float deltaTime);
 
         bool PlaySource(entt::entity entity);
@@ -72,6 +78,7 @@ namespace Quiet::Audio
         void SynchronizeSources(entt::registry& registry);
 
         void UpdateListener(entt::registry& registry, entt::entity listenerEntity, float deltaTime);
+        void RestoreMixSettings();
         void DestroySources();
 
     private:
@@ -81,5 +88,11 @@ namespace Quiet::Audio
         entt::entity m_ListenerEntity = entt::null;
         glm::vec3 m_PreviousListenerPosition{ 0.0f };
         bool m_HasPreviousListenerPosition = false;
+
+        float m_PreviousMasterVolume = 1.0f;
+        float m_PreviousMusicVolume = 1.0f;
+        float m_PreviousSFXVolume = 1.0f;
+        float m_PreviousUIVolume = 1.0f;
+        bool m_MixSettingsApplied = false;
     };
 }

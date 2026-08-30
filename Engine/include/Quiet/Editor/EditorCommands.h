@@ -57,6 +57,7 @@ namespace Quiet::Editor
         bool EndInteraction(const Scene::Scene& scene);
 
     #pragma region Actors
+
         bool CreateEmptyActor(Scene::Scene& scene, const std::string& name = "Actor");
         bool DuplicateActor(Scene::Scene& scene, Core::UUID actorID);
         bool DeleteActor(Scene::Scene& scene, Core::UUID actorID);
@@ -70,18 +71,22 @@ namespace Quiet::Editor
         bool SetActorScale(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& scale);
         bool ResetActorTransform(Scene::Scene& scene, Core::UUID actorID);
         bool PasteActorTransformValues(Scene::Scene& scene, Core::UUID actorID, const Scene::TransformComponent& transform);
+
     #pragma endregion
 
     #pragma region Folders
+
         bool CreateHierarchyFolder(Scene::Scene& scene, const std::string& name = "Folder");
         bool RenameHierarchyFolder(Scene::Scene& scene, Core::UUID folderID, const std::string& newName);
         bool DeleteEmptyHierarchyFolder(Scene::Scene& scene, Core::UUID folderID);
         bool MoveActorToHierarchyFolder(Scene::Scene& scene, Core::UUID actorID, Core::UUID folderID);
         bool MoveActorToHierarchyRoot(Scene::Scene& scene, Core::UUID actorID);
         bool MoveHierarchyRootNode(Scene::Scene& scene, Scene::SceneHierarchyNodeType nodeType, Core::UUID nodeID, std::size_t destinationIndex);
+
     #pragma endregion
 
     #pragma region Static Meshes
+
         bool CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
                                    const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position = glm::vec3(0.0f));
         bool AddStaticMesh(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
@@ -89,9 +94,11 @@ namespace Quiet::Editor
         bool PasteStaticMeshValues(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, bool visible, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool SetStaticMeshVisible(Scene::Scene& scene, Core::UUID actorID, bool visible);
+
     #pragma endregion
 
     #pragma region Materials
+
         bool AddMaterial(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor = glm::vec4{ 1.0f });
         bool RemoveMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool ResetMaterial(Scene::Scene& scene, Core::UUID actorID);
@@ -100,9 +107,11 @@ namespace Quiet::Editor
         bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
         bool SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor);
         bool SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const std::string& textureAssetID);
+
     #pragma endregion
 
     #pragma region Directional Lights
+
         bool CreateDirectionalLightActor(Scene::Scene& scene, const std::string& actorName = "Directional Light");
         bool AddDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveDirectionalLight(Scene::Scene& scene, Core::UUID actorID);
@@ -113,14 +122,26 @@ namespace Quiet::Editor
         bool SetDirectionalLightDirection(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& direction);
         bool SetDirectionalLightColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec3& color);
         bool SetDirectionalLightIntensity(Scene::Scene& scene, Core::UUID actorID, float intensity);
+
     #pragma endregion
 
     #pragma region Rotator
+
         bool AddRotator(Scene::Scene& scene, Core::UUID actorID, float initialSpeed = 45.0f);
         bool RemoveRotator(Scene::Scene& scene, Core::UUID actorID);
         bool ResetRotator(Scene::Scene& scene, Core::UUID actorID);
         bool PasteRotatorValues(Scene::Scene& scene, Core::UUID actorID, const Scene::RotatorComponent& rotator);
         bool SetRotatorSpeed(Scene::Scene& scene, Core::UUID actorID, float speed);
+
+    #pragma endregion
+
+    #pragma region Scene Audio
+
+        bool SetSceneMasterVolume(Scene::Scene& scene, float volume);
+        bool SetSceneMusicVolume(Scene::Scene& scene, float volume);
+        bool SetSceneSFXVolume(Scene::Scene& scene, float volume);
+        bool SetSceneUIVolume(Scene::Scene& scene, float volume);
+
     #pragma endregion
 
     #pragma region Scene Lighting
@@ -151,6 +172,7 @@ namespace Quiet::Editor
     #pragma endregion
 
     #pragma region Audio
+
         // AUDIO SOURCE
         bool AddAudioSource(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveAudioSource(Scene::Scene& scene, Core::UUID actorID);

@@ -981,6 +981,38 @@ namespace Quiet::Editor
 
 #pragma endregion
 
+#pragma region Scene Audio
+
+    bool EditorCommands::SetSceneMasterVolume(Scene::Scene &scene, float volume)
+    {
+        if (!CanEditScene() || !std::isfinite(volume)) return false;
+        scene.GetAudioSettings().MasterVolume = std::clamp(volume, 0.0f, 4.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetSceneMusicVolume(Scene::Scene &scene, float volume)
+    {
+        if (!CanEditScene() || !std::isfinite(volume)) return false;
+        scene.GetAudioSettings().MusicVolume = std::clamp(volume, 0.0f, 4.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetSceneSFXVolume(Scene::Scene &scene, float volume)
+    {
+        if (!CanEditScene() || !std::isfinite(volume)) return false;
+        scene.GetAudioSettings().SFXVolume = std::clamp(volume, 0.0f, 4.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetSceneUIVolume(Scene::Scene &scene, float volume)
+    {
+        if (!CanEditScene() || !std::isfinite(volume)) return false;
+        scene.GetAudioSettings().UIVolume = std::clamp(volume, 0.0f, 4.0f);
+        return true;
+    }
+
+#pragma endregion
+
 #pragma region Scene Lighting
 
     bool EditorCommands::SetSceneLightDirection(Scene::Scene& scene, const glm::vec3& direction)

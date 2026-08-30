@@ -298,6 +298,14 @@ namespace Quiet::Scene
         json root;
         root["actors"] = json::array();
 
+        const SceneAudioSettings& audioSettings = scene.GetAudioSettings();
+        root["audio_settings"] = {
+            { "master_volume", audioSettings.MasterVolume },
+            { "music_volume", audioSettings.MusicVolume },
+            { "sfx_volume", audioSettings.SFXVolume },
+            { "ui_volume", audioSettings.UIVolume }
+        };
+
         const SceneRenderSettings& renderSettings = scene.GetRenderSettings();
         root["render_settings"] = {
             { "light_direction", SerializeVec3(renderSettings.LightDirection) },
@@ -479,6 +487,17 @@ namespace Quiet::Scene
         }
 
         scene.Clear();
+
+        if (root.contains("audio_settings"))
+        {
+            const auto& audioSettingsJson = root["audio_settings"];
+
+            SceneAudioSettings& audioSettings = scene.GetAudioSettings();
+            audioSettings.MasterVolume = audioSettingsJson.value("master_volume", audioSettings.MasterVolume);
+            audioSettings.MusicVolume = audioSettingsJson.value("music_volume", audioSettings.MusicVolume);
+            audioSettings.SFXVolume = audioSettingsJson.value("sfx_volume", audioSettings.SFXVolume);
+            audioSettings.UIVolume = audioSettingsJson.value("ui_volume", audioSettings.UIVolume);
+        }
 
         if (root.contains("render_settings"))
         {

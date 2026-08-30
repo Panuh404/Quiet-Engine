@@ -9,6 +9,7 @@
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneAudioSettings.h"
 #include "Scene/SceneRenderSettings.h"
 #include "Scene/ScenePhysicsSettings.h"
 
@@ -72,7 +73,7 @@ namespace
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("Edit scene-wide rendering and physics settings. These values are saved with the scene.");
+            ImGui::TextWrapped("Edit scene-wide rendering, physics, and audio settings. These values are saved with the scene.");
             ImGui::PopStyleColor();
         }
         ImGui::EndChild();
@@ -254,6 +255,17 @@ namespace
         commands.EndInteraction(scene);
     }
 
+    void ResetSceneAudio(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
+    {
+        const Quiet::Scene::SceneAudioSettings defaults{};
+        commands.BeginInteraction(scene);
+        commands.SetSceneMasterVolume(scene, defaults.MasterVolume);
+        commands.SetSceneMusicVolume(scene, defaults.MusicVolume);
+        commands.SetSceneSFXVolume(scene, defaults.SFXVolume);
+        commands.SetSceneUIVolume(scene, defaults.UIVolume);
+        commands.EndInteraction(scene);
+    }
+
     void ResetScenePhysics(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
     {
         const Quiet::Scene::ScenePhysicsSettings defaults{};
@@ -264,10 +276,17 @@ namespace
 
     void ResetAllSceneSettings(Quiet::Scene::Scene& scene, Quiet::Editor::EditorCommands& commands)
     {
+        const Quiet::Scene::SceneAudioSettings audioDefaults{};
         const Quiet::Scene::SceneRenderSettings renderDefaults{};
         const Quiet::Scene::ScenePhysicsSettings physicsDefaults{};
 
         commands.BeginInteraction(scene);
+
+        // Scene Audio
+        commands.SetSceneMasterVolume(scene, audioDefaults.MasterVolume);
+        commands.SetSceneMusicVolume(scene, audioDefaults.MusicVolume);
+        commands.SetSceneSFXVolume(scene, audioDefaults.SFXVolume);
+        commands.SetSceneUIVolume(scene, audioDefaults.UIVolume);
 
         // Scene Rendering
         commands.SetSceneLightDirection(scene, renderDefaults.LightDirection);
@@ -305,8 +324,50 @@ namespace Quiet::Renderer::UI
                 isEditMode
             };
 
+            Scene::SceneAudioSettings& audioSettings = scene.GetAudioSettings();
             Scene::SceneRenderSettings& renderSettings = scene.GetRenderSettings();
             Scene::ScenePhysicsSettings& physicsSettings = scene.GetPhysicsSettings();
+
+            ImGui::Spacing();
+
+            if (BeginSettingsCard("Audio"))
+            {
+                ImGui::PushID("SceneSettingsAudio");
+
+                float masterVolume = audioSettings.MasterVolume;
+                if (DrawFloatRow("Master", masterVolume, 0.01f, 0.0f, 4.0f, tracked))
+                {
+                    editorCommands.SetSceneMasterVolume(scene, masterVolume);
+                }
+
+                float musicVolume = audioSettings.MusicVolume;
+
+                if (DrawFloatRow("Music", musicVolume, 0.01f, 0.0f, 4.0f, tracked))
+                {
+                    editorCommands.SetSceneMusicVolume(scene, musicVolume);
+                }
+
+                float sfxVolume = audioSettings.SFXVolume;
+                if (DrawFloatRow("SFX", sfxVolume, 0.01f, 0.0f, 4.0f, tracked))
+                {
+                    editorCommands.SetSceneSFXVolume(scene, sfxVolume);
+                }
+
+                float uiVolume = audioSettings.UIVolume;
+                if (DrawFloatRow("UI", uiVolume, 0.01f, 0.0f, 4.0f, tracked))
+                {
+                    editorCommands.SetSceneUIVolume(scene, uiVolume);
+                }
+
+                ImGui::Spacing();
+
+                if (EditorButton("Reset Audio", SZ::Px(ImVec2(132.0f, 0.0f)), isEditMode))
+                {
+                    ResetSceneAudio(scene, editorCommands);
+                }
+
+                ImGui::PopID();
+            }
 
             if (BeginSettingsCard("Lighting"))
             {
