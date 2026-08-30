@@ -19,17 +19,18 @@ Implemented foundations:
 * Vulkan renderer with swapchain, depth resources, frame synchronization, scene viewport render target, and static mesh rendering
 * EnTT-backed ECS foundation with registry-owned actor identity and components, lightweight Actor handles, ECS runtime iteration, and EnTT-driven static mesh rendering
 * Jolt Physics runtime foundation with fixed-step simulation, Static / Dynamic / Kinematic rigid bodies, primitive colliders, scene gravity, contact events, and runtime body controls
+* miniaudio runtime foundation with WAV / FLAC / MP3 assets, editor preview, Audio Source / Listener components, runtime playback controls, 3D spatial audio, attenuation, directional cones, Doppler, runtime source lifecycle synchronization, and Master / Music / SFX / UI mixing
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
 * scene viewport with an adaptive world grid, actor picking, hover/selection feedback, Fly/Orbit/Pan navigation, mesh-placement previews, and ImGuizmo editing
 * standalone Quiet Launcher for project discovery, creation, and Editor handoff
-* staged Editor project bootstrap with visible incremental mesh and texture loading
+* staged Editor project bootstrap with visible incremental mesh, texture, and audio loading
 * scene save/load workflow
 * dual-source Asset Browser with editable physical Project content, read-only Engine resources, and a project-local asset registry
 * mesh and texture import/loading foundation
 * editor hierarchy with folders, drag/drop ordering, and persistent hierarchy metadata
-* dedicated Scene Settings panel for scene-wide rendering and physics controls
+* dedicated Scene Settings panel for scene-wide rendering, physics, and audio mix controls
 * inspector with validated component editing, reset, copy/paste, undo/redo, and dirty-state integration
 * undo/redo and dirty-state tracking
 * Edit / Simulate / Play runtime modes with isolated runtime scene copies and Jolt physics simulation
@@ -143,6 +144,9 @@ Folders are editor organization nodes only. They do not change runtime transform
 * Directional Light component editing
 * Rotator component editing
 * Camera component editing and piloting controls
+* Audio Source component editing with Audio asset assignment, bus routing, volume, pitch, Play On Start, Loop, and 2D / 3D spatialization
+* spatial Audio Source controls for distance attenuation, directional cones, and Doppler
+* Audio Listener component editing with Primary-listener selection
 * Rigid Body component editing for Static, Dynamic, and Kinematic motion
 * rigid-body friction, restitution, damping, gravity-factor, and sleeping controls
 * Box Collider authoring with Size and Center
@@ -151,24 +155,32 @@ Folders are editor organization nodes only. They do not change runtime transform
 * one-collider-per-Actor authoring validation
 * Add Component menu
 * consistent component action menus
-* Reset Component support across Transform, rendering, Camera, Rigid Body, and collider components
-* typed component-value clipboard for Transform, rendering, Camera, Rigid Body, and collider components
+* Reset Component support across Transform, rendering, Camera, Audio Source, Audio Listener, Rigid Body, and collider components
+* typed component-value clipboard for Transform, rendering, Camera, Audio Source, Audio Listener, Rigid Body, and collider components
 * cross-actor Copy Component and Paste Component Values workflows
 * asset, slot-count, and component-type validation for pasted values
 * contextual explanations for unavailable Paste actions
 * atomic undo/redo and dirty-state integration for component actions and value editing
 * bounded numeric validation for Transform scale, lighting, material colors, and Camera projection values
-* searchable Mesh and Texture asset pickers
+* searchable Mesh, Texture, and Audio asset pickers
 * asset search by registry ID and path
 * texture previews and source diagnostics in picker results
 * drag/drop Mesh and Texture assignment
+* Audio asset metadata for encoding, channels, sample rate, frame count, duration when available, and file size
+* WAV / FLAC / MP3 audio import
+* persistent editor Audio preview with Preview / Stop controls
 
 ### Scene Settings
 
-Scene-wide rendering and physics settings live in a dedicated panel instead of the actor Inspector.
+Scene-wide rendering, physics, and audio mix settings live in a dedicated panel instead of the actor Inspector.
 
 Current controls:
 
+* Master audio volume
+* Music bus volume
+* SFX bus volume
+* UI bus volume
+* reset audio mix
 * directional scene light direction
 * directional scene light intensity
 * ambient color
@@ -185,7 +197,7 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 ### Assets
 
 * project-local asset registry
-* Mesh and Texture asset records
+* Mesh, Texture, and Audio asset records
 * editable physical Project source
 * read-only virtual Engine source for built-in resources
 * separated Project Content and Engine Content source groups
@@ -195,7 +207,7 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * asset file dialog
 * asset reload and reimport workflows
 * searchable assets and folders by ID, name, path, or type
-* All / Meshes / Textures filters
+* All / Meshes / Textures / Audio filters
 * Issues / Missing / External diagnostics filters
 * Browser and List content views
 * Tiny / Small / Medium / Large / Extra Large thumbnail presets
@@ -221,12 +233,44 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * active-scene reference validation before destructive deletion
 * selection, history, and clipboard repair after destructive operations
 * item and empty-content context menus
-* typed Mesh and Texture drag payloads
+* typed Mesh, Texture, and Audio drag payloads
 * drag/drop assignment into Inspector asset pickers
 * drag/drop Static Mesh actor creation in the Viewport
 * built-in primitive actor creation from the Engine source
 * Undo/Redo integration for created primitive and dropped mesh actors
 * operation confirmation, validation, and feedback modals
+
+### Audio
+
+Quiet currently uses miniaudio as its native audio backend while keeping backend types private to the audio implementation.
+
+Current foundation:
+
+* miniaudio engine owned by the application-level AudioSubsystem
+* Quiet-native AudioLibrary and AudioAsset metadata
+* WAV, FLAC, and MP3 project assets
+* non-spatial editor asset preview
+* persistent Audio Source and Audio Listener ECS components
+* backend-neutral Actor UUID runtime playback API
+* Play, Stop, Pause, Resume, Seek, and playback-state queries
+* Play On Start and looping
+* independent source volume and pitch
+* 2D / non-spatial playback
+* primary runtime Audio Listener selection
+* source and listener position/orientation synchronization from runtime Transforms
+* inverse distance attenuation with Min Distance, Max Distance, and Rolloff
+* directional source cones
+* source and listener velocity synchronization
+* Doppler
+* runtime Audio Source creation, removal, destruction, and asset-change synchronization
+* Master, Music, SFX, and UI audio buses
+* persistent scene-wide Master / Music / SFX / UI mix levels
+* runtime mix application with restoration of editor/application mixer state when runtime ends
+* Edit / Simulate / Play audio isolation
+
+Persistent ECS and scene data contain no miniaudio types. Runtime `ma_sound`, sound groups, playback cursors, listener state, and backend device state remain inside the Quiet audio runtime implementation.
+
+Advanced environmental acoustics are intentionally outside this foundation and are planned for a later Steam Audio phase.
 
 ### Console / Diagnostics
 
@@ -404,8 +448,11 @@ Current serialized data includes:
 * Box Collider components
 * Sphere Collider components
 * Capsule Collider components
+* Audio Source components
+* Audio Listener components
 * scene render settings
 * scene physics settings
+* scene audio mix settings
 * editor hierarchy metadata
 
 Example hierarchy section:
@@ -513,6 +560,7 @@ Fetched automatically by CMake:
 * stb
 * EnTT
 * Jolt Physics
+* miniaudio
 
 ---
 
@@ -687,14 +735,29 @@ Shift               Apply 2x Fly speed boost
 * Actor-pair contact Started / Ended event foundation
 * editor collider debug visualization
 * serialized scene gravity with Scene Settings controls
+* miniaudio AudioSubsystem foundation with backend-private engine ownership
+* Audio project assets with WAV / FLAC / MP3 metadata loading and editor preview
+* persistent Audio Source and Audio Listener ECS components
+* backend-neutral runtime Audio Source playback controls
+* primary runtime Audio Listener selection
+* 2D and 3D runtime source playback
+* runtime listener and source transform synchronization
+* distance attenuation and directional source cones
+* source/listener velocity synchronization and Doppler
+* runtime Audio Source lifecycle synchronization
+* Master / Music / SFX / UI runtime bus routing
+* persistent scene-wide audio mix levels with runtime mixer isolation
 
 ### Upcoming Areas
 
-* audio system foundation with miniaudio
 * Lua scripting foundation
 * asset cooking and runtime pipeline
-* runtime rendering expansion
+* text and runtime UI
+* navigation with Recast + Detour
+* advanced gameplay and physics systems
 * advanced acoustics with Steam Audio later
+* runtime rendering expansion
+* build and distribution
 
 ---
 
