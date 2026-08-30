@@ -8,6 +8,7 @@
 
 #include "Audio/AudioWorld.h"
 #include "Physics/PhysicsWorld.h"
+#include "Scripting/ScriptWorld.h"
 #include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
 #include "Quiet/Core/Log.h"
@@ -212,6 +213,7 @@ namespace Quiet::Scene
 
     void Scene::Clear()
     {
+        m_ScriptWorld.reset();
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
@@ -626,6 +628,9 @@ namespace Quiet::Scene
         }
         m_AudioWorld->BuildSources(m_Registry, audioListenerEntity);
 
+        // Scripting
+        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>();
+
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
     }
@@ -635,8 +640,11 @@ namespace Quiet::Scene
         if (m_RuntimeMode == RuntimeMode::None) return;
         const RuntimeMode previousMode = m_RuntimeMode;
         OnRuntimeEnd(previousMode);
+
+        m_ScriptWorld.reset();
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
+
         m_PhysicsContactEvents.clear();
         m_RuntimeMode = RuntimeMode::None;
     }

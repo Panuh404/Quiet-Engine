@@ -33,6 +33,11 @@ namespace Quiet::Physics
     class PhysicsWorld;
 }
 
+namespace Quiet::Scripting
+{
+    class ScriptWorld;
+}
+
 namespace Quiet::Scene
 {
     enum class RuntimeMode
@@ -151,6 +156,7 @@ namespace Quiet::Scene
 
         std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;
         std::unique_ptr<Audio::AudioWorld> m_AudioWorld;
+        std::unique_ptr<Scripting::ScriptWorld> m_ScriptWorld;
 
         std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
 

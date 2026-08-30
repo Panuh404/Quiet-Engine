@@ -185,6 +185,29 @@ FetchContent_Declare(
         GIT_SHALLOW     TRUE
 )
 
+# Lua
+FetchContent_Declare(
+        lua
+        URL             https://www.lua.org/ftp/lua-5.4.9.tar.gz
+        URL_HASH        SHA256=2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6
+)
+
+# sol2
+set(SOL2_TESTS OFF CACHE BOOL "" FORCE)
+set(SOL2_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SOL2_INTEROP_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SOL2_DYNAMIC_LOADING_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SOL2_SINGLE OFF CACHE BOOL "" FORCE)
+set(SOL2_DOCS OFF CACHE BOOL "" FORCE)
+set(SOL2_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+        sol2
+        GIT_REPOSITORY  https://github.com/ThePhD/sol2.git
+        GIT_TAG         v3.3.0
+        GIT_SHALLOW     TRUE
+)
+
 FetchContent_MakeAvailable(
         glfw
         spdlog
@@ -198,7 +221,60 @@ FetchContent_MakeAvailable(
         entt
         miniaudio
         jolt_physics
+        lua
+        sol2
 )
+
+# Lua ships as portable C sources without a native CMake library target.
+# Quiet builds only the embeddable Lua library; lua.c and luac.c are the
+# standalone interpreter/compiler frontends and are intentionally excluded.
+add_library(Quiet_Lua STATIC
+        ${lua_SOURCE_DIR}/src/lapi.c
+        ${lua_SOURCE_DIR}/src/lauxlib.c
+        ${lua_SOURCE_DIR}/src/lbaselib.c
+        ${lua_SOURCE_DIR}/src/lcode.c
+        ${lua_SOURCE_DIR}/src/lcorolib.c
+        ${lua_SOURCE_DIR}/src/lctype.c
+        ${lua_SOURCE_DIR}/src/ldblib.c
+        ${lua_SOURCE_DIR}/src/ldebug.c
+        ${lua_SOURCE_DIR}/src/ldo.c
+        ${lua_SOURCE_DIR}/src/ldump.c
+        ${lua_SOURCE_DIR}/src/lfunc.c
+        ${lua_SOURCE_DIR}/src/lgc.c
+        ${lua_SOURCE_DIR}/src/linit.c
+        ${lua_SOURCE_DIR}/src/liolib.c
+        ${lua_SOURCE_DIR}/src/llex.c
+        ${lua_SOURCE_DIR}/src/lmathlib.c
+        ${lua_SOURCE_DIR}/src/lmem.c
+        ${lua_SOURCE_DIR}/src/loadlib.c
+        ${lua_SOURCE_DIR}/src/lobject.c
+        ${lua_SOURCE_DIR}/src/lopcodes.c
+        ${lua_SOURCE_DIR}/src/loslib.c
+        ${lua_SOURCE_DIR}/src/lparser.c
+        ${lua_SOURCE_DIR}/src/lstate.c
+        ${lua_SOURCE_DIR}/src/lstring.c
+        ${lua_SOURCE_DIR}/src/lstrlib.c
+        ${lua_SOURCE_DIR}/src/ltable.c
+        ${lua_SOURCE_DIR}/src/ltablib.c
+        ${lua_SOURCE_DIR}/src/ltm.c
+        ${lua_SOURCE_DIR}/src/lundump.c
+        ${lua_SOURCE_DIR}/src/lutf8lib.c
+        ${lua_SOURCE_DIR}/src/lvm.c
+        ${lua_SOURCE_DIR}/src/lzio.c
+)
+
+target_include_directories(Quiet_Lua PUBLIC ${lua_SOURCE_DIR}/src)
+
+if(WIN32)
+    target_compile_definitions(Quiet_Lua PRIVATE LUA_USE_WINDOWS)
+elseif(APPLE)
+    target_compile_definitions(Quiet_Lua PRIVATE LUA_USE_MACOSX)
+elseif(UNIX)
+    target_compile_definitions(Quiet_Lua PRIVATE LUA_USE_LINUX)
+    target_link_libraries(Quiet_Lua PRIVATE ${CMAKE_DL_LIBS} m)
+endif()
+
+add_library(Quiet::Lua ALIAS Quiet_Lua)
 
 find_package(Vulkan REQUIRED)
 

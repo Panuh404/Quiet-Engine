@@ -53,6 +53,10 @@ target_sources(Quiet_Engine
         src/Scene/SceneSerializer.h
         src/Scene/Transform.h
 
+        # Scripting
+        src/Scripting/ScriptWorld.h
+        src/Scripting/ScriptWorld.cpp
+
         # Scene - Camera
         src/Scene/Camera/CameraController.cpp
         src/Scene/Camera/CameraController.h
@@ -320,6 +324,8 @@ target_link_libraries(Quiet_Engine
         EnTT::EnTT
         miniaudio
         Jolt
+        Quiet::Lua
+        sol2
 )
 
 if (MSVC)
