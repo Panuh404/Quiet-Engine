@@ -16,22 +16,17 @@ namespace
     namespace QUI = Quiet::Renderer::UI;
     namespace Assets = Quiet::Renderer::UI::Assets;
 
-    std::string MakeAssetReimportDisabledReason(
-        const Quiet::Project::AssetRecord& record,
-        const bool runtimeModeActive,
-        const bool resolvedPathExists)
+    std::string MakeAssetReimportDisabledReason(const Quiet::Project::AssetRecord& record, const bool runtimeModeActive, const bool resolvedPathExists)
     {
         if (record.BuiltIn)         return "Built-in assets cannot be reimported.";
+        if (record.Type == Quiet::Project::AssetType::Script) return "Lua scripts are source assets and do not require reimport yet.";
         if (runtimeModeActive)      return "Assets cannot be reimported while runtime mode is active.";
         if (record.Path.empty())    return "This asset has no source path.";
         if (!resolvedPathExists)    return "The source file does not exist on disk.";
         return {};
     }
 
-    void RequestFolderAction(
-        Assets::AssetBrowserFolderActionRequest& request,
-        const Assets::AssetBrowserFolderAction action,
-        const std::string& targetFolder)
+    void RequestFolderAction(Assets::AssetBrowserFolderActionRequest& request, const Assets::AssetBrowserFolderAction action, const std::string& targetFolder)
     {
         request.Action = action;
         request.TargetFolder = targetFolder;

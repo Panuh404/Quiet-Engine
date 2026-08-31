@@ -157,6 +157,10 @@ namespace
                 fallbackLabel = metrics.CompactPreview ? "MESH" : "MESH";
                 break;
 
+            case Quiet::Project::AssetType::Script:
+                fallbackLabel = metrics.CompactPreview ? "LUA" : "SCRIPT";
+                break;
+
             case Quiet::Project::AssetType::Unknown:
             default:
                 fallbackLabel = metrics.CompactPreview ? "?" : "ASSET";

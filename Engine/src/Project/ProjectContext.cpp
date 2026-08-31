@@ -284,6 +284,34 @@ namespace Quiet::Project
         return false;
     }
 
+    bool ProjectContext::RegisterScriptAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    {
+        assetID = TrimCopy(std::move(assetID));
+        if (!IsValidAssetID(assetID)) return false;
+
+        assetPath = NormalizeAssetPath(std::move(assetPath));
+        if (!builtIn && assetPath.empty()) return false;
+
+        AssetRecord record{};
+        record.ID = std::move(assetID);
+        record.Type = AssetType::Script;
+        record.Path = builtIn ? std::string{} : assetPath.generic_string();
+        record.BuiltIn = builtIn;
+
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
+
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+
+        if (SaveAssetRegistry()) return true;
+        m_AssetRegistry = previousRegistry;
+        (void)SaveAssetRegistry();
+
+        return false;
+    }
+
     bool ProjectContext::RemoveAssetByID(std::string_view assetID)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);

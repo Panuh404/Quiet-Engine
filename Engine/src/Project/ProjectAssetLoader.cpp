@@ -426,7 +426,6 @@ namespace Quiet::Project
                 if (record->BuiltIn) return LoadBuiltInMesh(*record);
                 return LoadExternalMesh(*record, forceReimport);
             }
-
             case AssetType::Texture:
             {
                 if (record->BuiltIn)
@@ -436,7 +435,6 @@ namespace Quiet::Project
                 }
                 return LoadExternalTexture(*record, forceReimport);
             }
-
             case AssetType::Audio:
             {
                 if (record->BuiltIn)
@@ -446,7 +444,11 @@ namespace Quiet::Project
                 }
                 return LoadExternalAudio(*record, forceReimport);
             }
-
+            case AssetType::Script:
+            {
+                QUIET_CORE_WARN("Script asset '{}' is source-only and does not require project reimport.", record->ID);
+                return false;
+            }
             case AssetType::Unknown:
             default:
             {

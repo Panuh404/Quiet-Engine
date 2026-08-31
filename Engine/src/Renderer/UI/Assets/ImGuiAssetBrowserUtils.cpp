@@ -126,6 +126,7 @@ namespace Quiet::Renderer::UI::Assets
             case AssetBrowserTypeFilter::Meshes:    return record.Type == Project::AssetType::Mesh;
             case AssetBrowserTypeFilter::Textures:  return record.Type == Project::AssetType::Texture;
             case AssetBrowserTypeFilter::Audio:     return record.Type == Project::AssetType::Audio;
+            case AssetBrowserTypeFilter::Scripts:   return record.Type == Project::AssetType::Script;
             default:                                return true;
         }
     }
@@ -907,6 +908,10 @@ namespace Quiet::Renderer::UI::Assets
         {
             return audioLibrary.Has(record.ID) ? "Loaded Metadata" : "Registered";
         }
+        if (record.Type == Project::AssetType::Script)
+        {
+            return "Registered";
+        }
         return "Unknown";
     }
 
@@ -1001,6 +1006,12 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     const Scene::AudioSourceComponent* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>();
                     referenced = audioSource && audioSource->AudioAssetID == record.ID;
+                    break;
+                }
+
+                case Project::AssetType::Script:
+                {
+                    // TODO: ScriptComponent :D
                     break;
                 }
 

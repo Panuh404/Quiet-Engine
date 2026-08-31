@@ -174,6 +174,10 @@ namespace
                 registered = projectContext.RegisterAudioAsset(assetID, destinationPath, false);
                 break;
 
+            case Project::AssetType::Script:
+                registered = projectContext.RegisterScriptAsset(assetID, destinationPath, false);
+                break;
+
             case Project::AssetType::Unknown:
             default:
                 registered = false;
@@ -246,7 +250,7 @@ namespace Quiet::Renderer::UI::Assets
         const float browseWidth = SZ::Px(96.0f);
         ImGui::SetNextItemWidth(-(browseWidth + ImGui::GetStyle().ItemSpacing.x));
 
-        ImGui::InputTextWithHint("##AssetPath", "Select a mesh, texture, or audio file", assetPathBuffer.data(), assetPathBuffer.size());
+        ImGui::InputTextWithHint("##AssetPath", "Select a mesh, texture, audio, or Lua script file", assetPathBuffer.data(), assetPathBuffer.size());
         ImGui::SameLine();
 
         if (EditorButton("Browse", ImVec2(browseWidth, 0.0f)))

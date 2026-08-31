@@ -11,7 +11,8 @@ namespace Quiet::Renderer::UI::Assets
         All,
         Meshes,
         Textures,
-        Audio
+        Audio,
+        Scripts
     };
 
     enum class AssetBrowserViewMode

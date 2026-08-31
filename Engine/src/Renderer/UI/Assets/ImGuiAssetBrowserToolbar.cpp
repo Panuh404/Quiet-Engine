@@ -27,14 +27,16 @@ namespace
         const Assets::AssetBrowserTypeFilter filter,
         const std::size_t meshCount,
         const std::size_t textureCount,
-        const std::size_t audioCount)
+        const std::size_t audioCount,
+        const std::size_t scriptCount)
     {
         using Assets::AssetBrowserTypeFilter;
         switch (filter)
         {
-            case AssetBrowserTypeFilter::Meshes:    return "Filter: Meshes " + std::to_string(meshCount);
-            case AssetBrowserTypeFilter::Textures:  return "Filter: Textures " + std::to_string(textureCount);
-            case AssetBrowserTypeFilter::Audio:     return "Filter: Audio " + std::to_string(audioCount);
+            case AssetBrowserTypeFilter::Meshes:    return "Filter: Meshes "    + std::to_string(meshCount);
+            case AssetBrowserTypeFilter::Textures:  return "Filter: Textures "  + std::to_string(textureCount);
+            case AssetBrowserTypeFilter::Audio:     return "Filter: Audio "     + std::to_string(audioCount);
+            case AssetBrowserTypeFilter::Scripts:   return "Filter: Scripts "   + std::to_string(scriptCount);
             case AssetBrowserTypeFilter::All:
             default:                                return "Filter: All";
         }
@@ -166,6 +168,8 @@ namespace Quiet::Renderer::UI::Assets
         const std::size_t meshCount = CountAssetByType(registry, Project::AssetType::Mesh, state.CurrentSource);
         const std::size_t textureCount = CountAssetByType(registry, Project::AssetType::Texture, state.CurrentSource);
         const std::size_t audioCount = CountAssetByType(registry, Project::AssetType::Audio, state.CurrentSource);
+        const std::size_t scriptCount = CountAssetByType(registry, Project::AssetType::Script, state.CurrentSource);
+
         const AssetDiagnosticsCounts diagnosticsCounts = CountAssetDiagnostics(projectContext, state.CurrentSource);
         const std::size_t issueCount = diagnosticsCounts.Issues;
         const std::size_t missingCount = diagnosticsCounts.Missing;
@@ -329,14 +333,15 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        const std::size_t totalAssetCount = meshCount + textureCount + audioCount;
-        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount, audioCount);
+        const std::size_t totalAssetCount = meshCount + textureCount + audioCount + scriptCount;
+        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount, audioCount, scriptCount);
         if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
         {
             const std::string allLabel = "All " + std::to_string(totalAssetCount);
             const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
             const std::string texturesLabel = "Textures " + std::to_string(textureCount);
             const std::string audioLabel = "Audio " + std::to_string(audioCount);
+            const std::string scriptsLabel = "Scripts " + std::to_string(scriptCount);
 
             // All
             if (EditorMenuItem(allLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::All))
@@ -353,6 +358,10 @@ namespace Quiet::Renderer::UI::Assets
             // Audio
             if (EditorMenuItem(audioLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Audio))
                 typeFilter = AssetBrowserTypeFilter::Audio;
+
+            // Scripts
+            if (EditorMenuItem(scriptsLabel.c_str(), nullptr, typeFilter == AssetBrowserTypeFilter::Scripts))
+                typeFilter = AssetBrowserTypeFilter::Scripts;
 
             ImGui::EndPopup();
         }

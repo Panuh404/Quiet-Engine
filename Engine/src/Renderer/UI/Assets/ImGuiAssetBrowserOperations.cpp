@@ -634,6 +634,10 @@ namespace Quiet::Renderer::UI::Assets
                     registered = projectContext.RegisterAudioAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
                     break;
 
+                case Project::AssetType::Script:
+                    registered = projectContext.RegisterScriptAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    break;
+
                 case Project::AssetType::Unknown:
                 default:
                     registered = false;

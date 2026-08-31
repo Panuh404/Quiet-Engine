@@ -168,6 +168,10 @@ namespace Quiet::Renderer::UI::Assets
                 DrawPillLabel("Audio", EditorColor::Warning, ImVec4(0.130f, 0.085f, 0.025f, 1.0f));
                 break;
 
+            case Project::AssetType::Script:
+                DrawPillLabel("Script", EditorColor::Accent, EditorColor::Background3);
+                break;
+
             case Project::AssetType::Unknown:
             default:
                 DrawPillLabel("Unknown", EditorColor::TextMuted, EditorColor::Background3);
