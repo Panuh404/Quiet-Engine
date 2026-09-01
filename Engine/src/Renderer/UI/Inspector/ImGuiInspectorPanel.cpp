@@ -74,6 +74,7 @@ namespace Quiet::Renderer::UI::Inspector
         DrawCameraSection(context, state, actor, tracked, isEditMode);
         DrawAudioSourceSection(context, state, actor, tracked);
         DrawAudioListenerSection(context, state, actor);
+        DrawScriptSection(context, state, actor);
 
         if (!isEditMode)
         {

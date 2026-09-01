@@ -1265,7 +1265,92 @@ namespace Quiet::Editor
         return true;
     }
 
- #pragma endregion
+#pragma endregion
+
+#pragma region Scripting
+
+    bool EditorCommands::AddScript(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::ScriptComponent>()) return false;
+
+            actor->AddComponent<Scene::ScriptComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveScript(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || !actor->HasComponent<Scene::ScriptComponent>()) return false;
+
+            return actor->RemoveComponent<Scene::ScriptComponent>();
+        });
+    }
+
+    bool EditorCommands::ResetScript(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
+            if (!script) return false;
+            *script = Scene::ScriptComponent{};
+
+            return true;
+        });
+    }
+
+    bool EditorCommands::PasteScriptValues(Scene::Scene& scene, const Core::UUID actorID, const Scene::ScriptComponent& script, const Project::ProjectContext& projectContext)
+    {
+        if (!script.ScriptAssetID.empty())
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), script.ScriptAssetID);
+            if (!record || record->Type != Project::AssetType::Script) return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* existing = actor->TryGetComponent<Scene::ScriptComponent>();
+            if (!existing) return false;
+            if (existing->ScriptAssetID == script.ScriptAssetID) return false;
+
+            *existing = script;
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetScriptAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext)
+    {
+        if (!scriptAssetID.empty())
+        {
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
+            if (!record || record->Type != Project::AssetType::Script) return false;
+        }
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
+            if (!script || script->ScriptAssetID == scriptAssetID) return false;
+
+            script->ScriptAssetID = scriptAssetID;
+            return true;
+        });
+    }
+
+#pragma endregion
 
 #pragma region Audio
 

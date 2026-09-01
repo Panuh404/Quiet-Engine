@@ -411,6 +411,14 @@ namespace Quiet::Scene
                 };
             }
 
+            if (const ScriptComponent* script = actor.TryGetComponent<ScriptComponent>())
+            {
+                actorJson["script"] =
+                {
+                    { "script_asset_id", script->ScriptAssetID }
+                };
+            }
+
             if (const RigidBodyComponent* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
             {
                 actorJson["rigid_body"] =
@@ -643,6 +651,16 @@ namespace Quiet::Scene
                 audioListener.Primary = audioListenerJson.value("primary", audioListener.Primary);
 
                 actor.AddComponent<AudioListenerComponent>(audioListener);
+            }
+
+            if (actorJson.contains("script"))
+            {
+                const auto& scriptJson = actorJson["script"];
+
+                ScriptComponent script{};
+                script.ScriptAssetID = scriptJson.value("script_asset_id", std::string{});
+
+                actor.AddComponent<ScriptComponent>(script);
             }
 
             if (actorJson.contains("rigid_body"))

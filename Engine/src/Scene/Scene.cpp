@@ -61,6 +61,9 @@ namespace Quiet::Scene
             if (const auto* component = source.TryGetComponent<AudioListenerComponent>())
                 target.AddComponent<AudioListenerComponent>(*component);
 
+            if (const auto* component = source.TryGetComponent<ScriptComponent>())
+                target.AddComponent<ScriptComponent>(*component);
+
             if (const auto* component = source.TryGetComponent<RigidBodyComponent>())
                 target.AddComponent<RigidBodyComponent>(*component);
 
@@ -131,6 +134,7 @@ namespace Quiet::Scene
         std::optional<CameraComponent> camera;
         std::optional<AudioSourceComponent> audioSource;
         std::optional<AudioListenerComponent> audioListener;
+        std::optional<ScriptComponent> script;
         std::optional<RigidBodyComponent> rigidBody;
         std::optional<BoxColliderComponent> boxCollider;
         std::optional<SphereColliderComponent> sphereCollider;
@@ -157,6 +161,9 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<AudioListenerComponent>())
             audioListener = *component;
 
+        if (const auto* component = source->TryGetComponent<ScriptComponent>())
+            script = *component;
+
         if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
             rigidBody = *component;
 
@@ -179,6 +186,7 @@ namespace Quiet::Scene
         if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
         if (audioSource)        duplicate.AddComponent<AudioSourceComponent>(*audioSource);
         if (audioListener)      duplicate.AddComponent<AudioListenerComponent>(*audioListener);
+        if (script)             duplicate.AddComponent<ScriptComponent>(*script);
         if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
         if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
         if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);

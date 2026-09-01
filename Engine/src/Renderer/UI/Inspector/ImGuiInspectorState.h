@@ -16,6 +16,7 @@
 #include "Scene/Components/RotatorComponent.h"
 #include "Scene/Components/SphereColliderComponent.h"
 #include "Scene/Components/TransformComponent.h"
+#include "Scene/Components/ScriptComponent.h"
 
 namespace Quiet::Renderer::UI::Inspector
 {
@@ -30,6 +31,7 @@ namespace Quiet::Renderer::UI::Inspector
         Camera,
         AudioSource,
         AudioListener,
+        Script,
         RigidBody,
         BoxCollider,
         SphereCollider,
@@ -51,6 +53,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::CameraComponent Camera{};
         Scene::AudioSourceComponent AudioSource{};
         Scene::AudioListenerComponent AudioListener{};
+        Scene::ScriptComponent Script{};
         Scene::RigidBodyComponent RigidBody{};
         Scene::BoxColliderComponent BoxCollider{};
         Scene::SphereColliderComponent SphereCollider{};

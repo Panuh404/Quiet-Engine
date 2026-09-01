@@ -130,6 +130,15 @@ namespace
             lhs->Primary == rhs->Primary;
     }
 
+    bool AreScriptsEqual(const std::optional<Quiet::Scene::ScriptComponent>& lhs,
+                         const std::optional<Quiet::Scene::ScriptComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->ScriptAssetID == rhs->ScriptAssetID;
+    }
+
     bool AreRigidBodiesEqual(const std::optional<Quiet::Scene::RigidBodyComponent>& lhs,
                              const std::optional<Quiet::Scene::RigidBodyComponent>& rhs)
     {
@@ -234,6 +243,7 @@ namespace
             AreCamerasEqual(lhs.Camera, rhs.Camera) &&
             AreAudioSourcesEqual(lhs.AudioSource, rhs.AudioSource) &&
             AreAudioListenersEqual(lhs.AudioListener, rhs.AudioListener) &&
+            AreScriptsEqual(lhs.Script, rhs.Script) &&
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
             AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
@@ -378,6 +388,9 @@ namespace Quiet::Editor
             if (const auto* audioListener = actor.TryGetComponent<Scene::AudioListenerComponent>())
                 actorSnapshot.AudioListener = *audioListener;
 
+            if (const auto* script = actor.TryGetComponent<Scene::ScriptComponent>())
+                actorSnapshot.Script = *script;
+
             if (const auto* rigidBody = actor.TryGetComponent<Scene::RigidBodyComponent>())
                 actorSnapshot.RigidBody = *rigidBody;
 
@@ -431,6 +444,9 @@ namespace Quiet::Editor
 
             if (actorSnapshot.AudioListener)
                 actor.AddComponent<Scene::AudioListenerComponent>(*actorSnapshot.AudioListener);
+
+            if (actorSnapshot.Script)
+                actor.AddComponent<Scene::ScriptComponent>(*actorSnapshot.Script);
 
             if (actorSnapshot.RigidBody)
                 actor.AddComponent<Scene::RigidBodyComponent>(*actorSnapshot.RigidBody);

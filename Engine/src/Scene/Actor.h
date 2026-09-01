@@ -21,6 +21,7 @@
 #include "Scene/Components/RigidBodyComponent.h"
 #include "Scene/Components/AudioSourceComponent.h"
 #include "Scene/Components/AudioListenerComponent.h"
+#include "Scene/Components/ScriptComponent.h"
 
 namespace Quiet::Scene
 {

@@ -1011,7 +1011,8 @@ namespace Quiet::Renderer::UI::Assets
 
                 case Project::AssetType::Script:
                 {
-                    // TODO: ScriptComponent :D
+                    const Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
+                    referenced = script && script->ScriptAssetID == record.ID;
                     break;
                 }
 

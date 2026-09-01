@@ -140,6 +140,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
         const bool canAddAudioSource = !actor.HasComponent<Scene::AudioSourceComponent>();
         const bool canAddAudioListener = !actor.HasComponent<Scene::AudioListenerComponent>();
+        const bool canAddScript = !actor.HasComponent<Scene::ScriptComponent>();
         const bool canAddRigidBody = !actor.HasComponent<Scene::RigidBodyComponent>();
 
         const bool hasBoxCollider = actor.HasComponent<Scene::BoxColliderComponent>();
@@ -159,6 +160,7 @@ namespace Quiet::Renderer::UI::Inspector
             canAddCamera ||
             canAddAudioSource ||
             canAddAudioListener ||
+            canAddScript ||
             canAddRigidBody ||
             canAddBoxCollider ||
             canAddSphereCollider ||
@@ -236,6 +238,12 @@ namespace Quiet::Renderer::UI::Inspector
             if (EditorMenuItem("Audio Listener", nullptr, false, canAddAudioListener))
             {
                 context.Commands.AddAudioListener(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("Script", nullptr, false, canAddScript))
+            {
+                context.Commands.AddScript(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -991,6 +999,68 @@ namespace Quiet::Renderer::UI::Inspector
             DrawInspectorHint("This listener will be used for runtime spatial audio.");
         }
         ImGui::PopID();
+    }
+
+    void DrawScriptSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor)
+    {
+        Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
+        if (!script) return;
+
+        const bool canPasteScript = state.Clipboard.Type == ComponentClipboardType::Script;
+        const auto header = BeginInspectorComponent(
+            state,
+            "Script",
+            "ScriptComponentOptions",
+            true,
+            true,
+            true,
+            canPasteScript,
+            canPasteScript ? nullptr : "Copy Script values first.");
+
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveScript(context.Scene, actor.GetID());
+            return;
+        }
+        if (header.CopyRequested)
+        {
+            state.Clipboard.Type = ComponentClipboardType::Script;
+            state.Clipboard.Script = *script;
+        }
+        if (header.PasteRequested && canPasteScript)
+        {
+            context.Commands.PasteScriptValues(context.Scene, actor.GetID(), state.Clipboard.Script, context.ProjectContext);
+        }
+        if (header.ResetRequested)
+        {
+            context.Commands.ResetScript(context.Scene, actor.GetID());
+        }
+        if (!header.Open) return;
+
+        Assets::AssetPickerOptions pickerOptions{};
+        pickerOptions.Type = Project::AssetType::Script;
+        pickerOptions.AllowNone = true;
+
+        std::string selectedScriptAssetID;
+
+        if (DrawAssetPickerPropertyRow("Script", context.ProjectContext, pickerOptions, script->ScriptAssetID, selectedScriptAssetID))
+        {
+            context.Commands.SetScriptAsset(context.Scene, actor.GetID(), selectedScriptAssetID, context.ProjectContext);
+        }
+
+        if (script->ScriptAssetID.empty())
+        {
+            ImGui::Spacing();
+
+            if (context.ProjectContext.EnumerateScriptAssetIDs().empty())
+            {
+                DrawInspectorHint("No Lua script assets are registered.");
+            }
+            else
+            {
+                DrawInspectorHint("Assign a Lua Script asset.");
+            }
+        }
     }
 
     void DrawRigidBodySection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)

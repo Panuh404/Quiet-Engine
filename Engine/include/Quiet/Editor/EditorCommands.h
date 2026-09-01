@@ -27,6 +27,7 @@ namespace Quiet::Scene
     struct MaterialComponent;
     struct RotatorComponent;
     struct TransformComponent;
+    struct ScriptComponent;
     struct RigidBodyComponent;
     struct BoxColliderComponent;
     struct SphereColliderComponent;
@@ -160,6 +161,7 @@ namespace Quiet::Editor
     #pragma endregion
 
     #pragma region Camera
+
         bool AddCamera(Scene::Scene& scene, Core::UUID actorID);
         bool RemoveCamera(Scene::Scene& scene, Core::UUID actorID);
         bool ResetCamera(Scene::Scene& scene, Core::UUID actorID);
@@ -169,6 +171,18 @@ namespace Quiet::Editor
         bool SetCameraFieldOfView(Scene::Scene& scene, Core::UUID actorID, float fovDegrees);
         bool SetCameraNearClip(Scene::Scene& scene, Core::UUID actorID, float nearClip);
         bool SetCameraFarClip(Scene::Scene& scene, Core::UUID actorID, float farClip);
+
+    #pragma endregion
+
+    #pragma region Scripting
+
+        bool AddScript(Scene::Scene& scene, Core::UUID actorID);
+        bool RemoveScript(Scene::Scene& scene, Core::UUID actorID);
+        bool ResetScript(Scene::Scene& scene, Core::UUID actorID);
+        bool PasteScriptValues(Scene::Scene& scene, Core::UUID actorID, const Scene::ScriptComponent& script, const Project::ProjectContext& projectContext);
+
+        bool SetScriptAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext);
+
     #pragma endregion
 
     #pragma region Audio

@@ -226,7 +226,26 @@ namespace
             }
             else
             {
-                const char* label = record.Type == Quiet::Project::AssetType::Audio ? "AUD" : "TEX";
+                const char* label = "ASSET";
+                switch (record.Type)
+                {
+                    case Quiet::Project::AssetType::Texture:
+                        label = "TEX";
+                        break;
+
+                    case Quiet::Project::AssetType::Audio:
+                        label = "AUD";
+                        break;
+
+                    case Quiet::Project::AssetType::Script:
+                        label = "LUA";
+                        break;
+
+                    case Quiet::Project::AssetType::Unknown:
+                    default:
+                        break;
+                }
+
                 DrawAssetPickerFallback(drawList, iconMin, iconMax, label, assignable ? QUI::EditorColor::AccentHover : QUI::EditorColor::TextDim);
             }
         }
