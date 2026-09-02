@@ -14,6 +14,11 @@
 #include "Scene/SceneRenderSettings.h"
 #include "Physics/PhysicsContactEvent.h"
 
+namespace Quiet::Project
+{
+    class ProjectContext;
+}
+
 namespace Quiet::Audio
 {
     enum class AudioPlaybackState;
@@ -82,7 +87,10 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
-        void BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem);
+        void BeginRuntime(RuntimeMode mode,
+                          Physics::PhysicsSubsystem& physicsSubsystem,
+                          Audio::AudioSubsystem& audioSubsystem,
+                          const Project::ProjectContext& projectContext);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);

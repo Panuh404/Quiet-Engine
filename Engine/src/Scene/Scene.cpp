@@ -606,7 +606,7 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
-    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem)
+    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem, const Project::ProjectContext& projectContext)
     {
         if (mode == RuntimeMode::None)
         {
@@ -637,16 +637,21 @@ namespace Quiet::Scene
         m_AudioWorld->BuildSources(m_Registry, audioListenerEntity);
 
         // Scripting
-        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>();
+        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext);
 
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
+
+        m_ScriptWorld->BuildInstances();
+        m_ScriptWorld->Begin();
     }
 
     void Scene::EndRuntime()
     {
         if (m_RuntimeMode == RuntimeMode::None) return;
         const RuntimeMode previousMode = m_RuntimeMode;
+
+        if (m_ScriptWorld) m_ScriptWorld->End();
         OnRuntimeEnd(previousMode);
 
         m_ScriptWorld.reset();
@@ -944,6 +949,11 @@ namespace Quiet::Scene
             const auto& rotator = m_Registry.get<RotatorComponent>(entity);
 
             transform.RotationDegrees.z += rotator.RotationSpeedDegreesPerSecond * deltaTime;
+        }
+
+        if (m_ScriptWorld)
+        {
+            m_ScriptWorld->Update(deltaTime);
         }
 
         m_PhysicsContactEvents.clear();
