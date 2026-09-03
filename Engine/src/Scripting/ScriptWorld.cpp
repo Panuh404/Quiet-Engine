@@ -1,6 +1,5 @@
 #include "Scripting/ScriptWorld.h"
 
-#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <optional>
@@ -8,7 +7,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <tuple>
 
 #include <sol/sol.hpp>
 
@@ -18,6 +16,7 @@
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Scene/Components/ScriptComponent.h"
+#include "Scripting/Bindings/ActorBindings.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting
@@ -153,103 +152,10 @@ namespace Quiet::Scripting
 
             sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
 
-            const Core::UUID actorID = actor.GetID();
+            // Bindings
+            Bindings::InstallActorBindings(m_State->Lua, environment, m_Scene, actor.GetID());
 
-            const auto requireActor = [this, actorID]() -> Scene::Actor&
-                {
-                    Scene::Actor* runtimeActor = m_Scene.FindActorByID(actorID);
-                    if (!runtimeActor)
-                    {
-                        throw std::runtime_error("The script Actor is no longer available.");
-                    }
-
-                    return *runtimeActor;
-                };
-
-            sol::table selfTable = m_State->Lua.create_table();
-
-            selfTable.set_function("IsValid", [this, actorID]()
-                {
-                    return m_Scene.FindActorByID(actorID) != nullptr;
-                }
-            );
-
-            selfTable.set_function("GetID", [actorID]()
-                {
-                    return Core::UUIDToString(actorID);
-                }
-            );
-
-            selfTable.set_function("GetName", [requireActor]()
-                {
-                    return requireActor().GetName();
-                }
-            );
-
-            sol::table transformTable = m_State->Lua.create_table();
-
-            transformTable.set_function("GetPosition", [requireActor]()
-                {
-                    const auto& position = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform.Position;
-                    return std::make_tuple(position.x, position.y, position.z);
-                }
-            );
-
-            transformTable.set_function("SetPosition", [requireActor](const float x, const float y, const float z)
-                {
-                    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) return false;
-                    auto& transform = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform;
-                    transform.Position = { x, y, z };
-                    return true;
-                }
-            );
-
-            transformTable.set_function("GetRotationDegrees", [requireActor]()
-                {
-                    const auto& rotation = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform.RotationDegrees;
-                    return std::make_tuple(rotation.x, rotation.y, rotation.z);
-                }
-            );
-
-            transformTable.set_function("SetRotationDegrees", [requireActor](const float x, const float y, const float z)
-                {
-                    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) return false;
-
-                    auto& transform = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform;
-                    transform.RotationDegrees = { x, y, z };
-
-                    return true;
-                }
-            );
-
-            transformTable.set_function("GetScale", [requireActor]()
-                {
-                    const auto& scale = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform.Scale;
-                    return std::make_tuple(scale.x, scale.y, scale.z);
-                }
-            );
-
-            transformTable.set_function("SetScale", [requireActor](const float x, const float y, const float z)
-                {
-                    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) return false;
-
-                    auto& transform = requireActor().GetComponent<Scene::TransformComponent>().WorldTransform;
-                    transform.Scale =
-                    {
-                        std::clamp(x, 0.01f, 100.0f),
-                        std::clamp(y, 0.01f, 100.0f),
-                        std::clamp(z, 0.01f, 100.0f)
-                    };
-
-                    return true;
-                }
-            );
-
-            selfTable["Transform"] = transformTable;
-            environment["self"] = selfTable;
-
-            const sol::protected_function_result loadResult =
-                m_State->Lua.safe_script_file(sourcePath.string(), environment, sol::script_pass_on_error, sol::load_mode::text);
+            const sol::protected_function_result loadResult = m_State->Lua.safe_script_file(sourcePath.string(), environment, sol::script_pass_on_error, sol::load_mode::text);
             if (!loadResult.valid())
             {
                 const sol::error error = loadResult;
