@@ -90,7 +90,8 @@ namespace Quiet::Scene
         void BeginRuntime(RuntimeMode mode,
                           Physics::PhysicsSubsystem& physicsSubsystem,
                           Audio::AudioSubsystem& audioSubsystem,
-                          const Project::ProjectContext& projectContext);
+                          const Project::ProjectContext& projectContext,
+                          const Input::Input& input);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);

@@ -15,6 +15,7 @@ namespace Quiet::Editor
                                                      Physics::PhysicsSubsystem& physicsSubsystem,
                                                      Audio::AudioSubsystem& audioSubsystem,
                                                      const Project::ProjectContext& projectContext,
+                                                     const Input::Input& input,
                                                      MouseCaptureSetter setMouseCaptureEnabled,
                                                      MouseCaptureGetter getMouseCaptureEnabled)
                                                         : m_EditorController(editorController)
@@ -23,6 +24,7 @@ namespace Quiet::Editor
                                                         , m_PhysicsSubsystem(physicsSubsystem)
                                                         , m_AudioSubsystem(audioSubsystem)
                                                         , m_ProjectContext(projectContext)
+                                                        , m_Input(input)
                                                         , m_SetMouseCaptureEnabled(std::move(setMouseCaptureEnabled))
                                                         , m_GetMouseCaptureEnabled(std::move(getMouseCaptureEnabled)) {}
 
@@ -110,7 +112,7 @@ namespace Quiet::Editor
         m_AudioSubsystem.StopPreview();
 
         m_RuntimeScene = std::make_unique<Scene::Scene>(m_EditorScene);
-        m_RuntimeScene->BeginRuntime(runtimeMode, m_PhysicsSubsystem, m_AudioSubsystem, m_ProjectContext);
+        m_RuntimeScene->BeginRuntime(runtimeMode, m_PhysicsSubsystem, m_AudioSubsystem, m_ProjectContext, m_Input);
     }
 
     void EditorRuntimeController::DestroyRuntimeScene()

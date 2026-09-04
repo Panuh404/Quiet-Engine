@@ -1,6 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
+
+namespace Quiet::Input
+{
+    class Input;
+}
 
 namespace Quiet::Project
 {
@@ -18,7 +24,7 @@ namespace Quiet::Scripting
     class ScriptWorld
     {
     public:
-        ScriptWorld(Scene::Scene& scene, const Project::ProjectContext& projectContext);
+        ScriptWorld(Scene::Scene& scene, const Project::ProjectContext& projectContext, const Input::Input& input);
         ~ScriptWorld();
 
         ScriptWorld(const ScriptWorld&) = delete;
@@ -48,6 +54,7 @@ namespace Quiet::Scripting
     private:
         Scene::Scene& m_Scene;
         const Project::ProjectContext& m_ProjectContext;
+        const Input::Input& m_Input;
 
         std::unique_ptr<RuntimeState> m_State;
 

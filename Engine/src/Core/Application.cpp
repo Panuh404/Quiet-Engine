@@ -367,6 +367,7 @@ namespace Quiet::Core
             *m_PhysicsSubsystem,
             *m_AudioSubsystem,
             m_ProjectContext,
+            *m_Input,
             [this](const bool enabled) { SetMouseCaptureEnabled(enabled); },
             [this]() { return m_MouseCaptureEnabled; }
         );
@@ -409,7 +410,7 @@ namespace Quiet::Core
             m_Renderer->RequestViewportResize(initialRuntimeExtent.width, initialRuntimeExtent.height);
         }
 
-        m_Scene->BeginRuntime(Scene::RuntimeMode::Play, *m_PhysicsSubsystem, *m_AudioSubsystem, m_ProjectContext);
+        m_Scene->BeginRuntime(Scene::RuntimeMode::Play, *m_PhysicsSubsystem, *m_AudioSubsystem, m_ProjectContext, *m_Input);
         QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
     }
 

@@ -606,7 +606,7 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
-    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem, const Project::ProjectContext& projectContext)
+    void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem, const Project::ProjectContext& projectContext, const Input::Input& input)
     {
         if (mode == RuntimeMode::None)
         {
@@ -637,7 +637,7 @@ namespace Quiet::Scene
         m_AudioWorld->BuildSources(m_Registry, audioListenerEntity);
 
         // Scripting
-        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext);
+        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext, input);
 
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);

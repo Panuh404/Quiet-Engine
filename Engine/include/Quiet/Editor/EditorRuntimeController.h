@@ -2,6 +2,11 @@
 #include <functional>
 #include <memory>
 
+namespace Quiet::Input
+{
+    class Input;
+}
+
 namespace Quiet::Project
 {
     class ProjectContext;
@@ -40,6 +45,7 @@ namespace Quiet::Editor
                                 Physics::PhysicsSubsystem& physicsSubsystem,
                                 Audio::AudioSubsystem& audioSubsystem,
                                 const Project::ProjectContext& projectContext,
+                                const Input::Input& input,
                                 MouseCaptureSetter setMouseCaptureEnabled,
                                 MouseCaptureGetter getMouseCaptureEnabled);
 
@@ -67,6 +73,7 @@ namespace Quiet::Editor
         Physics::PhysicsSubsystem& m_PhysicsSubsystem;
         Audio::AudioSubsystem& m_AudioSubsystem;
         const Project::ProjectContext& m_ProjectContext;
+        const Input::Input& m_Input;
 
         MouseCaptureSetter m_SetMouseCaptureEnabled;
         MouseCaptureGetter m_GetMouseCaptureEnabled;

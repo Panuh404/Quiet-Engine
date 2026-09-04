@@ -17,6 +17,7 @@
 #include "Quiet/Project/ProjectContext.h"
 #include "Scene/Components/ScriptComponent.h"
 #include "Scripting/Bindings/ActorBindings.h"
+#include "Scripting/Bindings/InputBindings.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting
@@ -47,8 +48,8 @@ namespace Quiet::Scripting
         std::unordered_map<Core::UUID, std::string> FailedInstances;
     };
 
-    ScriptWorld::ScriptWorld(Scene::Scene& scene, const Project::ProjectContext& projectContext)
-        : m_Scene(scene), m_ProjectContext(projectContext)
+    ScriptWorld::ScriptWorld(Scene::Scene& scene, const Project::ProjectContext& projectContext, const Input::Input& input)
+        : m_Scene(scene), m_ProjectContext(projectContext), m_Input(input)
     {
         Initialize();
     }
@@ -239,6 +240,7 @@ namespace Quiet::Scripting
 
         sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
         Bindings::InstallActorBindings(m_State->Lua, environment, m_Scene, actorID);
+        Bindings::InstallInputBindings(m_State->Lua, environment, m_Input);
         const sol::protected_function_result loadResult = m_State->Lua.safe_script_file(sourcePath.string(), environment, sol::script_pass_on_error, sol::load_mode::text);
 
         if (!loadResult.valid())
