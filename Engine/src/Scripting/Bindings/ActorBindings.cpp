@@ -1,4 +1,4 @@
-#include "Scripting/Bindings/ActorBindings.h"
+#include "Scripting/Bindings/Bindings.h"
 
 #include <algorithm>
 #include <cmath>

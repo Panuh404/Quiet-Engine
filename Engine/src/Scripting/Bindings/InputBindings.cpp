@@ -1,4 +1,4 @@
-#include "Scripting/Bindings/InputBindings.h"
+#include "Scripting/Bindings/Bindings.h"
 
 #include <cstdint>
 #include <tuple>

@@ -58,11 +58,9 @@ target_sources(Quiet_Engine
         src/Scripting/ScriptWorld.cpp
 
         # Scripting - Bindings
-        src/Scripting/Bindings/ActorBindings.h
+        src/Scripting/Bindings/Bindings.h
         src/Scripting/Bindings/ActorBindings.cpp
-        src/Scripting/Bindings/InputBindings.h
         src/Scripting/Bindings/InputBindings.cpp
-        src/Scripting/Bindings/PhysicsBindings.h
         src/Scripting/Bindings/PhysicsBindings.cpp
 
         # Scene - Camera

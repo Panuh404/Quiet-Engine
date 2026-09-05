@@ -1,10 +1,13 @@
 #include "Scripting/ScriptWorld.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -16,9 +19,7 @@
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
 #include "Scene/Components/ScriptComponent.h"
-#include "Scripting/Bindings/ActorBindings.h"
-#include "Scripting/Bindings/InputBindings.h"
-#include "Scripting/Bindings/PhysicsBindings.h"
+#include "Scripting/Bindings/Bindings.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting

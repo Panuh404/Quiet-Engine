@@ -1,4 +1,4 @@
-#include "Scripting/Bindings/PhysicsBindings.h"
+#include "Scripting/Bindings/Bindings.h"
 
 #include <cmath>
 #include <stdexcept>
