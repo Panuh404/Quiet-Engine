@@ -963,6 +963,11 @@ namespace Quiet::Scene
             m_PhysicsContactEvents = m_PhysicsWorld->ConsumeContactEvents();
         }
 
+        if (m_ScriptWorld)
+        {
+            m_ScriptWorld->DispatchPhysicsContactEvents();
+        }
+
         if (m_AudioWorld)
         {
             entt::entity audioListenerEntity = entt::null;

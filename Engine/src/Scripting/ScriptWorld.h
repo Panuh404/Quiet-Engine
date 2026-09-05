@@ -36,6 +36,7 @@ namespace Quiet::Scripting
 
         void Begin();
         void Update(float deltaTime);
+        void DispatchPhysicsContactEvents();
         void End();
 
         [[nodiscard]] bool IsInitialized() const { return m_Initialized; }

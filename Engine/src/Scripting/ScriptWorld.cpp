@@ -41,6 +41,9 @@ namespace Quiet::Scripting
             std::optional<sol::protected_function> OnUpdate;
             std::optional<sol::protected_function> OnDestroy;
 
+            std::optional<sol::protected_function> OnCollisionEnter;
+            std::optional<sol::protected_function> OnCollisionExit;
+
             bool Started = false;
             bool Faulted = false;
         };
@@ -154,6 +157,70 @@ namespace Quiet::Scripting
             QUIET_CORE_ERROR("Script '{}' OnUpdate failed for actor '{}': {}. The instance will stop updating.", instance.ScriptAssetID, Core::UUIDToString(instance.ActorID), error.what());
 
             instance.Faulted = true;
+        }
+    }
+
+    void ScriptWorld::DispatchPhysicsContactEvents()
+    {
+        if (!m_Initialized || !m_State || !m_Begun) return;
+
+        const auto& contactEvents = m_Scene.GetPhysicsContactEvents();
+        for (const Physics::PhysicsContactEvent& event : contactEvents)
+        {
+            const auto dispatchToActor = [&](const Core::UUID actorID, const Core::UUID otherActorID)
+            {
+                const auto iterator =
+                    std::find_if(
+                        m_State->Instances.begin(),
+                        m_State->Instances.end(),
+                        [actorID](const RuntimeState::ScriptInstance& instance)
+                            {
+                                return instance.ActorID == actorID;
+                            });
+
+                if (iterator == m_State->Instances.end()) return;
+                RuntimeState::ScriptInstance& instance = *iterator;
+                if (!instance.Started || instance.Faulted) return;
+
+                sol::protected_function* callback = nullptr;
+                const char* callbackName = nullptr;
+
+                switch (event.Type)
+                {
+                    case Physics::PhysicsContactEventType::Started:
+                        {
+                            if (instance.OnCollisionEnter)
+                            {
+                                callback = &*instance.OnCollisionEnter;
+                                callbackName = "OnCollisionEnter";
+                            }
+                            break;
+                        }
+
+                    case Physics::PhysicsContactEventType::Ended:
+                        {
+                            if (instance.OnCollisionExit)
+                            {
+                                callback = &*instance.OnCollisionExit;
+                                callbackName = "OnCollisionExit";
+                            }
+                            break;
+                        }
+                }
+
+                if (!callback) return;
+
+                const sol::protected_function_result result = (*callback)(Core::UUIDToString(otherActorID));
+                if (result.valid()) return;
+
+                const sol::error error = result;
+                QUIET_CORE_ERROR("Script '{}' {} failed for actor '{}' against actor '{}': {}. The instance will stop receiving runtime callbacks.",
+                        instance.ScriptAssetID, callbackName, Core::UUIDToString(instance.ActorID), Core::UUIDToString(otherActorID), error.what());
+                instance.Faulted = true;
+            };
+
+            dispatchToActor(event.ActorA, event.ActorB);
+            dispatchToActor(event.ActorB, event.ActorA);
         }
     }
 
@@ -273,6 +340,9 @@ namespace Quiet::Scripting
         captureCallback("OnCreate", instance.OnCreate);
         captureCallback("OnUpdate", instance.OnUpdate);
         captureCallback("OnDestroy", instance.OnDestroy);
+
+        captureCallback("OnCollisionEnter", instance.OnCollisionEnter);
+        captureCallback("OnCollisionExit", instance.OnCollisionExit);
 
         m_State->Instances.push_back(std::move(instance));
         m_State->FailedInstances.erase(actorID);
