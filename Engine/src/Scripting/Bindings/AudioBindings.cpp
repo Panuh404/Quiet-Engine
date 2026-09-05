@@ -8,15 +8,9 @@
 
 namespace Quiet::Scripting::Bindings
 {
-    void InstallAudioBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene, const Core::UUID actorID)
-    {
-        const sol::object actorObject = environment["Actor"];
-        if (!actorObject.valid() || actorObject.get_type() != sol::type::table)
-        {
-            throw std::runtime_error("Actor bindings must be installed before audio bindings.");
-        }
 
-        sol::table actorTable = actorObject.as<sol::table>();
+    void InstallAudioBindings(sol::state& lua, sol::table& actorTable, Scene::Scene& scene, const Core::UUID actorID)
+    {
         sol::table audioTable = lua.create_table();
 
         audioTable.set_function("Play", [&scene, actorID]()

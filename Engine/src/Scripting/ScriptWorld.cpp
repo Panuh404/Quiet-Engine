@@ -210,8 +210,8 @@ namespace Quiet::Scripting
                 }
 
                 if (!callback) return;
-
-                const sol::protected_function_result result = (*callback)(Core::UUIDToString(otherActorID));
+                sol::table otherActor = Bindings::CreateActorReference(m_State->Lua, m_Scene, otherActorID);
+                const sol::protected_function_result result = (*callback)(otherActor);
                 if (result.valid()) return;
 
                 const sol::error error = result;
@@ -310,9 +310,8 @@ namespace Quiet::Scripting
 
         sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
         Bindings::InstallActorBindings(m_State->Lua, environment, m_Scene, actorID);
+        Bindings::InstallSceneBindings(m_State->Lua, environment, m_Scene);
         Bindings::InstallInputBindings(m_State->Lua, environment, m_Input);
-        Bindings::InstallPhysicsBindings(m_State->Lua, environment, m_Scene, actorID);
-        Bindings::InstallAudioBindings(m_State->Lua, environment, m_Scene, actorID);
         const sol::protected_function_result loadResult = m_State->Lua.safe_script_file(sourcePath.string(), environment, sol::script_pass_on_error, sol::load_mode::text);
 
         if (!loadResult.valid())

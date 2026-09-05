@@ -10,7 +10,7 @@
 
 namespace Quiet::Scripting::Bindings
 {
-    void InstallActorBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene, const Core::UUID actorID)
+    sol::table CreateActorReference(sol::state& lua, Scene::Scene& scene, const Core::UUID actorID)
     {
         const auto requireActor = [&scene, actorID]() -> Scene::Actor&
         {
@@ -95,6 +95,14 @@ namespace Quiet::Scripting::Bindings
 
         #pragma endregion
 
-        environment["Actor"] = actorTable;
+        InstallPhysicsBindings(lua, actorTable, scene, actorID);
+        InstallAudioBindings(lua, actorTable, scene, actorID);
+
+        return actorTable;
+    }
+
+    void InstallActorBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene, const Core::UUID actorID)
+    {
+        environment["Actor"] = CreateActorReference(lua, scene, actorID);
     }
 }

@@ -63,6 +63,7 @@ target_sources(Quiet_Engine
         src/Scripting/Bindings/InputBindings.cpp
         src/Scripting/Bindings/PhysicsBindings.cpp
         src/Scripting/Bindings/AudioBindings.cpp
+        src/Scripting/Bindings/SceneBindings.cpp
 
         # Scene - Camera
         src/Scene/Camera/CameraController.cpp
