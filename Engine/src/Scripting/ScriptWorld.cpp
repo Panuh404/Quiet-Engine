@@ -18,6 +18,7 @@
 #include "Scene/Components/ScriptComponent.h"
 #include "Scripting/Bindings/ActorBindings.h"
 #include "Scripting/Bindings/InputBindings.h"
+#include "Scripting/Bindings/PhysicsBindings.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting
@@ -241,6 +242,7 @@ namespace Quiet::Scripting
         sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
         Bindings::InstallActorBindings(m_State->Lua, environment, m_Scene, actorID);
         Bindings::InstallInputBindings(m_State->Lua, environment, m_Input);
+        Bindings::InstallPhysicsBindings(m_State->Lua, environment, m_Scene, actorID);
         const sol::protected_function_result loadResult = m_State->Lua.safe_script_file(sourcePath.string(), environment, sol::script_pass_on_error, sol::load_mode::text);
 
         if (!loadResult.valid())
