@@ -81,6 +81,15 @@ namespace
         }
     }
 
+    int GetSupportedColliderCount(const entt::registry& registry, const entt::entity entity)
+    {
+        if (!registry.valid(entity)) return 0;
+        return
+            (registry.all_of<Quiet::Scene::BoxColliderComponent>(entity) ? 1 : 0) +
+            (registry.all_of<Quiet::Scene::SphereColliderComponent>(entity) ? 1 : 0) +
+            (registry.all_of<Quiet::Scene::CapsuleColliderComponent>(entity) ? 1 : 0);
+    }
+
 #pragma endregion
 
     namespace ObjectLayers
@@ -260,107 +269,16 @@ namespace Quiet::Physics
         QUIET_CORE_INFO("Destroyed physics world.");
     }
 
-    void PhysicsWorld::BuildBodies(entt::registry &registry)
+    void PhysicsWorld::BuildBodies(entt::registry& registry)
     {
         DestroyBodies();
 
         if (!m_PhysicsSystem) return;
-        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
 
         auto view = registry.view<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>();
         for (const entt::entity entity : view)
         {
-            const auto& identity = registry.get<Scene::ActorIdentityComponent>(entity);
-            const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
-            const auto& rigidBody = registry.get<Scene::RigidBodyComponent>(entity);
-            const auto* boxCollider = registry.try_get<Scene::BoxColliderComponent>(entity);
-            const auto* sphereCollider = registry.try_get<Scene::SphereColliderComponent>(entity);
-            const auto* capsuleCollider = registry.try_get<Scene::CapsuleColliderComponent>(entity);
-
-            const int colliderCount =
-                (boxCollider ? 1 : 0) +
-                (sphereCollider ? 1 : 0) +
-                (capsuleCollider ? 1 : 0);
-
-            if (colliderCount > 1)
-            {
-                QUIET_CORE_WARN("Skipping physics body for '{}': multiple collider components are attached.", identity.Name);
-                continue;
-            }
-
-            if (colliderCount == 0)
-            {
-                QUIET_CORE_WARN("Skipping physics body for '{}': no supported collider.", identity.Name);
-                continue;
-            }
-
-            constexpr float minimumSize = 0.001f;
-
-            JPH::ShapeRefC shape;
-            glm::vec3 effectiveCenter{ 0.0f, 0.0f, 0.0f };
-
-            if (boxCollider)
-            {
-                glm::vec3 effectiveSize = glm::abs(boxCollider->Size * transform.Scale);
-                effectiveSize = glm::max(effectiveSize, glm::vec3(minimumSize));
-
-                const glm::vec3 halfExtent = effectiveSize * 0.5f;
-                shape = new JPH::BoxShape(ToJoltVec3(halfExtent));
-                effectiveCenter = boxCollider->Center * transform.Scale;
-            }
-            else if (sphereCollider)
-            {
-                const glm::vec3 absoluteScale = glm::abs(transform.Scale);
-                const float maximumScale = std::max({ absoluteScale.x, absoluteScale.y, absoluteScale.z });
-                const float authoredRadius = std::isfinite(sphereCollider->Radius) ? sphereCollider->Radius : 0.5f;
-                const float effectiveRadius = std::max(authoredRadius * maximumScale, minimumSize);
-
-                shape = new JPH::SphereShape(effectiveRadius);
-                effectiveCenter = sphereCollider->Center * transform.Scale;
-            }
-            else
-            {
-                const glm::vec3 absoluteScale = glm::abs(transform.Scale);
-
-                const float radialScale = std::max(absoluteScale.x, absoluteScale.z);
-                const float verticalScale = absoluteScale.y;
-                const float authoredRadius = std::isfinite(capsuleCollider->Radius) ? capsuleCollider->Radius : 0.5f;
-                const float authoredHeight = std::isfinite(capsuleCollider->Height) ? capsuleCollider->Height : 2.0f;
-                const float effectiveRadius = std::max( authoredRadius * radialScale, minimumSize);
-                const float minimumHeight = effectiveRadius * 2.0f + minimumSize;
-                const float effectiveHeight = std::max(authoredHeight * verticalScale, minimumHeight);
-                const float halfCylinderHeight = (effectiveHeight - effectiveRadius * 2.0f) * 0.5f;
-
-                shape = new JPH::CapsuleShape(halfCylinderHeight, effectiveRadius);
-                effectiveCenter = capsuleCollider->Center * transform.Scale;
-            }
-
-            if (glm::dot(effectiveCenter, effectiveCenter) > 1.0e-12f)
-            {
-                shape = new JPH::RotatedTranslatedShape(ToJoltVec3(effectiveCenter), JPH::Quat::sIdentity(), shape);
-            }
-
-            const JPH::EMotionType motionType = ToJoltMotionType(rigidBody.MotionType);
-            const JPH::ObjectLayer objectLayer = motionType == JPH::EMotionType::Static ? ObjectLayers::NonMoving : ObjectLayers::Moving;
-
-            JPH::BodyCreationSettings settings(shape, ToJoltPosition(transform.Position), ToJoltRotation(transform.RotationDegrees), motionType, objectLayer);
-            settings.mFriction = std::isfinite(rigidBody.Friction) ? std::max(rigidBody.Friction, 0.0f) : 0.2f;
-            settings.mRestitution = std::isfinite(rigidBody.Restitution) ? std::clamp(rigidBody.Restitution, 0.0f, 1.0f) : 0.0f;
-            settings.mLinearDamping = std::isfinite(rigidBody.LinearDamping) ? std::max(rigidBody.LinearDamping, 0.0f) : 0.05f;
-            settings.mAngularDamping = std::isfinite(rigidBody.AngularDamping) ? std::max(rigidBody.AngularDamping, 0.0f) : 0.05f;
-            settings.mGravityFactor = std::isfinite(rigidBody.GravityFactor) ? rigidBody.GravityFactor : 1.0f;
-            settings.mAllowSleeping = rigidBody.AllowSleeping;
-
-            const JPH::EActivation activation = motionType == JPH::EMotionType::Dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate;
-            const JPH::BodyID bodyID = bodyInterface.CreateAndAddBody(settings, activation);
-
-            if (bodyID.IsInvalid())
-            {
-                QUIET_CORE_ERROR("Failed to create Jolt body for actor '{}'.", identity.Name);
-                continue;
-            }
-
-            m_Bodies.push_back(BodyBinding{ entity, bodyID, identity.ID });
+            CreateBodyBinding(registry, entity);
         }
 
         if (!m_Bodies.empty())
@@ -371,9 +289,11 @@ namespace Quiet::Physics
         QUIET_CORE_INFO("Created {} runtime physics bodies.", m_Bodies.size());
     }
 
-    void PhysicsWorld::Update(float deltaTime, entt::registry& registry)
+    void PhysicsWorld::Update(const float deltaTime, entt::registry& registry)
     {
-        if (!m_PhysicsSystem || !std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
+        if (!m_PhysicsSystem) return;
+        SynchronizeBodies(registry);
+         if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
 
         constexpr float fixedTimeStep = 1.0f / 60.0f;
         constexpr int maxStepsPerFrame = 4;
@@ -481,6 +401,174 @@ namespace Quiet::Physics
         m_ContactEvents.push_back(event);
     }
 
+    bool PhysicsWorld::CreateBodyBinding(entt::registry& registry, const entt::entity entity)
+    {
+        if (!m_PhysicsSystem || !registry.valid(entity)) return false;
+        if (!registry.all_of<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>(entity)) return false;
+        if (FindBodyBinding(entity)) return false;
+
+        const auto& identity = registry.get<Scene::ActorIdentityComponent>(entity);
+        const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
+        const auto& rigidBody = registry.get<Scene::RigidBodyComponent>(entity);
+
+        const auto* boxCollider = registry.try_get<Scene::BoxColliderComponent>(entity);
+        const auto* sphereCollider = registry.try_get<Scene::SphereColliderComponent>(entity);
+        const auto* capsuleCollider = registry.try_get<Scene::CapsuleColliderComponent>(entity);
+
+        const int colliderCount = (boxCollider ? 1 : 0) + (sphereCollider ? 1 : 0) + (capsuleCollider ? 1 : 0);
+
+        if (colliderCount > 1)
+        {
+            QUIET_CORE_WARN("Skipping physics body for '{}': multiple collider components are attached.", identity.Name);
+            return false;
+        }
+        if (colliderCount == 0)
+        {
+            QUIET_CORE_WARN("Skipping physics body for '{}': no supported collider.", identity.Name);
+            return false;
+        }
+
+        constexpr float minimumSize = 0.001f;
+        JPH::ShapeRefC shape;
+        glm::vec3 effectiveCenter{ 0.0f, 0.0f, 0.0f };
+
+        if (boxCollider)
+        {
+            glm::vec3 effectiveSize = glm::abs(boxCollider->Size * transform.Scale);
+            effectiveSize = glm::max(effectiveSize, glm::vec3(minimumSize));
+
+            const glm::vec3 halfExtent = effectiveSize * 0.5f;
+            shape = new JPH::BoxShape(ToJoltVec3(halfExtent));
+            effectiveCenter = boxCollider->Center * transform.Scale;
+        }
+        else if (sphereCollider)
+        {
+            const glm::vec3 absoluteScale = glm::abs(transform.Scale);
+            const float maximumScale = std::max({ absoluteScale.x, absoluteScale.y, absoluteScale.z });
+            const float authoredRadius = std::isfinite(sphereCollider->Radius) ? sphereCollider->Radius : 0.5f;
+            const float effectiveRadius = std::max(authoredRadius * maximumScale, minimumSize);
+
+            shape = new JPH::SphereShape(effectiveRadius);
+            effectiveCenter = sphereCollider->Center * transform.Scale;
+        }
+        else
+        {
+            const glm::vec3 absoluteScale = glm::abs(transform.Scale);
+
+            const float radialScale = std::max(absoluteScale.x, absoluteScale.z);
+            const float verticalScale = absoluteScale.y;
+            const float authoredRadius = std::isfinite(capsuleCollider->Radius) ? capsuleCollider->Radius : 0.5f;
+            const float authoredHeight = std::isfinite(capsuleCollider->Height) ? capsuleCollider->Height : 2.0f;
+
+            const float effectiveRadius = std::max(authoredRadius * radialScale, minimumSize);
+            const float minimumHeight = effectiveRadius * 2.0f + minimumSize;
+            const float effectiveHeight = std::max(authoredHeight * verticalScale, minimumHeight);
+            const float halfCylinderHeight = (effectiveHeight - effectiveRadius * 2.0f) * 0.5f;
+
+            shape = new JPH::CapsuleShape(halfCylinderHeight, effectiveRadius);
+            effectiveCenter = capsuleCollider->Center * transform.Scale;
+        }
+
+        if (glm::dot(effectiveCenter, effectiveCenter) > 1.0e-12f)
+        {
+            shape = new JPH::RotatedTranslatedShape(ToJoltVec3(effectiveCenter), JPH::Quat::sIdentity(), shape);
+        }
+
+        const JPH::EMotionType motionType = ToJoltMotionType(rigidBody.MotionType);
+        const JPH::ObjectLayer objectLayer = motionType == JPH::EMotionType::Static ? ObjectLayers::NonMoving : ObjectLayers::Moving;
+
+        JPH::BodyCreationSettings settings(shape, ToJoltPosition(transform.Position), ToJoltRotation(transform.RotationDegrees), motionType, objectLayer);
+
+        settings.mFriction = std::isfinite(rigidBody.Friction) ? std::max(rigidBody.Friction, 0.0f) : 0.2f;
+        settings.mRestitution = std::isfinite(rigidBody.Restitution) ? std::clamp(rigidBody.Restitution, 0.0f, 1.0f) : 0.0f;
+        settings.mLinearDamping = std::isfinite(rigidBody.LinearDamping) ? std::max(rigidBody.LinearDamping, 0.0f) : 0.05f;
+        settings.mAngularDamping = std::isfinite(rigidBody.AngularDamping) ? std::max(rigidBody.AngularDamping, 0.0f) : 0.05f;
+        settings.mGravityFactor = std::isfinite(rigidBody.GravityFactor) ? rigidBody.GravityFactor : 1.0f;
+        settings.mAllowSleeping = rigidBody.AllowSleeping;
+
+        const JPH::EActivation activation = motionType == JPH::EMotionType::Dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate;
+        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
+        const JPH::BodyID bodyID = bodyInterface.CreateAndAddBody(settings, activation);
+
+        if (bodyID.IsInvalid())
+        {
+            QUIET_CORE_ERROR("Failed to create Jolt body for actor '{}'.", identity.Name);
+            return false;
+        }
+
+        m_Bodies.push_back(BodyBinding{ entity, bodyID, identity.ID });
+        return true;
+    }
+
+    void PhysicsWorld::DestroyBodyBinding(BodyBinding &binding)
+    {
+        if (!m_PhysicsSystem || binding.BodyID.IsInvalid()) return;
+        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
+
+        if (bodyInterface.IsAdded(binding.BodyID))
+        {
+            bodyInterface.RemoveBody(binding.BodyID);
+        }
+        bodyInterface.DestroyBody(binding.BodyID);
+    }
+
+    void PhysicsWorld::SynchronizeBodies(entt::registry& registry)
+    {
+        if (!m_PhysicsSystem) return;
+
+        std::size_t removedCount = 0;
+        std::size_t createdCount = 0;
+
+        for (auto iterator = m_Bodies.begin(); iterator != m_Bodies.end();)
+        {
+            const BodyBinding& binding = *iterator;
+            bool shouldRemove = !registry.valid(binding.Entity);
+
+            if (!shouldRemove)
+            {
+                shouldRemove = !registry.all_of<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>(binding.Entity);
+            }
+
+            if (!shouldRemove)
+            {
+                shouldRemove = GetSupportedColliderCount(registry, binding.Entity) != 1;
+            }
+
+            if (!shouldRemove)
+            {
+                ++iterator;
+                continue;
+            }
+
+            DestroyBodyBinding(*iterator);
+            iterator = m_Bodies.erase(iterator);
+            ++removedCount;
+        }
+
+        auto view = registry.view<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>();
+
+        for (const entt::entity entity : view)
+        {
+            if (FindBodyBinding(entity)) continue;
+
+            // Invalid authored combinations are ignored here.
+            // BuildBodies() already reports them at runtime startup,
+            // and this avoids repeating the same warning every frame.
+            if (GetSupportedColliderCount(registry, entity) != 1) continue;
+            if (CreateBodyBinding(registry, entity)) ++createdCount;
+        }
+
+        if (createdCount > 0)
+        {
+            m_PhysicsSystem->OptimizeBroadPhase();
+        }
+
+        if (createdCount > 0 || removedCount > 0)
+        {
+            QUIET_CORE_INFO("Synchronized runtime physics bodies. created={}, removed={}, active={}", createdCount, removedCount, m_Bodies.size());
+        }
+    }
+
     void PhysicsWorld::DestroyBodies()
     {
         if (!m_PhysicsSystem)
@@ -489,25 +577,18 @@ namespace Quiet::Physics
             return;
         }
 
-        JPH::BodyInterface& bodyInterface = m_PhysicsSystem->GetBodyInterface();
-        for (const BodyBinding& binding : m_Bodies)
+        for (BodyBinding& binding : m_Bodies)
         {
-            if (binding.BodyID.IsInvalid()) continue;
-            if (bodyInterface.IsAdded(binding.BodyID))
-            {
-                bodyInterface.RemoveBody(binding.BodyID);
-            }
-
-            bodyInterface.DestroyBody(binding.BodyID);
+            DestroyBodyBinding(binding);
         }
 
         m_Bodies.clear();
+
         {
             std::scoped_lock lock(m_ContactEventsMutex);
             m_ContactEvents.clear();
         }
     }
-
     void PhysicsWorld::SyncKinematicBodies(entt::registry &registry, float timeStep)
     {
         if (!m_PhysicsSystem || !std::isfinite(timeStep) || timeStep <= 0.0f) return;

@@ -51,12 +51,18 @@ namespace Quiet::Physics
             JPH::BodyID BodyID{};
             Core::UUID ActorID{};
         };
+
         [[nodiscard]] const BodyBinding* FindBodyBinding(entt::entity entity) const;
         [[nodiscard]] const BodyBinding* FindBodyBinding(JPH::BodyID bodyID) const;
         [[nodiscard]] bool WereBodiesInContact(JPH::BodyID bodyA, JPH::BodyID bodyB) const;
+
         void QueueContactEvent(JPH::BodyID bodyA, JPH::BodyID bodyB, PhysicsContactEventType type);
+        bool CreateBodyBinding(entt::registry& registry, entt::entity entity);
+        void DestroyBodyBinding(BodyBinding& binding);
+        void SynchronizeBodies(entt::registry& registry);
 
         void DestroyBodies();
+
         void SyncKinematicBodies(entt::registry& registry, float timeStep);
         void SyncDynamicBodies(entt::registry& registry);
 
