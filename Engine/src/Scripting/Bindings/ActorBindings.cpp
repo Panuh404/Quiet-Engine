@@ -38,6 +38,11 @@ namespace Quiet::Scripting::Bindings
             return requireActor().GetName();
         });
 
+        actorTable.set_function("Destroy", [&scene, actorID]()
+        {
+            return scene.RequestRuntimeActorDestroy(actorID);
+        });
+
         #pragma endregion Actor
 
         #pragma region Transform

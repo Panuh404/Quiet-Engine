@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <memory>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Input
 {
     class Input;
@@ -36,7 +38,10 @@ namespace Quiet::Scripting
 
         void Begin();
         void Update(float deltaTime);
+
         void DispatchPhysicsContactEvents();
+        void NotifyActorWillBeDestroyed(Core::UUID actorID);
+
         void End();
 
         [[nodiscard]] bool IsInitialized() const { return m_Initialized; }

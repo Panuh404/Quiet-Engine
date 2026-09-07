@@ -96,6 +96,9 @@ namespace Quiet::Scene
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
 
+        // Runtime Actor API
+        bool RequestRuntimeActorDestroy(Core::UUID actorID);
+
         // Physics Runtime API
         bool ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3& impulse);
         bool SetPhysicsLinearVelocity(Core::UUID actorID, const glm::vec3& velocity);
@@ -140,6 +143,7 @@ namespace Quiet::Scene
     private:
         void AddActorToHierarchyRoot(Core::UUID actorID);
         void RemoveActorFromHierarchy(Core::UUID actorID);
+        void FlushRuntimeActorDestructions();
         void SanitizeHierarchy();
 
         void OnRuntimeBegin(RuntimeMode mode);
@@ -167,8 +171,7 @@ namespace Quiet::Scene
         std::unique_ptr<Audio::AudioWorld> m_AudioWorld;
         std::unique_ptr<Scripting::ScriptWorld> m_ScriptWorld;
 
+        std::vector<Core::UUID> m_PendingRuntimeActorDestructions;
         std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
-
-
     };
 }

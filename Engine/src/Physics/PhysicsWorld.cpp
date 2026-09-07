@@ -531,6 +531,12 @@ namespace Quiet::Physics
 
             if (!shouldRemove)
             {
+                const auto& identity = registry.get<Scene::ActorIdentityComponent>(binding.Entity);
+                shouldRemove = identity.ID != binding.ActorID;
+            }
+
+            if (!shouldRemove)
+            {
                 shouldRemove = GetSupportedColliderCount(registry, binding.Entity) != 1;
             }
 

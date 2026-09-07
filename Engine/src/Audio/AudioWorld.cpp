@@ -433,10 +433,21 @@ namespace Quiet::Audio
         {
             SourceBinding& binding = m_Sources[index];
             bool removeBinding = !registry.valid(binding.Entity);
+
+            if (!removeBinding)
+            {
+                const auto* identity = registry.try_get<Scene::ActorIdentityComponent>(binding.Entity);
+                removeBinding = identity == nullptr || identity->ID != binding.ActorID;
+            }
+
             if (!removeBinding)
             {
                 const auto* source = registry.try_get<Scene::AudioSourceComponent>(binding.Entity);
-                removeBinding = source == nullptr || source->AudioAssetID.empty() || source->AudioAssetID != binding.AudioAssetID || source->Bus != binding.Bus;
+                removeBinding =
+                    source == nullptr ||
+                    source->AudioAssetID.empty() ||
+                    source->AudioAssetID != binding.AudioAssetID ||
+                    source->Bus != binding.Bus;
             }
             if (!removeBinding)
             {

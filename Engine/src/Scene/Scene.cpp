@@ -225,6 +225,7 @@ namespace Quiet::Scene
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
+        m_PendingRuntimeActorDestructions.clear();
         m_AudioSettings = SceneAudioSettings{};
         m_PhysicsSettings = ScenePhysicsSettings{};
         m_RenderSettings = SceneRenderSettings{};
@@ -457,6 +458,41 @@ namespace Quiet::Scene
         }
     }
 
+    void Scene::FlushRuntimeActorDestructions()
+    {
+        if (!IsRuntimeActive() || m_PendingRuntimeActorDestructions.empty()) return;
+
+        std::size_t index = 0;
+        std::size_t destroyedCount = 0;
+
+        // OnDestroy callbacks are allowed to request destruction
+        // of another Actor. Such requests append to this vector and
+        // are therefore processed later in this same safe phase.
+        while (index < m_PendingRuntimeActorDestructions.size())
+        {
+            const Core::UUID actorID = m_PendingRuntimeActorDestructions[index++];
+            if (!FindActorByID(actorID)) continue;
+
+            // OnDestroy must execute while the Actor and all native
+            // runtime systems are still valid.
+            if (m_ScriptWorld)
+            {
+                m_ScriptWorld->NotifyActorWillBeDestroyed(actorID);
+            }
+
+            if (DestroyActorByID(actorID))
+            {
+                ++destroyedCount;
+            }
+        }
+        m_PendingRuntimeActorDestructions.clear();
+
+        if (destroyedCount > 0)
+        {
+            QUIET_CORE_INFO("Destroyed {} queued runtime actor(s).", destroyedCount);
+        }
+    }
+
     void Scene::SanitizeHierarchy()
     {
         std::unordered_set<Core::UUID> validActorIDs;
@@ -639,6 +675,7 @@ namespace Quiet::Scene
         // Scripting
         m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext, input);
 
+        m_PendingRuntimeActorDestructions.clear();
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
 
@@ -658,6 +695,7 @@ namespace Quiet::Scene
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
 
+        m_PendingRuntimeActorDestructions.clear();
         m_PhysicsContactEvents.clear();
         m_RuntimeMode = RuntimeMode::None;
     }
@@ -688,6 +726,25 @@ namespace Quiet::Scene
         UpdateRuntime(deltaTime);
     }
 
+#pragma region Actor Runtime API
+
+    bool Scene::RequestRuntimeActorDestroy(const Core::UUID actorID)
+    {
+        if (!IsRuntimeActive() || !actorID.IsValid() || !FindActorByID(actorID)) return false;
+
+        const auto iterator = std::find(m_PendingRuntimeActorDestructions.begin(), m_PendingRuntimeActorDestructions.end(), actorID);
+        if (iterator != m_PendingRuntimeActorDestructions.end())
+        {
+            // Destruction has already been requested.
+            // Treat the request as successful/idempotent.
+            return true;
+        }
+
+        m_PendingRuntimeActorDestructions.push_back(actorID);
+        return true;
+    }
+
+#pragma endregion
 #pragma region Physics Runtime API
 
     bool Scene::ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3 &impulse)
@@ -967,6 +1024,8 @@ namespace Quiet::Scene
         {
             m_ScriptWorld->DispatchPhysicsContactEvents();
         }
+
+        FlushRuntimeActorDestructions();
 
         if (m_AudioWorld)
         {

@@ -210,6 +210,7 @@ namespace Quiet::Scripting
                 }
 
                 if (!callback) return;
+                if (!m_Scene.FindActorByID(otherActorID)) return;
                 sol::table otherActor = Bindings::CreateActorReference(m_State->Lua, m_Scene, otherActorID);
                 const sol::protected_function_result result = (*callback)(otherActor);
                 if (result.valid()) return;
@@ -223,6 +224,20 @@ namespace Quiet::Scripting
             dispatchToActor(event.ActorA, event.ActorB);
             dispatchToActor(event.ActorB, event.ActorA);
         }
+    }
+
+    void ScriptWorld::NotifyActorWillBeDestroyed(Core::UUID actorID)
+    {
+        if (!m_State) return;
+
+        for (std::size_t index = 0; index < m_State->Instances.size(); ++index)
+        {
+            if (m_State->Instances[index].ActorID != actorID) continue;
+            DestroyInstance(index);
+            return;
+        }
+
+        m_State->FailedInstances.erase(actorID);
     }
 
     void ScriptWorld::End()

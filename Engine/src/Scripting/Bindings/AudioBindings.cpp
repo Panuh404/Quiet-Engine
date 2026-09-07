@@ -1,7 +1,6 @@
 #include "Scripting/Bindings/Bindings.h"
 
 #include <cmath>
-#include <stdexcept>
 
 #include "Audio/AudioWorld.h"
 #include "Scene/Scene.h"
