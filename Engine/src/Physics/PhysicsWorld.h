@@ -36,6 +36,7 @@ namespace Quiet::Physics
         PhysicsWorld& operator=(PhysicsWorld&&) = delete;
 
         void BuildBodies(entt::registry& registry);
+        void SynchronizeBodies(entt::registry& registry);
         void Update(float deltaTime, entt::registry& registry);
 
         bool ApplyImpulse(entt::entity entity, const glm::vec3& impulse);
@@ -59,7 +60,6 @@ namespace Quiet::Physics
         void QueueContactEvent(JPH::BodyID bodyA, JPH::BodyID bodyB, PhysicsContactEventType type);
         bool CreateBodyBinding(entt::registry& registry, entt::entity entity);
         void DestroyBodyBinding(BodyBinding& binding);
-        void SynchronizeBodies(entt::registry& registry);
 
         void DestroyBodies();
 

@@ -98,6 +98,7 @@ namespace Quiet::Scene
 
         // Runtime Actor API
         Core::UUID RequestRuntimeActorCreate(const std::string& name);
+        Core::UUID RequestRuntimeActorDuplicate(Core::UUID sourceActorID);
         bool RequestRuntimeActorDestroy(Core::UUID actorID);
 
         // Physics Runtime API
@@ -148,6 +149,8 @@ namespace Quiet::Scene
         void FlushRuntimeActorDestructions();
         void SanitizeHierarchy();
 
+        Actor* TryDuplicateActorWithID(Core::UUID sourceID, Core::UUID duplicateID);
+
         void OnRuntimeBegin(RuntimeMode mode);
         void OnRuntimeEnd(RuntimeMode mode);
         void OnSimulateBegin();
@@ -176,6 +179,7 @@ namespace Quiet::Scene
         struct RuntimeActorCreationRequest
         {
             Core::UUID ActorID{};
+            Core::UUID SourceActorID{};
             std::string Name;
         };
 

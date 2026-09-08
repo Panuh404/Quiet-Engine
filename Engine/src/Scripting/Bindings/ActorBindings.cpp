@@ -43,6 +43,17 @@ namespace Quiet::Scripting::Bindings
             return scene.RequestRuntimeActorDestroy(actorID);
         });
 
+        actorTable.set_function("Duplicate", [&lua, &scene, actorID]() -> sol::object
+        {
+            const Core::UUID duplicateID = scene.RequestRuntimeActorDuplicate(actorID);
+            if (!duplicateID.IsValid())
+            {
+                return sol::make_object(lua, sol::nil);
+            }
+
+            return sol::make_object(lua, CreateActorReference(lua, scene, duplicateID));
+        });
+
         #pragma endregion Actor
 
         #pragma region Transform

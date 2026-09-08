@@ -528,18 +528,15 @@ namespace Quiet::Physics
             {
                 shouldRemove = !registry.all_of<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>(binding.Entity);
             }
-
             if (!shouldRemove)
             {
                 const auto& identity = registry.get<Scene::ActorIdentityComponent>(binding.Entity);
                 shouldRemove = identity.ID != binding.ActorID;
             }
-
             if (!shouldRemove)
             {
                 shouldRemove = GetSupportedColliderCount(registry, binding.Entity) != 1;
             }
-
             if (!shouldRemove)
             {
                 ++iterator;
@@ -552,7 +549,6 @@ namespace Quiet::Physics
         }
 
         auto view = registry.view<Scene::ActorIdentityComponent, Scene::TransformComponent, Scene::RigidBodyComponent>();
-
         for (const entt::entity entity : view)
         {
             if (FindBodyBinding(entity)) continue;
@@ -568,7 +564,6 @@ namespace Quiet::Physics
         {
             m_PhysicsSystem->OptimizeBroadPhase();
         }
-
         if (createdCount > 0 || removedCount > 0)
         {
             QUIET_CORE_INFO("Synchronized runtime physics bodies. created={}, removed={}, active={}", createdCount, removedCount, m_Bodies.size());

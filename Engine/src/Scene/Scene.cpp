@@ -117,81 +117,7 @@ namespace Quiet::Scene
 
     Actor* Scene::TryDuplicateActor(Core::UUID sourceID)
     {
-        const Actor* source = FindActorByID(sourceID);
-        if (!source)
-        {
-            QUIET_CORE_WARN("TryDuplicateActor failed. Source actor not found.");
-            return nullptr;
-        }
-
-        const std::string duplicateName = source->GetName().empty() ? "Actor Copy" : source->GetName() + " Copy";
-
-        const TransformComponent transform = source->GetComponent<TransformComponent>();
-        std::optional<StaticMeshComponent> staticMesh;
-        std::optional<MaterialComponent> material;
-        std::optional<DirectionalLightComponent> directionalLight;
-        std::optional<RotatorComponent> rotator;
-        std::optional<CameraComponent> camera;
-        std::optional<AudioSourceComponent> audioSource;
-        std::optional<AudioListenerComponent> audioListener;
-        std::optional<ScriptComponent> script;
-        std::optional<RigidBodyComponent> rigidBody;
-        std::optional<BoxColliderComponent> boxCollider;
-        std::optional<SphereColliderComponent> sphereCollider;
-        std::optional<CapsuleColliderComponent> capsuleCollider;
-
-        if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
-            staticMesh = *component;
-
-        if (const auto* component = source->TryGetComponent<MaterialComponent>())
-            material = *component;
-
-        if (const auto* component = source->TryGetComponent<DirectionalLightComponent>())
-            directionalLight = *component;
-
-        if (const auto* component = source->TryGetComponent<RotatorComponent>())
-            rotator = *component;
-
-        if (const auto* component = source->TryGetComponent<CameraComponent>())
-            camera = *component;
-
-        if (const auto* component = source->TryGetComponent<AudioSourceComponent>())
-            audioSource = *component;
-
-        if (const auto* component = source->TryGetComponent<AudioListenerComponent>())
-            audioListener = *component;
-
-        if (const auto* component = source->TryGetComponent<ScriptComponent>())
-            script = *component;
-
-        if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
-            rigidBody = *component;
-
-        if (const auto* component = source->TryGetComponent<BoxColliderComponent>())
-            boxCollider = *component;
-
-        if (const auto* component = source->TryGetComponent<SphereColliderComponent>())
-            sphereCollider = *component;
-
-        if (const auto* component = source->TryGetComponent<CapsuleColliderComponent>())
-            capsuleCollider = *component;
-
-        Actor& duplicate = CreateActor(duplicateName);
-        duplicate.GetComponent<TransformComponent>() = transform;
-
-        if (staticMesh)         duplicate.AddComponent<StaticMeshComponent>(*staticMesh);
-        if (material)           duplicate.AddComponent<MaterialComponent>(*material);
-        if (directionalLight)   duplicate.AddComponent<DirectionalLightComponent>(*directionalLight);
-        if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
-        if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
-        if (audioSource)        duplicate.AddComponent<AudioSourceComponent>(*audioSource);
-        if (audioListener)      duplicate.AddComponent<AudioListenerComponent>(*audioListener);
-        if (script)             duplicate.AddComponent<ScriptComponent>(*script);
-        if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
-        if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
-        if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
-        if (capsuleCollider)    duplicate.AddComponent<CapsuleColliderComponent>(*capsuleCollider);
-        return &duplicate;
+        return TryDuplicateActorWithID(sourceID, Core::UUIDGenerator::New());
     }
 
     bool Scene::DestroyActorByID(Core::UUID id)
@@ -470,7 +396,15 @@ namespace Quiet::Scene
         for (RuntimeActorCreationRequest& request : requests)
         {
             if (!request.ActorID.IsValid() || FindActorByID(request.ActorID)) continue;
-            CreateActorWithID(request.ActorID, request.Name);
+            if (request.SourceActorID.IsValid())
+            {
+                if (!TryDuplicateActorWithID(request.SourceActorID, request.ActorID)) continue;
+            }
+            else
+            {
+                CreateActorWithID(request.ActorID, request.Name);
+            }
+
             ++createdCount;
         }
 
@@ -664,6 +598,91 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
+    Actor * Scene::TryDuplicateActorWithID(Core::UUID sourceID, Core::UUID duplicateID)
+    {
+        if (!duplicateID.IsValid() || FindActorByID(duplicateID))
+        {
+            QUIET_CORE_WARN("TryDuplicateActorWithID failed. Duplicate actor ID is invalid or already exists.");
+            return nullptr;
+        }
+
+        const Actor* source = FindActorByID(sourceID);
+        if (!source)
+        {
+            QUIET_CORE_WARN("TryDuplicateActor failed. Source actor not found.");
+            return nullptr;
+        }
+
+        const std::string duplicateName = source->GetName().empty() ? "Actor Copy" : source->GetName() + " Copy";
+
+        const TransformComponent transform = source->GetComponent<TransformComponent>();
+        std::optional<StaticMeshComponent> staticMesh;
+        std::optional<MaterialComponent> material;
+        std::optional<DirectionalLightComponent> directionalLight;
+        std::optional<RotatorComponent> rotator;
+        std::optional<CameraComponent> camera;
+        std::optional<AudioSourceComponent> audioSource;
+        std::optional<AudioListenerComponent> audioListener;
+        std::optional<ScriptComponent> script;
+        std::optional<RigidBodyComponent> rigidBody;
+        std::optional<BoxColliderComponent> boxCollider;
+        std::optional<SphereColliderComponent> sphereCollider;
+        std::optional<CapsuleColliderComponent> capsuleCollider;
+
+        if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
+            staticMesh = *component;
+
+        if (const auto* component = source->TryGetComponent<MaterialComponent>())
+            material = *component;
+
+        if (const auto* component = source->TryGetComponent<DirectionalLightComponent>())
+            directionalLight = *component;
+
+        if (const auto* component = source->TryGetComponent<RotatorComponent>())
+            rotator = *component;
+
+        if (const auto* component = source->TryGetComponent<CameraComponent>())
+            camera = *component;
+
+        if (const auto* component = source->TryGetComponent<AudioSourceComponent>())
+            audioSource = *component;
+
+        if (const auto* component = source->TryGetComponent<AudioListenerComponent>())
+            audioListener = *component;
+
+        if (const auto* component = source->TryGetComponent<ScriptComponent>())
+            script = *component;
+
+        if (const auto* component = source->TryGetComponent<RigidBodyComponent>())
+            rigidBody = *component;
+
+        if (const auto* component = source->TryGetComponent<BoxColliderComponent>())
+            boxCollider = *component;
+
+        if (const auto* component = source->TryGetComponent<SphereColliderComponent>())
+            sphereCollider = *component;
+
+        if (const auto* component = source->TryGetComponent<CapsuleColliderComponent>())
+            capsuleCollider = *component;
+
+        Actor& duplicate = CreateActorWithID(duplicateID, duplicateName);
+        duplicate.GetComponent<TransformComponent>() = transform;
+
+        if (staticMesh)         duplicate.AddComponent<StaticMeshComponent>(*staticMesh);
+        if (material)           duplicate.AddComponent<MaterialComponent>(*material);
+        if (directionalLight)   duplicate.AddComponent<DirectionalLightComponent>(*directionalLight);
+        if (rotator)            duplicate.AddComponent<RotatorComponent>(*rotator);
+        if (camera)             duplicate.AddComponent<CameraComponent>(*camera);
+        if (audioSource)        duplicate.AddComponent<AudioSourceComponent>(*audioSource);
+        if (audioListener)      duplicate.AddComponent<AudioListenerComponent>(*audioListener);
+        if (script)             duplicate.AddComponent<ScriptComponent>(*script);
+        if (rigidBody)          duplicate.AddComponent<RigidBodyComponent>(*rigidBody);
+        if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
+        if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
+        if (capsuleCollider)    duplicate.AddComponent<CapsuleColliderComponent>(*capsuleCollider);
+        return &duplicate;
+    }
+
     void Scene::BeginRuntime(RuntimeMode mode, Physics::PhysicsSubsystem& physicsSubsystem, Audio::AudioSubsystem& audioSubsystem, const Project::ProjectContext& projectContext, const Input::Input& input)
     {
         if (mode == RuntimeMode::None)
@@ -777,6 +796,32 @@ namespace Quiet::Scene
         return actorID;
     }
 
+    Core::UUID Scene::RequestRuntimeActorDuplicate(const Core::UUID sourceActorID)
+    {
+        if (!IsRuntimeActive() || !sourceActorID.IsValid() || !FindActorByID(sourceActorID)) return {};
+        Core::UUID duplicateID{};
+
+        do
+        {
+            duplicateID = Core::UUIDGenerator::New();
+        }
+        while (!duplicateID.IsValid() || FindActorByID(duplicateID) || std::any_of(
+            m_PendingRuntimeActorCreations.begin(),
+            m_PendingRuntimeActorCreations.end(),
+            [duplicateID](const RuntimeActorCreationRequest& request)
+            {
+                return request.ActorID == duplicateID;
+            })
+        );
+
+        RuntimeActorCreationRequest request{};
+        request.ActorID = duplicateID;
+        request.SourceActorID = sourceActorID;
+
+        m_PendingRuntimeActorCreations.push_back(std::move(request));
+        return duplicateID;
+    }
+
     bool Scene::RequestRuntimeActorDestroy(const Core::UUID actorID)
     {
         if (!IsRuntimeActive() || !actorID.IsValid()) return false;
@@ -815,6 +860,7 @@ namespace Quiet::Scene
     }
 
 #pragma endregion
+
 #pragma region Physics Runtime API
 
     bool Scene::ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3 &impulse)
@@ -1097,6 +1143,13 @@ namespace Quiet::Scene
 
         FlushRuntimeActorCreations();
         FlushRuntimeActorDestructions();
+
+        // Runtime mutations must be reflected in Physics before
+        // newly-created Script instances can begin next frame.
+        if (m_PhysicsWorld)
+        {
+            m_PhysicsWorld->SynchronizeBodies(m_Registry);
+        }
 
         if (m_AudioWorld)
         {
