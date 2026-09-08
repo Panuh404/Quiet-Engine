@@ -225,6 +225,7 @@ namespace Quiet::Scene
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
         m_PhysicsContactEvents.clear();
+        m_PendingRuntimeActorCreations.clear();
         m_PendingRuntimeActorDestructions.clear();
         m_AudioSettings = SceneAudioSettings{};
         m_PhysicsSettings = ScenePhysicsSettings{};
@@ -458,6 +459,27 @@ namespace Quiet::Scene
         }
     }
 
+    void Scene::FlushRuntimeActorCreations()
+    {
+        if (!IsRuntimeActive() || m_PendingRuntimeActorCreations.empty()) return;
+        std::vector<RuntimeActorCreationRequest> requests = std::move(m_PendingRuntimeActorCreations);
+        m_PendingRuntimeActorCreations.clear();
+
+        std::size_t createdCount = 0;
+
+        for (RuntimeActorCreationRequest& request : requests)
+        {
+            if (!request.ActorID.IsValid() || FindActorByID(request.ActorID)) continue;
+            CreateActorWithID(request.ActorID, request.Name);
+            ++createdCount;
+        }
+
+        if (createdCount > 0)
+        {
+            QUIET_CORE_INFO("Created {} queued runtime actor(s).", createdCount);
+        }
+    }
+
     void Scene::FlushRuntimeActorDestructions()
     {
         if (!IsRuntimeActive() || m_PendingRuntimeActorDestructions.empty()) return;
@@ -675,6 +697,7 @@ namespace Quiet::Scene
         // Scripting
         m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext, input);
 
+        m_PendingRuntimeActorCreations.clear();
         m_PendingRuntimeActorDestructions.clear();
         m_RuntimeMode = mode;
         OnRuntimeBegin(mode);
@@ -695,6 +718,7 @@ namespace Quiet::Scene
         m_AudioWorld.reset();
         m_PhysicsWorld.reset();
 
+        m_PendingRuntimeActorCreations.clear();
         m_PendingRuntimeActorDestructions.clear();
         m_PhysicsContactEvents.clear();
         m_RuntimeMode = RuntimeMode::None;
@@ -728,15 +752,61 @@ namespace Quiet::Scene
 
 #pragma region Actor Runtime API
 
+    Core::UUID Scene::RequestRuntimeActorCreate(const std::string &name)
+    {
+        if (!IsRuntimeActive()) return {};
+        Core::UUID actorID{};
+
+        do
+        {
+            actorID = Core::UUIDGenerator::New();
+        }
+        while (!actorID.IsValid() || FindActorByID(actorID) || std::any_of(
+            m_PendingRuntimeActorCreations.begin(),
+            m_PendingRuntimeActorCreations.end(),
+            [actorID](const RuntimeActorCreationRequest& request)
+            {
+                return request.ActorID == actorID;
+            }));
+
+        RuntimeActorCreationRequest request{};
+        request.ActorID = actorID;
+        request.Name = name.empty() ? "Actor" : name;
+
+        m_PendingRuntimeActorCreations.push_back(std::move(request));
+        return actorID;
+    }
+
     bool Scene::RequestRuntimeActorDestroy(const Core::UUID actorID)
     {
-        if (!IsRuntimeActive() || !actorID.IsValid() || !FindActorByID(actorID)) return false;
+        if (!IsRuntimeActive() || !actorID.IsValid()) return false;
 
-        const auto iterator = std::find(m_PendingRuntimeActorDestructions.begin(), m_PendingRuntimeActorDestructions.end(), actorID);
+        // An Actor reference can represent a creation that has
+        // been accepted but not materialized yet.
+        if (!FindActorByID(actorID))
+        {
+            const auto pendingCreation =
+                std::find_if(
+                    m_PendingRuntimeActorCreations.begin(),
+                    m_PendingRuntimeActorCreations.end(),
+                    [actorID](const RuntimeActorCreationRequest& request)
+                    {
+                        return request.ActorID == actorID;
+                    });
+
+            if (pendingCreation == m_PendingRuntimeActorCreations.end()) return false;
+
+            m_PendingRuntimeActorCreations.erase(pendingCreation);
+            return true;
+        }
+
+        const auto iterator = std::find(
+            m_PendingRuntimeActorDestructions.begin(),
+            m_PendingRuntimeActorDestructions.end(),
+            actorID);
+
         if (iterator != m_PendingRuntimeActorDestructions.end())
         {
-            // Destruction has already been requested.
-            // Treat the request as successful/idempotent.
             return true;
         }
 
@@ -1025,6 +1095,7 @@ namespace Quiet::Scene
             m_ScriptWorld->DispatchPhysicsContactEvents();
         }
 
+        FlushRuntimeActorCreations();
         FlushRuntimeActorDestructions();
 
         if (m_AudioWorld)

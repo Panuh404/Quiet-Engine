@@ -97,6 +97,7 @@ namespace Quiet::Scene
         void Update(float deltaTime);
 
         // Runtime Actor API
+        Core::UUID RequestRuntimeActorCreate(const std::string& name);
         bool RequestRuntimeActorDestroy(Core::UUID actorID);
 
         // Physics Runtime API
@@ -143,6 +144,7 @@ namespace Quiet::Scene
     private:
         void AddActorToHierarchyRoot(Core::UUID actorID);
         void RemoveActorFromHierarchy(Core::UUID actorID);
+        void FlushRuntimeActorCreations();
         void FlushRuntimeActorDestructions();
         void SanitizeHierarchy();
 
@@ -171,6 +173,13 @@ namespace Quiet::Scene
         std::unique_ptr<Audio::AudioWorld> m_AudioWorld;
         std::unique_ptr<Scripting::ScriptWorld> m_ScriptWorld;
 
+        struct RuntimeActorCreationRequest
+        {
+            Core::UUID ActorID{};
+            std::string Name;
+        };
+
+        std::vector<RuntimeActorCreationRequest> m_PendingRuntimeActorCreations;
         std::vector<Core::UUID> m_PendingRuntimeActorDestructions;
         std::vector<Physics::PhysicsContactEvent> m_PhysicsContactEvents;
     };

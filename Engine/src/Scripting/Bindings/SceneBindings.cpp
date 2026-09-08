@@ -12,6 +12,17 @@ namespace Quiet::Scripting::Bindings
     {
         sol::table sceneTable = lua.create_table();
 
+        sceneTable.set_function("CreateActor", [&lua, &scene](const std::string& name) -> sol::object
+        {
+            const Core::UUID actorID = scene.RequestRuntimeActorCreate(name);
+            if (!actorID.IsValid())
+            {
+                return sol::make_object(lua, sol::nil);
+            }
+
+            return sol::make_object(lua, CreateActorReference(lua, scene, actorID));
+    });
+
         sceneTable.set_function("FindActorByID", [&lua, &scene](const std::string& text) -> sol::object
         {
             Core::UUID actorID{};
