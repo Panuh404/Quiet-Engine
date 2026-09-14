@@ -204,7 +204,7 @@ set(SOL2_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
         sol2
         GIT_REPOSITORY  https://github.com/ThePhD/sol2.git
-        GIT_TAG         v3.3.0
+        GIT_TAG         v3.5.0
         GIT_SHALLOW     TRUE
 )
 
@@ -224,6 +224,27 @@ FetchContent_MakeAvailable(
         lua
         sol2
 )
+
+# Assimp forces the MinGW runtime and winpthread to link statically when
+# BUILD_SHARED_LIBS is disabled. Quiet intentionally uses the normal MinGW
+# runtime DLLs instead, so remove Assimp's forced static-runtime flags.
+#
+# Keep -lwinpthread: Assimp requires it for minizip, but without -Bstatic it
+# resolves through the normal MinGW runtime configuration.
+if(WIN32 AND MINGW AND TARGET assimp)
+    get_target_property(QUIET_ASSIMP_INTERFACE_LINK_LIBRARIES assimp INTERFACE_LINK_LIBRARIES)
+
+    if(QUIET_ASSIMP_INTERFACE_LINK_LIBRARIES)
+        list(REMOVE_ITEM QUIET_ASSIMP_INTERFACE_LINK_LIBRARIES
+                "-static-libgcc"
+                "-static-libstdc++"
+                "-Wl,-Bstatic"
+                "-lstdc++"
+        )
+
+        set_property(TARGET assimp PROPERTY INTERFACE_LINK_LIBRARIES "${QUIET_ASSIMP_INTERFACE_LINK_LIBRARIES}")
+    endif()
+endif()
 
 # Lua ships as portable C sources without a native CMake library target.
 # Quiet builds only the embeddable Lua library; lua.c and luac.c are the

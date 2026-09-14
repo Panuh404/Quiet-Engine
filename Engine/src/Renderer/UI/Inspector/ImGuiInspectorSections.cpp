@@ -1001,7 +1001,7 @@ namespace Quiet::Renderer::UI::Inspector
         ImGui::PopID();
     }
 
-    void DrawScriptSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor)
+    void DrawScriptSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)
     {
         Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
         if (!script) return;
@@ -1048,10 +1048,57 @@ namespace Quiet::Renderer::UI::Inspector
             context.Commands.SetScriptAsset(context.Scene, actor.GetID(), selectedScriptAssetID, context.ProjectContext);
         }
 
-        if (script->ScriptAssetID.empty())
+        if (!script->ScriptAssetID.empty())
         {
             ImGui::Spacing();
 
+            if (EditorButton("Refresh Exposed Properties", ImVec2(-1.0f, 0.0f)))
+            {
+                context.Commands.RefreshScriptProperties(context.Scene, actor.GetID(), context.ProjectContext);
+                return;
+            }
+
+            if (!script->Properties.empty())
+            {
+                DrawInspectorSubsectionHeader("Exposed Properties");
+
+                for (const Scene::ScriptProperty& property : script->Properties)
+                {
+                    switch (property.Type)
+                    {
+                        case Scene::ScriptPropertyType::Float:
+                        {
+                            float value = property.FloatValue;
+                            if (DrawFloatPropertyRow(property.Name.c_str(), value, 0.1f, 0.0f, 0.0f, tracked))
+                            {
+                                context.Commands.SetScriptFloatProperty(context.Scene, actor.GetID(), property.Name, value);
+                            }
+
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Bool:
+                        {
+                            bool value = property.BoolValue;
+                            if (DrawCheckboxPropertyRow(property.Name.c_str(), value))
+                            {
+                                context.Commands.SetScriptBoolProperty(context.Scene, actor.GetID(), property.Name, value);
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ImGui::Spacing();
+                DrawInspectorHint("No exposed Float or Bool properties were discovered.");
+            }
+        }
+        else
+        {
+            ImGui::Spacing();
             if (context.ProjectContext.EnumerateScriptAssetIDs().empty())
             {
                 DrawInspectorHint("No Lua script assets are registered.");

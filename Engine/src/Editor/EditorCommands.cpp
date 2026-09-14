@@ -11,6 +11,7 @@
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Scene/Actor.h"
 #include "Scene/Scene.h"
+#include "Scripting/ScriptMetadata.h"
 
 namespace
 {
@@ -1322,7 +1323,7 @@ namespace Quiet::Editor
 
             auto* existing = actor->TryGetComponent<Scene::ScriptComponent>();
             if (!existing) return false;
-            if (existing->ScriptAssetID == script.ScriptAssetID) return false;
+            if (existing->ScriptAssetID == script.ScriptAssetID && existing->Properties == script.Properties) return false;
 
             *existing = script;
             return true;
@@ -1331,10 +1332,18 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetScriptAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext)
     {
+        std::vector<Scene::ScriptProperty> discoveredProperties;
         if (!scriptAssetID.empty())
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
             if (!record || record->Type != Project::AssetType::Script) return false;
+            std::string discoveryError;
+
+            if (!Scripting::DiscoverScriptProperties(projectContext, scriptAssetID, discoveredProperties, discoveryError))
+            {
+                QUIET_CORE_WARN("Could not discover exposed properties for script '{}': {}", scriptAssetID, discoveryError);
+                discoveredProperties.clear();
+            }
         }
 
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
@@ -1343,9 +1352,107 @@ namespace Quiet::Editor
             if (!actor) return false;
 
             auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
-            if (!script || script->ScriptAssetID == scriptAssetID) return false;
+            if (!script) return false;
+            if (script->ScriptAssetID == scriptAssetID && script->Properties == discoveredProperties) return false;
 
             script->ScriptAssetID = scriptAssetID;
+            script->Properties = std::move(discoveredProperties);
+            return true;
+        });
+    }
+
+    bool EditorCommands::RefreshScriptProperties(Scene::Scene& scene, const Core::UUID actorID, const Project::ProjectContext& projectContext)
+    {
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        const auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
+        if (!script || script->ScriptAssetID.empty()) return false;
+
+        std::vector<Scene::ScriptProperty> discoveredProperties;
+        std::string discoveryError;
+
+        if (!Scripting::DiscoverScriptProperties(projectContext, script->ScriptAssetID, discoveredProperties, discoveryError))
+        {
+            QUIET_CORE_WARN("Could not refresh exposed properties for script '{}': {}", script->ScriptAssetID, discoveryError);
+            return false;
+        }
+
+        // Preserve authored values when name and type still match.
+        for (Scene::ScriptProperty& discovered : discoveredProperties)
+        {
+            const auto existing = std::find_if(
+                script->Properties.begin(),
+                script->Properties.end(),
+                [&discovered](const Scene::ScriptProperty& property)
+                {
+                    return property.Name == discovered.Name && property.Type == discovered.Type;
+                });
+
+            if (existing != script->Properties.end())
+            {
+                discovered = *existing;
+            }
+        }
+
+        if (script->Properties == discoveredProperties) return false;
+
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* mutableActor = scene.FindActorByID(actorID);
+            if (!mutableActor) return false;
+
+            auto* mutableScript = mutableActor->TryGetComponent<Scene::ScriptComponent>();
+            if (!mutableScript) return false;
+
+            mutableScript->Properties = std::move(discoveredProperties);
+            return true;
+        });
+    }
+
+    bool EditorCommands::SetScriptFloatProperty(Scene::Scene& scene, const Core::UUID actorID, const std::string& propertyName, const float value)
+    {
+        if (!CanEditScene() || !std::isfinite(value)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
+        if (!script) return false;
+
+        const auto property = std::find_if(
+            script->Properties.begin(),
+            script->Properties.end(),
+            [&propertyName](const Scene::ScriptProperty& value)
+            {
+                return value.Name == propertyName && value.Type == Scene::ScriptPropertyType::Float;
+            });
+
+        if (property == script->Properties.end()) return false;
+        property->FloatValue = value;
+        return true;
+    }
+
+    bool EditorCommands::SetScriptBoolProperty(Scene::Scene& scene, const Core::UUID actorID, const std::string& propertyName, const bool value)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
+            if (!script) return false;
+
+            const auto property = std::find_if(
+                script->Properties.begin(),
+                script->Properties.end(),
+                [&propertyName](const Scene::ScriptProperty& property)
+                {
+                    return property.Name == propertyName && property.Type == Scene::ScriptPropertyType::Bool;
+                });
+
+            if (property == script->Properties.end() || property->BoolValue == value) return false;
+            property->BoolValue = value;
             return true;
         });
     }

@@ -183,6 +183,10 @@ namespace Quiet::Editor
 
         bool SetScriptAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext);
 
+        bool RefreshScriptProperties(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext);
+        bool SetScriptFloatProperty(Scene::Scene& scene, Core::UUID actorID, const std::string& propertyName, float value);
+        bool SetScriptBoolProperty(Scene::Scene& scene, Core::UUID actorID, const std::string& propertyName, bool value);
+
     #pragma endregion
 
     #pragma region Audio

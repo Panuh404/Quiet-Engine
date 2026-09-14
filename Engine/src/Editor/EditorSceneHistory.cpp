@@ -135,8 +135,30 @@ namespace
     {
         if (lhs.has_value() != rhs.has_value()) return false;
         if (!lhs.has_value()) return true;
+        if (lhs->ScriptAssetID != rhs->ScriptAssetID || lhs->Properties.size() != rhs->Properties.size()) return false;
 
-        return lhs->ScriptAssetID == rhs->ScriptAssetID;
+        for (std::size_t index = 0; index < lhs->Properties.size(); ++index)
+        {
+            const auto& left = lhs->Properties[index];
+            const auto& right = rhs->Properties[index];
+
+            if (left.Name != right.Name || left.Type != right.Type) return false;
+
+            switch (left.Type)
+            {
+                case Quiet::Scene::
+                    ScriptPropertyType::Float:
+                    if (!AreFloatsEqual(left.FloatValue, right.FloatValue)) return false;
+                    break;
+
+                case Quiet::Scene::
+                    ScriptPropertyType::Bool:
+                    if (left.BoolValue != right.BoolValue) return false;
+                    break;
+            }
+        }
+
+        return true;
     }
 
     bool AreRigidBodiesEqual(const std::optional<Quiet::Scene::RigidBodyComponent>& lhs,

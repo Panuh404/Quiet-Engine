@@ -56,11 +56,14 @@ target_sources(Quiet_Engine
         # Scripting
         src/Scripting/ScriptWorld.h
         src/Scripting/ScriptWorld.cpp
+        src/Scripting/ScriptMetadata.h
+        src/Scripting/ScriptMetadata.cpp
 
         # Scripting - Bindings
         src/Scripting/Bindings/Bindings.h
         src/Scripting/Bindings/ActorBindings.cpp
         src/Scripting/Bindings/InputBindings.cpp
+        src/Scripting/Bindings/PropertyBindings.cpp
         src/Scripting/Bindings/PhysicsBindings.cpp
         src/Scripting/Bindings/AudioBindings.cpp
         src/Scripting/Bindings/SceneBindings.cpp

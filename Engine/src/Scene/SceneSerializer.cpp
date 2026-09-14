@@ -32,12 +32,9 @@ namespace Quiet::Scene
     {
         switch (type)
         {
-            case SceneHierarchyNodeType::Actor:
-                return "actor";
-            case SceneHierarchyNodeType::Folder:
-                return "folder";
-            default:
-                return "actor";
+            case SceneHierarchyNodeType::Actor:     return "actor";
+            case SceneHierarchyNodeType::Folder:    return "folder";
+            default:                                return "actor";
         }
     }
 
@@ -119,15 +116,20 @@ namespace Quiet::Scene
     {
         switch (type)
         {
-            case RigidBodyMotionType::Static:
-                return "static";
-
-            case RigidBodyMotionType::Kinematic:
-                return "kinematic";
-
+            case RigidBodyMotionType::Static:       return "static";
+            case RigidBodyMotionType::Kinematic:    return "kinematic";
             case RigidBodyMotionType::Dynamic:
-            default:
-                return "dynamic";
+            default:                                return "dynamic";
+        }
+    }
+
+    static const char* SerializeScriptPropertyType(const ScriptPropertyType type)
+    {
+        switch (type)
+        {
+            case ScriptPropertyType::Float: return "float";
+            case ScriptPropertyType::Bool:  return "bool";
+            default:                        return "float";
         }
     }
 
@@ -274,21 +276,32 @@ namespace Quiet::Scene
     static RigidBodyMotionType DeserializeRigidBodyMotionType(const std::string& type)
     {
         if (type == "static")
-        {
             return RigidBodyMotionType::Static;
-        }
 
         if (type == "kinematic")
-        {
             return RigidBodyMotionType::Kinematic;
-        }
 
         if (type != "dynamic")
-        {
             QUIET_CORE_WARN("Unknown rigid body motion type '{}'. Using dynamic.", type);
-        }
 
         return RigidBodyMotionType::Dynamic;
+    }
+
+    static bool DeserializeScriptPropertyType(const std::string& text, ScriptPropertyType& outType)
+    {
+        if (text == "float")
+        {
+            outType = ScriptPropertyType::Float;
+            return true;
+        }
+
+        if (text == "bool")
+        {
+            outType = ScriptPropertyType::Bool;
+            return true;
+        }
+
+        return false;
     }
 
 #pragma endregion
@@ -413,10 +426,41 @@ namespace Quiet::Scene
 
             if (const ScriptComponent* script = actor.TryGetComponent<ScriptComponent>())
             {
-                actorJson["script"] =
+                json scriptJson =
                 {
                     { "script_asset_id", script->ScriptAssetID }
                 };
+
+                if (!script->Properties.empty())
+                {
+                    scriptJson["properties"] = json::array();
+
+                    for (const ScriptProperty& property : script->Properties)
+                    {
+                        if (property.Name.empty()) continue;
+
+                        json propertyJson =
+                        {
+                            { "name", property.Name },
+                            { "type", SerializeScriptPropertyType(property.Type) }
+                        };
+
+                        switch (property.Type)
+                        {
+                            case ScriptPropertyType::Float:
+                                propertyJson["value"] = property.FloatValue;
+                                break;
+
+                            case ScriptPropertyType::Bool:
+                                propertyJson["value"] = property.BoolValue;
+                                break;
+                        }
+
+                        scriptJson["properties"].push_back(std::move(propertyJson));
+                    }
+                }
+
+                actorJson["script"] = std::move(scriptJson);
             }
 
             if (const RigidBodyComponent* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
@@ -659,6 +703,32 @@ namespace Quiet::Scene
 
                 ScriptComponent script{};
                 script.ScriptAssetID = scriptJson.value("script_asset_id", std::string{});
+
+                if (scriptJson.contains("properties") && scriptJson["properties"].is_array())
+                {
+                    for (const auto& propertyJson : scriptJson["properties"])
+                    {
+                        if (!propertyJson.is_object()) continue;
+
+                        ScriptProperty property{};
+                        property.Name = propertyJson.value("name", std::string{});
+                        if (property.Name.empty()) continue;
+                        if (!DeserializeScriptPropertyType(propertyJson.value("type", std::string{}), property.Type)) continue;
+
+                        switch (property.Type)
+                        {
+                            case ScriptPropertyType::Float:
+                                property.FloatValue = propertyJson.value("value", 0.0f);
+                                break;
+
+                            case ScriptPropertyType::Bool:
+                                property.BoolValue = propertyJson.value("value", false);
+                                break;
+                        }
+
+                        script.Properties.push_back(std::move(property));
+                    }
+                }
 
                 actor.AddComponent<ScriptComponent>(script);
             }

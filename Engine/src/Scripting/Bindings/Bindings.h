@@ -12,12 +12,14 @@ namespace Quiet::Input
 namespace Quiet::Scene
 {
     class Scene;
+    struct ScriptComponent;
 }
 
 namespace Quiet::Scripting::Bindings
 {
     sol::table CreateActorReference(sol::state& lua, Scene::Scene& scene, Core::UUID actorID);
 
+    void InstallPropertyBindings(sol::state& lua, sol::environment& environment, const Scene::ScriptComponent& script);
     void InstallActorBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene, Core::UUID actorID);
     void InstallSceneBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene);
     void InstallInputBindings(sol::state& lua, sol::environment& environment, const Input::Input& input);
