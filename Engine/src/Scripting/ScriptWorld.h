@@ -52,10 +52,11 @@ namespace Quiet::Scripting
         void Initialize();
         void Shutdown();
 
-        bool CreateInstance(const Scene::Actor& actor);
+        bool CreateInstance(const Scene::Actor& actor, bool recordFailure = true);
         void StartInstance(std::size_t index);
         void DestroyInstance(std::size_t index);
         void SynchronizeInstances();
+        void ReloadChangedInstances();
 
     private:
         Scene::Scene& m_Scene;

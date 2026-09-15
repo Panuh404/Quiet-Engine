@@ -29,12 +29,24 @@ namespace Quiet::Scripting
     {
         struct ScriptInstance
         {
-            ScriptInstance(const Core::UUID actorID, std::string scriptAssetID, sol::environment environment)
-                : ActorID(actorID) , ScriptAssetID(std::move(scriptAssetID)) , Environment(std::move(environment))
+            ScriptInstance(
+                const Core::UUID actorID,
+                std::string scriptAssetID,
+                std::filesystem::path sourcePath,
+                const std::filesystem::file_time_type sourceWriteTime,
+                sol::environment environment)
+                : ActorID(actorID),
+                  ScriptAssetID(std::move(scriptAssetID)),
+                  SourcePath(std::move(sourcePath)),
+                  SourceWriteTime(sourceWriteTime),
+                  Environment(std::move(environment))
             {}
 
             Core::UUID ActorID{};
             std::string ScriptAssetID;
+
+            std::filesystem::path SourcePath;
+            std::filesystem::file_time_type SourceWriteTime{};
 
             sol::environment Environment;
 
@@ -144,6 +156,7 @@ namespace Quiet::Scripting
         if (!m_Initialized || !m_State || !m_Begun) return;
 
         SynchronizeInstances();
+        ReloadChangedInstances();
 
         if (!std::isfinite(deltaTime) || deltaTime < 0.0f) return;
 
@@ -276,7 +289,7 @@ namespace Quiet::Scripting
         QUIET_CORE_INFO("Shut down scripting world.");
     }
 
-    bool ScriptWorld::CreateInstance(const Scene::Actor& actor)
+    bool ScriptWorld::CreateInstance(const Scene::Actor& actor, bool recordFailure)
     {
         if (!m_State) return false;
 
@@ -285,26 +298,33 @@ namespace Quiet::Scripting
 
         const Core::UUID actorID = actor.GetID();
         const std::string scriptAssetID = script->ScriptAssetID;
+        const auto recordFailedInstance = [&]()
+        {
+            if (recordFailure)
+            {
+                m_State->FailedInstances[actorID] = scriptAssetID;
+            }
+        };
 
         const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), scriptAssetID);
         if (!record)
         {
             QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': script asset '{}' is not registered.", Core::UUIDToString(actorID), scriptAssetID);
-            m_State->FailedInstances[actorID] = scriptAssetID;
+            recordFailedInstance();
             return false;
         }
 
         if (record->Type != Project::AssetType::Script)
         {
             QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': asset '{}' is not a Script asset.", Core::UUIDToString(actorID), scriptAssetID);
-            m_State->FailedInstances[actorID] = scriptAssetID;
+            recordFailedInstance();
             return false;
         }
 
         if (record->Path.empty())
         {
             QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': script asset '{}' has no source path.", Core::UUIDToString(actorID), scriptAssetID);
-            m_State->FailedInstances[actorID] = scriptAssetID;
+            recordFailedInstance();
             return false;
         }
 
@@ -319,9 +339,13 @@ namespace Quiet::Scripting
         if (!std::filesystem::is_regular_file(sourcePath, filesystemError) || filesystemError)
         {
             QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': script source '{}' is unavailable.", Core::UUIDToString(actorID), sourcePath.string());
-            m_State->FailedInstances[actorID] = scriptAssetID;
+            recordFailedInstance();
             return false;
         }
+
+        filesystemError.clear();
+        const std::filesystem::file_time_type sourceWriteTime = std::filesystem::last_write_time(sourcePath, filesystemError);
+        const std::filesystem::file_time_type effectiveWriteTime = filesystemError ? std::filesystem::file_time_type::min() : sourceWriteTime;
 
         sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
         Bindings::InstallPropertyBindings(m_State->Lua, environment, m_Scene, m_ProjectContext, *script);
@@ -334,11 +358,11 @@ namespace Quiet::Scripting
         {
             const sol::error error = loadResult;
             QUIET_CORE_ERROR("Failed to load script '{}' for actor '{}': {}", scriptAssetID, Core::UUIDToString(actorID), error.what());
-            m_State->FailedInstances[actorID] = scriptAssetID;
+            recordFailedInstance();
             return false;
         }
 
-        RuntimeState::ScriptInstance instance(actorID, scriptAssetID, std::move(environment));
+        RuntimeState::ScriptInstance instance(actorID, scriptAssetID, sourcePath, effectiveWriteTime, std::move(environment));
 
         const auto captureCallback = [&](const char* name, std::optional<sol::protected_function>& destination)
         {
@@ -487,6 +511,78 @@ namespace Quiet::Scripting
         if (createdCount > 0 || removedCount > 0)
         {
             QUIET_CORE_INFO("Synchronized runtime script instances. created={}, removed={}, active={}", createdCount, removedCount, m_State->Instances.size());
+        }
+    }
+
+    void ScriptWorld::ReloadChangedInstances()
+    {
+        if (!m_State || !m_Begun) return;
+        std::size_t index = 0;
+
+        while (index < m_State->Instances.size())
+        {
+            RuntimeState::ScriptInstance& current = m_State->Instances[index];
+            std::error_code filesystemError;
+
+            const auto writeTime = std::filesystem::last_write_time(current.SourcePath, filesystemError);
+            if (filesystemError || writeTime == current.SourceWriteTime)
+            {
+                ++index;
+                continue;
+            }
+
+            // Record the version we just attempted.
+            //
+            // If the new source contains an error, we keep the
+            // old working instance and don't retry every frame.
+            // Saving the file again changes its timestamp and
+            // triggers another attempt.
+            current.SourceWriteTime = writeTime;
+
+            Scene::Actor* actor = m_Scene.FindActorByID(current.ActorID);
+            if (!actor)
+            {
+                ++index;
+                continue;
+            }
+
+            const Core::UUID actorID = current.ActorID;
+            const std::string scriptAssetID = current.ScriptAssetID;
+            const std::size_t previousSize = m_State->Instances.size();
+
+            // Build a replacement without disturbing the currently running instance.
+            // Reload failures must leave the old environment alive.
+            if (!CreateInstance(*actor, false))
+            {
+                QUIET_CORE_WARN(
+                    "Hot reload failed for script '{}' on actor '{}'. Keeping the previous runtime instance.",
+                    scriptAssetID, Core::UUIDToString(actorID));
+                ++index;
+                continue;
+            }
+
+            if (m_State->Instances.size() !=
+                previousSize + 1)
+            {
+                QUIET_CORE_ERROR(
+                    "Hot reload for script '{}' on actor '{}' did not create the expected replacement instance.",
+                    scriptAssetID, Core::UUIDToString(actorID));
+                ++index;
+                continue;
+            }
+
+            RuntimeState::ScriptInstance replacement = std::move(m_State->Instances.back());
+            m_State->Instances.pop_back();
+
+            // The replacement source has successfully parsed and
+            // executed at file scope. The old lifecycle can now end.
+            DestroyInstance(index);
+
+            m_State->Instances.insert(m_State->Instances.begin() + static_cast<std::ptrdiff_t>(index), std::move(replacement));
+            StartInstance(index);
+            QUIET_CORE_INFO("Hot reloaded script '{}' for actor '{}'.", scriptAssetID, Core::UUIDToString(actorID));
+
+            ++index;
         }
     }
 }
