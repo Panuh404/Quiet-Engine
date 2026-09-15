@@ -20,6 +20,12 @@ namespace
         return std::fabs(lhs - rhs) <= TransformEpsilon;
     }
 
+    bool AreVec2Equal(const glm::vec2& lhs, const glm::vec2& rhs)
+    {
+        return AreFloatsEqual(lhs.x, rhs.x) &&
+               AreFloatsEqual(lhs.y, rhs.y);
+    }
+
     bool AreVec3Equal(const glm::vec3& lhs, const glm::vec3& rhs)
     {
         return AreFloatsEqual(lhs.x, rhs.x) &&
@@ -146,14 +152,51 @@ namespace
 
             switch (left.Type)
             {
-                case Quiet::Scene::
-                    ScriptPropertyType::Float:
+                case Quiet::Scene::ScriptPropertyType::Float:
                     if (!AreFloatsEqual(left.FloatValue, right.FloatValue)) return false;
                     break;
 
-                case Quiet::Scene::
-                    ScriptPropertyType::Bool:
+                case Quiet::Scene::ScriptPropertyType::Int:
+                    if (left.IntValue != right.IntValue) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Bool:
                     if (left.BoolValue != right.BoolValue) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::String:
+                    if (left.StringValue != right.StringValue) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Vector2:
+                    if (!AreVec2Equal(left.Vector2Value, right.Vector2Value)) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Vector3:
+                    if (!AreVec3Equal(left.Vector3Value, right.Vector3Value)) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Vector4:
+                    if (!AreVec4Equal(left.Vector4Value, right.Vector4Value)) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Color3:
+                    if (!AreVec3Equal(left.Color3Value, right.Color3Value)) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Color4:
+                    if (!AreVec4Equal(left.Color4Value, right.Color4Value)) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::Actor:
+                    if (left.ActorValue != right.ActorValue) return false;
+                    break;
+
+                case Quiet::Scene::ScriptPropertyType::MeshAsset:
+                case Quiet::Scene::ScriptPropertyType::TextureAsset:
+                case Quiet::Scene::ScriptPropertyType::AudioAsset:
+                case Quiet::Scene::ScriptPropertyType::ScriptAsset:
+                    if (left.AssetValue != right.AssetValue) return false;
                     break;
             }
         }

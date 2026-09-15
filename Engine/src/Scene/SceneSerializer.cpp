@@ -18,6 +18,11 @@ namespace Quiet::Scene
 
 #pragma region Serialization
 
+    static json SerializeVec2(const glm::vec2& value)
+    {
+        return json::array({ value.x, value.y });
+    }
+
     static json SerializeVec3(const glm::vec3& value)
     {
         return json::array({ value.x, value.y, value.z });
@@ -127,15 +132,41 @@ namespace Quiet::Scene
     {
         switch (type)
         {
-            case ScriptPropertyType::Float: return "float";
-            case ScriptPropertyType::Bool:  return "bool";
-            default:                        return "float";
+            case ScriptPropertyType::Float:        return "float";
+            case ScriptPropertyType::Int:          return "int";
+            case ScriptPropertyType::Bool:         return "bool";
+            case ScriptPropertyType::String:       return "string";
+
+            case ScriptPropertyType::Vector2:      return "vector2";
+            case ScriptPropertyType::Vector3:      return "vector3";
+            case ScriptPropertyType::Vector4:      return "vector4";
+
+            case ScriptPropertyType::Color3:       return "color3";
+            case ScriptPropertyType::Color4:       return "color4";
+
+            case ScriptPropertyType::Actor:        return "actor";
+
+            case ScriptPropertyType::MeshAsset:    return "mesh_asset";
+            case ScriptPropertyType::TextureAsset: return "texture_asset";
+            case ScriptPropertyType::AudioAsset:   return "audio_asset";
+            case ScriptPropertyType::ScriptAsset:  return "script_asset";
+
+            default:
+                return "float";
         }
     }
 
 #pragma endregion
 
 #pragma region Deserialization
+
+    static glm::vec2 DeserializeVec2(const json& value)
+    {
+        return {
+            value.at(0).get<float>(),
+            value.at(1).get<float>()
+        };
+    }
 
     static glm::vec3 DeserializeVec3(const json& value)
     {
@@ -289,19 +320,22 @@ namespace Quiet::Scene
 
     static bool DeserializeScriptPropertyType(const std::string& text, ScriptPropertyType& outType)
     {
-        if (text == "float")
-        {
-            outType = ScriptPropertyType::Float;
-            return true;
-        }
-
-        if (text == "bool")
-        {
-            outType = ScriptPropertyType::Bool;
-            return true;
-        }
-
-        return false;
+        if (text == "float")                outType = ScriptPropertyType::Float;
+        else if (text == "int")             outType = ScriptPropertyType::Int;
+        else if (text == "bool")            outType = ScriptPropertyType::Bool;
+        else if (text == "string")          outType = ScriptPropertyType::String;
+        else if (text == "vector2")         outType = ScriptPropertyType::Vector2;
+        else if (text == "vector3")         outType = ScriptPropertyType::Vector3;
+        else if (text == "vector4")         outType = ScriptPropertyType::Vector4;
+        else if (text == "color3")          outType = ScriptPropertyType::Color3;
+        else if (text == "color4")          outType = ScriptPropertyType::Color4;
+        else if (text == "actor")           outType = ScriptPropertyType::Actor;
+        else if (text == "mesh_asset")      outType = ScriptPropertyType::MeshAsset;
+        else if (text == "texture_asset")   outType = ScriptPropertyType::TextureAsset;
+        else if (text == "audio_asset")     outType = ScriptPropertyType::AudioAsset;
+        else if (text == "script_asset")    outType = ScriptPropertyType::ScriptAsset;
+        else                                return false;
+        return true;
     }
 
 #pragma endregion
@@ -451,8 +485,47 @@ namespace Quiet::Scene
                                 propertyJson["value"] = property.FloatValue;
                                 break;
 
+                            case ScriptPropertyType::Int:
+                                propertyJson["value"] = property.IntValue;
+                                break;
+
                             case ScriptPropertyType::Bool:
                                 propertyJson["value"] = property.BoolValue;
+                                break;
+
+                            case ScriptPropertyType::String:
+                                propertyJson["value"] = property.StringValue;
+                                break;
+
+                            case ScriptPropertyType::Vector2:
+                                propertyJson["value"] = SerializeVec2(property.Vector2Value);
+                                break;
+
+                            case ScriptPropertyType::Vector3:
+                                propertyJson["value"] = SerializeVec3(property.Vector3Value);
+                                break;
+
+                            case ScriptPropertyType::Vector4:
+                                propertyJson["value"] = SerializeVec4(property.Vector4Value);
+                                break;
+
+                            case ScriptPropertyType::Color3:
+                                propertyJson["value"] = SerializeVec3(property.Color3Value);
+                                break;
+
+                            case ScriptPropertyType::Color4:
+                                propertyJson["value"] = SerializeVec4(property.Color4Value);
+                                break;
+
+                            case ScriptPropertyType::Actor:
+                                propertyJson["value"] = property.ActorValue.IsValid() ? Core::UUIDToString(property.ActorValue) : std::string{};
+                                break;
+
+                            case ScriptPropertyType::MeshAsset:
+                            case ScriptPropertyType::TextureAsset:
+                            case ScriptPropertyType::AudioAsset:
+                            case ScriptPropertyType::ScriptAsset:
+                                propertyJson["value"] = property.AssetValue;
                                 break;
                         }
 
@@ -721,8 +794,56 @@ namespace Quiet::Scene
                                 property.FloatValue = propertyJson.value("value", 0.0f);
                                 break;
 
+                            case ScriptPropertyType::Int:
+                                property.IntValue = propertyJson.value("value", std::int64_t{0});
+                                break;
+
                             case ScriptPropertyType::Bool:
                                 property.BoolValue = propertyJson.value("value", false);
+                                break;
+
+                            case ScriptPropertyType::String:
+                                property.StringValue = propertyJson.value("value", std::string{});
+                                break;
+
+                            case ScriptPropertyType::Vector2:
+                                if (propertyJson.contains("value"))
+                                    property.Vector2Value = DeserializeVec2(propertyJson["value"]);
+                                break;
+
+                            case ScriptPropertyType::Vector3:
+                                if (propertyJson.contains("value"))
+                                    property.Vector3Value = DeserializeVec3(propertyJson["value"]);
+                                break;
+
+                            case ScriptPropertyType::Vector4:
+                                if (propertyJson.contains("value"))
+                                    property.Vector4Value = DeserializeVec4(propertyJson["value"]);
+                                break;
+
+                            case ScriptPropertyType::Color3:
+                                if (propertyJson.contains("value"))
+                                    property.Color3Value = DeserializeVec3(propertyJson["value"]);
+                                break;
+
+                            case ScriptPropertyType::Color4:
+                                if (propertyJson.contains("value"))
+                                    property.Color4Value = DeserializeVec4(propertyJson["value"]);
+                                break;
+
+                            case ScriptPropertyType::Actor:
+                            {
+                                const std::string value = propertyJson.value("value", std::string{});
+                                if (!value.empty())
+                                    Core::UUIDFromString(value, property.ActorValue);
+                                break;
+                            }
+
+                            case ScriptPropertyType::MeshAsset:
+                            case ScriptPropertyType::TextureAsset:
+                            case ScriptPropertyType::AudioAsset:
+                            case ScriptPropertyType::ScriptAsset:
+                                property.AssetValue = propertyJson.value("value", std::string{});
                                 break;
                         }
 

@@ -975,18 +975,18 @@ namespace Quiet::Renderer::UI::Assets
             {
                 case Project::AssetType::Mesh:
                 {
-                    const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+                    const auto* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
                     referenced = staticMesh && staticMesh->MeshResourceID == record.ID;
                     break;
                 }
 
                 case Project::AssetType::Texture:
                 {
-                    const Scene::MaterialComponent* material = actor.TryGetComponent<Scene::MaterialComponent>();
+                    const auto* material = actor.TryGetComponent<Scene::MaterialComponent>();
                     referenced = material && material->BaseColorTextureAssetID == record.ID;
                     if (!referenced)
                     {
-                        const Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
+                        const auto* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
                         if (staticMesh)
                         {
                             for (const Scene::MaterialComponent& slot : staticMesh->MaterialSlots)
@@ -1004,14 +1004,14 @@ namespace Quiet::Renderer::UI::Assets
 
                 case Project::AssetType::Audio:
                 {
-                    const Scene::AudioSourceComponent* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>();
+                    const auto* audioSource = actor.TryGetComponent<Scene::AudioSourceComponent>();
                     referenced = audioSource && audioSource->AudioAssetID == record.ID;
                     break;
                 }
 
                 case Project::AssetType::Script:
                 {
-                    const Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
+                    const auto* script = actor.TryGetComponent<Scene::ScriptComponent>();
                     referenced = script && script->ScriptAssetID == record.ID;
                     break;
                 }
@@ -1021,7 +1021,51 @@ namespace Quiet::Renderer::UI::Assets
                     break;
             }
 
-            if (referenced) ++count;
+            // Script properties can reference any first-class
+            // asset type, independently of the Actor's components.
+            if (!referenced)
+            {
+                if (const auto* script = actor.TryGetComponent<Scene::ScriptComponent>())
+                {
+                    for (const Scene::ScriptProperty& property : script->Properties)
+                    {
+                        bool matchingType = false;
+                        switch (record.Type)
+                        {
+                            case Project::AssetType::Mesh:
+                                matchingType = property.Type == Scene::ScriptPropertyType::MeshAsset;
+                                break;
+
+                            case Project::AssetType::Texture:
+                                matchingType = property.Type == Scene::ScriptPropertyType::TextureAsset;
+                                break;
+
+                            case Project::AssetType::Audio:
+                                matchingType = property.Type == Scene::ScriptPropertyType::AudioAsset;
+                                break;
+
+                            case Project::AssetType::Script:
+                                matchingType = property.Type == Scene::ScriptPropertyType::ScriptAsset;
+                                break;
+
+                            case Project::AssetType::Unknown:
+                            default:
+                                break;
+                        }
+
+                        if (matchingType && property.AssetValue == record.ID)
+                        {
+                            referenced = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (referenced)
+            {
+                ++count;
+            }
         }
 
         return count;

@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 #include <string>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Editor
 {
     class EditorCommands;
@@ -79,10 +81,16 @@ namespace Quiet::Renderer::UI::Inspector
                                     const Assets::AssetPickerOptions& options,
                                     const std::string& currentAssetID,
                                     std::string& outSelectedAssetID);
+
+    bool DrawIntPropertyRow(const char* label, std::int64_t& value, const TrackedInspectorInteraction& tracked);
+    bool DrawStringPropertyRow(const char* label, std::string& value, const TrackedInspectorInteraction& tracked);
     bool DrawFloatPropertyRow(const char* label, float& value, const float speed, const float minValue, const float maxValue, const TrackedInspectorInteraction& tracked);
+    bool DrawVec2PropertyRow(const char* label, glm::vec2& value, float speed, float minValue, float maxValue, const TrackedInspectorInteraction& tracked);
     bool DrawVec3PropertyRow(const char* label, glm::vec3& value, const float speed, const float minValue, const float maxValue, const TrackedInspectorInteraction& tracked);
+    bool DrawVec4PropertyRow(const char* label, glm::vec4& value, float speed, float minValue, float maxValue, const TrackedInspectorInteraction& tracked);
     bool DrawColor3PropertyRow(const char* label, glm::vec3& value, const TrackedInspectorInteraction& tracked);
     bool DrawColor4PropertyRow(const char* label, glm::vec4& value, const TrackedInspectorInteraction& tracked);
+    bool DrawActorPickerPropertyRow(const char* label, const Scene::Scene& scene, Core::UUID currentActorID, Core::UUID& outSelectedActorID);
 
     std::string GetMaterialSlotSourceName(const Scene::Actor& actor, const std::uint32_t slotIndex);
     std::size_t CountSubmeshesUsingMaterialSlot(const Scene::Actor& actor, const std::uint32_t slotIndex);

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include "ImGuiInspectorSections.h"
 #include "ImGuiInspectorState.h"
@@ -418,6 +419,34 @@ namespace Quiet::Renderer::UI::Inspector
         return changed;
     }
 
+    bool DrawIntPropertyRow(const char *label, std::int64_t &value, const TrackedInspectorInteraction &tracked)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool changed = ImGui::DragScalar("##Value", ImGuiDataType_S64, &value, 1.0f, nullptr, nullptr);
+        tracked.Begin();
+        tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool DrawStringPropertyRow(const char* label, std::string& value, const TrackedInspectorInteraction& tracked)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool changed = ImGui::InputText("##Value", &value);
+        tracked.Begin();
+        tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
     bool DrawFloatPropertyRow(const char* label, float& value, const float speed, const float minValue, const float maxValue, const TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
@@ -428,6 +457,50 @@ namespace Quiet::Renderer::UI::Inspector
         const bool changed = ImGui::DragFloat("##Value", &value, speed, minValue, maxValue, "%.3f", flags);
         tracked.Begin();
         tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool DrawVec2PropertyRow(const char *label, glm::vec2 &value, float speed, float minValue, float maxValue, const TrackedInspectorInteraction &tracked)
+    {
+        ImGui::PushID(label);
+
+        BeginInspectorPropertyRow(label);
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const float axisLabelWidth = EditorSizing::Px(14.0f);
+        const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+
+        const float fieldWidth = std::max(EditorSizing::Px(54.0f), (availableWidth - axisLabelWidth * 2.0f - spacing * 3.0f) / 2.0f);
+
+        bool changed = false;
+        auto drawAxis = [&](const char* axisLabel, float& axisValue)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(axisLabel);
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::SetNextItemWidth(fieldWidth);
+            const ImGuiSliderFlags flags = minValue < maxValue ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None;
+
+            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f", flags);
+            tracked.Begin();
+            tracked.End();
+        };
+
+        ImGui::PushID("X");
+        drawAxis("X", value.x);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("Y");
+        drawAxis("Y", value.y);
+        ImGui::PopID();
 
         ImGui::PopID();
         return changed;
@@ -483,6 +556,62 @@ namespace Quiet::Renderer::UI::Inspector
         return changed;
     }
 
+    bool DrawVec4PropertyRow(const char *label, glm::vec4 &value, float speed, float minValue, float maxValue, const TrackedInspectorInteraction &tracked)
+    {
+        ImGui::PushID(label);
+
+        BeginInspectorPropertyRow(label);
+
+        const float availableWidth = ImGui::GetContentRegionAvail().x;
+        const float axisLabelWidth = EditorSizing::Px(14.0f);
+        const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+
+        const float fieldWidth = std::max(EditorSizing::Px(54.0f), (availableWidth - axisLabelWidth * 4.0f - spacing * 7.0f) / 4.0f);
+
+        bool changed = false;
+        auto drawAxis = [&](const char* axisLabel, float& axisValue)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(axisLabel);
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+
+            ImGui::SetNextItemWidth(fieldWidth);
+            const ImGuiSliderFlags flags = minValue < maxValue ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None;
+
+            changed |= ImGui::DragFloat("##Axis", &axisValue, speed, minValue, maxValue, "%.3f", flags);
+            tracked.Begin();
+            tracked.End();
+        };
+
+        ImGui::PushID("X");
+        drawAxis("X", value.x);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("Y");
+        drawAxis("Y", value.y);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("Z");
+        drawAxis("Z", value.z);
+        ImGui::PopID();
+
+        ImGui::SameLine();
+
+        ImGui::PushID("W");
+        drawAxis("W", value.w);
+        ImGui::PopID();
+
+        ImGui::PopID();
+        return changed;
+    }
+
     bool DrawColor3PropertyRow(const char* label, glm::vec3& value, const TrackedInspectorInteraction& tracked)
     {
         ImGui::PushID(label);
@@ -508,6 +637,72 @@ namespace Quiet::Renderer::UI::Inspector
 
         tracked.Begin();
         tracked.End();
+
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool DrawActorPickerPropertyRow(const char* label, const Scene::Scene& scene, const Core::UUID currentActorID, Core::UUID& outSelectedActorID)
+    {
+        ImGui::PushID(label);
+        BeginInspectorPropertyRow(label);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        outSelectedActorID = currentActorID;
+        std::string preview = "None";
+
+        if (currentActorID.IsValid())
+        {
+            if (const Scene::Actor* actor = scene.FindActorByID(currentActorID))
+            {
+                preview = actor->GetName().empty() ? "<Unnamed Actor>" : actor->GetName();
+            }
+            else
+            {
+                preview = "<Missing Actor>";
+            }
+        }
+
+        bool changed = false;
+
+        if (EditorBeginCombo("##Value", preview.c_str()))
+        {
+            const bool noneSelected = !currentActorID.IsValid();
+            if (EditorSelectable("None", noneSelected))
+            {
+                outSelectedActorID = {};
+                changed = true;
+            }
+
+            if (noneSelected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+
+            for (const Scene::Actor& actor : scene.GetActors())
+            {
+                const Core::UUID actorID = actor.GetID();
+                const std::string actorIDText = Core::UUIDToString(actorID);
+
+                ImGui::PushID(actorIDText.c_str());
+
+                const bool selected = actorID == currentActorID;
+                const std::string actorName = actor.GetName().empty() ? "<Unnamed Actor>" : actor.GetName();
+
+                if (EditorSelectable(actorName.c_str(), selected))
+                {
+                    outSelectedActorID = actorID;
+                    changed = true;
+                }
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
 
         ImGui::PopID();
         return changed;

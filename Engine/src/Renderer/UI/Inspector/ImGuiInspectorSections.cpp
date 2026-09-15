@@ -1068,23 +1068,163 @@ namespace Quiet::Renderer::UI::Inspector
                     {
                         case Scene::ScriptPropertyType::Float:
                         {
+                            Scene::ScriptProperty edited = property;
                             float value = property.FloatValue;
                             if (DrawFloatPropertyRow(property.Name.c_str(), value, 0.1f, 0.0f, 0.0f, tracked))
                             {
-                                context.Commands.SetScriptFloatProperty(context.Scene, actor.GetID(), property.Name, value);
+                                edited.FloatValue = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
                             }
+                            break;
+                        }
 
+                        case Scene::ScriptPropertyType::Int:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            std::int64_t value = property.IntValue;
+                            if (DrawIntPropertyRow(property.Name.c_str(), value, tracked))
+                            {
+                                edited.IntValue = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
                             break;
                         }
 
                         case Scene::ScriptPropertyType::Bool:
                         {
+                            Scene::ScriptProperty edited = property;
                             bool value = property.BoolValue;
                             if (DrawCheckboxPropertyRow(property.Name.c_str(), value))
                             {
-                                context.Commands.SetScriptBoolProperty(context.Scene, actor.GetID(), property.Name, value);
+                                edited.BoolValue = value;
+                                context.Commands.SetScriptPropertyValueImmediate(context.Scene, actor.GetID(), edited, context.ProjectContext);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::String:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            std::string value = property.StringValue;
+                            if (DrawStringPropertyRow(property.Name.c_str(), value, tracked))
+                            {
+                                edited.StringValue = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Vector2:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            glm::vec2 value = property.Vector2Value;
+                            if (DrawVec2PropertyRow(property.Name.c_str(), value, 0.1f, 0.0f, 0.0f, tracked))
+                            {
+                                edited.Vector2Value = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Vector3:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            glm::vec3 value = property.Vector3Value;
+                            if (DrawVec3PropertyRow(property.Name.c_str(), value, 0.1f, 0.0f, 0.0f, tracked))
+                            {
+                                edited.Vector3Value = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Vector4:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            glm::vec4 value = property.Vector4Value;
+                            if (DrawVec4PropertyRow(property.Name.c_str(), value, 0.1f, 0.0f, 0.0f, tracked))
+                            {
+                                edited.Vector4Value = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Color3:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            glm::vec3 value = property.Color3Value;
+                            if (DrawColor3PropertyRow(property.Name.c_str(), value, tracked))
+                            {
+                                edited.Color3Value = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Color4:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            glm::vec4 value = property.Color4Value;
+                            if (DrawColor4PropertyRow(property.Name.c_str(), value, tracked))
+                            {
+                                edited.Color4Value = value;
+                                context.Commands.SetScriptPropertyValue(context.Scene, actor.GetID(), edited);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::Actor:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            Core::UUID value = property.ActorValue;
+                            if (DrawActorPickerPropertyRow(property.Name.c_str(), context.Scene, property.ActorValue, value))
+                            {
+                                edited.ActorValue = value;
+                                context.Commands.SetScriptPropertyValueImmediate(context.Scene, actor.GetID(), edited, context.ProjectContext);
+                            }
+                            break;
+                        }
+
+                        case Scene::ScriptPropertyType::MeshAsset:
+                        case Scene::ScriptPropertyType::TextureAsset:
+                        case Scene::ScriptPropertyType::AudioAsset:
+                        case Scene::ScriptPropertyType::ScriptAsset:
+                        {
+                            Scene::ScriptProperty edited = property;
+                            Assets::AssetPickerOptions options{};
+                            options.AllowNone = true;
+
+                            switch (property.Type)
+                            {
+                                case Scene::ScriptPropertyType::MeshAsset:
+                                    options.Type = Project::AssetType::Mesh;
+                                    options.MeshLibrary = &context.MeshLibrary;
+                                    break;
+
+                                case Scene::ScriptPropertyType::TextureAsset:
+                                    options.Type = Project::AssetType::Texture;
+                                    options.TextureLibrary = &context.TextureLibrary;
+                                    break;
+
+                                case Scene::ScriptPropertyType::AudioAsset:
+                                    options.Type = Project::AssetType::Audio;
+                                    break;
+
+                                case Scene::ScriptPropertyType::ScriptAsset:
+                                    options.Type = Project::AssetType::Script;
+                                    break;
+
+                                default:
+                                    break;
                             }
 
+                            std::string selectedAssetID;
+                            if (DrawAssetPickerPropertyRow(property.Name.c_str(), context.ProjectContext, options, property.AssetValue, selectedAssetID))
+                            {
+                                edited.AssetValue = selectedAssetID;
+                                context.Commands.SetScriptPropertyValueImmediate(context.Scene, actor.GetID(), edited, context.ProjectContext);
+                            }
                             break;
                         }
                     }
@@ -1093,7 +1233,7 @@ namespace Quiet::Renderer::UI::Inspector
             else
             {
                 ImGui::Spacing();
-                DrawInspectorHint("No exposed Float or Bool properties were discovered.");
+                DrawInspectorHint("No exposed properties discovered.");
             }
         }
         else

@@ -324,7 +324,7 @@ namespace Quiet::Scripting
         }
 
         sol::environment environment(m_State->Lua, sol::create, m_State->Lua.globals());
-        Bindings::InstallPropertyBindings(m_State->Lua, environment, *script);
+        Bindings::InstallPropertyBindings(m_State->Lua, environment, m_Scene, m_ProjectContext, *script);
         Bindings::InstallActorBindings(m_State->Lua, environment, m_Scene, actorID);
         Bindings::InstallSceneBindings(m_State->Lua, environment, m_Scene);
         Bindings::InstallInputBindings(m_State->Lua, environment, m_Input);

@@ -1410,9 +1410,54 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetScriptFloatProperty(Scene::Scene& scene, const Core::UUID actorID, const std::string& propertyName, const float value)
+    bool EditorCommands::SetScriptPropertyValue(Scene::Scene& scene, const Core::UUID actorID, const Scene::ScriptProperty& property)
     {
-        if (!CanEditScene() || !std::isfinite(value)) return false;
+        if (!CanEditScene()) return false;
+
+        const auto finite2 = [](const glm::vec2& value)
+        {
+            return std::isfinite(value.x) && std::isfinite(value.y);
+        };
+
+        const auto finite3 = [](const glm::vec3& value)
+        {
+            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+        };
+
+        const auto finite4 = [](const glm::vec4& value)
+        {
+            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) && std::isfinite(value.w);
+        };
+
+        switch (property.Type)
+        {
+            case Scene::ScriptPropertyType::Float:
+                if (!std::isfinite(property.FloatValue)) return false;
+                break;
+
+            case Scene::ScriptPropertyType::Vector2:
+                if (!finite2(property.Vector2Value)) return false;
+                break;
+
+            case Scene::ScriptPropertyType::Vector3:
+                if (!finite3(property.Vector3Value)) return false;
+                break;
+
+            case Scene::ScriptPropertyType::Vector4:
+                if (!finite4(property.Vector4Value)) return false;
+                break;
+
+            case Scene::ScriptPropertyType::Color3:
+                if (!finite3(property.Color3Value)) return false;
+                break;
+
+            case Scene::ScriptPropertyType::Color4:
+                if (!finite4(property.Color4Value)) return false;
+                break;
+
+            default:
+                break;
+        }
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -1420,21 +1465,57 @@ namespace Quiet::Editor
         auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
         if (!script) return false;
 
-        const auto property = std::find_if(
+        const auto existing = std::find_if(
             script->Properties.begin(),
             script->Properties.end(),
-            [&propertyName](const Scene::ScriptProperty& value)
+            [&property](const Scene::ScriptProperty& value)
             {
-                return value.Name == propertyName && value.Type == Scene::ScriptPropertyType::Float;
+                return value.Name == property.Name && value.Type == property.Type;
             });
 
-        if (property == script->Properties.end()) return false;
-        property->FloatValue = value;
+        if (existing == script->Properties.end() || *existing == property) return false;
+        *existing = property;
+
         return true;
     }
 
-    bool EditorCommands::SetScriptBoolProperty(Scene::Scene& scene, const Core::UUID actorID, const std::string& propertyName, const bool value)
+    bool EditorCommands::SetScriptPropertyValueImmediate(Scene::Scene& scene, const Core::UUID actorID, const Scene::ScriptProperty& property, const Project::ProjectContext& projectContext)
     {
+        if (property.Type == Scene::ScriptPropertyType::Actor && property.ActorValue.IsValid() && !scene.FindActorByID(property.ActorValue))
+        {
+            return false;
+        }
+
+        Project::AssetType requiredAssetType = Project::AssetType::Unknown;
+
+        switch (property.Type)
+        {
+            case Scene::ScriptPropertyType::MeshAsset:
+                requiredAssetType = Project::AssetType::Mesh;
+                break;
+
+            case Scene::ScriptPropertyType::TextureAsset:
+                requiredAssetType = Project::AssetType::Texture;
+                break;
+
+            case Scene::ScriptPropertyType::AudioAsset:
+                requiredAssetType = Project::AssetType::Audio;
+                break;
+
+            case Scene::ScriptPropertyType::ScriptAsset:
+                requiredAssetType = Project::AssetType::Script;
+                break;
+
+            default:
+                break;
+        }
+
+        if (requiredAssetType != Project::AssetType::Unknown && !property.AssetValue.empty())
+        {
+            const auto* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), property.AssetValue);
+            if (!record || record->Type != requiredAssetType) return false;
+        }
+
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
             Scene::Actor* actor = scene.FindActorByID(actorID);
@@ -1443,16 +1524,17 @@ namespace Quiet::Editor
             auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
             if (!script) return false;
 
-            const auto property = std::find_if(
+            const auto existing = std::find_if(
                 script->Properties.begin(),
                 script->Properties.end(),
-                [&propertyName](const Scene::ScriptProperty& property)
+                [&property](const Scene::ScriptProperty& value)
                 {
-                    return property.Name == propertyName && property.Type == Scene::ScriptPropertyType::Bool;
+                    return value.Name == property.Name && value.Type == property.Type;
                 });
 
-            if (property == script->Properties.end() || property->BoolValue == value) return false;
-            property->BoolValue = value;
+            if (existing == script->Properties.end() || *existing == property) return false;
+            *existing = property;
+
             return true;
         });
     }
