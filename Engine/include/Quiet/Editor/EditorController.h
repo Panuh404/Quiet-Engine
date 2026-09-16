@@ -1,7 +1,16 @@
 #pragma once
 
+#include <filesystem>
+#include <string>
+#include <unordered_map>
+
 #include "EditorSceneHistory.h"
 #include "EditorState.h"
+
+namespace Quiet::Project
+{
+    class ProjectContext;
+}
 
 namespace Quiet::Input
 {
@@ -39,6 +48,8 @@ namespace Quiet::Editor
         bool Undo(Scene::Scene& scene);
         bool Redo(Scene::Scene& scene);
 
+        void SynchronizeScriptSources(Scene::Scene& scene, const Project::ProjectContext& projectContext);
+
         void HandleShortcuts(const Input::Input& input, bool mouseCaptureEnabled);
         void FocusSelectedActor(Scene::Scene& scene,
                                 Scene::FreeCamera& camera);
@@ -65,5 +76,7 @@ namespace Quiet::Editor
         EditorState m_State{};
         EditorSceneHistory m_History{};
         bool m_WasUsingGizmo = false;
+
+        std::unordered_map<std::string, std::filesystem::file_time_type> m_ScriptSourceWriteTimes{};
     };
 }

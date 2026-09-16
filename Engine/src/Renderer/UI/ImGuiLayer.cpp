@@ -152,6 +152,7 @@ namespace Quiet::Renderer::UI
     {
         Editor::EditorCommands commands(editorController);
         Editor::EditorActions actions(input, scene, commands, editorState);
+        editorController.SynchronizeScriptSources(scene, projectContext);
 
         BuildDockspace();
         BuildTopbar(actions, editorState, textureLibrary);

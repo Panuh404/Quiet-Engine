@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <unordered_map>
 
 #include "Quiet/Core/UUID.h"
 
@@ -164,6 +165,11 @@ namespace Quiet::Editor
         bool CanRedo = false;
     };
 
+    struct EditorScriptingState
+    {
+        std::unordered_map<std::string, std::string> SourceErrors{};
+    };
+
     struct EditorProjectManagerState
     {
         bool RequestOpenPopup = false;
@@ -185,6 +191,7 @@ namespace Quiet::Editor
         EditorGizmoState Gizmo{};
         EditorSceneState Scene{};
         EditorHistoryState History{};
+        EditorScriptingState Scripting{};
         EditorProjectManagerState ProjectManager{};
         EditorPanelFocusState PanelFocus{};
         EditorFeedbackMessage AssetOperationFeedback{};

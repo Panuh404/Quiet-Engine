@@ -1052,6 +1052,15 @@ namespace Quiet::Renderer::UI::Inspector
         {
             ImGui::Spacing();
 
+            const auto sourceError = context.EditorState.Scripting.SourceErrors.find(script->ScriptAssetID);
+            if (sourceError != context.EditorState.Scripting.SourceErrors.end())
+            {
+                ImGui::Spacing();
+
+                DrawInspectorWarning("Script source error:");
+                DrawInspectorWarning(sourceError->second.c_str());
+            }
+
             if (EditorButton("Refresh Exposed Properties", ImVec2(-1.0f, 0.0f)))
             {
                 context.Commands.RefreshScriptProperties(context.Scene, actor.GetID(), context.ProjectContext);
@@ -1233,7 +1242,7 @@ namespace Quiet::Renderer::UI::Inspector
             else
             {
                 ImGui::Spacing();
-                DrawInspectorHint("No exposed properties discovered.");
+                DrawInspectorHint("No exposed properties declared.");
             }
         }
         else

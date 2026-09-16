@@ -13,18 +13,18 @@
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
 
-namespace Quiet::Scripting
+namespace
 {
-    bool DiscoverScriptProperties(const Project::ProjectContext& projectContext,
-                                  const std::string_view scriptAssetID,
-                                  std::vector<Scene::ScriptProperty>& outProperties,
-                                  std::string& outError)
+    bool ResolveScriptSourcePath(const Quiet::Project::ProjectContext& projectContext,
+                                 const std::string_view scriptAssetID,
+                                 std::filesystem::path& outSourcePath,
+                                 std::string& outError)
     {
-        outProperties.clear();
+        outSourcePath.clear();
         outError.clear();
 
-        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
-        if (!record || record->Type != Project::AssetType::Script)
+        const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
+        if (!record || record->Type != Quiet::Project::AssetType::Script)
         {
             outError = "Script asset is not registered.";
             return false;
@@ -36,21 +36,37 @@ namespace Quiet::Scripting
             return false;
         }
 
-        std::filesystem::path sourcePath = record->Path;
-        if (sourcePath.is_relative())
+        outSourcePath = record->Path;
+        if (outSourcePath.is_relative())
         {
-            sourcePath = projectContext.GetRootPath() / sourcePath;
+            outSourcePath = projectContext.GetRootPath() / outSourcePath;
         }
 
-        sourcePath = sourcePath.lexically_normal();
+        outSourcePath = outSourcePath.lexically_normal();
         std::error_code filesystemError;
 
-        if (!std::filesystem::is_regular_file(sourcePath, filesystemError) || filesystemError)
+        if (!std::filesystem::is_regular_file(outSourcePath, filesystemError) || filesystemError)
         {
             outError = "Script source is unavailable.";
             return false;
         }
 
+        return true;
+    }
+}
+
+namespace Quiet::Scripting
+{
+    bool DiscoverScriptProperties(const Project::ProjectContext& projectContext,
+                                  const std::string_view scriptAssetID,
+                                  std::vector<Scene::ScriptProperty>& outProperties,
+                                  std::string& outError)
+    {
+        outProperties.clear();
+        outError.clear();
+
+        std::filesystem::path sourcePath;
+        if (!ResolveScriptSourcePath(projectContext, scriptAssetID, sourcePath, outError)) return false;
         sol::state lua;
 
         lua.open_libraries(
@@ -421,6 +437,29 @@ namespace Quiet::Scripting
             return false;
         }
 
+        return true;
+    }
+
+    bool GetScriptSourceWriteTime(const Project::ProjectContext &projectContext,
+                                  std::string_view scriptAssetID,
+                                  std::filesystem::file_time_type &outWriteTime,
+                                  std::string &outError)
+    {
+        outWriteTime = {};
+        outError.clear();
+
+        std::filesystem::path sourcePath;
+        if (!ResolveScriptSourcePath(projectContext, scriptAssetID, sourcePath, outError)) return false;
+        std::error_code filesystemError;
+
+        outWriteTime = std::filesystem::last_write_time(sourcePath, filesystemError);
+
+        if (filesystemError)
+        {
+            outWriteTime = {};
+            outError = "Could not read the script source modification time.";
+            return false;
+        }
         return true;
     }
 }
