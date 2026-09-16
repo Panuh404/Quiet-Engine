@@ -164,7 +164,7 @@ namespace Quiet::Renderer::UI::Assets
                 const Project::AssetRecord& record = *recordPtr;
                 const std::uint32_t referenceCount = CountAssetReferences(scene, record);
                 const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
-                const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary, audioLibrary);
+                const std::string status = MakeStatusLabel(projectContext, record, meshLibrary, textureLibrary, audioLibrary, editorState);
                 const std::string browserState = MakeAssetBrowserStateLabel(diagnostics, record, status, runtimeModeActive, referenceCount);
                 const std::string displayName = MakeAssetDisplayName(record);
                 const bool isSelectedAsset = IsAssetSelected(state, record.ID);

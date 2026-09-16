@@ -7,12 +7,15 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <imgui.h>
 
 #include "ImGuiInspectorState.h"
 #include "ImGuiInspectorWidgets.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Quiet/Platform/Shell.h"
+#include "Scripting/ScriptMetadata.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/Assets/ImGuiAssetPicker.h"
@@ -1051,6 +1054,29 @@ namespace Quiet::Renderer::UI::Inspector
         if (!script->ScriptAssetID.empty())
         {
             ImGui::Spacing();
+
+            std::filesystem::path sourcePath;
+            std::string sourcePathError;
+
+            const bool sourceAvailable = Scripting::ResolveScriptSourcePath(context.ProjectContext, script->ScriptAssetID, sourcePath, sourcePathError);
+            const float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
+            const float sourceButtonWidth = std::max(0.0f, (ImGui::GetContentRegionAvail().x - buttonSpacing) * 0.5f);
+
+            ImGui::BeginDisabled(!sourceAvailable);
+
+            if (EditorButton("Open Source", ImVec2(sourceButtonWidth, 0.0f)))
+            {
+                Platform::OpenPathWithDefaultApplication(sourcePath);
+            }
+
+            ImGui::SameLine();
+
+            if (EditorButton("Reveal Source", ImVec2(sourceButtonWidth, 0.0f)))
+            {
+                Platform::RevealPathInFileManager(sourcePath);
+            }
+
+            ImGui::EndDisabled();
 
             const auto sourceError = context.EditorState.Scripting.SourceErrors.find(script->ScriptAssetID);
             if (sourceError != context.EditorState.Scripting.SourceErrors.end())

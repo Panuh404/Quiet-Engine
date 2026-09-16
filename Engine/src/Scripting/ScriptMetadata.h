@@ -14,6 +14,12 @@ namespace Quiet::Project
 
 namespace Quiet::Scripting
 {
+    bool ResolveScriptSourcePath(
+        const Project::ProjectContext& projectContext,
+        std::string_view scriptAssetID,
+        std::filesystem::path& outSourcePath,
+        std::string& outError);
+
     bool DiscoverScriptProperties(
         const Project::ProjectContext& projectContext,
         std::string_view scriptAssetID,

@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #define GLM_FORCE_RADIANS
@@ -72,6 +73,10 @@ namespace Quiet::Editor
     void EditorController::SynchronizeScriptSources(Scene::Scene& scene, const Project::ProjectContext& projectContext)
     {
         if (m_State.Scene.Mode != SceneMode::Edit) return;
+
+        // Actors are still grouped separately because exposed-property
+        // reconciliation only applies to ScriptComponents currently
+        // present in the Edit Scene.
         std::unordered_map<std::string, std::vector<Core::UUID>> actorsByScript;
 
         for (const Scene::Actor& actor : scene.GetActors())
@@ -82,11 +87,14 @@ namespace Quiet::Editor
             actorsByScript[script->ScriptAssetID].push_back(actor.GetID());
         }
 
-        // Remove watches and errors for scripts that are no
-        // longer referenced by the current Edit Scene.
+        // Diagnostics, however, belong to Script assets themselves,
+        // not only to scripts that happen to be assigned to an Actor.
+        const std::vector<std::string> scriptAssetIDs = projectContext.EnumerateScriptAssetIDs();
+        const std::unordered_set<std::string> registeredScripts(scriptAssetIDs.begin(), scriptAssetIDs.end());
+
         for (auto iterator = m_ScriptSourceWriteTimes.begin(); iterator != m_ScriptSourceWriteTimes.end();)
         {
-            if (!actorsByScript.contains(iterator->first))
+            if (!registeredScripts.contains(iterator->first))
             {
                 iterator = m_ScriptSourceWriteTimes.erase(iterator);
                 continue;
@@ -96,7 +104,7 @@ namespace Quiet::Editor
 
         for (auto iterator = m_State.Scripting.SourceErrors.begin(); iterator != m_State.Scripting.SourceErrors.end();)
         {
-            if (!actorsByScript.contains(iterator->first))
+            if (!registeredScripts.contains(iterator->first))
             {
                 iterator = m_State.Scripting.SourceErrors.erase(iterator);
                 continue;
@@ -115,24 +123,23 @@ namespace Quiet::Editor
         const auto setSourceError = [&](const std::string& scriptAssetID, const std::string& error)
         {
             auto& errors = m_State.Scripting.SourceErrors;
-            const auto existing = errors.find(scriptAssetID);
 
+            const auto existing = errors.find(scriptAssetID);
             if (existing == errors.end() || existing->second != error)
             {
                 QUIET_CORE_WARN("Script source '{}' has an editor metadata error: {}", scriptAssetID, error);
             }
-            errors[scriptAssetID] = error;
+
+            errors[scriptAssetID] =error;
         };
 
-        for (const auto& [scriptAssetID, actorIDs] : actorsByScript)
+        for (const std::string& scriptAssetID : scriptAssetIDs)
         {
             std::filesystem::file_time_type writeTime{};
             std::string sourceError;
 
             if (!Scripting::GetScriptSourceWriteTime(projectContext, scriptAssetID, writeTime, sourceError))
             {
-                // Force discovery when the file becomes available
-                // again, even if it happens to retain an old time.
                 m_ScriptSourceWriteTimes.erase(scriptAssetID);
                 setSourceError(scriptAssetID, sourceError);
                 continue;
@@ -140,14 +147,13 @@ namespace Quiet::Editor
 
             const auto watched = m_ScriptSourceWriteTimes.find(scriptAssetID);
             const bool sourceChanged = watched == m_ScriptSourceWriteTimes.end() || watched->second != writeTime;
-
             if (!sourceChanged) continue;
 
-            // Mark this exact file version as attempted. A broken
-            // script should not be reparsed every Editor frame.
+            // This exact version is now considered attempted.
+            // Broken source therefore isn't reparsed every frame.
             m_ScriptSourceWriteTimes[scriptAssetID] = writeTime;
-
             std::vector<Scene::ScriptProperty> discoveredProperties;
+
             std::string discoveryError;
 
             if (!Scripting::DiscoverScriptProperties(projectContext, scriptAssetID, discoveredProperties, discoveryError))
@@ -157,8 +163,10 @@ namespace Quiet::Editor
             }
 
             m_State.Scripting.SourceErrors.erase(scriptAssetID);
+            const auto actorGroup = actorsByScript.find(scriptAssetID);
+            if (actorGroup == actorsByScript.end()) continue;
 
-            for (const Core::UUID actorID : actorIDs)
+            for (const Core::UUID actorID : actorGroup->second)
             {
                 Scene::Actor* actor = scene.FindActorByID(actorID);
                 if (!actor) continue;
@@ -167,9 +175,6 @@ namespace Quiet::Editor
                 if (!script || script->ScriptAssetID != scriptAssetID) continue;
 
                 std::vector<Scene::ScriptProperty> reconciled = discoveredProperties;
-
-                // Existing authored values survive as long as the
-                // declaration's Name + Type still match.
                 for (Scene::ScriptProperty& discovered : reconciled)
                 {
                     const auto existing = std::find_if(
@@ -201,7 +206,6 @@ namespace Quiet::Editor
 
             auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
             if (!script) continue;
-
             script->Properties = std::move(refresh.Properties);
         }
 

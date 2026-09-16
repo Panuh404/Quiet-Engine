@@ -51,6 +51,52 @@ namespace
 
 namespace Quiet::Platform
 {
+    bool OpenPathWithDefaultApplication(const std::filesystem::path& path)
+    {
+        if (path.empty()) return false;
+
+        const std::filesystem::path normalizedPath = std::filesystem::absolute(path).lexically_normal();
+        if (!std::filesystem::exists(normalizedPath))
+        {
+            QUIET_CORE_WARN("Cannot open path because it does not exist: '{}'.", normalizedPath.string());
+            return false;
+        }
+
+        #if defined(_WIN32)
+
+        const std::wstring widePath = normalizedPath.wstring();
+        const std::wstring workingDirectory = normalizedPath.parent_path().wstring();
+
+        HINSTANCE result = ShellExecuteW(
+            nullptr,
+            L"open",
+            widePath.c_str(),
+            nullptr,
+            workingDirectory.empty() ? nullptr : workingDirectory.c_str(),
+            SW_SHOWNORMAL);
+
+        const auto resultCode = reinterpret_cast<std::intptr_t>(result);
+
+        if (resultCode <= 32)
+        {
+            QUIET_CORE_WARN("Failed to open path '{}'. ShellExecuteW result: {}.", normalizedPath.string(), resultCode);
+            return false;
+        }
+        return true;
+
+        #elif defined(__APPLE__)
+
+        const std::string command = "open " + ShellQuoteUnix(normalizedPath.string());
+        return std::system(command.c_str()) == 0;
+
+        #else
+
+        const std::string command = "xdg-open " + ShellQuoteUnix(normalizedPath.string());
+        return std::system(command.c_str()) == 0;
+
+        #endif
+    }
+
     bool RevealPathInFileManager(const std::filesystem::path& path)
     {
         if (path.empty()) return false;

@@ -57,6 +57,43 @@ namespace
 
 namespace Quiet::Scripting
 {
+    bool ResolveScriptSourcePath(const Project::ProjectContext &projectContext,
+                                 std::string_view scriptAssetID,
+                                 std::filesystem::path &outSourcePath,
+                                 std::string &outError)
+    {
+        outSourcePath.clear();
+        outError.clear();
+
+        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
+        if (!record || record->Type != Project::AssetType::Script)
+        {
+            outError = "Script asset is not registered.";
+            return false;
+        }
+        if (record->Path.empty())
+        {
+            outError = "Script asset has no source path.";
+            return false;
+        }
+
+        outSourcePath = record->Path;
+        if (outSourcePath.is_relative())
+        {
+            outSourcePath = projectContext.GetRootPath() / outSourcePath;
+        }
+
+        outSourcePath = outSourcePath.lexically_normal();
+        std::error_code filesystemError;
+        if (!std::filesystem::is_regular_file(outSourcePath, filesystemError) || filesystemError)
+        {
+            outError = "Script source is unavailable.";
+            return false;
+        }
+
+        return true;
+    }
+
     bool DiscoverScriptProperties(const Project::ProjectContext& projectContext,
                                   const std::string_view scriptAssetID,
                                   std::vector<Scene::ScriptProperty>& outProperties,

@@ -15,6 +15,11 @@
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
+namespace Quiet::Editor
+{
+    struct EditorState;
+}
+
 namespace Quiet::Audio
 {
     class AudioLibrary;
@@ -142,7 +147,8 @@ namespace Quiet::Renderer::UI::Assets
                                 const Project::AssetRecord& record,
                                 const Vulkan::MeshLibrary& meshLibrary,
                                 const Vulkan::TextureLibrary& textureLibrary,
-                                const Audio::AudioLibrary& audioLibrary);
+                                const Audio::AudioLibrary& audioLibrary,
+                                const Editor::EditorState& editorState);
     std::string MakeAssetDisplayName(const Project::AssetRecord& record);
 
     bool IsAssetReadyStatus(const std::string& status);

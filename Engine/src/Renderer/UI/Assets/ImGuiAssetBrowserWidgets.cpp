@@ -107,8 +107,12 @@ namespace Quiet::Renderer::UI::Assets
     {
         if (status == "Loaded" ||
             status == "GPU Ready" ||
-            status == "Loaded Metadata")
+            status == "Loaded Metadata" ||
+            status == "Valid")
             return EditorColor::Success;
+
+        if (status == "Error")
+            return EditorColor::Error;
 
         if (status == "Registered")
             return EditorColor::Warning;
@@ -195,7 +199,12 @@ namespace Quiet::Renderer::UI::Assets
         ImVec4 text = EditorColor::TextMuted;
         ImVec4 background = EditorColor::Background3;
 
-        if (state.find("Missing") != std::string::npos)
+        if (state.find("Error") != std::string::npos)
+        {
+            text = EditorColor::Error;
+            background = ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
+        }
+        else if (state.find("Missing") != std::string::npos)
         {
             text = EditorColor::Error;
             background = ImVec4(0.140f, 0.045f, 0.050f, 1.0f);

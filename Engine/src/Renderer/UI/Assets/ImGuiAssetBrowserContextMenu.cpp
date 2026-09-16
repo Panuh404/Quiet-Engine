@@ -32,13 +32,12 @@ namespace
         request.TargetFolder = targetFolder;
     }
 
-    void DrawFolderContextMenuContents(
-        const Quiet::Project::ProjectContext& projectContext,
-        const std::string& relativeFolderPath,
-        const bool runtimeModeActive,
-        const Assets::AssetBrowserState& state,
-        Assets::AssetBrowserOperationRequest& operationRequest,
-        Assets::AssetBrowserFolderActionRequest& folderActionRequest)
+    void DrawFolderContextMenuContents(const Quiet::Project::ProjectContext& projectContext,
+                                       const std::string& relativeFolderPath,
+                                       const bool runtimeModeActive,
+                                       const Assets::AssetBrowserState& state,
+                                       Assets::AssetBrowserOperationRequest& operationRequest,
+                                       Assets::AssetBrowserFolderActionRequest& folderActionRequest)
     {
         const std::string assetsRoot = Assets::GetAssetsRootRelativePath(projectContext);
         const bool isAssetsRoot = relativeFolderPath == assetsRoot;
@@ -178,6 +177,14 @@ namespace Quiet::Renderer::UI::Assets
         {
             const std::string resolvedPathText = resolvedPath.string();
             ImGui::SetClipboardText(resolvedPathText.c_str());
+        }
+
+        if (record.Type == Project::AssetType::Script)
+        {
+            if (EditorMenuItem("Open Script", nullptr, false, resolvedPathExists))
+            {
+                Platform::OpenPathWithDefaultApplication(resolvedPath);
+            }
         }
 
         if (EditorMenuItem("Reveal in File Manager", nullptr, false, resolvedPathExists))

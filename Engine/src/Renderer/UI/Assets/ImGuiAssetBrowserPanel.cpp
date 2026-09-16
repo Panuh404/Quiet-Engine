@@ -594,7 +594,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
                     else
                     {
-                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, audioSubsystem, scene, selectedDetailsAssetID, context.UIScale);
+                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, audioSubsystem, scene, editorState, selectedDetailsAssetID, context.UIScale);
                     }
                     if (useSplitDetailsLayout) ImGui::EndChild();
                 }
@@ -626,7 +626,7 @@ namespace Quiet::Renderer::UI::Assets
 
             // POPUPS
             if (openAssetDetailsPopup) ImGui::OpenPopup("Asset Details");
-            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, audioSubsystem, selectedDetailsAssetID,context.UIScale);
+            DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, audioSubsystem, editorState, selectedDetailsAssetID, context.UIScale);
             DrawRemoveAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
             DrawDeleteAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
             DrawAssetRenamePopup(projectContext, editorState, state);

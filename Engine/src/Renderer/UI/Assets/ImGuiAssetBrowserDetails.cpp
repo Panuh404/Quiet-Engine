@@ -199,6 +199,7 @@ namespace Quiet::Renderer::UI::Assets
                                 const Vulkan::TextureLibrary& textureLibrary,
                                 Audio::AudioSubsystem& audioSubsystem,
                                 const Scene::Scene& scene,
+                                const Editor::EditorState& editorState,
                                 const std::string& assetID,
                                 const float uiScale)
     {
@@ -216,7 +217,7 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary, editorState);
         const ImVec4 statusColor = MakeStatusColor(status);
         const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
 
@@ -373,6 +374,7 @@ namespace Quiet::Renderer::UI::Assets
                                const Vulkan::MeshLibrary& meshLibrary,
                                const Vulkan::TextureLibrary& textureLibrary,
                                Audio::AudioSubsystem& audioSubsystem,
+                               const Editor::EditorState& editorState,
                                const std::string& assetID,
                                const float uiScale)
     {
@@ -383,7 +385,7 @@ namespace Quiet::Renderer::UI::Assets
         if (!record) return;
 
         const auto stats = meshLibrary.GetStats(record->ID);
-        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary);
+        const std::string status = MakeStatusLabel(projectContext, *record, meshLibrary, textureLibrary, audioLibrary, editorState);
 
         const ImVec4 statusColor = MakeStatusColor(status);
 

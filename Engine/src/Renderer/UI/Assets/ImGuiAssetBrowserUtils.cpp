@@ -1,6 +1,7 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 
 #include "Audio/AudioLibrary.h"
+#include "Quiet/Editor/EditorState.h"
 
 #include <algorithm>
 #include <cctype>
@@ -878,7 +879,8 @@ namespace Quiet::Renderer::UI::Assets
                                 const Project::AssetRecord& record,
                                 const Vulkan::MeshLibrary& meshLibrary,
                                 const Vulkan::TextureLibrary& textureLibrary,
-                                const Audio::AudioLibrary& audioLibrary)
+                                const Audio::AudioLibrary& audioLibrary,
+                                const Editor::EditorState& editorState)
     {
         const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, record);
         if (!record.BuiltIn)
@@ -910,7 +912,7 @@ namespace Quiet::Renderer::UI::Assets
         }
         if (record.Type == Project::AssetType::Script)
         {
-            return "Registered";
+            return editorState.Scripting.SourceErrors.contains(record.ID) ? "Error" : "Valid";
         }
         return "Unknown";
     }
@@ -929,7 +931,8 @@ namespace Quiet::Renderer::UI::Assets
     {
         return status == "Loaded" ||
                status == "GPU Ready" ||
-               status == "Loaded Metadata";
+               status == "Loaded Metadata" ||
+               status == "Valid";
     }
 
     bool IsAssetMissingStatus(const std::string& status)

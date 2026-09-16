@@ -10,6 +10,11 @@
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
 
+namespace Quiet::Editor
+{
+    struct EditorState;
+}
+
 namespace Quiet::Audio
 {
     class AudioSubsystem;
@@ -22,28 +27,24 @@ namespace Quiet::Renderer::UI::Assets
     void DrawDetailRowUInt(const char* label, std::uint32_t value, float labelWidth);
     void DrawDetailRowVec3(const char* label, const glm::vec3& value, float labelWidth);
 
-    void DrawAssetDetailsInline(
-        const Project::ProjectContext& projectContext,
-        const Vulkan::MeshLibrary& meshLibrary,
-        const Vulkan::TextureLibrary& textureLibrary,
-        Audio::AudioSubsystem& audioSubsystem,
-        const Scene::Scene& scene,
-        const std::string& selectedAssetID,
-        float uiScale
-    );
+    void DrawAssetDetailsInline(const Project::ProjectContext& projectContext,
+                                const Vulkan::MeshLibrary& meshLibrary,
+                                const Vulkan::TextureLibrary& textureLibrary,
+                                Audio::AudioSubsystem& audioSubsystem,
+                                const Scene::Scene& scene,
+                                const Editor::EditorState& editorState,
+                                const std::string& selectedAssetID,
+                                float uiScale);
 
-    void DrawAssetDetailsPopup(
-        const Project::ProjectContext& projectContext,
-        const Vulkan::MeshLibrary& meshLibrary,
-        const Vulkan::TextureLibrary& textureLibrary,
-        Audio::AudioSubsystem& audioSubsystem,
-        const std::string& selectedAssetID,
-        float uiScale
-    );
+    void DrawAssetDetailsPopup(const Project::ProjectContext& projectContext,
+                               const Vulkan::MeshLibrary& meshLibrary,
+                               const Vulkan::TextureLibrary& textureLibrary,
+                               Audio::AudioSubsystem& audioSubsystem,
+                               const Editor::EditorState& editorState,
+                               const std::string& selectedAssetID,
+                               float uiScale);
 
-    void DrawAssetSelectionSummaryInline(
-        const Project::ProjectContext& projectContext,
-        const std::vector<std::string>& selectedAssetIDs,
-        const std::string& primaryAssetID
-    );
+    void DrawAssetSelectionSummaryInline(const Project::ProjectContext& projectContext,
+                                         const std::vector<std::string>& selectedAssetIDs,
+                                         const std::string& primaryAssetID);
 }
