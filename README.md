@@ -20,6 +20,7 @@ Implemented foundations:
 * EnTT-backed ECS foundation with registry-owned actor identity and components, lightweight Actor handles, ECS runtime iteration, and EnTT-driven static mesh rendering
 * Jolt Physics runtime foundation with fixed-step simulation, Static / Dynamic / Kinematic rigid bodies, primitive colliders, scene gravity, contact events, and runtime body controls
 * miniaudio runtime foundation with WAV / FLAC / MP3 assets, editor preview, Audio Source / Listener components, runtime playback controls, 3D spatial audio, attenuation, directional cones, Doppler, runtime source lifecycle synchronization, and Master / Music / SFX / UI mixing
+* Lua 5.4 + sol2 scripting foundation with Script assets, persistent Script components, per-Actor isolated environments, lifecycle and collision callbacks, engine bindings, deferred runtime Actor mutation, exposed Inspector properties, runtime hot reload, and editor source diagnostics
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
@@ -147,6 +148,10 @@ Folders are editor organization nodes only. They do not change runtime transform
 * Audio Source component editing with Audio asset assignment, bus routing, volume, pitch, Play On Start, Loop, and 2D / 3D spatialization
 * spatial Audio Source controls for distance attenuation, directional cones, and Doppler
 * Audio Listener component editing with Primary-listener selection
+* Script component editing with Script asset assignment and source-aware component headers
+* exposed Lua property editing for Float, Int, Bool, String, Vector2/3/4, Color3/4, Actor references, and Mesh / Texture / Audio / Script asset references
+* automatic exposed-property reconciliation when Lua source declarations change
+* Script source diagnostics with Open Source, Reveal Source, and manual metadata refresh actions
 * Rigid Body component editing for Static, Dynamic, and Kinematic motion
 * rigid-body friction, restitution, damping, gravity-factor, and sleeping controls
 * Box Collider authoring with Size and Center
@@ -155,14 +160,14 @@ Folders are editor organization nodes only. They do not change runtime transform
 * one-collider-per-Actor authoring validation
 * Add Component menu
 * consistent component action menus
-* Reset Component support across Transform, rendering, Camera, Audio Source, Audio Listener, Rigid Body, and collider components
-* typed component-value clipboard for Transform, rendering, Camera, Audio Source, Audio Listener, Rigid Body, and collider components
+* Reset Component support across Transform, rendering, Camera, Audio Source, Audio Listener, Script, Rigid Body, and collider components
+* typed component-value clipboard for Transform, rendering, Camera, Audio Source, Audio Listener, Script, Rigid Body, and collider components
 * cross-actor Copy Component and Paste Component Values workflows
 * asset, slot-count, and component-type validation for pasted values
 * contextual explanations for unavailable Paste actions
 * atomic undo/redo and dirty-state integration for component actions and value editing
 * bounded numeric validation for Transform scale, lighting, material colors, and Camera projection values
-* searchable Mesh, Texture, and Audio asset pickers
+* searchable Mesh, Texture, Audio, and Script asset pickers
 * asset search by registry ID and path
 * texture previews and source diagnostics in picker results
 * drag/drop Mesh and Texture assignment
@@ -194,10 +199,33 @@ Current controls:
 
 Scene Settings are serialized with the scene and are tracked by dirty-state and undo/redo.
 
+### Scripting
+
+* Lua 5.4 runtime with sol2 integration
+* one isolated Lua environment per scripted Actor
+* persistent Script component with project Script asset references
+* runtime `OnCreate`, `OnUpdate`, and `OnDestroy` callbacks
+* post-physics `OnCollisionEnter` and `OnCollisionExit` callbacks
+* protected callback execution with per-instance error isolation
+* automatic runtime Script instance synchronization
+* runtime hot reload that preserves the previous working instance when replacement source fails
+* Actor identity and Transform bindings
+* Dynamic Rigid Body impulse and linear-velocity bindings
+* Audio Source playback bindings
+* Keyboard and mouse input bindings
+* Scene Actor lookup by ID and name
+* safe UUID-backed Actor references
+* deferred runtime Actor creation, duplication, and destruction
+* Script-exposed Float, Int, Bool, String, Vector2, Vector3, Vector4, Color3, Color4, Actor, Mesh, Texture, Audio, and Script properties
+* serialized exposed-property overrides with undo/redo, copy/paste, Scene cloning, and runtime duplication support
+* automatic editor-side Lua source monitoring and exposed-property reconciliation
+* project-wide Script source validation with Valid / Error asset states
+* Script source opening from the Inspector, Asset Browser context menu, and Asset Browser double-click
+
 ### Assets
 
 * project-local asset registry
-* Mesh, Texture, and Audio asset records
+* Mesh, Texture, Audio, and Script asset records
 * editable physical Project source
 * read-only virtual Engine source for built-in resources
 * separated Project Content and Engine Content source groups
@@ -207,7 +235,7 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * asset file dialog
 * asset reload and reimport workflows
 * searchable assets and folders by ID, name, path, or type
-* All / Meshes / Textures / Audio filters
+* All / Meshes / Textures / Audio / Scripts filters
 * Issues / Missing / External diagnostics filters
 * Browser and List content views
 * Tiny / Small / Medium / Large / Extra Large thumbnail presets
@@ -233,12 +261,15 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * active-scene reference validation before destructive deletion
 * selection, history, and clipboard repair after destructive operations
 * item and empty-content context menus
-* typed Mesh, Texture, and Audio drag payloads
+* typed Mesh, Texture, Audio, and Script drag payloads
 * drag/drop assignment into Inspector asset pickers
 * drag/drop Static Mesh actor creation in the Viewport
 * built-in primitive actor creation from the Engine source
 * Undo/Redo integration for created primitive and dropped mesh actors
 * operation confirmation, validation, and feedback modals
+* Lua Script source validation with Valid / Error status
+* direct Script source opening through double-click and context-menu actions
+* Script asset references included in active-scene reference validation
 
 ### Audio
 
@@ -750,7 +781,6 @@ Shift               Apply 2x Fly speed boost
 
 ### Upcoming Areas
 
-* Lua scripting foundation
 * asset cooking and runtime pipeline
 * text and runtime UI
 * navigation with Recast + Detour
