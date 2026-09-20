@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <string>
+#include <span>
 
 #include "Quiet/Core/UUID.h"
 
@@ -38,6 +39,12 @@ namespace Quiet::Renderer::UI::Inspector
 {
     struct TrackedInspectorInteraction;
     struct InspectorState;
+    struct ComponentMenuAction
+    {
+        const char* Label = nullptr;
+        bool Enabled = true;
+        const char* DisabledReason = nullptr;
+    };
     struct ComponentHeaderResult
     {
         bool Open = false;
@@ -45,6 +52,8 @@ namespace Quiet::Renderer::UI::Inspector
         bool ResetRequested = false;
         bool CopyRequested = false;
         bool PasteRequested = false;
+
+        int CustomActionIndex = -1;
     };
 
     void DrawInspectorHint(const char* text);
@@ -56,23 +65,27 @@ namespace Quiet::Renderer::UI::Inspector
     void DrawInspectorBanner(const char* message);
     void DrawInspectorEmptyState();
 
-    void DrawFloatingComponentOptionsMenu(InspectorState& state,
-                                          const char* popupID,
-                                          const bool removable,
-                                          const bool resettable,
-                                          const bool clipboardSupported,
-                                          const bool pasteAvailable,
-                                          const char* pasteUnavailableReason,
-                                          ComponentHeaderResult& result);
+    void DrawFloatingComponentOptionsMenu(
+        InspectorState& state,
+        const char* popupID,
+        bool removable,
+        bool resettable,
+        bool clipboardSupported,
+        bool pasteAvailable,
+        const char* pasteUnavailableReason,
+        std::span<const ComponentMenuAction> customActions,
+        ComponentHeaderResult& result);
 
-    ComponentHeaderResult BeginInspectorComponent(InspectorState& state,
-                                                  const char* title,
-                                                  const char* popupID,
-                                                  bool removable = true,
-                                                  bool resettable = false,
-                                                  bool clipboardSupported = false,
-                                                  bool pasteAvailable = false,
-                                                  const char* pasteUnavailableReason = nullptr);
+    ComponentHeaderResult BeginInspectorComponent(
+        InspectorState& state,
+        const char* title,
+        const char* popupID,
+        bool removable = true,
+        bool resettable = false,
+        bool clipboardSupported = false,
+        bool pasteAvailable = false,
+        const char* pasteUnavailableReason = nullptr,
+        std::span<const ComponentMenuAction> customActions = {});
 
     bool DrawCheckboxPropertyRow(const char* label, bool& value);
     bool DrawRigidBodyMotionTypePropertyRow(const char* label, Scene::RigidBodyMotionType& value);

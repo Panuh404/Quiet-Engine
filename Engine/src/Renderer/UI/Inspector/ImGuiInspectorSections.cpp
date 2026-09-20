@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <array>
 
 #include <imgui.h>
 
@@ -1009,16 +1010,42 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
         if (!script) return;
 
+        const bool hasScript = !script->ScriptAssetID.empty();
+
+        std::filesystem::path sourcePath;
+        std::string sourcePathError;
+        const bool sourceAvailable = hasScript &&
+            Scripting::ResolveScriptSourcePath(context.ProjectContext, script->ScriptAssetID, sourcePath, sourcePathError);
+
+        const char* unavailableReason = nullptr;
+
+        if (!sourceAvailable)
+        {
+            unavailableReason = sourcePathError.empty() ? "Assign a Script asset first." : sourcePathError.c_str();
+        }
+
+        const std::array<ComponentMenuAction, 3> scriptMenuActions =
+        {{
+            { "Open Source", sourceAvailable, unavailableReason },
+            { "Reveal Source", sourceAvailable, unavailableReason },
+            { "Refresh Exposed Properties", sourceAvailable, unavailableReason }
+        }};
+
+        const std::string scriptHeaderTitle = std::string("Script · ") + (hasScript ? script->ScriptAssetID : "None") + "###ScriptComponentHeader";
+
         const bool canPasteScript = state.Clipboard.Type == ComponentClipboardType::Script;
         const auto header = BeginInspectorComponent(
             state,
-            "Script",
+            scriptHeaderTitle.c_str(),
             "ScriptComponentOptions",
             true,
             true,
             true,
             canPasteScript,
-            canPasteScript ? nullptr : "Copy Script values first.");
+            canPasteScript
+                ? nullptr
+                : "Copy Script values first.",
+            scriptMenuActions);
 
         if (header.RemoveRequested)
         {
@@ -1038,7 +1065,25 @@ namespace Quiet::Renderer::UI::Inspector
         {
             context.Commands.ResetScript(context.Scene, actor.GetID());
         }
+        switch (header.CustomActionIndex)
+        {
+            case 0:
+                Platform::OpenPathWithDefaultApplication(sourcePath);
+                break;
+
+            case 1:
+                Platform::RevealPathInFileManager(sourcePath);
+                break;
+
+            case 2:
+                context.Commands.RefreshScriptProperties(context.Scene, actor.GetID(), context.ProjectContext);
+                return;
+
+            default:
+                break;
+        }
         if (!header.Open) return;
+
 
         Assets::AssetPickerOptions pickerOptions{};
         pickerOptions.Type = Project::AssetType::Script;
@@ -1055,29 +1100,6 @@ namespace Quiet::Renderer::UI::Inspector
         {
             ImGui::Spacing();
 
-            std::filesystem::path sourcePath;
-            std::string sourcePathError;
-
-            const bool sourceAvailable = Scripting::ResolveScriptSourcePath(context.ProjectContext, script->ScriptAssetID, sourcePath, sourcePathError);
-            const float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
-            const float sourceButtonWidth = std::max(0.0f, (ImGui::GetContentRegionAvail().x - buttonSpacing) * 0.5f);
-
-            ImGui::BeginDisabled(!sourceAvailable);
-
-            if (EditorButton("Open Source", ImVec2(sourceButtonWidth, 0.0f)))
-            {
-                Platform::OpenPathWithDefaultApplication(sourcePath);
-            }
-
-            ImGui::SameLine();
-
-            if (EditorButton("Reveal Source", ImVec2(sourceButtonWidth, 0.0f)))
-            {
-                Platform::RevealPathInFileManager(sourcePath);
-            }
-
-            ImGui::EndDisabled();
-
             const auto sourceError = context.EditorState.Scripting.SourceErrors.find(script->ScriptAssetID);
             if (sourceError != context.EditorState.Scripting.SourceErrors.end())
             {
@@ -1085,12 +1107,6 @@ namespace Quiet::Renderer::UI::Inspector
 
                 DrawInspectorWarning("Script source error:");
                 DrawInspectorWarning(sourceError->second.c_str());
-            }
-
-            if (EditorButton("Refresh Exposed Properties", ImVec2(-1.0f, 0.0f)))
-            {
-                context.Commands.RefreshScriptProperties(context.Scene, actor.GetID(), context.ProjectContext);
-                return;
             }
 
             if (!script->Properties.empty())

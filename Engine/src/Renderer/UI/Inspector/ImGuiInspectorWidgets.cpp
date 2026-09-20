@@ -154,6 +154,7 @@ namespace Quiet::Renderer::UI::Inspector
                                           const bool clipboardSupported,
                                           const bool pasteAvailable,
                                           const char* pasteUnavailableReason,
+                                          std::span<const ComponentMenuAction> customActions,
                                           ComponentHeaderResult& result)
     {
         if (state.OpenComponentMenuID != popupID) return;
@@ -163,8 +164,11 @@ namespace Quiet::Renderer::UI::Inspector
             return;
         }
 
-        const int menuItemCount = (resettable ? 1 : 0) + (clipboardSupported ? 2 : 0) + 1;
-        const int separatorCount = (resettable && clipboardSupported ? 1 : 0) + (resettable || clipboardSupported ? 1 : 0);
+        const int menuItemCount = static_cast<int>(customActions.size()) + (resettable ? 1 : 0) + (clipboardSupported ? 2 : 0) + 1;
+        const int separatorCount =
+            (customActions.empty() ? 0 : 1) +
+            (resettable && clipboardSupported ? 1 : 0) +
+            (resettable || clipboardSupported ? 1 : 0);
 
         const float menuWidth = EditorSizing::Px(230.0f);
         const float estimatedMenuHeight = EditorSizing::Px(
@@ -223,6 +227,29 @@ namespace Quiet::Renderer::UI::Inspector
             const ImVec2 itemSize(ImGui::GetContentRegionAvail().x, 0.0f);
 
             bool hasPreviousAction = false;
+            for (std::size_t index = 0; index < customActions.size(); ++index)
+            {
+                const ComponentMenuAction& action = customActions[index];
+                if (!action.Label) continue;
+
+                if (EditorSelectable(action.Label, false, 0, itemSize, action.Enabled))
+                {
+                    result.CustomActionIndex = static_cast<int>(index);
+                    state.OpenComponentMenuID.clear();
+                }
+
+                if (!action.Enabled && action.DisabledReason && action.DisabledReason[0] != '\0' &&
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
+                {
+                    ImGui::SetTooltip("%s", action.DisabledReason);
+                }
+
+                hasPreviousAction = true;
+            }
+
+            if (hasPreviousAction)
+                ImGui::Separator();
+
             if (resettable)
             {
                 if (EditorSelectable("Reset Component", false, 0, itemSize))
@@ -295,7 +322,8 @@ namespace Quiet::Renderer::UI::Inspector
                                                   bool resettable,
                                                   bool clipboardSupported,
                                                   bool pasteAvailable,
-                                                  const char* pasteUnavailableReason)
+                                                  const char* pasteUnavailableReason,
+                                                  std::span<const ComponentMenuAction> customActions)
     {
         ComponentHeaderResult result{};
 
@@ -357,7 +385,16 @@ namespace Quiet::Renderer::UI::Inspector
         }
 
         ImGui::PopID();
-        DrawFloatingComponentOptionsMenu(state, popupID, removable, resettable, clipboardSupported, pasteAvailable, pasteUnavailableReason, result);
+        DrawFloatingComponentOptionsMenu(
+            state,
+            popupID,
+            removable,
+            resettable,
+            clipboardSupported,
+            pasteAvailable,
+            pasteUnavailableReason,
+            customActions,
+            result);
         return result;
     }
 

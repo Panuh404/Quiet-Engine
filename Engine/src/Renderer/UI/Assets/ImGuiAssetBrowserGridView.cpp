@@ -7,6 +7,7 @@
 
 #include <imgui.h>
 
+#include "Quiet/Platform/Shell.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
@@ -475,7 +476,16 @@ namespace Quiet::Renderer::UI::Assets
             }
 
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                pendingDetailsAssetID = record.ID;
+            {
+                if (record.Type == Project::AssetType::Script && diagnostics.Exists && diagnostics.RegularFile)
+                {
+                    Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath);
+                }
+                else
+                {
+                    pendingDetailsAssetID = record.ID;
+                }
+            }
 
             if (IsAssetBrowserContextMenuRequestedForLastItem())
             {

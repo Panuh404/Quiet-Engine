@@ -5,6 +5,7 @@
 #include <string>
 #include <imgui.h>
 
+#include "Quiet/Platform/Shell.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
@@ -343,8 +344,22 @@ namespace Quiet::Renderer::UI::Assets
                     }
                 }
 
+                if (rowHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    if (record.Type == Project::AssetType::Script && diagnostics.Exists && diagnostics.RegularFile)
+                    {
+                        Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath);
+                    }
+                    else
+                    {
+                        pendingDetailsAssetID = record.ID;
+                    }
+                }
+
                 if (rowHovered && !isSelectedAsset)
+                {
                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(EditorColor::Background3));
+                }
 
                 // Actions
                 ImGui::TableSetColumnIndex(3);
