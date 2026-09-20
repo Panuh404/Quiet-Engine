@@ -19,6 +19,7 @@ target_sources(Quiet_Engine
         src/Project/ProjectDescriptor.cpp
         src/Project/ProjectRegistry.cpp
         src/Project/ProjectWorkflow.cpp
+        src/Project/RuntimeManifest.cpp
 
         # Input
         src/Input/Input.cpp
@@ -280,6 +281,7 @@ target_sources(Quiet_Engine
         include/Quiet/Project/ProjectDescriptor.h
         include/Quiet/Project/ProjectRegistry.h
         include/Quiet/Project/ProjectWorkflow.h
+        include/Quiet/Project/RuntimeManifest.h
 
         include/Quiet/Input/Input.h
         include/Quiet/Input/KeyCodes.h
