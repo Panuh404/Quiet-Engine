@@ -8,6 +8,8 @@
 
 namespace Quiet::Project
 {
+    inline constexpr int CurrentRuntimeManifestVersion = 1;
+
     struct RuntimeAssetRecord
     {
         std::string ID;
@@ -22,7 +24,7 @@ namespace Quiet::Project
 
     struct RuntimeManifest
     {
-        int Version = 1;
+        int Version = CurrentRuntimeManifestVersion;
         std::string ProjectName;
         std::string StartupScene;
         std::vector<RuntimeAssetRecord> Assets;

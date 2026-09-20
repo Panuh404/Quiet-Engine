@@ -79,6 +79,34 @@
         "QUIET_BUILD_EDITOR": "ON",
         "QUIET_BUILD_LAUNCHER": "ON"
       }
+    },
+    {
+      "name": "debug-cooker",
+      "displayName": "Debug Cooker",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Debug-Cooker",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_LAUNCHER": "OFF",
+        "QUIET_BUILD_COOKER": "ON"
+      }
+    },
+    {
+      "name": "release-cooker",
+      "displayName": "Release Cooker",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Release-Cooker",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "QUIET_BUILD_SANDBOX": "OFF",
+        "QUIET_BUILD_EDITOR": "OFF",
+        "QUIET_BUILD_LAUNCHER": "OFF",
+        "QUIET_BUILD_COOKER": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -116,6 +144,20 @@
       "configurePreset": "release-launcher",
       "targets": [
         "Quiet_Launcher"
+      ]
+    },
+    {
+      "name": "build-debug-cooker",
+      "configurePreset": "debug-cooker",
+      "targets": [
+        "Quiet_Cooker"
+      ]
+    },
+    {
+      "name": "build-release-cooker",
+      "configurePreset": "release-cooker",
+      "targets": [
+        "Quiet_Cooker"
       ]
     }
   ]

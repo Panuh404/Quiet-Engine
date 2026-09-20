@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(QUIET_BUILD_SANDBOX ON)
 option(QUIET_BUILD_EDITOR OFF)
 option(QUIET_BUILD_LAUNCHER "Build Quiet Launcher" OFF)
+option(QUIET_BUILD_COOKER "Build Quiet Asset Cooker" OFF)
 
 # ------------------------------------------------------------------------------
 # Output directories
@@ -340,6 +341,10 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 add_subdirectory(Engine)
+
+if(QUIET_BUILD_COOKER)
+    add_subdirectory(Cooker)
+endif()
 
 if(QUIET_BUILD_LAUNCHER)
     add_subdirectory(Launcher)

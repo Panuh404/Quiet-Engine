@@ -18,14 +18,23 @@ namespace Quiet::Project
         {
             if (value.empty()) return false;
 
-            // Runtime manifests always store generic package-relative paths.
-            if (value.find('\\') != std::string_view::npos) return false;
-            const std::filesystem::path path{value};
-            if (path.is_absolute() || path.has_root_name() || path.has_root_directory()) return false;
+            // Runtime packages use portable forward-slash relative paths.
+            static constexpr std::string_view invalidCharacters = "\\:*?\"<>|";
+
+            if (value.front() == '/') return false;
+            if (value.find_first_of(invalidCharacters) != std::string_view::npos) return false;
+
+            const std::filesystem::path path{std::string(value)};
+            const std::string normalized = path.lexically_normal().generic_string();
+
+            if (normalized.empty() || normalized == ".") return false;
+
+            // Require canonical package-relative representation.
+            if (normalized != value) return false;
 
             for (const auto& segment : path)
             {
-                if (segment == "..") return false;
+                if (segment == "." || segment == "..") return false;
             }
 
             return true;
@@ -33,7 +42,7 @@ namespace Quiet::Project
 
         bool ValidateManifest(const RuntimeManifest& manifest)
         {
-            if (manifest.Version <= 0 || manifest.ProjectName.empty()) return false;
+            if (manifest.Version != CurrentRuntimeManifestVersion || manifest.ProjectName.empty()) return false;
             if (!IsSafePackageRelativePath(manifest.StartupScene)) return false;
 
             std::unordered_set<std::string> assetIDs;
@@ -66,43 +75,49 @@ namespace Quiet::Project
     {
         std::ifstream input(path);
         if (!input.is_open()) return false;
-        json root;
 
         try
         {
+            json root;
             input >> root;
+
+            if (!root.is_object()) return false;
+
+            RuntimeManifest manifest{};
+            manifest.Version = root.at("Version").get<int>();
+            manifest.ProjectName = root.at("ProjectName").get<std::string>();
+            manifest.StartupScene = root.at("StartupScene").get<std::string>();
+
+            const json& assets = root.at("Assets");
+            if (!assets.is_array()) return false;
+
+            for (const auto& value : assets)
+            {
+                if (!value.is_object()) return false;
+
+                RuntimeAssetRecord record{};
+                record.ID = value.at("ID").get<std::string>();
+                record.Path = value.at("Path").get<std::string>();
+
+                const std::string typeName = value.at("Type").get<std::string>();
+                AssetType type = AssetType::Unknown;
+
+                if (!AssetTypeFromString(typeName, type)) return false;
+
+                record.Type = type;
+                manifest.Assets.push_back(std::move(record));
+            }
+
+            if (!ValidateManifest(manifest)) return false;
+            SortAssets(manifest);
+
+            outManifest = std::move(manifest);
+            return true;
         }
-        catch (...)
+        catch (const json::exception&)
         {
             return false;
         }
-
-        if (!root.is_object()) return false;
-        RuntimeManifest manifest{};
-        manifest.Version = root.value("Version", 0);
-        manifest.ProjectName = root.value("ProjectName", "");
-        manifest.StartupScene = root.value("StartupScene", "");
-
-        if (!root.contains("Assets") || !root["Assets"].is_array()) return false;
-        for (const auto& value : root["Assets"])
-        {
-            if (!value.is_object()) return false;
-
-            RuntimeAssetRecord record{};
-            record.ID = value.value("ID", "");
-            record.Path = value.value("Path", "");
-
-            AssetType type = AssetType::Unknown;
-            if (!AssetTypeFromString(value.value("Type", "Unknown"), type)) return false;
-            record.Type = type;
-            manifest.Assets.push_back(std::move(record));
-        }
-
-        if (!ValidateManifest(manifest)) return false;
-        SortAssets(manifest);
-
-        outManifest = std::move(manifest);
-        return true;
     }
 
     bool RuntimeManifestIO::SaveToFile(const std::filesystem::path& path, const RuntimeManifest& manifest)
