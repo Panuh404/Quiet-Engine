@@ -1,21 +1,21 @@
-#include "Renderer/Vulkan/Mesh/MeshImporter.h"
+#include "Quiet/Assets/MeshImporter.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <string>
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-#include <cctype>
+#include <utility>
 
 #include <assimp/Importer.hpp>
+#include <assimp/material.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-#include <assimp/material.h>
 
-#include "glm/vec4.hpp"
 #include <glm/geometric.hpp>
-
-#include "Renderer/Vulkan/Mesh/StaticMesh.h"
+#include <glm/vec4.hpp>
 
 namespace
 {
@@ -156,7 +156,7 @@ namespace
         bounds.Max.z = std::max(bounds.Max.z, point.z);
     }
 
-    bool AppendMesh(const aiMesh& mesh, const aiMatrix4x4& transform, Quiet::Renderer::Vulkan::MeshImportResult& result)
+    bool AppendMesh(const aiMesh& mesh, const aiMatrix4x4& transform, Quiet::Assets::MeshImportResult& result)
     {
         if (!mesh.HasPositions()) return true;
 
@@ -207,7 +207,7 @@ namespace
         const std::size_t vertexCount = result.Vertices.size() - baseVertex;
         const std::size_t indexCount = result.Indices.size() - baseIndex;
 
-        Quiet::Renderer::Vulkan::ImportedSubmesh submesh{};
+        Quiet::Assets::ImportedSubmesh submesh{};
         submesh.Name = mesh.mName.C_Str();
         submesh.BaseVertex = static_cast<std::uint32_t>(baseVertex);
         submesh.VertexCount = static_cast<std::uint32_t>(vertexCount);
@@ -225,7 +225,7 @@ namespace
         return true;
     }
 
-    bool TraverseNode(const aiScene& scene, const aiNode& node, const aiMatrix4x4& parentTransform, Quiet::Renderer::Vulkan::MeshImportResult& result)
+    bool TraverseNode(const aiScene& scene, const aiNode& node, const aiMatrix4x4& parentTransform, Quiet::Assets::MeshImportResult& result)
     {
         const aiMatrix4x4 nodeTransform = parentTransform * node.mTransformation;
 
@@ -300,7 +300,7 @@ namespace
         return static_cast<int>(value);
     }
 
-    void ImportMaterials(const aiScene& scene, Quiet::Renderer::Vulkan::MeshImportResult& result)
+    void ImportMaterials(const aiScene& scene, Quiet::Assets::MeshImportResult& result)
     {
         result.Materials.clear();
         result.Materials.reserve(scene.mNumMaterials);
@@ -310,7 +310,7 @@ namespace
             const aiMaterial* sourceMaterial = scene.mMaterials[materialIndex];
             if (!sourceMaterial) continue;
 
-            Quiet::Renderer::Vulkan::ImportedMaterial material{};
+            Quiet::Assets::ImportedMaterial material{};
 
             aiString materialName{};
             if (sourceMaterial->Get(AI_MATKEY_NAME, materialName) == AI_SUCCESS && materialName.length > 0)
@@ -338,7 +338,7 @@ namespace
         }
     }
 
-    void ImportEmbeddedTextures(const aiScene& scene, Quiet::Renderer::Vulkan::MeshImportResult& result)
+    void ImportEmbeddedTextures(const aiScene& scene, Quiet::Assets::MeshImportResult& result)
     {
         result.EmbeddedTextures.clear();
         if (!scene.HasTextures()) return;
@@ -367,7 +367,7 @@ namespace
                     continue;
                 }
 
-                Quiet::Renderer::Vulkan::ImportedEmbeddedTexture embedded{};
+                Quiet::Assets::ImportedEmbeddedTexture embedded{};
                 embedded.Index = static_cast<int>(textureIndex);
                 embedded.Name = "EmbeddedTexture_" + std::to_string(textureIndex);
                 embedded.Extension = extension;
@@ -385,7 +385,7 @@ namespace
     }
 }
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Assets
 {
     MeshImportResult MeshImporter::LoadFromFile(const std::filesystem::path &path)
     {

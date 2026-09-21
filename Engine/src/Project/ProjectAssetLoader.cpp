@@ -11,7 +11,7 @@
 
 #include "Quiet/Core/Log.h"
 #include "Quiet/Project/ProjectContext.h"
-#include "Renderer/Vulkan/Mesh/MeshImporter.h"
+#include "Quiet/Assets/MeshImporter.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
 #include "Renderer/Vulkan/Texture/TextureImporter.h"
@@ -28,12 +28,10 @@ namespace
         const Quiet::Renderer::Vulkan::LogicalDevice* logicalDevice,
         const Quiet::Renderer::Vulkan::GraphicsCommands* graphicsCommands)
     {
-        return physicalDevice != nullptr &&
-               logicalDevice != nullptr &&
-               graphicsCommands != nullptr;
+        return physicalDevice != nullptr && logicalDevice != nullptr && graphicsCommands != nullptr;
     }
 
-    Quiet::Renderer::Vulkan::MeshStats MakeMeshStatsFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    Quiet::Renderer::Vulkan::MeshStats MakeMeshStatsFromImportResult(const Quiet::Assets::MeshImportResult& importResult)
     {
         Quiet::Renderer::Vulkan::MeshStats stats{};
         stats.VertexCount = static_cast<std::uint32_t>(importResult.Vertices.size());
@@ -65,12 +63,12 @@ namespace
         return stats;
     }
 
-    std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> MakeStaticSubmeshesFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> MakeStaticSubmeshesFromImportResult(const Quiet::Assets::MeshImportResult& importResult)
     {
         std::vector<Quiet::Renderer::Vulkan::StaticSubmesh> submeshes;
         submeshes.reserve(importResult.Submeshes.size());
 
-        for (const Quiet::Renderer::Vulkan::ImportedSubmesh& imported : importResult.Submeshes)
+        for (const Quiet::Assets::ImportedSubmesh& imported : importResult.Submeshes)
         {
             Quiet::Renderer::Vulkan::StaticSubmesh submesh{};
             submesh.Name = imported.Name;
@@ -86,12 +84,12 @@ namespace
         return submeshes;
     }
 
-    std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> MakeStaticMaterialSlotsFromImportResult(const Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+    std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> MakeStaticMaterialSlotsFromImportResult(const Quiet::Assets::MeshImportResult& importResult)
     {
         std::vector<Quiet::Renderer::Vulkan::StaticMeshMaterialSlot> slots;
         slots.reserve(importResult.Materials.size());
 
-        for (const Quiet::Renderer::Vulkan::ImportedMaterial& imported : importResult.Materials)
+        for (const Quiet::Assets::ImportedMaterial& imported : importResult.Materials)
         {
             Quiet::Renderer::Vulkan::StaticMeshMaterialSlot slot{};
             slot.Name = imported.Name;
@@ -163,11 +161,9 @@ namespace
         return (meshAssetPath.parent_path() / path).lexically_normal();
     }
 
-    const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture* FindEmbeddedTextureByIndex(
-        const Quiet::Renderer::Vulkan::MeshImportResult& importResult,
-        const int embeddedTextureIndex)
+    const Quiet::Assets::ImportedEmbeddedTexture* FindEmbeddedTextureByIndex(const Quiet::Assets::MeshImportResult& importResult, const int embeddedTextureIndex)
     {
-        for (const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture& texture : importResult.EmbeddedTextures)
+        for (const Quiet::Assets::ImportedEmbeddedTexture& texture : importResult.EmbeddedTextures)
         {
             if (texture.Index == embeddedTextureIndex)
                 return &texture;
@@ -198,29 +194,21 @@ namespace
     }
 
     void RegisterImportedMaterialTextures(Quiet::Project::ProjectContext& projectContext, const std::string& meshAssetID,
-        const std::filesystem::path& meshAssetPath, Quiet::Renderer::Vulkan::MeshImportResult& importResult)
+        const std::filesystem::path& meshAssetPath, Quiet::Assets::MeshImportResult& importResult)
     {
-        for (std::size_t materialIndex = 0;
-             materialIndex < importResult.Materials.size();
-             ++materialIndex)
+        for (std::size_t materialIndex = 0; materialIndex < importResult.Materials.size(); ++materialIndex)
         {
-            Quiet::Renderer::Vulkan::ImportedMaterial& material = importResult.Materials[materialIndex];
+            Quiet::Assets::ImportedMaterial& material = importResult.Materials[materialIndex];
             if (material.BaseColorTexturePath.empty()) continue;
 
             const std::string textureAssetID = MakeImportedMaterialTextureAssetID(meshAssetID, material.Name, materialIndex);
 
             if (material.BaseColorTextureEmbedded)
             {
-                const Quiet::Renderer::Vulkan::ImportedEmbeddedTexture* embeddedTexture =
-                    FindEmbeddedTextureByIndex(importResult, material.EmbeddedTextureIndex);
-
+                const Quiet::Assets::ImportedEmbeddedTexture* embeddedTexture = FindEmbeddedTextureByIndex(importResult, material.EmbeddedTextureIndex);
                 if (!embeddedTexture || !embeddedTexture->IsValid())
                 {
-                    importResult.Warnings.push_back(
-                        "Material '" + material.Name +
-                        "' references missing embedded base color texture '" +
-                        material.BaseColorTexturePath + "'."
-                    );
+                    importResult.Warnings.push_back("Material '" + material.Name + "' references missing embedded base color texture '" + material.BaseColorTexturePath + "'.");
                     continue;
                 }
 
@@ -232,10 +220,7 @@ namespace
 
                 if (!WriteBinaryFileIfDifferent(outputPath, embeddedTexture->Bytes))
                 {
-                    importResult.Warnings.push_back(
-                        "Failed to extract embedded base color texture for material '" +
-                        material.Name + "'."
-                    );
+                    importResult.Warnings.push_back("Failed to extract embedded base color texture for material '" + material.Name + "'." );
                     continue;
                 }
 
@@ -245,11 +230,7 @@ namespace
                     continue;
                 }
 
-                importResult.Warnings.push_back(
-                    "Failed to register extracted texture asset '" +
-                    textureAssetID + "'."
-                );
-
+                importResult.Warnings.push_back("Failed to register extracted texture asset '" + textureAssetID + "'.");
                 continue;
             }
 
@@ -321,12 +302,7 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::ReloadMeshAssets(const bool forceReimport)
     {
-        const auto meshAssetPointers =
-            AssetRegistryIO::GetAssetsByType(
-                m_ProjectContext.GetAssetRegistry(),
-                AssetType::Mesh
-            );
-
+        const auto meshAssetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Mesh);
         std::vector<AssetRecord> meshAssets;
         meshAssets.reserve(meshAssetPointers.size());
 
@@ -352,11 +328,7 @@ namespace Quiet::Project
 
     bool ProjectAssetLoader::ReloadTextureAssets(const bool forceReimport)
     {
-        const auto textureAssetPointers =
-            AssetRegistryIO::GetAssetsByType(
-                m_ProjectContext.GetAssetRegistry(),
-                AssetType::Texture
-            );
+        const auto textureAssetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Texture);
 
         std::vector<AssetRecord> textureAssets;
         textureAssets.reserve(textureAssetPointers.size());
@@ -561,10 +533,7 @@ namespace Quiet::Project
         const auto primitive = Renderer::Vulkan::MeshPrimitives::Create(record.ID);
         if (!primitive.has_value() || !primitive->IsValid())
         {
-            QUIET_CORE_WARN(
-                "Built-in mesh asset '{}' is registered but has no primitive creator.",
-                record.ID
-            );
+            QUIET_CORE_WARN("Built-in mesh asset '{}' is registered but has no primitive creator.", record.ID);
             return false;
         }
 
@@ -584,11 +553,7 @@ namespace Quiet::Project
         }
         catch (const std::exception& e)
         {
-            QUIET_CORE_ERROR(
-                "Failed to create built-in mesh asset '{}': {}",
-                record.ID,
-                e.what()
-            );
+            QUIET_CORE_ERROR("Failed to create built-in mesh asset '{}': {}", record.ID, e.what());
             return false;
         }
 
@@ -612,39 +577,24 @@ namespace Quiet::Project
         }
 
         const std::filesystem::path rawAssetPath = record.Path;
-        const std::filesystem::path assetPath =
-            rawAssetPath.is_absolute()
-                ? rawAssetPath.lexically_normal()
-                : (m_ProjectContext.GetRootPath() / rawAssetPath).lexically_normal();
+        const std::filesystem::path assetPath = rawAssetPath.is_absolute()
+            ? rawAssetPath.lexically_normal()
+            : (m_ProjectContext.GetRootPath() / rawAssetPath).lexically_normal();
 
         if (!std::filesystem::exists(assetPath))
         {
-            QUIET_CORE_WARN(
-                "Mesh asset '{}' points to missing file '{}'.",
-                record.ID,
-                assetPath.string()
-            );
+            QUIET_CORE_WARN("Mesh asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
             return false;
         }
 
-        Renderer::Vulkan::MeshImportResult importResult = Renderer::Vulkan::MeshImporter::LoadFromFile(assetPath);
+        Assets::MeshImportResult importResult = Assets::MeshImporter::LoadFromFile(assetPath);
         if (!importResult.Succeeded())
         {
-            QUIET_CORE_WARN(
-                "Failed to import mesh asset '{}' from '{}': {}",
-                record.ID,
-                assetPath.string(),
-                importResult.Error
-            );
+            QUIET_CORE_WARN("Failed to import mesh asset '{}' from '{}': {}", record.ID, assetPath.string(), importResult.Error);
             return false;
         }
 
-        RegisterImportedMaterialTextures(
-            m_ProjectContext,
-            record.ID,
-            assetPath,
-            importResult
-        );
+        RegisterImportedMaterialTextures(m_ProjectContext, record.ID, assetPath, importResult);
 
         const Renderer::Vulkan::MeshStats stats = MakeMeshStatsFromImportResult(importResult);
         std::vector<Renderer::Vulkan::StaticSubmesh> submeshes = MakeStaticSubmeshesFromImportResult(importResult);
@@ -682,12 +632,7 @@ namespace Quiet::Project
         }
         catch (const std::exception& e)
         {
-            QUIET_CORE_ERROR(
-                "Failed to create runtime mesh resource '{}' from '{}': {}",
-                record.ID,
-                assetPath.string(),
-                e.what()
-            );
+            QUIET_CORE_ERROR("Failed to create runtime mesh resource '{}' from '{}': {}", record.ID, assetPath.string(), e.what());
             return false;
         }
 
@@ -739,11 +684,7 @@ namespace Quiet::Project
 
         if (!std::filesystem::exists(assetPath))
         {
-            QUIET_CORE_WARN(
-                "Texture asset '{}' points to missing file '{}'.",
-                record.ID,
-                assetPath.string()
-            );
+            QUIET_CORE_WARN("Texture asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
             return false;
         }
 
@@ -751,12 +692,7 @@ namespace Quiet::Project
 
         if (!pixelData.Metadata.Succeeded() || !pixelData.IsValid())
         {
-            QUIET_CORE_WARN(
-                "Failed to load texture asset '{}' from '{}': {}",
-                record.ID,
-                assetPath.string(),
-                pixelData.Metadata.Error
-            );
+            QUIET_CORE_WARN("Failed to load texture asset '{}' from '{}': {}", record.ID, assetPath.string(), pixelData.Metadata.Error);
             return false;
         }
 
@@ -790,12 +726,7 @@ namespace Quiet::Project
         }
         catch (const std::exception& e)
         {
-            QUIET_CORE_ERROR(
-                "Failed to create runtime texture resource '{}' from '{}': {}",
-                record.ID,
-                assetPath.string(),
-                e.what()
-            );
+            QUIET_CORE_ERROR("Failed to create runtime texture resource '{}' from '{}': {}", record.ID, assetPath.string(), e.what());
             return false;
         }
 

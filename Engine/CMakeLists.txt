@@ -8,6 +8,9 @@ target_sources(Quiet_Engine
         src/Core/Log.cpp
         src/Core/UUID.cpp
 
+        # Assets
+        src/Assets/MeshImporter.cpp
+
         # Platform
         src/Platform/Window.cpp
         src/Platform/Shell.cpp
@@ -176,9 +179,6 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
         # Renderer - Vulkan - Mesh
-        src/Renderer/Vulkan/Mesh/MeshImporter.cpp
-        src/Renderer/Vulkan/Mesh/MeshImporter.h
-        src/Renderer/Vulkan/Mesh/MeshImportResult.h
         src/Renderer/Vulkan/Mesh/MeshLibrary.cpp
         src/Renderer/Vulkan/Mesh/MeshLibrary.h
         src/Renderer/Vulkan/Mesh/MeshPrimitives.cpp
@@ -274,6 +274,8 @@ target_sources(Quiet_Engine
         include/Quiet/Core/UUID.h
 
         include/Quiet/Assets/MeshData.h
+        include/Quiet/Assets/MeshImportResult.h
+        include/Quiet/Assets/MeshImporter.h
 
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h

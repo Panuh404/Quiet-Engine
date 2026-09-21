@@ -8,7 +8,7 @@
 
 #include "Quiet/Assets/MeshData.h"
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Assets
 {
     struct ImportedSubmesh
     {
@@ -26,7 +26,6 @@ namespace Quiet::Renderer::Vulkan
     struct ImportedMaterial
     {
         std::string Name;
-
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         std::string BaseColorTexturePath;
@@ -50,15 +49,17 @@ namespace Quiet::Renderer::Vulkan
 
     struct MeshImportResult
     {
-        std::vector<Assets::MeshVertex> Vertices;
-        std::vector<Assets::MeshIndex> Indices;
+        std::vector<MeshVertex> Vertices;
+        std::vector<MeshIndex> Indices;
+
         std::vector<ImportedSubmesh> Submeshes;
         std::vector<ImportedMaterial> Materials;
         std::vector<ImportedEmbeddedTexture> EmbeddedTextures;
 
-        Assets::MeshBounds Bounds{};
+        MeshBounds Bounds{};
 
         std::uint32_t ImportedMeshCount = 0;
+
         std::string ImporterName;
         std::string Error;
         std::vector<std::string> Warnings;

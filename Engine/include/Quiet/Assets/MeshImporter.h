@@ -1,12 +1,10 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
-#include <vector>
 
-#include "Renderer/Vulkan/Mesh/MeshImportResult.h"
+#include "Quiet/Assets/MeshImportResult.h"
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Assets
 {
     class MeshImporter
     {
