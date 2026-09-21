@@ -273,6 +273,8 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Log.h
         include/Quiet/Core/UUID.h
 
+        include/Quiet/Assets/MeshData.h
+
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h
         include/Quiet/Project/AssetType.h

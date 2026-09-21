@@ -70,7 +70,7 @@ namespace
 
 namespace Quiet::Renderer::Vulkan
 {
-    VkVertexInputBindingDescription Vertex::GetBindingDescription()
+    VkVertexInputBindingDescription GetStaticMeshVertexBindingDescription()
     {
         VkVertexInputBindingDescription binding{};
         binding.binding = 0;
@@ -79,7 +79,7 @@ namespace Quiet::Renderer::Vulkan
         return binding;
     }
 
-    std::array<VkVertexInputAttributeDescription, 4> Vertex::GetAttributeDescriptions()
+    std::array<VkVertexInputAttributeDescription, 4> GetStaticMeshVertexAttributeDescriptions()
     {
         std::array<VkVertexInputAttributeDescription, 4> attributes{};
 

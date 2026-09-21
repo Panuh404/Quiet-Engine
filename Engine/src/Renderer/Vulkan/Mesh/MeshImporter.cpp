@@ -54,9 +54,7 @@ namespace
         };
     }
 
-    glm::vec3 GetVertexColor(const aiMesh& mesh,
-                             const unsigned int vertexIndex,
-                             const glm::vec3& fallbackPosition)
+    glm::vec3 GetVertexColor(const aiMesh& mesh, const unsigned int vertexIndex, const glm::vec3& fallbackPosition)
     {
         if (mesh.HasVertexColors(0) && mesh.mColors[0])
         {
@@ -113,9 +111,7 @@ namespace
         return {};
     }
 
-    std::string DetectCompressedImageExtension(const std::uint8_t* data,
-                                               const std::size_t size,
-                                               const std::string& hint)
+    std::string DetectCompressedImageExtension(const std::uint8_t* data, const std::size_t size, const std::string& hint)
     {
         if (const std::string ext = NormalizeEmbeddedTextureExtension(hint); !ext.empty())
             return ext;
@@ -141,9 +137,7 @@ namespace
         return {};
     }
 
-
-    void IncludePointInBounds(Quiet::Renderer::Vulkan::MeshBounds& bounds,
-                              const glm::vec3& point)
+    void IncludePointInBounds(Quiet::Assets::MeshBounds& bounds, const glm::vec3& point)
     {
         if (!bounds.Valid)
         {
@@ -162,15 +156,13 @@ namespace
         bounds.Max.z = std::max(bounds.Max.z, point.z);
     }
 
-    bool AppendMesh(const aiMesh& mesh,
-                    const aiMatrix4x4& transform,
-                    Quiet::Renderer::Vulkan::MeshImportResult& result)
+    bool AppendMesh(const aiMesh& mesh, const aiMatrix4x4& transform, Quiet::Renderer::Vulkan::MeshImportResult& result)
     {
         if (!mesh.HasPositions()) return true;
 
         const std::size_t baseVertex = result.Vertices.size();
         const std::size_t baseIndex = result.Indices.size();
-        if (baseVertex + mesh.mNumVertices > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
+        if (baseVertex + mesh.mNumVertices > std::numeric_limits<Quiet::Assets::MeshIndex>::max())
         {
             result.Error = "Imported mesh exceeds uint32 index limit.";
             return false;
@@ -180,7 +172,7 @@ namespace
         for (unsigned int vertexIndex = 0; vertexIndex < mesh.mNumVertices; ++vertexIndex)
         {
             const glm::vec3 transformedPosition = TransformPoint(transform, mesh.mVertices[vertexIndex]);
-            Quiet::Renderer::Vulkan::Vertex vertex{};
+            Quiet::Assets::MeshVertex vertex{};
             vertex.Position = transformedPosition;
             vertex.Color = GetVertexColor(mesh, vertexIndex, transformedPosition);
 
@@ -203,12 +195,12 @@ namespace
             for (unsigned int index = 0; index < face.mNumIndices; ++index)
             {
                 const std::size_t resolvedIndex = baseVertex + face.mIndices[index];
-                if (resolvedIndex > std::numeric_limits<Quiet::Renderer::Vulkan::Index>::max())
+                if (resolvedIndex > std::numeric_limits<Quiet::Assets::MeshIndex>::max())
                 {
                     result.Error = "Imported mesh index exceeds uint32 range.";
                     return false;
                 }
-                result.Indices.push_back(static_cast<Quiet::Renderer::Vulkan::Index>(resolvedIndex));
+                result.Indices.push_back(static_cast<Quiet::Assets::MeshIndex>(resolvedIndex));
             }
         }
 
@@ -233,10 +225,7 @@ namespace
         return true;
     }
 
-    bool TraverseNode(const aiScene& scene,
-                      const aiNode& node,
-                      const aiMatrix4x4& parentTransform,
-                      Quiet::Renderer::Vulkan::MeshImportResult& result)
+    bool TraverseNode(const aiScene& scene, const aiNode& node, const aiMatrix4x4& parentTransform, Quiet::Renderer::Vulkan::MeshImportResult& result)
     {
         const aiMatrix4x4 nodeTransform = parentTransform * node.mTransformation;
 
@@ -349,8 +338,7 @@ namespace
         }
     }
 
-    void ImportEmbeddedTextures(const aiScene& scene,
-                                Quiet::Renderer::Vulkan::MeshImportResult& result)
+    void ImportEmbeddedTextures(const aiScene& scene, Quiet::Renderer::Vulkan::MeshImportResult& result)
     {
         result.EmbeddedTextures.clear();
         if (!scene.HasTextures()) return;

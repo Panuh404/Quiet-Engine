@@ -10,27 +10,21 @@
 
 #include "glm/vec4.hpp"
 #include "glm/vec3.hpp"
-#include "glm/vec2.hpp"
+#include "Quiet/Assets/MeshData.h"
 #include "Quiet/Math/Geometry.h"
 
 namespace Quiet::Renderer::Vulkan
 {
+    using Vertex = Assets::MeshVertex;
+    using Index = Assets::MeshIndex;
+
+    VkVertexInputBindingDescription GetStaticMeshVertexBindingDescription();
+    std::array<VkVertexInputAttributeDescription, 4> GetStaticMeshVertexAttributeDescriptions();
+
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
     class VulkanBuffer;
-
-    struct Vertex
-    {
-        glm::vec3 Position;
-        glm::vec3 Color;
-        glm::vec3 Normal;
-        glm::vec2 TexCoord;
-
-        static VkVertexInputBindingDescription GetBindingDescription();
-        static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDescriptions();
-    };
-    using Index = std::uint32_t;
 
     struct StaticSubmesh
     {

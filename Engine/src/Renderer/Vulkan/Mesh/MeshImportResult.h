@@ -6,17 +6,10 @@
 
 #include <glm/glm.hpp>
 
-#include "Renderer/Vulkan/Mesh/StaticMesh.h"
+#include "Quiet/Assets/MeshData.h"
 
 namespace Quiet::Renderer::Vulkan
 {
-    struct MeshBounds
-    {
-        glm::vec3 Min {0.0f };
-        glm::vec3 Max {0.0f };
-        bool Valid = false;
-    };
-
     struct ImportedSubmesh
     {
         std::string Name;
@@ -52,36 +45,25 @@ namespace Quiet::Renderer::Vulkan
 
         std::vector<std::uint8_t> Bytes;
 
-        [[nodiscard]] bool IsValid() const
-        {
-            return Index >= 0 &&
-                   !Extension.empty() &&
-                   !Bytes.empty();
-        }
+        [[nodiscard]] bool IsValid() const { return Index >= 0 && !Extension.empty() && !Bytes.empty(); }
     };
 
     struct MeshImportResult
     {
-        std::vector<Vertex> Vertices;
-        std::vector<Index> Indices;
+        std::vector<Assets::MeshVertex> Vertices;
+        std::vector<Assets::MeshIndex> Indices;
         std::vector<ImportedSubmesh> Submeshes;
         std::vector<ImportedMaterial> Materials;
         std::vector<ImportedEmbeddedTexture> EmbeddedTextures;
 
-        MeshBounds Bounds{};
+        Assets::MeshBounds Bounds{};
 
         std::uint32_t ImportedMeshCount = 0;
         std::string ImporterName;
         std::string Error;
         std::vector<std::string> Warnings;
 
-        [[nodiscard]] bool HasGeometry() const
-        {
-            return !Vertices.empty() && !Indices.empty();
-        }
-        [[nodiscard]] bool Succeeded() const
-        {
-            return Error.empty() && HasGeometry();
-        }
+        [[nodiscard]] bool HasGeometry() const { return !Vertices.empty() && !Indices.empty(); }
+        [[nodiscard]] bool Succeeded() const { return Error.empty() && HasGeometry(); }
     };
 }

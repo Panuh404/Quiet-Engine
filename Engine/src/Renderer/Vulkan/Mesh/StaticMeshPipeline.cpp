@@ -51,8 +51,8 @@ namespace Quiet::Renderer::Vulkan
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
             throw std::runtime_error("Failed to create static mesh pipeline layout.");
 
-        const auto bindingDescription = Vertex::GetBindingDescription();
-        const auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+        const auto bindingDescription = GetStaticMeshVertexBindingDescription();
+        const auto attributeDescriptions = GetStaticMeshVertexAttributeDescriptions();
 
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
