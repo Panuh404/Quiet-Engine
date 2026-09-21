@@ -209,6 +209,26 @@ FetchContent_Declare(
         GIT_SHALLOW     TRUE
 )
 
+# meshoptimizer
+if(QUIET_BUILD_COOKER)
+    set(MESHOPT_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+    set(MESHOPT_BUILD_GLTFPACK OFF CACHE BOOL "" FORCE)
+    set(MESHOPT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(MESHOPT_WERROR OFF CACHE BOOL "" FORCE)
+    set(MESHOPT_INSTALL OFF CACHE BOOL "" FORCE)
+
+    FetchContent_Declare(
+            meshoptimizer
+            GIT_REPOSITORY  https://github.com/zeux/meshoptimizer.git
+            GIT_TAG         v1.2
+            GIT_SHALLOW     TRUE
+    )
+endif()
+
+if(QUIET_BUILD_COOKER)
+    FetchContent_MakeAvailable(meshoptimizer)
+endif()
+
 FetchContent_MakeAvailable(
         glfw
         spdlog

@@ -3,8 +3,15 @@
 #include <filesystem>
 #include <iostream>
 
+#include <meshoptimizer.h>
+
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectDescriptor.h"
+
+static_assert(
+    MESHOPTIMIZER_VERSION == 1020,
+    "Quiet_Cooker expects meshoptimizer v1.2."
+);
 
 namespace
 {

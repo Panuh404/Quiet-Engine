@@ -8,4 +8,5 @@ target_sources(Quiet_Cooker
 target_link_libraries(Quiet_Cooker
     PRIVATE
         Quiet::Engine
+        meshoptimizer
 )
