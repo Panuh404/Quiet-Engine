@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <meshoptimizer.h>
+#include "QMeshWriter.h"
 
 #include "Quiet/Assets/MeshImporter.h"
 #include "Quiet/Project/AssetRegistry.h"
@@ -383,7 +384,7 @@ namespace
         return true;
     }
 
-    bool OptimizeProjectMeshes(const std::filesystem::path& projectRoot, const Quiet::Project::AssetRegistry& registry)
+    bool OptimizeProjectMeshes(const std::filesystem::path& projectRoot, const std::filesystem::path& outputRoot, const Quiet::Project::AssetRegistry& registry)
     {
         bool success = true;
 
@@ -417,6 +418,17 @@ namespace
                 continue;
             }
 
+            const std::filesystem::path cookedPath = outputRoot / "Content" / "Meshes" / (record.ID + ".qmesh");
+            Quiet::Cooker::QMeshWriteStats writeStats{};
+            std::string writeError;
+
+            if (!Quiet::Cooker::WriteQMesh(cookedPath, mesh, writeStats, writeError))
+            {
+                std::cerr << "Failed to write mesh '" << record.ID << "': " << writeError << '\n';
+                success = false;
+                continue;
+            }
+
             std::cout
                 << "Mesh: " << record.ID << '\n'
                 << "  Vertices:  " << stats.SourceVertices << " -> " << stats.OptimizedVertices << '\n'
@@ -425,8 +437,21 @@ namespace
                 << std::setprecision(3)
                 << "  ACMR:      " << stats.SourceACMR() << " -> " << stats.OptimizedACMR() << '\n'
                 << "  Overfetch: " << stats.SourceOverfetch() << " -> " << stats.OptimizedOverfetch() << '\n'
-                << "  Overdraw:  " << stats.SourceOverdraw() << " -> " << stats.OptimizedOverdraw() << '\n'
+                << "  Overdraw:  " << stats.SourceOverdraw() << " -> " << stats.OptimizedOverdraw() << '\n';
+
+            const std::uint64_t rawGeometryBytes = writeStats.RawVertexBytes + writeStats.RawIndexBytes;
+            const std::uint64_t encodedGeometryBytes = writeStats.EncodedVertexBytes + writeStats.EncodedIndexBytes;
+            const double encodedPercent = rawGeometryBytes > 0
+                ? static_cast<double>(encodedGeometryBytes) / static_cast<double>(rawGeometryBytes) * 100.0
+                : 0.0;
+
+            std::cout
+                << "  QMesh:      " << cookedPath.filename().string() << '\n'
+                << "  Raw data:   " << rawGeometryBytes << " bytes\n"
+                << "  Encoded:    " << encodedGeometryBytes << " bytes (" << encodedPercent << "%)\n"
+                << "  File size:  " << writeStats.FileBytes << " bytes\n"
                 << '\n';
+
     }
 
     return success;
@@ -517,7 +542,7 @@ int main(int argc, char** argv)
 
     std::cout << "\nOptimizing mesh assets...\n\n";
 
-    if (!OptimizeProjectMeshes(projectRoot, assetRegistry))
+    if (!OptimizeProjectMeshes(projectRoot, outputRoot, assetRegistry))
     {
         std::cerr << "Mesh optimization completed with errors.\n";
         return 1;

@@ -276,6 +276,8 @@ target_sources(Quiet_Engine
         include/Quiet/Assets/MeshData.h
         include/Quiet/Assets/MeshImportResult.h
         include/Quiet/Assets/MeshImporter.h
+        include/Quiet/Assets/QAssetFormat.h
+        include/Quiet/Assets/QMeshFormat.h
 
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h
