@@ -5,6 +5,7 @@
 #include <limits>
 #include <type_traits>
 #include <vector>
+#include <mutex>
 
 #include <meshoptimizer.h>
 
@@ -78,12 +79,26 @@ namespace Quiet::Cooker
 
             return vertices;
         }
+
+        void ConfigureMeshoptimizerEncoding()
+        {
+            static std::once_flag configureFlag;
+            std::call_once(
+                configureFlag,
+                []
+                {
+                    meshopt_encodeVertexVersion(1);
+                    meshopt_encodeIndexVersion(1);
+                }
+            );
+        }
     }
 
     bool WriteQMesh(const std::filesystem::path& path, const Assets::MeshImportResult& mesh, QMeshWriteStats& outStats, std::string& outError)
     {
         static_assert(std::endian::native == std::endian::little, "QAsset v1 currently supports little-endian targets only.");
         outStats = {};
+        ConfigureMeshoptimizerEncoding();
 
         if (!mesh.Succeeded())
         {

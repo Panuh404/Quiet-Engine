@@ -16,6 +16,7 @@
 #include "Quiet/Assets/MeshImporter.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectDescriptor.h"
+#include "Quiet/Assets/QMeshReader.h"
 
 static_assert(
     MESHOPTIMIZER_VERSION == 1020,
@@ -176,6 +177,114 @@ namespace
     void PrintUsage(const char* executable)
     {
         std::cerr << "Usage:\n" << "  " << executable << " <project.quiet> <output-directory>\n";
+    }
+
+    bool SameVertex(const Quiet::Assets::MeshVertex& lhs, const Quiet::Assets::MeshVertex& rhs)
+    {
+        return
+            lhs.Position.x == rhs.Position.x &&
+            lhs.Position.y == rhs.Position.y &&
+            lhs.Position.z == rhs.Position.z &&
+
+            lhs.Color.x == rhs.Color.x &&
+            lhs.Color.y == rhs.Color.y &&
+            lhs.Color.z == rhs.Color.z &&
+
+            lhs.Normal.x == rhs.Normal.x &&
+            lhs.Normal.y == rhs.Normal.y &&
+            lhs.Normal.z == rhs.Normal.z &&
+
+            lhs.TexCoord.x == rhs.TexCoord.x &&
+            lhs.TexCoord.y == rhs.TexCoord.y;
+    }
+
+    bool SameTriangleRotation(
+        const Quiet::Assets::MeshIndex a0,
+        const Quiet::Assets::MeshIndex a1,
+        const Quiet::Assets::MeshIndex a2,
+        const Quiet::Assets::MeshIndex b0,
+        const Quiet::Assets::MeshIndex b1,
+        const Quiet::Assets::MeshIndex b2)
+    {
+        return
+            (a0 == b0 && a1 == b1 && a2 == b2) ||
+            (a0 == b1 && a1 == b2 && a2 == b0) ||
+            (a0 == b2 && a1 == b0 && a2 == b1);
+    }
+
+    bool ValidateQMeshRoundTrip(const std::filesystem::path& path, const Quiet::Assets::MeshImportResult& source, std::string& outError)
+    {
+        Quiet::Assets::QMeshData decoded{};
+        if (!Quiet::Assets::QMeshReader::LoadFromFile(path, decoded, outError)) return false;
+        if (decoded.Vertices.size() != source.Vertices.size() ||
+            decoded.Indices.size() != source.Indices.size() ||
+            decoded.Submeshes.size() != source.Submeshes.size())
+        {
+            outError = "QMesh round-trip changed geometry counts.";
+            return false;
+        }
+
+        for (std::size_t i = 0; i < source.Vertices.size(); ++i)
+        {
+            if (!SameVertex(source.Vertices[i], decoded.Vertices[i]))
+            {
+                outError = "QMesh round-trip changed vertex data.";
+                return false;
+            }
+        }
+
+        for (std::size_t i = 0; i < source.Indices.size(); i += 3)
+        {
+            if (!SameTriangleRotation(
+                    source.Indices[i + 0],
+                    source.Indices[i + 1],
+                    source.Indices[i + 2],
+                    decoded.Indices[i + 0],
+                    decoded.Indices[i + 1],
+                    decoded.Indices[i + 2]))
+            {
+                outError = "QMesh round-trip changed triangle topology.";
+                return false;
+            }
+        }
+
+        for (std::size_t i = 0; i < source.Submeshes.size(); ++i)
+        {
+            const auto& sourceSubmesh = source.Submeshes[i];
+            const auto& decodedSubmesh = decoded.Submeshes[i];
+
+            if (sourceSubmesh.BaseVertex != decodedSubmesh.BaseVertex ||
+                sourceSubmesh.VertexCount != decodedSubmesh.VertexCount ||
+                sourceSubmesh.BaseIndex != decodedSubmesh.BaseIndex ||
+                sourceSubmesh.IndexCount != decodedSubmesh.IndexCount ||
+                sourceSubmesh.MaterialIndex != decodedSubmesh.MaterialSlot)
+            {
+                outError = "QMesh round-trip changed submesh metadata.";
+                return false;
+            }
+        }
+
+        if (source.Bounds.Valid != decoded.Bounds.Valid)
+        {
+            outError = "QMesh round-trip changed bounds validity.";
+            return false;
+        }
+
+        if (source.Bounds.Valid)
+        {
+            if (source.Bounds.Min.x != decoded.Bounds.Min.x ||
+                source.Bounds.Min.y != decoded.Bounds.Min.y ||
+                source.Bounds.Min.z != decoded.Bounds.Min.z ||
+                source.Bounds.Max.x != decoded.Bounds.Max.x ||
+                source.Bounds.Max.y != decoded.Bounds.Max.y ||
+                source.Bounds.Max.z != decoded.Bounds.Max.z)
+            {
+                outError = "QMesh round-trip changed mesh bounds.";
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void AccumulateMeshEfficiency(const std::vector<Quiet::Assets::MeshVertex>& vertices, const std::vector<unsigned int>& indices, MeshOptimizationStats& stats, const bool optimized)
@@ -429,6 +538,14 @@ namespace
                 continue;
             }
 
+            std::string validationError;
+            if (!ValidateQMeshRoundTrip(cookedPath, mesh, validationError))
+            {
+                std::cerr << "Failed to validate mesh '" << record.ID << "': " << validationError << '\n';
+                success = false;
+                continue;
+            }
+
             std::cout
                 << "Mesh: " << record.ID << '\n'
                 << "  Vertices:  " << stats.SourceVertices << " -> " << stats.OptimizedVertices << '\n'
@@ -439,23 +556,33 @@ namespace
                 << "  Overfetch: " << stats.SourceOverfetch() << " -> " << stats.OptimizedOverfetch() << '\n'
                 << "  Overdraw:  " << stats.SourceOverdraw() << " -> " << stats.OptimizedOverdraw() << '\n';
 
+
             const std::uint64_t rawGeometryBytes = writeStats.RawVertexBytes + writeStats.RawIndexBytes;
             const std::uint64_t encodedGeometryBytes = writeStats.EncodedVertexBytes + writeStats.EncodedIndexBytes;
             const double encodedPercent = rawGeometryBytes > 0
                 ? static_cast<double>(encodedGeometryBytes) / static_cast<double>(rawGeometryBytes) * 100.0
                 : 0.0;
 
+            const auto percentage = [](const std::uint64_t encoded, const std::uint64_t raw)
+            {
+                return raw > 0 ? static_cast<double>(encoded) / static_cast<double>(raw) * 100.0 : 0.0;
+            };
+
             std::cout
                 << "  QMesh:      " << cookedPath.filename().string() << '\n'
+                << "  Vertex data: " << writeStats.RawVertexBytes << " -> " << writeStats.EncodedVertexBytes << " bytes (" << percentage(writeStats.EncodedVertexBytes, writeStats.RawVertexBytes) << "%)\n"
+                << "  Index data:  " << writeStats.RawIndexBytes << " -> " << writeStats.EncodedIndexBytes << " bytes (" << percentage(writeStats.EncodedIndexBytes, writeStats.RawIndexBytes) << "%)\n"
                 << "  Raw data:   " << rawGeometryBytes << " bytes\n"
                 << "  Encoded:    " << encodedGeometryBytes << " bytes (" << encodedPercent << "%)\n"
                 << "  File size:  " << writeStats.FileBytes << " bytes\n"
+                << "  Round-trip: OK\n"
                 << '\n';
 
     }
 
     return success;
 }
+
 }
 
 int main(int argc, char** argv)

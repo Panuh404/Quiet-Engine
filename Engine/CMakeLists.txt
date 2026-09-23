@@ -10,6 +10,7 @@ target_sources(Quiet_Engine
 
         # Assets
         src/Assets/MeshImporter.cpp
+        src/Assets/QMeshReader.cpp
 
         # Platform
         src/Platform/Window.cpp
@@ -278,6 +279,7 @@ target_sources(Quiet_Engine
         include/Quiet/Assets/MeshImporter.h
         include/Quiet/Assets/QAssetFormat.h
         include/Quiet/Assets/QMeshFormat.h
+        include/Quiet/Assets/QMeshReader.h
 
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h
@@ -347,6 +349,7 @@ target_link_libraries(Quiet_Engine
         Jolt
         Quiet::Lua
         sol2
+        meshoptimizer
 )
 
 if (MSVC)
