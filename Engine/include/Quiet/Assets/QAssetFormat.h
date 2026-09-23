@@ -15,4 +15,6 @@ namespace Quiet::Assets
     };
 
     inline constexpr std::uint32_t QAssetFlagNone = 0;
+    inline constexpr std::uint32_t QAssetFlagZstdCompressed = 1u << 0u;
+    inline constexpr std::uint32_t QAssetKnownFlags = QAssetFlagZstdCompressed;
 }

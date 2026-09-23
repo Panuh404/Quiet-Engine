@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <vector>
 #include <mutex>
+#include <cstdint>
+#include <zstd.h>
 
 #include <meshoptimizer.h>
 
@@ -24,15 +26,19 @@ namespace Quiet::Cooker
             sizeof(std::uint32_t) +
             sizeof(std::uint64_t);
 
-        constexpr std::uint64_t QMeshHeaderSize =
-            // Vertex format, stride, counts and bounds-valid.
-            sizeof(std::uint32_t) * 6u +
-            // Bounds min/max.
-            sizeof(float) * 6u +
-            // Encoded stream sizes.
-            sizeof(std::uint64_t) * 2u;
+        template <typename T> void AppendValue(std::vector<std::uint8_t>& bytes, const T& value)
+        {
+            static_assert(std::is_trivially_copyable_v<T>);
+            const auto* first = reinterpret_cast<const std::uint8_t*>(&value);
+            bytes.insert(bytes.end(), first, first + sizeof(T));
+        }
 
-        constexpr std::uint64_t QMeshSubmeshSize = sizeof(std::uint32_t) * 5u;
+        void AppendBytes(std::vector<std::uint8_t>& bytes, const void* data, const std::size_t byteCount)
+        {
+            if (byteCount == 0) return;
+            const auto* first = static_cast<const std::uint8_t*>(data);
+            bytes.insert(bytes.end(), first, first + byteCount);
+        }
 
         template <typename T>
         bool WriteValue(std::ofstream& output, const T& value)
@@ -170,20 +176,91 @@ namespace Quiet::Cooker
 
         encodedIndices.resize(encodedIndexSize);
 
-        const std::uint64_t submeshBytes = mesh.Submeshes.size() * QMeshSubmeshSize;
-        const std::uint64_t payloadSize = QMeshHeaderSize + submeshBytes + encodedVertices.size() + encodedIndices.size();
+        // Build the uncompressed QMesh payload.
+        std::vector<std::uint8_t> payload;
 
-        std::error_code ec;
+        payload.reserve(
+            128u +
+            mesh.Submeshes.size() * sizeof(Assets::QMeshSubmeshV1) +
+            encodedVertices.size() +
+            encodedIndices.size()
+        );
 
-        if (!path.parent_path().empty())
+        const std::uint32_t vertexFormat = static_cast<std::uint32_t>(Assets::QMeshVertexFormat::Float32PositionColorNormalTexCoord);
+        const std::uint32_t vertexStride = sizeof(Assets::QMeshVertexV1);
+        const std::uint32_t vertexCount = static_cast<std::uint32_t>(diskVertices.size());
+        const std::uint32_t indexCount = static_cast<std::uint32_t>(diskIndices.size());
+        const std::uint32_t submeshCount = static_cast<std::uint32_t>(mesh.Submeshes.size());
+        const std::uint32_t boundsValid = mesh.Bounds.Valid ? 1u : 0u;
+
+        AppendValue(payload, vertexFormat);
+        AppendValue(payload, vertexStride);
+        AppendValue(payload, vertexCount);
+        AppendValue(payload, indexCount);
+        AppendValue(payload, submeshCount);
+        AppendValue(payload, boundsValid);
+
+        const float bounds[6]
         {
-            std::filesystem::create_directories(path.parent_path(), ec);
-            if (ec)
-            {
-                outError = "Failed to create QMesh output directory: " + ec.message();
-                return false;
-            }
+            mesh.Bounds.Valid ? mesh.Bounds.Min.x : 0.0f,
+            mesh.Bounds.Valid ? mesh.Bounds.Min.y : 0.0f,
+            mesh.Bounds.Valid ? mesh.Bounds.Min.z : 0.0f,
+
+            mesh.Bounds.Valid ? mesh.Bounds.Max.x : 0.0f,
+            mesh.Bounds.Valid ? mesh.Bounds.Max.y : 0.0f,
+            mesh.Bounds.Valid ? mesh.Bounds.Max.z : 0.0f
+        };
+
+        AppendBytes(payload, bounds, sizeof(bounds));
+
+        const std::uint64_t vertexStreamSize = encodedVertices.size();
+        const std::uint64_t indexStreamSize = encodedIndices.size();
+
+        AppendValue(payload, vertexStreamSize);
+        AppendValue(payload, indexStreamSize);
+
+        for (const Assets::ImportedSubmesh& submesh : mesh.Submeshes)
+        {
+            AppendValue(payload, submesh.BaseVertex);
+            AppendValue(payload, submesh.VertexCount);
+            AppendValue(payload, submesh.BaseIndex);
+            AppendValue(payload, submesh.IndexCount);
+            AppendValue(payload, submesh.MaterialIndex);
         }
+
+        AppendBytes(payload, encodedVertices.data(), encodedVertices.size());
+        AppendBytes(payload, encodedIndices.data(), encodedIndices.size());
+
+        // Compress the QAsset payload with Zstandard.
+        const std::size_t compressionBound = ZSTD_compressBound(payload.size());
+        if (ZSTD_isError(compressionBound))
+        {
+            outError = std::string("Zstandard failed to calculate compression bound: ") + ZSTD_getErrorName(compressionBound);
+            return false;
+        }
+
+        std::vector<std::uint8_t> compressedPayload(compressionBound);
+        const std::size_t compressedSize =
+            ZSTD_compress(
+                compressedPayload.data(),
+                compressedPayload.size(),
+                payload.data(),
+                payload.size(),
+                ZSTD_CLEVEL_DEFAULT
+            );
+
+        if (ZSTD_isError(compressedSize))
+        {
+            outError = std::string("Zstandard failed to compress QMesh payload: ") + ZSTD_getErrorName(compressedSize);
+            return false;
+        }
+
+        compressedPayload.resize(compressedSize);
+        const bool useZstd = compressedPayload.size() < payload.size();
+
+        const std::vector<std::uint8_t>& storedPayload = useZstd ? compressedPayload : payload;
+        const std::uint32_t flags = useZstd ? Assets::QAssetFlagZstdCompressed : Assets::QAssetFlagNone;
+        const std::uint64_t payloadSize = storedPayload.size();
 
         std::ofstream output(path, std::ios::binary | std::ios::trunc);
         if (!output.is_open())
@@ -202,7 +279,6 @@ namespace Quiet::Cooker
         const std::uint16_t containerVersion = Assets::CurrentQAssetContainerVersion;
         const std::uint16_t assetType = static_cast<std::uint16_t>(Assets::QAssetPayloadType::Mesh);
         const std::uint32_t payloadVersion = Assets::CurrentQMeshPayloadVersion;
-        const std::uint32_t flags = Assets::QAssetFlagNone;
 
         if (!WriteValue(output, containerVersion) ||
             !WriteValue(output, assetType) ||
@@ -215,86 +291,9 @@ namespace Quiet::Cooker
         }
 
         // QMesh payload header
-        const std::uint32_t vertexFormat = static_cast<std::uint32_t>(Assets::QMeshVertexFormat::Float32PositionColorNormalTexCoord);
-        const std::uint32_t vertexStride = sizeof(Assets::QMeshVertexV1);
-        const std::uint32_t vertexCount = static_cast<std::uint32_t>(diskVertices.size());
-        const std::uint32_t indexCount = static_cast<std::uint32_t>(diskIndices.size());
-        const std::uint32_t submeshCount = static_cast<std::uint32_t>(mesh.Submeshes.size());
-        const std::uint32_t boundsValid = mesh.Bounds.Valid ? 1u : 0u;
-
-        if (!WriteValue(output, vertexFormat) ||
-            !WriteValue(output, vertexStride) ||
-            !WriteValue(output, vertexCount) ||
-            !WriteValue(output, indexCount) ||
-            !WriteValue(output, submeshCount) ||
-            !WriteValue(output, boundsValid))
+        if (!WriteBytes(output, storedPayload.data(), storedPayload.size()))
         {
-            outError = "Failed to write QMesh geometry header.";
-            return false;
-        }
-
-        const float bounds[6] =
-        {
-            mesh.Bounds.Valid ? mesh.Bounds.Min.x : 0.0f,
-            mesh.Bounds.Valid ? mesh.Bounds.Min.y : 0.0f,
-            mesh.Bounds.Valid ? mesh.Bounds.Min.z : 0.0f,
-
-            mesh.Bounds.Valid ? mesh.Bounds.Max.x : 0.0f,
-            mesh.Bounds.Valid ? mesh.Bounds.Max.y : 0.0f,
-            mesh.Bounds.Valid ? mesh.Bounds.Max.z : 0.0f
-        };
-
-        if (!WriteBytes(output, bounds, sizeof(bounds)))
-        {
-            outError = "Failed to write QMesh bounds.";
-            return false;
-        }
-
-        const std::uint64_t vertexStreamSize = encodedVertices.size();
-        const std::uint64_t indexStreamSize = encodedIndices.size();
-
-        if (!WriteValue(output, vertexStreamSize) || !WriteValue(output, indexStreamSize))
-        {
-            outError = "Failed to write QMesh stream sizes.";
-            return false;
-        }
-
-        // Submeshes
-        for (const Assets::ImportedSubmesh& submesh : mesh.Submeshes)
-        {
-            const Assets::QMeshSubmeshV1 diskSubmesh
-            {
-                submesh.BaseVertex,
-                submesh.VertexCount,
-                submesh.BaseIndex,
-                submesh.IndexCount,
-                submesh.MaterialIndex
-            };
-
-            if (!WriteValue(output, diskSubmesh.BaseVertex) ||
-                !WriteValue(output, diskSubmesh.VertexCount) ||
-                !WriteValue(output, diskSubmesh.BaseIndex) ||
-                !WriteValue(output, diskSubmesh.IndexCount) ||
-                !WriteValue(output, diskSubmesh.MaterialSlot))
-            {
-                outError = "Failed to write QMesh submesh table.";
-                return false;
-            }
-        }
-
-        // Encoded streams
-        if (!WriteBytes(output, encodedVertices.data(), encodedVertices.size()) ||
-            !WriteBytes(output, encodedIndices.data(), encodedIndices.size()))
-        {
-            outError = "Failed to write QMesh encoded streams.";
-            return false;
-        }
-
-        output.flush();
-
-        if (!output.good())
-        {
-            outError = "Failed to finalize QMesh file.";
+            outError = "Failed to write QMesh payload.";
             return false;
         }
 
@@ -302,7 +301,10 @@ namespace Quiet::Cooker
         outStats.EncodedVertexBytes = encodedVertices.size();
         outStats.RawIndexBytes = diskIndices.size() * sizeof(unsigned int);
         outStats.EncodedIndexBytes = encodedIndices.size();
-        outStats.FileBytes = QAssetHeaderSize + payloadSize;
+        outStats.UncompressedPayloadBytes = payload.size();
+        outStats.StoredPayloadBytes = storedPayload.size();
+        outStats.ZstdCompressed = useZstd;
+        outStats.FileBytes = QAssetHeaderSize + storedPayload.size();
         return true;
     }
 }

@@ -568,15 +568,20 @@ namespace
                 return raw > 0 ? static_cast<double>(encoded) / static_cast<double>(raw) * 100.0 : 0.0;
             };
 
+            const double payloadPercent = writeStats.UncompressedPayloadBytes > 0
+                ? static_cast<double>(writeStats.StoredPayloadBytes) / static_cast<double>(writeStats.UncompressedPayloadBytes) * 100.0
+                : 0.0;
+
             std::cout
                 << "  QMesh:      " << cookedPath.filename().string() << '\n'
                 << "  Vertex data: " << writeStats.RawVertexBytes << " -> " << writeStats.EncodedVertexBytes << " bytes (" << percentage(writeStats.EncodedVertexBytes, writeStats.RawVertexBytes) << "%)\n"
                 << "  Index data:  " << writeStats.RawIndexBytes << " -> " << writeStats.EncodedIndexBytes << " bytes (" << percentage(writeStats.EncodedIndexBytes, writeStats.RawIndexBytes) << "%)\n"
                 << "  Raw data:   " << rawGeometryBytes << " bytes\n"
                 << "  Encoded:    " << encodedGeometryBytes << " bytes (" << encodedPercent << "%)\n"
+                << "  Payload:    " << writeStats.UncompressedPayloadBytes << " -> " << writeStats.StoredPayloadBytes << " bytes (" << payloadPercent << "%)\n"
+                << "  Zstandard:  " << (writeStats.ZstdCompressed ? "enabled" : "skipped (no size benefit)") << '\n'
                 << "  File size:  " << writeStats.FileBytes << " bytes\n"
-                << "  Round-trip: OK\n"
-                << '\n';
+                << "  Round-trip: OK\n\n";
 
     }
 
@@ -674,7 +679,6 @@ int main(int argc, char** argv)
         std::cerr << "Mesh optimization completed with errors.\n";
         return 1;
     }
-
     std::cout << "Mesh optimization completed successfully.\n";
     return 0;
 }

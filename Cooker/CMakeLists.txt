@@ -11,4 +11,5 @@ target_link_libraries(Quiet_Cooker
     PRIVATE
         Quiet::Engine
         meshoptimizer
+        libzstd_static
 )

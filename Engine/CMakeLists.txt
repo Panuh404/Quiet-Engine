@@ -322,6 +322,7 @@ target_include_directories(Quiet_Engine
         ${imguizmo_SOURCE_DIR}/src
         ${imgui_file_dialog_SOURCE_DIR}
         ${stb_SOURCE_DIR}
+        ${zstd_SOURCE_DIR}/lib
 )
 
 target_compile_features(Quiet_Engine
@@ -350,6 +351,7 @@ target_link_libraries(Quiet_Engine
         Quiet::Lua
         sol2
         meshoptimizer
+        libzstd_static
 )
 
 if (MSVC)

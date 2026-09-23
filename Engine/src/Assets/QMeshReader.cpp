@@ -10,8 +10,10 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <span>
 
 #include <meshoptimizer.h>
+#include <zstd.h>
 
 #include "Quiet/Assets/QAssetFormat.h"
 
@@ -20,7 +22,7 @@ namespace Quiet::Assets
     namespace
     {
         template <typename T>
-        bool ReadValue(const std::vector<std::uint8_t>& bytes, std::size_t& offset, T& outValue)
+        bool ReadValue(const std::span<const std::uint8_t> bytes, std::size_t& offset, T& outValue)
         {
             static_assert(std::is_trivially_copyable_v<T>);
             if (offset > bytes.size() || sizeof(T) > bytes.size() - offset) return false;
@@ -30,7 +32,7 @@ namespace Quiet::Assets
             return true;
         }
 
-        bool ReadBytes(const std::vector<std::uint8_t>& bytes, std::size_t& offset, void* destination, const std::size_t byteCount)
+        bool ReadBytes(const std::span<const std::uint8_t> bytes, std::size_t& offset, void* destination, const std::size_t byteCount)
         {
             if (offset > bytes.size() || byteCount > bytes.size() - offset) return false;
             if (byteCount > 0)
@@ -78,11 +80,11 @@ namespace Quiet::Assets
             return false;
         }
 
-        std::size_t offset = 0;
+        std::size_t fileOffset = 0;
 
         // QAsset header
         std::array<char, 4> magic{};
-        if (!ReadBytes(bytes, offset, magic.data(), magic.size()))
+        if (!ReadBytes(bytes, fileOffset, magic.data(), magic.size()))
         {
             outError = "QMesh is missing its QAsset header.";
             return false;
@@ -102,11 +104,11 @@ namespace Quiet::Assets
 
         std::uint64_t payloadSize = 0;
 
-        if (!ReadValue(bytes, offset, containerVersion) ||
-            !ReadValue(bytes, offset, assetType) ||
-            !ReadValue(bytes, offset, payloadVersion) ||
-            !ReadValue(bytes, offset, flags) ||
-            !ReadValue(bytes, offset, payloadSize))
+        if (!ReadValue(bytes, fileOffset, containerVersion) ||
+            !ReadValue(bytes, fileOffset, assetType) ||
+            !ReadValue(bytes, fileOffset, payloadVersion) ||
+            !ReadValue(bytes, fileOffset, flags) ||
+            !ReadValue(bytes, fileOffset, payloadSize))
         {
             outError = "Invalid QAsset header.";
             return false;
@@ -130,16 +132,78 @@ namespace Quiet::Assets
             return false;
         }
 
-        if (flags != QAssetFlagNone)
+        if ((flags & ~QAssetKnownFlags) != 0)
         {
             outError = "QMesh contains unsupported QAsset flags.";
             return false;
         }
 
-        if (payloadSize != bytes.size() - offset)
+        if (payloadSize != bytes.size() - fileOffset)
         {
             outError = "QMesh payload size does not match file size.";
             return false;
+        }
+
+        if (payloadSize == 0)
+        {
+            outError = "QMesh contains an empty payload.";
+            return false;
+        }
+
+        const std::span<const std::uint8_t> storedPayload
+        {
+            bytes.data() + fileOffset, static_cast<std::size_t>(payloadSize)
+        };
+
+        std::vector<std::uint8_t> decompressedPayload;
+        std::span<const std::uint8_t> payload = storedPayload;
+
+        if ((flags & QAssetFlagZstdCompressed) != 0)
+        {
+            const unsigned long long decodedSize = ZSTD_getFrameContentSize(storedPayload.data(), storedPayload.size());
+
+            if (decodedSize == ZSTD_CONTENTSIZE_ERROR)
+            {
+                outError = "QMesh contains an invalid Zstandard frame.";
+                return false;
+            }
+
+            if (decodedSize == ZSTD_CONTENTSIZE_UNKNOWN)
+            {
+                outError = "QMesh Zstandard payload does not contain its decoded size.";
+                return false;
+            }
+
+            constexpr std::uint64_t MaxDecodedQMeshPayload = 2ull * 1024ull * 1024ull * 1024ull;
+            if (decodedSize == 0 || decodedSize > MaxDecodedQMeshPayload || decodedSize > std::numeric_limits<std::size_t>::max())
+            {
+                outError = "QMesh decoded payload size is invalid.";
+                return false;
+            }
+
+            decompressedPayload.resize(static_cast<std::size_t>(decodedSize));
+
+            const std::size_t decompressedSize =
+                ZSTD_decompress(
+                    decompressedPayload.data(),
+                    decompressedPayload.size(),
+                    storedPayload.data(),
+                    storedPayload.size()
+                );
+
+            if (ZSTD_isError(decompressedSize))
+            {
+                outError = std::string("Failed to decompress QMesh payload: ") + ZSTD_getErrorName(decompressedSize);
+                return false;
+            }
+
+            if (decompressedSize != decompressedPayload.size())
+            {
+                outError = "QMesh decompressed payload size does not match its frame.";
+                return false;
+            }
+
+            payload = decompressedPayload;
         }
 
         // QMesh header
@@ -151,13 +215,14 @@ namespace Quiet::Assets
         std::uint32_t submeshCount = 0;
 
         std::uint32_t boundsValid = 0;
+        std::size_t payloadOffset = 0;
 
-        if (!ReadValue(bytes, offset, vertexFormat) ||
-            !ReadValue(bytes, offset, vertexStride) ||
-            !ReadValue(bytes, offset, vertexCount) ||
-            !ReadValue(bytes, offset, indexCount) ||
-            !ReadValue(bytes, offset, submeshCount) ||
-            !ReadValue(bytes, offset, boundsValid))
+        if (!ReadValue(payload, payloadOffset, vertexFormat) ||
+            !ReadValue(payload, payloadOffset, vertexStride) ||
+            !ReadValue(payload, payloadOffset, vertexCount) ||
+            !ReadValue(payload, payloadOffset, indexCount) ||
+            !ReadValue(payload, payloadOffset, submeshCount) ||
+            !ReadValue(payload, payloadOffset, boundsValid))
         {
             outError = "Invalid QMesh geometry header.";
             return false;
@@ -195,7 +260,7 @@ namespace Quiet::Assets
 
         std::array<float, 6> bounds{};
 
-        if (!ReadBytes(bytes, offset, bounds.data(), sizeof(bounds)))
+        if (!ReadBytes(payload, payloadOffset, bounds.data(), sizeof(bounds)))
         {
             outError = "Invalid QMesh bounds.";
             return false;
@@ -204,8 +269,8 @@ namespace Quiet::Assets
         std::uint64_t vertexStreamSize = 0;
         std::uint64_t indexStreamSize = 0;
 
-        if (!ReadValue(bytes, offset, vertexStreamSize) ||
-            !ReadValue(bytes, offset, indexStreamSize))
+        if (!ReadValue(payload, payloadOffset, vertexStreamSize) ||
+            !ReadValue(payload, payloadOffset, indexStreamSize))
         {
             outError = "Invalid QMesh stream information.";
             return false;
@@ -219,7 +284,7 @@ namespace Quiet::Assets
 
         // Submeshes
         constexpr std::size_t submeshRecordSize = sizeof(std::uint32_t) * 5;
-        if (submeshCount > (bytes.size() - offset) / submeshRecordSize)
+        if (submeshCount > (payload.size() - payloadOffset) / submeshRecordSize)
         {
             outError = "QMesh submesh table exceeds file size.";
             return false;
@@ -231,11 +296,11 @@ namespace Quiet::Assets
         for (std::uint32_t i = 0; i < submeshCount; ++i)
         {
             QMeshSubmeshV1 submesh{};
-            if (!ReadValue(bytes, offset, submesh.BaseVertex) ||
-                !ReadValue(bytes, offset, submesh.VertexCount) ||
-                !ReadValue(bytes, offset, submesh.BaseIndex) ||
-                !ReadValue(bytes, offset, submesh.IndexCount) ||
-                !ReadValue(bytes, offset, submesh.MaterialSlot))
+            if (!ReadValue(payload, payloadOffset, submesh.BaseVertex) ||
+                !ReadValue(payload, payloadOffset, submesh.VertexCount) ||
+                !ReadValue(payload, payloadOffset, submesh.BaseIndex) ||
+                !ReadValue(payload, payloadOffset, submesh.IndexCount) ||
+                !ReadValue(payload, payloadOffset, submesh.MaterialSlot))
             {
                 outError = "Invalid QMesh submesh table.";
                 return false;
@@ -245,7 +310,7 @@ namespace Quiet::Assets
         }
 
         // Encoded streams
-        const std::uint64_t remainingBytes = bytes.size() - offset;
+        const std::uint64_t remainingBytes = payload.size() - payloadOffset;
 
         if (vertexStreamSize > remainingBytes || indexStreamSize > remainingBytes - vertexStreamSize)
         {
@@ -259,10 +324,8 @@ namespace Quiet::Assets
             return false;
         }
 
-        const auto* encodedVertices = bytes.data() + offset;
-        offset += vertexStreamSize;
-
-        const auto* encodedIndices = bytes.data() + offset;
+        const auto* encodedVertices = payload.data() + payloadOffset;
+        const auto* encodedIndices = encodedVertices + static_cast<std::size_t>(vertexStreamSize);
 
         if (meshopt_decodeVertexVersion(encodedVertices, static_cast<std::size_t>(vertexStreamSize)) != 1)
         {
