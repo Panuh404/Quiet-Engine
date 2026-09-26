@@ -15,9 +15,10 @@
 #include "QMeshWriter.h"
 
 #include "Quiet/Assets/MeshImporter.h"
+#include "Quiet/Assets/QMeshReader.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectDescriptor.h"
-#include "Quiet/Assets/QMeshReader.h"
+#include "Quiet/Project/RuntimeManifest.h"
 
 static_assert(
     MESHOPTIMIZER_VERSION == 1020,
@@ -541,7 +542,11 @@ namespace
         return true;
     }
 
-    bool OptimizeProjectMeshes(const std::filesystem::path& projectRoot, const std::filesystem::path& outputRoot, const Quiet::Project::AssetRegistry& registry)
+    bool OptimizeProjectMeshes(
+        const std::filesystem::path& projectRoot,
+        const std::filesystem::path& outputRoot,
+        const Quiet::Project::AssetRegistry& registry,
+        std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
     {
         bool success = true;
 
@@ -575,7 +580,8 @@ namespace
                 continue;
             }
 
-            const std::filesystem::path cookedPath = outputRoot / "Content" / "Meshes" / (record.ID + ".qmesh");
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Meshes" / (record.ID + ".qmesh");
+            const std::filesystem::path cookedPath = outputRoot / runtimePath;
             Quiet::Cooker::QMeshWriteStats writeStats{};
             std::string writeError;
 
@@ -595,6 +601,12 @@ namespace
                 success = false;
                 continue;
             }
+
+            Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+            runtimeRecord.ID = record.ID;
+            runtimeRecord.Type = Quiet::Project::AssetType::Mesh;
+            runtimeRecord.Path = runtimePath.generic_string();
+            outRuntimeAssets.push_back(std::move(runtimeRecord));
 
             std::cout
                 << "Mesh: " << record.ID << '\n'
@@ -642,11 +654,9 @@ namespace
             << "    Normal max error:   " << quantizationStats.MaxNormalAngleDegrees << " deg\n"
             << "    Color max error:    " << quantizationStats.MaxColorError << '\n'
             << "    UV max error:       " << quantizationStats.MaxTexCoordError << "\n\n";
-
+        }
+        return success;
     }
-
-    return success;
-}
 
 }
 
@@ -734,11 +744,49 @@ int main(int argc, char** argv)
 
     std::cout << "\nOptimizing mesh assets...\n\n";
 
-    if (!OptimizeProjectMeshes(projectRoot, outputRoot, assetRegistry))
+    std::vector<Project::RuntimeAssetRecord> runtimeAssets;
+    if (!OptimizeProjectMeshes(projectRoot, outputRoot, assetRegistry, runtimeAssets))
     {
         std::cerr << "Mesh optimization completed with errors.\n";
         return 1;
     }
-    std::cout << "Mesh optimization completed successfully.\n";
+
+    const fs::path runtimeScenePath = fs::path("Scenes") / fs::path(descriptor.StartupScene);
+    const fs::path cookedScenePath = outputRoot / runtimeScenePath;
+
+    fs::create_directories(cookedScenePath.parent_path(), ec);
+    if (ec)
+    {
+        std::cerr << "Failed to prepare startup scene output directory: " << ec.message() << '\n';
+        return 1;
+    }
+
+    fs::copy_file(startupScenePath, cookedScenePath, fs::copy_options::overwrite_existing, ec);
+    if (ec)
+    {
+        std::cerr << "Failed to copy startup scene: " << ec.message() << '\n';
+        return 1;
+    }
+
+    Project::RuntimeManifest runtimeManifest{};
+    runtimeManifest.ProjectName = descriptor.Name;
+    runtimeManifest.StartupScene = runtimeScenePath.generic_string();
+    runtimeManifest.Assets = std::move(runtimeAssets);
+
+    const fs::path runtimeManifestPath = outputRoot / "RuntimeManifest.json";
+    if (!Project::RuntimeManifestIO::SaveToFile(runtimeManifestPath, runtimeManifest))
+    {
+        std::cerr << "Failed to write runtime manifest: " << runtimeManifestPath << '\n';
+        return 1;
+    }
+
+    std::cout
+    << '\n'
+    << "Runtime package metadata:\n"
+    << "  Startup scene: " << runtimeManifest.StartupScene << '\n'
+    << "  Runtime assets: " << runtimeManifest.Assets.size() << '\n'
+    << "  Manifest:      " << runtimeManifestPath << '\n'
+    << '\n'
+    << "Mesh optimization completed successfully.\n";
     return 0;
 }
