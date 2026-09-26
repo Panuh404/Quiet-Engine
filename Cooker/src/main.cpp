@@ -9,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cmath>
 
 #include <meshoptimizer.h>
 #include "QMeshWriter.h"
@@ -106,6 +107,14 @@ namespace
         }
     };
 
+    struct QMeshQuantizationStats
+    {
+        float MaxPositionError = 0.0f;
+        float MaxNormalAngleDegrees = 0.0f;
+        float MaxColorError = 0.0f;
+        float MaxTexCoordError = 0.0f;
+    };
+
     AssetCounts CountProjectAssets(const Quiet::Project::AssetRegistry& registry)
     {
         AssetCounts counts{};
@@ -179,25 +188,6 @@ namespace
         std::cerr << "Usage:\n" << "  " << executable << " <project.quiet> <output-directory>\n";
     }
 
-    bool SameVertex(const Quiet::Assets::MeshVertex& lhs, const Quiet::Assets::MeshVertex& rhs)
-    {
-        return
-            lhs.Position.x == rhs.Position.x &&
-            lhs.Position.y == rhs.Position.y &&
-            lhs.Position.z == rhs.Position.z &&
-
-            lhs.Color.x == rhs.Color.x &&
-            lhs.Color.y == rhs.Color.y &&
-            lhs.Color.z == rhs.Color.z &&
-
-            lhs.Normal.x == rhs.Normal.x &&
-            lhs.Normal.y == rhs.Normal.y &&
-            lhs.Normal.z == rhs.Normal.z &&
-
-            lhs.TexCoord.x == rhs.TexCoord.x &&
-            lhs.TexCoord.y == rhs.TexCoord.y;
-    }
-
     bool SameTriangleRotation(
         const Quiet::Assets::MeshIndex a0,
         const Quiet::Assets::MeshIndex a1,
@@ -212,8 +202,12 @@ namespace
             (a0 == b2 && a1 == b0 && a2 == b1);
     }
 
-    bool ValidateQMeshRoundTrip(const std::filesystem::path& path, const Quiet::Assets::MeshImportResult& source, std::string& outError)
+    bool ValidateQMeshRoundTrip(const std::filesystem::path& path,
+                                const Quiet::Assets::MeshImportResult& source,
+                                QMeshQuantizationStats& outStats,
+                                std::string& outError)
     {
+        outStats = {};
         Quiet::Assets::QMeshData decoded{};
         if (!Quiet::Assets::QMeshReader::LoadFromFile(path, decoded, outError)) return false;
         if (decoded.Vertices.size() != source.Vertices.size() ||
@@ -226,11 +220,65 @@ namespace
 
         for (std::size_t i = 0; i < source.Vertices.size(); ++i)
         {
-            if (!SameVertex(source.Vertices[i], decoded.Vertices[i]))
+            const auto& a = source.Vertices[i];
+            const auto& b = decoded.Vertices[i];
+
+            const float dx = a.Position.x - b.Position.x;
+            const float dy = a.Position.y - b.Position.y;
+            const float dz = a.Position.z - b.Position.z;
+
+            const float positionError = std::sqrt(dx * dx + dy * dy + dz * dz);
+            outStats.MaxPositionError = std::max(outStats.MaxPositionError, positionError);
+
+            const auto NormalizedDot = [](const glm::vec3& lhs, const glm::vec3& rhs)
             {
-                outError = "QMesh round-trip changed vertex data.";
-                return false;
-            }
+                const float lhsLength = std::sqrt(lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z);
+                const float rhsLength = std::sqrt(rhs.x * rhs.x + rhs.y * rhs.y + rhs.z * rhs.z);
+
+                if (lhsLength <= 1.0e-20f || rhsLength <= 1.0e-20f) return 1.0f;
+                return std::clamp((lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z) / (lhsLength * rhsLength), -1.0f, 1.0f);
+            };
+
+            constexpr float RadToDeg = 57.29577951308232f;
+            const float normalAngle = std::acos(NormalizedDot(a.Normal, b.Normal)) * RadToDeg;
+            outStats.MaxNormalAngleDegrees = std::max(outStats.MaxNormalAngleDegrees, normalAngle);
+            outStats.MaxColorError = std::max(
+                outStats.MaxColorError,
+                std::max({
+                    std::abs(a.Color.x - b.Color.x),
+                    std::abs(a.Color.y - b.Color.y),
+                    std::abs(a.Color.z - b.Color.z)
+                }));
+            outStats.MaxTexCoordError = std::max(
+                outStats.MaxTexCoordError,
+                std::max(
+                    std::abs(a.TexCoord.x - b.TexCoord.x),
+                    std::abs(a.TexCoord.y - b.TexCoord.y)));
+        }
+
+        const glm::vec3 extent = source.Bounds.Max - source.Bounds.Min;
+        const float positionStepX = extent.x / 65535.0f;
+        const float positionStepY = extent.y / 65535.0f;
+        const float positionStepZ = extent.z / 65535.0f;
+
+        const float maximumExpectedPositionError = std::sqrt(positionStepX * positionStepX + positionStepY * positionStepY + positionStepZ * positionStepZ) + 1.0e-6f;
+
+        if (outStats.MaxPositionError > maximumExpectedPositionError)
+        {
+            outError = "QMesh position quantization exceeded expected error.";
+            return false;
+        }
+
+        if (outStats.MaxColorError > (1.0f / 255.0f) + 1.0e-6f)
+        {
+            outError = "QMesh color quantization exceeded expected error.";
+            return false;
+        }
+
+        if (outStats.MaxNormalAngleDegrees > 0.1f)
+        {
+            outError = "QMesh normal quantization exceeded expected angular error.";
+            return false;
         }
 
         for (std::size_t i = 0; i < source.Indices.size(); i += 3)
@@ -538,8 +586,10 @@ namespace
                 continue;
             }
 
+            QMeshQuantizationStats quantizationStats{};
             std::string validationError;
-            if (!ValidateQMeshRoundTrip(cookedPath, mesh, validationError))
+
+            if (!ValidateQMeshRoundTrip(cookedPath, mesh, quantizationStats, validationError))
             {
                 std::cerr << "Failed to validate mesh '" << record.ID << "': " << validationError << '\n';
                 success = false;
@@ -568,20 +618,30 @@ namespace
                 return raw > 0 ? static_cast<double>(encoded) / static_cast<double>(raw) * 100.0 : 0.0;
             };
 
+            const std::uint64_t packedGeometryBytes = writeStats.PackedVertexBytes + writeStats.RawIndexBytes;
+            const double packedGeometryPercent = percentage(packedGeometryBytes, rawGeometryBytes);
             const double payloadPercent = writeStats.UncompressedPayloadBytes > 0
                 ? static_cast<double>(writeStats.StoredPayloadBytes) / static_cast<double>(writeStats.UncompressedPayloadBytes) * 100.0
                 : 0.0;
 
             std::cout
-                << "  QMesh:      " << cookedPath.filename().string() << '\n'
-                << "  Vertex data: " << writeStats.RawVertexBytes << " -> " << writeStats.EncodedVertexBytes << " bytes (" << percentage(writeStats.EncodedVertexBytes, writeStats.RawVertexBytes) << "%)\n"
-                << "  Index data:  " << writeStats.RawIndexBytes << " -> " << writeStats.EncodedIndexBytes << " bytes (" << percentage(writeStats.EncodedIndexBytes, writeStats.RawIndexBytes) << "%)\n"
-                << "  Raw data:   " << rawGeometryBytes << " bytes\n"
-                << "  Encoded:    " << encodedGeometryBytes << " bytes (" << encodedPercent << "%)\n"
-                << "  Payload:    " << writeStats.UncompressedPayloadBytes << " -> " << writeStats.StoredPayloadBytes << " bytes (" << payloadPercent << "%)\n"
-                << "  Zstandard:  " << (writeStats.ZstdCompressed ? "enabled" : "skipped (no size benefit)") << '\n'
-                << "  File size:  " << writeStats.FileBytes << " bytes\n"
-                << "  Round-trip: OK\n\n";
+            << "  QMesh:      " << cookedPath.filename().string() << '\n'
+            << "  Vertex raw:     " << writeStats.RawVertexBytes << " bytes\n" << "  Vertex packed:  " << writeStats.PackedVertexBytes << " bytes (" << percentage(writeStats.PackedVertexBytes, writeStats.RawVertexBytes) << "% of raw)\n"
+            << "  Vertex encoded: " << writeStats.EncodedVertexBytes << " bytes (" << percentage(writeStats.EncodedVertexBytes, writeStats.PackedVertexBytes) << "% of packed)\n"
+            << "  Index data:     " << writeStats.RawIndexBytes << " -> " << writeStats.EncodedIndexBytes << " bytes (" << percentage(writeStats.EncodedIndexBytes, writeStats.RawIndexBytes) << "%)\n"
+            << "  Geometry raw:   " << rawGeometryBytes << " bytes\n"
+            << "  Geometry packed:" << ' ' << packedGeometryBytes << " bytes (" << packedGeometryPercent << "%)\n"
+            << "  Geometry encoded:" << ' ' << encodedGeometryBytes << " bytes\n"
+            << "  Payload:        " << writeStats.UncompressedPayloadBytes << " -> " << writeStats.StoredPayloadBytes << " bytes (" << payloadPercent << "%)\n"
+            << "  Zstandard:      " << (writeStats.ZstdCompressed ? "enabled" : "skipped (no size benefit)") << '\n'
+            << "  File size:      " << writeStats.FileBytes << " bytes\n"
+            << "  Round-trip:     OK\n"
+
+            << "  Quantization:\n"
+            << "    Position max error: " << quantizationStats.MaxPositionError << '\n'
+            << "    Normal max error:   " << quantizationStats.MaxNormalAngleDegrees << " deg\n"
+            << "    Color max error:    " << quantizationStats.MaxColorError << '\n'
+            << "    UV max error:       " << quantizationStats.MaxTexCoordError << "\n\n";
 
     }
 

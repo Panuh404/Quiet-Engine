@@ -7,8 +7,10 @@
 #include <vector>
 #include <mutex>
 #include <cstdint>
-#include <zstd.h>
+#include <algorithm>
+#include <cmath>
 
+#include <zstd.h>
 #include <meshoptimizer.h>
 
 #include "Quiet/Assets/QAssetFormat.h"
@@ -55,32 +57,82 @@ namespace Quiet::Cooker
             return output.good();
         }
 
-        std::vector<Assets::QMeshVertexV1>
-        BuildDiskVertices(const Assets::MeshImportResult& mesh)
+        float SignNotZero(const float value)
         {
-            std::vector<Assets::QMeshVertexV1> vertices;
+            return value >= 0.0f ? 1.0f : -1.0f;
+        }
+
+        std::uint16_t QuantizePosition(const float value, const float minimum, const float maximum)
+        {
+            const float extent = maximum - minimum;
+            if (extent <= 0.0f) return 0;
+
+            const float normalized = std::clamp((value - minimum) / extent, 0.0f, 1.0f);
+            return static_cast<std::uint16_t>(meshopt_quantizeUnorm(normalized, 16));
+        }
+
+        void EncodeOctNormal(const Assets::MeshVertex& source, std::int16_t (&output)[2])
+        {
+            float x = source.Normal.x;
+            float y = source.Normal.y;
+            float z = source.Normal.z;
+
+            const float length = std::sqrt(x * x + y * y + z * z);
+            if (length > 1.0e-20f)
+            {
+                x /= length;
+                y /= length;
+                z /= length;
+            }
+            else
+            {
+                x = 0.0f;
+                y = 0.0f;
+                z = 1.0f;
+            }
+
+            const float l1 = std::abs(x) + std::abs(y) + std::abs(z);
+
+            x /= l1;
+            y /= l1;
+            z /= l1;
+
+            if (z < 0.0f)
+            {
+                const float oldX = x;
+                const float oldY = y;
+
+                x = (1.0f - std::abs(oldY)) * SignNotZero(oldX);
+                y = (1.0f - std::abs(oldX)) * SignNotZero(oldY);
+            }
+
+            output[0] = static_cast<std::int16_t>(meshopt_quantizeSnorm(x, 16));
+            output[1] = static_cast<std::int16_t>(meshopt_quantizeSnorm(y, 16));
+        }
+
+        std::vector<Assets::QMeshVertexQuantizedV1> BuildQuantizedDiskVertices(const Assets::MeshImportResult& mesh)
+        {
+            std::vector<Assets::QMeshVertexQuantizedV1> vertices;
             vertices.reserve(mesh.Vertices.size());
 
             for (const Assets::MeshVertex& source : mesh.Vertices)
             {
-                Assets::QMeshVertexV1 vertex{};
+                Assets::QMeshVertexQuantizedV1 vertex{};
 
-                vertex.Position[0] = source.Position.x;
-                vertex.Position[1] = source.Position.y;
-                vertex.Position[2] = source.Position.z;
+                vertex.Position[0] = QuantizePosition(source.Position.x, mesh.Bounds.Min.x, mesh.Bounds.Max.x);
+                vertex.Position[1] = QuantizePosition(source.Position.y, mesh.Bounds.Min.y, mesh.Bounds.Max.y);
+                vertex.Position[2] = QuantizePosition(source.Position.z, mesh.Bounds.Min.z, mesh.Bounds.Max.z);
 
-                vertex.Color[0] = source.Color.x;
-                vertex.Color[1] = source.Color.y;
-                vertex.Color[2] = source.Color.z;
+                EncodeOctNormal(source, vertex.NormalOct);
 
-                vertex.Normal[0] = source.Normal.x;
-                vertex.Normal[1] = source.Normal.y;
-                vertex.Normal[2] = source.Normal.z;
+                vertex.Color[0] = static_cast<std::uint8_t>(meshopt_quantizeUnorm(source.Color.x, 8));
+                vertex.Color[1] = static_cast<std::uint8_t>(meshopt_quantizeUnorm(source.Color.y, 8));
+                vertex.Color[2] = static_cast<std::uint8_t>(meshopt_quantizeUnorm(source.Color.z, 8));
+                vertex.Color[3] = 255;
 
-                vertex.TexCoord[0] = source.TexCoord.x;
-                vertex.TexCoord[1] = source.TexCoord.y;
-
-                vertices.push_back(vertex);
+                vertex.TexCoordHalf[0] = meshopt_quantizeHalf(source.TexCoord.x);
+                vertex.TexCoordHalf[1] = meshopt_quantizeHalf(source.TexCoord.y);
+                 vertices.push_back(vertex);
             }
 
             return vertices;
@@ -118,6 +170,12 @@ namespace Quiet::Cooker
             return false;
         }
 
+        if (!mesh.Bounds.Valid)
+        {
+            outError = "Cannot quantize QMesh without valid mesh bounds.";
+            return false;
+        }
+
         if (mesh.Vertices.size() > std::numeric_limits<std::uint32_t>::max() ||
             mesh.Indices.size() > std::numeric_limits<std::uint32_t>::max() ||
             mesh.Submeshes.size() > std::numeric_limits<std::uint32_t>::max())
@@ -126,7 +184,7 @@ namespace Quiet::Cooker
             return false;
         }
 
-        const std::vector<Assets::QMeshVertexV1> diskVertices = BuildDiskVertices(mesh);
+        const std::vector<Assets::QMeshVertexQuantizedV1> diskVertices = BuildQuantizedDiskVertices(mesh);
         std::vector<unsigned int> diskIndices;
         diskIndices.reserve(mesh.Indices.size());
 
@@ -138,7 +196,7 @@ namespace Quiet::Cooker
         std::vector<unsigned char> encodedVertices(
             meshopt_encodeVertexBufferBound(
                 diskVertices.size(),
-                sizeof(Assets::QMeshVertexV1)));
+                sizeof(Assets::QMeshVertexQuantizedV1)));
 
         const std::size_t encodedVertexSize =
             meshopt_encodeVertexBuffer(
@@ -146,7 +204,7 @@ namespace Quiet::Cooker
                 encodedVertices.size(),
                 diskVertices.data(),
                 diskVertices.size(),
-                sizeof(Assets::QMeshVertexV1));
+                sizeof(Assets::QMeshVertexQuantizedV1));
 
         if (encodedVertexSize == 0)
         {
@@ -186,8 +244,8 @@ namespace Quiet::Cooker
             encodedIndices.size()
         );
 
-        const std::uint32_t vertexFormat = static_cast<std::uint32_t>(Assets::QMeshVertexFormat::Float32PositionColorNormalTexCoord);
-        const std::uint32_t vertexStride = sizeof(Assets::QMeshVertexV1);
+        const std::uint32_t vertexFormat = static_cast<std::uint32_t>(Assets::QMeshVertexFormat::QuantizedPosition16OctNormal16Color8HalfTexCoord);
+        const std::uint32_t vertexStride = sizeof(Assets::QMeshVertexQuantizedV1);
         const std::uint32_t vertexCount = static_cast<std::uint32_t>(diskVertices.size());
         const std::uint32_t indexCount = static_cast<std::uint32_t>(diskIndices.size());
         const std::uint32_t submeshCount = static_cast<std::uint32_t>(mesh.Submeshes.size());
@@ -297,7 +355,8 @@ namespace Quiet::Cooker
             return false;
         }
 
-        outStats.RawVertexBytes = diskVertices.size() * sizeof(Assets::QMeshVertexV1);
+        outStats.RawVertexBytes = mesh.Vertices.size() * sizeof(Assets::MeshVertex);
+        outStats.PackedVertexBytes = diskVertices.size() * sizeof(Assets::QMeshVertexQuantizedV1);
         outStats.EncodedVertexBytes = encodedVertices.size();
         outStats.RawIndexBytes = diskIndices.size() * sizeof(unsigned int);
         outStats.EncodedIndexBytes = encodedIndices.size();

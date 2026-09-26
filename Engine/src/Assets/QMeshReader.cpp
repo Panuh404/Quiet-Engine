@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 #include <span>
+#include <cmath>
 
 #include <meshoptimizer.h>
 #include <zstd.h>
@@ -42,6 +43,47 @@ namespace Quiet::Assets
 
             offset += byteCount;
             return true;
+        }
+
+        float DequantizeUnorm16(const std::uint16_t value)
+        {
+            return static_cast<float>(value) / 65535.0f;
+        }
+
+        float DequantizeSnorm16(const std::int16_t value)
+        {
+            return std::clamp(static_cast<float>(value) / 32767.0f, -1.0f, 1.0f);
+        }
+
+        void DecodeOctNormal(const std::int16_t (&encoded)[2], glm::vec3& output)
+        {
+            float x = DequantizeSnorm16(encoded[0]);
+            float y = DequantizeSnorm16(encoded[1]);
+            float z = 1.0f - std::abs(x) - std::abs(y);
+
+            if (z < 0.0f)
+            {
+                const float oldX = x;
+                const float oldY = y;
+
+                x = (1.0f - std::abs(oldY)) * (oldX >= 0.0f ? 1.0f : -1.0f);
+                y = (1.0f - std::abs(oldX)) * (oldY >= 0.0f ? 1.0f : -1.0f);
+            }
+
+            const float length = std::sqrt(x * x + y * y + z * z);
+            if (length > 1.0e-20f)
+            {
+                output =
+                {
+                    x / length,
+                    y / length,
+                    z / length
+                };
+            }
+            else
+            {
+                output = { 0.0f, 0.0f, 1.0f };
+            }
         }
     }
 
@@ -228,16 +270,40 @@ namespace Quiet::Assets
             return false;
         }
 
-        if (vertexFormat != static_cast<std::uint32_t>(QMeshVertexFormat::Float32PositionColorNormalTexCoord))
+        const auto resolvedVertexFormat = static_cast<QMeshVertexFormat>(vertexFormat);
+        switch (resolvedVertexFormat)
         {
-            outError = "Unsupported QMesh vertex format.";
-            return false;
-        }
+            case QMeshVertexFormat::Float32PositionColorNormalTexCoord:
+            {
+                if (vertexStride != sizeof(QMeshVertexV1))
+                {
+                    outError = "Unexpected float QMesh vertex stride.";
+                    return false;
+                }
+                break;
+            }
 
-        if (vertexStride != sizeof(QMeshVertexV1))
-        {
-            outError = "Unexpected QMesh vertex stride.";
-            return false;
+            case QMeshVertexFormat::QuantizedPosition16OctNormal16Color8HalfTexCoord:
+            {
+                if (vertexStride != sizeof(QMeshVertexQuantizedV1))
+                {
+                    outError = "Unexpected quantized QMesh vertex stride.";
+                    return false;
+                }
+
+                if (boundsValid == 0)
+                {
+                    outError = "Quantized QMesh requires valid bounds.";
+                    return false;
+                }
+                break;
+            }
+
+            default:
+            {
+                outError = "Unsupported QMesh vertex format.";
+                return false;
+            }
         }
 
         if (vertexCount == 0 || indexCount == 0 || submeshCount == 0)
@@ -339,14 +405,6 @@ namespace Quiet::Assets
             return false;
         }
 
-        std::vector<QMeshVertexV1> diskVertices(vertexCount);
-
-        if (meshopt_decodeVertexBuffer(diskVertices.data(), diskVertices.size(), sizeof(QMeshVertexV1), encodedVertices, static_cast<std::size_t>(vertexStreamSize)) != 0)
-        {
-            outError = "Failed to decode QMesh vertex stream.";
-            return false;
-        }
-
         std::vector<MeshIndex> indices(indexCount);
 
         if (meshopt_decodeIndexBuffer(
@@ -400,41 +458,113 @@ namespace Quiet::Assets
         }
 
         QMeshData result{};
+        result.Vertices.reserve(vertexCount);
 
-        result.Vertices.reserve(diskVertices.size());
-
-        for (const QMeshVertexV1& source : diskVertices)
+        if (resolvedVertexFormat == QMeshVertexFormat::Float32PositionColorNormalTexCoord)
         {
-            MeshVertex vertex{};
+            std::vector<QMeshVertexV1> diskVertices(vertexCount);
 
-            vertex.Position =
+            if (meshopt_decodeVertexBuffer(
+                    diskVertices.data(),
+                    diskVertices.size(),
+                    sizeof(QMeshVertexV1),
+                    encodedVertices,
+                    static_cast<std::size_t>(vertexStreamSize)) != 0)
             {
-                source.Position[0],
-                source.Position[1],
-                source.Position[2]
-            };
+                outError = "Failed to decode float QMesh vertex stream.";
+                return false;
+            }
 
-            vertex.Color =
+            for (const QMeshVertexV1& source : diskVertices)
             {
-                source.Color[0],
-                source.Color[1],
-                source.Color[2]
-            };
+                MeshVertex vertex{};
 
-            vertex.Normal =
+                vertex.Position =
+                {
+                    source.Position[0],
+                    source.Position[1],
+                    source.Position[2]
+                };
+
+                vertex.Color =
+                {
+                    source.Color[0],
+                    source.Color[1],
+                    source.Color[2]
+                };
+
+                vertex.Normal =
+                {
+                    source.Normal[0],
+                    source.Normal[1],
+                    source.Normal[2]
+                };
+
+                vertex.TexCoord =
+                {
+                    source.TexCoord[0],
+                    source.TexCoord[1]
+                };
+
+                result.Vertices.push_back(vertex);
+            }
+        }
+        else
+        {
+            std::vector<QMeshVertexQuantizedV1> diskVertices(vertexCount);
+
+            if (meshopt_decodeVertexBuffer(
+                    diskVertices.data(),
+                    diskVertices.size(),
+                    sizeof(QMeshVertexQuantizedV1),
+                    encodedVertices,
+                    vertexStreamSize))
             {
-                source.Normal[0],
-                source.Normal[1],
-                source.Normal[2]
-            };
+                outError = "Failed to decode quantized QMesh vertex stream.";
+                return false;
+            }
 
-            vertex.TexCoord =
+            const glm::vec3 minimum
             {
-                source.TexCoord[0],
-                source.TexCoord[1]
+                bounds[0],
+                bounds[1],
+                bounds[2]
             };
+            const glm::vec3 maximum
+            {
+                bounds[3],
+                bounds[4],
+                bounds[5]
+            };
+            const glm::vec3 extent = maximum - minimum;
 
-            result.Vertices.push_back(vertex);
+            for (const QMeshVertexQuantizedV1& source : diskVertices)
+            {
+                MeshVertex vertex{};
+                vertex.Position =
+                {
+                    minimum.x + DequantizeUnorm16(source.Position[0]) * extent.x,
+                    minimum.y + DequantizeUnorm16(source.Position[1]) * extent.y,
+                    minimum.z + DequantizeUnorm16(source.Position[2]) * extent.z
+                };
+
+                DecodeOctNormal(source.NormalOct, vertex.Normal);
+
+                vertex.Color =
+                {
+                    source.Color[0] / 255.0f,
+                    source.Color[1] / 255.0f,
+                    source.Color[2] / 255.0f
+                };
+
+                vertex.TexCoord =
+                {
+                    meshopt_dequantizeHalf(source.TexCoordHalf[0]),
+                    meshopt_dequantizeHalf(source.TexCoordHalf[1])
+                };
+
+                result.Vertices.push_back(vertex);
+            }
         }
 
         result.Indices = std::move(indices);

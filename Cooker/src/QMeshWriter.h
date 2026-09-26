@@ -11,6 +11,7 @@ namespace Quiet::Cooker
     struct QMeshWriteStats
     {
         std::uint64_t RawVertexBytes = 0;
+        std::uint64_t PackedVertexBytes = 0;
         std::uint64_t EncodedVertexBytes = 0;
 
         std::uint64_t RawIndexBytes = 0;
