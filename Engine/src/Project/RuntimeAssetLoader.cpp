@@ -1,5 +1,13 @@
 #include "Quiet/Project/RuntimeAssetLoader.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "Quiet/Assets/QMeshReader.h"
 #include "Quiet/Core/Log.h"
 

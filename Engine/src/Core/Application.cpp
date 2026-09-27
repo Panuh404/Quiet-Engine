@@ -32,6 +32,8 @@
 #include "Quiet/Math/Geometry.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/AssetRegistry.h"
+#include "Quiet/Project/RuntimeAssetLoader.h"
+#include "Quiet/Project/RuntimeManifest.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
@@ -404,7 +406,46 @@ namespace Quiet::Core
 
     void Application::InitializeSandboxStartup()
     {
+        if (!m_Spec.RuntimePackagePath.empty())
+        {
+            const std::filesystem::path packageRoot = std::filesystem::absolute(m_Spec.RuntimePackagePath).lexically_normal();
+            std::error_code ec;
+            if (!std::filesystem::is_directory(packageRoot, ec) || ec)
+            {
+                throw std::runtime_error("Runtime package directory does not exist: " + packageRoot.string());
+            }
+
+            const std::filesystem::path manifestPath = packageRoot / "RuntimeManifest.json";
+            Project::RuntimeManifest runtimeManifest{};
+
+            if (!Project::RuntimeManifestIO::LoadFromFile(manifestPath, runtimeManifest))
+            {
+                throw std::runtime_error("Failed to load runtime manifest: " + manifestPath.string());
+            }
+
+            if (runtimeManifest.ProjectName != m_ProjectContext.GetProjectName())
+            {
+                throw std::runtime_error("Runtime package project '" + runtimeManifest.ProjectName +
+                    "' does not match loaded source project '" + m_ProjectContext.GetProjectName() + "'.");
+            }
+
+            Project::RuntimeAssetLoader runtimeAssetLoader(
+                m_Renderer->GetMeshLibrary(),
+                m_Renderer->GetPhysicalDevice(),
+                m_Renderer->GetLogicalDevice(),
+                m_Renderer->GetGraphicsCommands());
+
+            if (!runtimeAssetLoader.LoadMeshAssets(packageRoot, runtimeManifest))
+            {
+                throw std::runtime_error("Failed to load one or more cooked runtime meshes.");
+            }
+
+            RelinkSceneStaticMeshes(*m_Scene);
+            QUIET_CORE_INFO("Loaded cooked mesh override from runtime package '{}'.", packageRoot.string());
+        }
+
         const VkExtent2D initialRuntimeExtent = m_Renderer->GetSwapchainExtent();
+
         if (initialRuntimeExtent.width > 0 && initialRuntimeExtent.height > 0)
         {
             m_Renderer->RequestViewportResize(initialRuntimeExtent.width, initialRuntimeExtent.height);

@@ -6,10 +6,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(QUIET_BUILD_SANDBOX ON)
-option(QUIET_BUILD_EDITOR OFF)
-option(QUIET_BUILD_LAUNCHER "Build Quiet Launcher" OFF)
-option(QUIET_BUILD_COOKER "Build Quiet Asset Cooker" OFF)
+option(QUIET_BUILD_SANDBOX  "Build Quiet Sandbox"      ON)
+option(QUIET_BUILD_EDITOR   "Build Quiet Editor"       OFF)
+option(QUIET_BUILD_LAUNCHER "Build Quiet Launcher"     OFF)
+option(QUIET_BUILD_COOKER   "Build Quiet Asset Cooker" OFF)
 
 # ------------------------------------------------------------------------------
 # Output directories

@@ -18,6 +18,7 @@ namespace Quiet::Core
         std::string WindowIconPath;
 
         std::filesystem::path ProjectFilePath;
+        std::filesystem::path RuntimePackagePath;
 
         std::uint32_t Width = 1280;
         std::uint32_t Height = 720;

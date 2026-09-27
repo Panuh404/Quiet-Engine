@@ -7,10 +7,10 @@
   },
   "configurePresets": [
     {
-      "name": "debug",
-      "displayName": "Debug",
+      "name": "debug-sandbox",
+      "displayName": "Debug Sandbox",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/Build/Intermediate/Debug",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Debug-Sandbox",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -19,10 +19,10 @@
       }
     },
     {
-      "name": "release",
-      "displayName": "Release",
+      "name": "release-sandbox",
+      "displayName": "Release Sandbox",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/Build/Intermediate/Release",
+      "binaryDir": "${sourceDir}/Build/Intermediate/Release-Sandbox",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -111,54 +111,44 @@
   ],
   "buildPresets": [
     {
-      "name": "build-debug",
-      "configurePreset": "debug"
+      "name": "build-debug-sandbox",
+      "configurePreset": "debug-sandbox",
+      "targets": [ "Quiet_Sandbox" ]
     },
     {
-      "name": "build-release",
-      "configurePreset": "release"
+      "name": "build-release-sandbox",
+      "configurePreset": "release-sandbox",
+      "targets": [ "Quiet_Sandbox" ]
     },
     {
       "name": "build-debug-editor",
       "configurePreset": "debug-editor",
-      "targets": [
-        "Quiet_Editor"
-      ]
+      "targets": [ "Quiet_Editor" ]
     },
     {
       "name": "build-release-editor",
       "configurePreset": "release-editor",
-      "targets": [
-        "Quiet_Editor"
-      ]
+      "targets": [ "Quiet_Editor" ]
     },
     {
       "name": "build-debug-launcher",
       "configurePreset": "debug-launcher",
-      "targets": [
-        "Quiet_Launcher"
-      ]
+      "targets": [ "Quiet_Launcher" ]
     },
     {
       "name": "build-release-launcher",
       "configurePreset": "release-launcher",
-      "targets": [
-        "Quiet_Launcher"
-      ]
+      "targets": [ "Quiet_Launcher" ]
     },
     {
       "name": "build-debug-cooker",
       "configurePreset": "debug-cooker",
-      "targets": [
-        "Quiet_Cooker"
-      ]
+      "targets": [ "Quiet_Cooker" ]
     },
     {
       "name": "build-release-cooker",
       "configurePreset": "release-cooker",
-      "targets": [
-        "Quiet_Cooker"
-      ]
+      "targets": [ "Quiet_Cooker" ]
     }
   ]
 }
