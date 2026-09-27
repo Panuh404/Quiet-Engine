@@ -63,9 +63,13 @@ namespace Quiet::Project
                                    const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
 
         bool ReloadMeshAssets(bool forceReimport = false);
+        bool ReloadBuiltInMeshAssets();
+
         bool ReloadTextureAssets(bool forceReimport = false);
         bool ReloadAudioAssets(bool forceReimport = false);
+
         bool ReloadAssets(bool forceReimport = false);
+        bool ReloadRuntimeSupportAssets(bool forceReimport = false);
         bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
         void BeginIncrementalReload(bool forceReimport = false);

@@ -132,12 +132,14 @@ namespace Quiet::Project
 
     bool ProjectWorkflow::InitializeLastOpenedOrDefaultProject()
     {
-        if (!InitializeProjectRegistry())
-        {
-            return false;
-        }
+        if (!InitializeProjectRegistry()) return false;
+        return OpenOrCreateProjectInternal(ResolveInitialProjectFilePath(), true);
+    }
 
-        return OpenOrCreateProject(ResolveInitialProjectFilePath());
+    bool ProjectWorkflow::InitializeLastOpenedOrDefaultProjectAssetsOnly()
+    {
+        if (!InitializeProjectRegistry()) return false;
+        return OpenOrCreateProjectInternal(ResolveInitialProjectFilePath(), false);
     }
 
     bool ProjectWorkflow::BeginStagedOpenProject(const std::filesystem::path &projectFilePath)
@@ -174,29 +176,7 @@ namespace Quiet::Project
 
     bool ProjectWorkflow::OpenOrCreateProject(const std::filesystem::path &projectFilePath)
     {
-        if (!LoadOrCreateProject(m_ProjectContext, projectFilePath))
-        {
-            QUIET_CORE_ERROR("Failed to open project '{}'.", projectFilePath.string());
-            return false;
-        }
-
-        TouchRecentProject();
-        if (!SaveRegistry())
-        {
-            QUIET_CORE_WARN("Failed to save project registry.");
-        }
-
-        if (!m_ProjectAssetLoader.ReloadAssets())
-        {
-            QUIET_CORE_WARN(
-                "Project '{}' has assets that are registered but not fully loadable yet.",
-                m_ProjectContext.GetProjectFilePath().string()
-            );
-        }
-
-        LoadOrCreateStartupScene();
-        QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
-        return true;
+        return OpenOrCreateProjectInternal(projectFilePath, true);
     }
 
     bool ProjectWorkflow::CreateProject(const std::string &projectName)
@@ -227,6 +207,42 @@ namespace Quiet::Project
         }
 
         QUIET_CORE_INFO("Set startup scene to '{}'.", relativeScenePath.generic_string());
+        return true;
+    }
+
+    bool ProjectWorkflow::OpenOrCreateProjectInternal(const std::filesystem::path &projectFilePath, bool loadStartupScene)
+    {
+        if (!LoadOrCreateProject(m_ProjectContext, projectFilePath))
+        {
+            QUIET_CORE_ERROR("Failed to open project '{}'.", projectFilePath.string());
+            return false;
+        }
+
+        TouchRecentProject();
+        if (!SaveRegistry())
+        {
+            QUIET_CORE_WARN("Failed to save project registry.");
+        }
+
+        const bool assetsLoaded = loadStartupScene
+            ? m_ProjectAssetLoader.ReloadAssets()
+            : m_ProjectAssetLoader.ReloadRuntimeSupportAssets();
+
+        if (!assetsLoaded)
+        {
+            QUIET_CORE_WARN("Project '{}' has assets that are registered but not fully loadable yet.", m_ProjectContext.GetProjectFilePath().string());
+        }
+
+        if (loadStartupScene)
+        {
+            LoadOrCreateStartupScene();
+            QUIET_CORE_INFO("Opened project '{}'.", m_ProjectContext.GetProjectFilePath().string());
+        }
+        else
+        {
+            QUIET_CORE_INFO("Loaded project assets from '{}' without loading the source startup scene.", m_ProjectContext.GetProjectFilePath().string());
+        }
+
         return true;
     }
 

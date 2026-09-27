@@ -1,6 +1,7 @@
 #include "Quiet/Core/Log.h"
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
+#include "Quiet/Scene/SceneDocument.h"
 
 #include <stdexcept>
 #include <utility>
@@ -348,8 +349,14 @@ namespace Quiet::Core
         }
         else
         {
-            if (!m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject())
+            const bool projectInitialized = m_Spec.RuntimePackagePath.empty()
+                ? m_ProjectWorkflow-> InitializeLastOpenedOrDefaultProject()
+                : m_ProjectWorkflow-> InitializeLastOpenedOrDefaultProjectAssetsOnly();
+
+            if (!projectInitialized)
+            {
                 throw std::runtime_error("Failed to initialize project workflow.");
+            }
         }
     }
 
@@ -440,8 +447,19 @@ namespace Quiet::Core
                 throw std::runtime_error("Failed to load one or more cooked runtime meshes.");
             }
 
-            RelinkSceneStaticMeshes(*m_Scene);
+            const std::filesystem::path runtimeScenePath = (packageRoot / std::filesystem::path(runtimeManifest.StartupScene)).lexically_normal();
+            if (!std::filesystem::is_regular_file(runtimeScenePath, ec) || ec)
+            {
+                throw std::runtime_error("Runtime startup scene does not exist: " + runtimeScenePath.string());
+            }
+
+            if (!Scene::SceneDocument::Load(*m_Scene, m_Renderer->GetMeshLibrary(), runtimeScenePath))
+            {
+                throw std::runtime_error("Failed to load runtime startup scene: " + runtimeScenePath.string());
+            }
+
             QUIET_CORE_INFO("Loaded cooked mesh override from runtime package '{}'.", packageRoot.string());
+            QUIET_CORE_INFO("Loaded runtime startup scene '{}'.", runtimeScenePath.string());
         }
 
         const VkExtent2D initialRuntimeExtent = m_Renderer->GetSwapchainExtent();

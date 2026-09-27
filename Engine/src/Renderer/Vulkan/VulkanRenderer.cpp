@@ -677,9 +677,11 @@ namespace Quiet::Renderer::Vulkan
 
     VkExtent2D VulkanRenderer::GetSceneViewportExtent() const
     {
-        if (m_SceneViewportTarget &&
-            m_SceneViewportTarget->IsValid()) return m_SceneViewportTarget->GetExtent();
-        return m_Swapchain->GetExtent();
+        if (m_SceneViewportTarget && m_SceneViewportTarget->IsValid())
+        {
+            return m_SceneViewportTarget->GetExtent();
+        }
+        return { 0, 0 };
     }
 
     void VulkanRenderer::RequestViewportResize(std::uint32_t width, std::uint32_t height)

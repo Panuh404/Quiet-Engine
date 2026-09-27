@@ -326,6 +326,19 @@ namespace Quiet::Project
         return allSupportedAssetsLoaded;
     }
 
+    bool ProjectAssetLoader::ReloadBuiltInMeshAssets()
+    {
+        const auto meshAssetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Mesh);
+        bool allLoaded = true;
+
+        for (const AssetRecord* record : meshAssetPointers)
+        {
+            if (!record || !record->BuiltIn) continue;
+            if (!LoadBuiltInMesh(*record)) allLoaded = false;
+        }
+        return allLoaded;
+    }
+
     bool ProjectAssetLoader::ReloadTextureAssets(const bool forceReimport)
     {
         const auto textureAssetPointers = AssetRegistryIO::GetAssetsByType(m_ProjectContext.GetAssetRegistry(), AssetType::Texture);
@@ -381,10 +394,18 @@ namespace Quiet::Project
         return meshesLoaded && texturesLoaded && audioLoaded;
     }
 
+    bool ProjectAssetLoader::ReloadRuntimeSupportAssets(bool forceReimport)
+    {
+        const bool builtInMeshesLoaded = ReloadBuiltInMeshAssets();
+        const bool texturesLoaded = ReloadTextureAssets(forceReimport);
+        const bool audioLoaded = ReloadAudioAssets(forceReimport);
+
+        return builtInMeshesLoaded && texturesLoaded && audioLoaded;
+    }
+
     bool ProjectAssetLoader::ReloadAssetByID(std::string_view assetID, bool forceReimport)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), assetID);
-
         if (!record)
         {
             QUIET_CORE_WARN("Cannot reimport asset '{}': asset is not registered.", std::string(assetID));

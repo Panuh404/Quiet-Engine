@@ -33,9 +33,11 @@ namespace Quiet::Project
         bool InitializeProjectRegistry();
         bool InitializeProject(const std::filesystem::path& projectFilePath);
         bool InitializeLastOpenedOrDefaultProject();
+        bool InitializeLastOpenedOrDefaultProjectAssetsOnly();
 
         bool BeginStagedOpenProject(const std::filesystem::path& projectFilePath);
         void FinishStagedOpenProject();
+
 
         [[nodiscard]] std::filesystem::path GetInitialProjectFilePath() const;
 
@@ -44,7 +46,9 @@ namespace Quiet::Project
         bool SetStartupScene(const std::filesystem::path& relativeScenePath);
 
     private:
+        bool OpenOrCreateProjectInternal(const std::filesystem::path& projectFilePath, bool loadStartupScene);
         bool LoadOrCreateRegistry();
+
         bool SaveRegistry();
         void TouchRecentProject();
         void LoadOrCreateStartupScene();
