@@ -11,9 +11,11 @@
 #include <vector>
 #include <cmath>
 #include <cstring>
+#include <memory>
 
 #include <meshoptimizer.h>
 #include <ktx.h>
+#include <cmp_core.h>
 #include <vulkan/vulkan_core.h>
 
 #include "QMeshWriter.h"
@@ -855,6 +857,66 @@ namespace
 
         return success;
     }
+
+    struct CompressonatorBC7OptionsDeleter
+    {
+        void operator()(void* options) const noexcept
+        {
+            if (options) DestroyOptionsBC7(options);
+        }
+    };
+
+    using CompressonatorBC7OptionsPtr = std::unique_ptr<void, CompressonatorBC7OptionsDeleter>;
+
+    bool ValidateCompressonatorBC7(std::string& outError)
+    {
+        outError.clear();
+
+        void* rawOptions = nullptr;
+        if (CreateOptionsBC7(&rawOptions) != 0 || !rawOptions)
+        {
+            outError = "Failed to create Compressonator BC7 options.";
+            return false;
+        }
+
+        CompressonatorBC7OptionsPtr options(rawOptions);
+        if (SetQualityBC7(options.get(), 0.5f) != 0)
+        {
+            outError = "Failed to configure Compressonator BC7 quality.";
+            return false;
+        }
+
+        // One 4x4 RGBA8 test block.
+        //
+        // BC7 always consumes 4x4 texels and produces
+        // exactly 16 bytes.
+        std::array<unsigned char, 64> source{};
+        for (std::size_t pixel = 0; pixel < 16; ++pixel)
+        {
+            source[pixel * 4 + 0] = static_cast<unsigned char>(pixel * 13);
+            source[pixel * 4 + 1] = static_cast<unsigned char>(255 - pixel * 11);
+            source[pixel * 4 + 2] = static_cast<unsigned char>(pixel * 7);
+            source[pixel * 4 + 3] = 255;
+        }
+
+        std::array<unsigned char, 16> compressed{};
+
+        // Four RGBA8 pixels = 16 bytes per source row.
+        if (CompressBlockBC7(source.data(), 16, compressed.data(), options.get()) != 0)
+        {
+            outError = "Compressonator BC7 block compression failed.";
+            return false;
+        }
+
+        std::array<unsigned char, 64> decoded{};
+        if (DecompressBlockBC7(compressed.data(), decoded.data(), options.get()) != 0)
+        {
+            outError = "Compressonator BC7 block decompression failed.";
+            return false;
+        }
+
+        return true;
+    }
 }
 
 int main(int argc, char** argv)
@@ -867,6 +929,16 @@ int main(int argc, char** argv)
         PrintUsage(argv[0]);
         return 1;
     }
+
+    std::string compressonatorError;
+
+    if (!ValidateCompressonatorBC7(compressonatorError))
+    {
+        std::cerr << "Compressonator BC7 codec validation failed: " << compressonatorError << '\n';
+        return 1;
+    }
+
+    std::cout << "Compressonator BC7 codec: OK\n\n";
 
     std::error_code ec;
     const fs::path projectFilePath = fs::absolute(argv[1], ec).lexically_normal();

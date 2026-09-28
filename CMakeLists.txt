@@ -261,6 +261,42 @@ if(QUIET_BUILD_COOKER)
             GIT_TAG         v4.4.2
             GIT_SHALLOW     TRUE
     )
+
+    FetchContent_Populate(
+            compressonator
+            GIT_REPOSITORY  https://github.com/GPUOpen-Tools/compressonator.git
+            GIT_TAG         V4.5.52
+            GIT_SHALLOW     TRUE
+    )
+
+    # Quiet only needs Compressonator's CPU block codec layer.
+    #
+    # Do not add Compressonator's own top-level CMake project here:
+    # its SDK also brings framework, file-I/O, applications, SIMD
+    # build assumptions and other systems that Quiet does not need.
+    add_library(
+            Quiet_CompressonatorCore
+            STATIC
+            "${compressonator_SOURCE_DIR}/cmp_core/shaders/bc7_encode_kernel.cpp"
+    )
+
+    target_include_directories(
+            Quiet_CompressonatorCore
+            PUBLIC
+            "${compressonator_SOURCE_DIR}/cmp_core/source"
+
+            PRIVATE
+            "${compressonator_SOURCE_DIR}/cmp_core/shaders"
+    )
+
+    if(MINGW)
+        target_compile_options(
+                Quiet_CompressonatorCore
+                PRIVATE
+                    -Wno-unknown-pragmas
+                    -msse4.1
+        )
+    endif()
 endif()
 
 FetchContent_MakeAvailable(
