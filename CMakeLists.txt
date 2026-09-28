@@ -240,6 +240,29 @@ FetchContent_Declare(
         SOURCE_SUBDIR   build/cmake
 )
 
+# KTX-Software
+if(QUIET_BUILD_COOKER)
+    set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_TOOLS_CTS OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_JNI OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_PY OFF CACHE BOOL "" FORCE)
+    set(KTX_FEATURE_LOADTEST_APPS OFF CACHE STRING "" FORCE)
+
+    set(LIBKTX_VERSION_FULL ON CACHE BOOL "" FORCE)
+    set(LIBKTX_VERSION_READ_ONLY OFF CACHE BOOL "" FORCE)
+
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+    FetchContent_Declare(
+            ktx
+            GIT_REPOSITORY  https://github.com/KhronosGroup/KTX-Software.git
+            GIT_TAG         v4.4.2
+            GIT_SHALLOW     TRUE
+    )
+endif()
+
 FetchContent_MakeAvailable(
         glfw
         spdlog
@@ -258,6 +281,19 @@ FetchContent_MakeAvailable(
         meshoptimizer
         zstd
 )
+
+if(QUIET_BUILD_COOKER)
+    set(BUILD_SHARED_LIBS OFF)
+
+    FetchContent_MakeAvailable(ktx)
+
+    # KTX-Software defines both _DEBUG and DEBUG in Debug builds.
+    if(TARGET ktx AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(ktx PRIVATE $<$<CONFIG:Debug>:-UDEBUG>)
+    endif()
+
+    unset(BUILD_SHARED_LIBS)
+endif()
 
 # Assimp forces the MinGW runtime and winpthread to link statically when
 # BUILD_SHARED_LIBS is disabled. Quiet intentionally uses the normal MinGW

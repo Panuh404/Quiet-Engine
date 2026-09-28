@@ -10,12 +10,19 @@
 #include <type_traits>
 #include <vector>
 #include <cmath>
+#include <cstring>
 
 #include <meshoptimizer.h>
+#include <ktx.h>
 #include "QMeshWriter.h"
+#include <vulkan/vulkan_core.h>
 
+#include "QTextureWriter.h"
 #include "Quiet/Assets/MeshImporter.h"
 #include "Quiet/Assets/QMeshReader.h"
+#include "Quiet/Assets/QTextureReader.h"
+#include "Quiet/Assets/TextureImporter.h"
+#include "Quiet/Assets/TexturePixelData.h"
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/ProjectDescriptor.h"
 #include "Quiet/Project/RuntimeManifest.h"
@@ -23,6 +30,11 @@
 static_assert(
     MESHOPTIMIZER_VERSION == 1020,
     "Quiet_Cooker expects meshoptimizer v1.2."
+);
+
+static_assert(
+    KTX_SUCCESS == 0,
+    "Quiet_Cooker expects the libktx API."
 );
 
 namespace
@@ -658,6 +670,177 @@ namespace
         return success;
     }
 
+    struct KtxTexture2Deleter
+    {
+        void operator()(ktxTexture2* texture) const noexcept
+        {
+            if (texture) ktxTexture2_Destroy(texture);
+        }
+    };
+
+    using KtxTexture2Ptr = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
+
+    bool ValidateQTextureRoundTrip(const std::filesystem::path& path, const Quiet::Assets::TexturePixelData& source, std::string& outError)
+    {
+        Quiet::Assets::QTextureData cookedTexture{};
+
+        if (!Quiet::Assets::QTextureReader::LoadFromFile(path, cookedTexture, outError)) return false;
+        if (cookedTexture.Format != Quiet::Assets::QTexturePayloadFormat::Ktx2)
+        {
+            outError = "QTexture reader returned an unexpected payload format.";
+            return false;
+        }
+
+        ktxTexture2* rawTexture = nullptr;
+
+        const KTX_error_code result = ktxTexture2_CreateFromMemory(
+            cookedTexture.EncodedData.data(),
+            static_cast<ktx_size_t>(cookedTexture.EncodedData.size()),
+            KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+            &rawTexture);
+
+        if (result != KTX_SUCCESS)
+        {
+            outError = std::string("Failed to parse embedded KTX2: ") + ktxErrorString(result);
+            return false;
+        }
+
+        KtxTexture2Ptr texture(rawTexture);
+        if (texture->vkFormat != VK_FORMAT_R8G8B8A8_SRGB)
+        {
+            outError = "QTexture KTX2 has an unexpected Vulkan format.";
+            return false;
+        }
+
+        if (texture->baseWidth != source.Width ||
+            texture->baseHeight != source.Height)
+        {
+            outError = "QTexture KTX2 dimensions changed during round-trip.";
+            return false;
+        }
+
+        if (texture->numDimensions != 2 ||
+            texture->numLevels != 1 ||
+            texture->numLayers != 1 ||
+            texture->numFaces != 1)
+        {
+            outError = "QTexture KTX2 has an unexpected texture layout.";
+            return false;
+        }
+
+        if (texture->supercompressionScheme != KTX_SS_NONE)
+        {
+            outError = "Baseline QTexture unexpectedly uses KTX2 supercompression.";
+            return false;
+        }
+
+        ktxTexture* baseTexture = ktxTexture(texture.get());
+        const ktx_size_t imageSize = ktxTexture_GetImageSize(baseTexture, 0);
+
+        if (imageSize != source.Pixels.size())
+        {
+            outError = "QTexture image byte size changed during round-trip.";
+            return false;
+        }
+
+        ktx_size_t imageOffset = 0;
+
+        const KTX_error_code offsetResult = ktxTexture_GetImageOffset(baseTexture, 0, 0, 0, &imageOffset);
+        if (offsetResult != KTX_SUCCESS)
+        {
+            outError = std::string("Failed to resolve KTX2 image offset: ") + ktxErrorString(offsetResult);
+            return false;
+        }
+
+        const ktx_uint8_t* imageData = ktxTexture_GetData(baseTexture);
+        const ktx_size_t dataSize = ktxTexture_GetDataSize(baseTexture);
+
+        if (!imageData)
+        {
+            outError = "QTexture KTX2 contains no loaded image data.";
+            return false;
+        }
+
+        if (imageOffset > dataSize || source.Pixels.size() > dataSize - imageOffset)
+        {
+            outError = "QTexture image range exceeds loaded KTX2 data.";
+            return false;
+        }
+
+        if (std::memcmp(imageData + imageOffset, source.Pixels.data(), source.Pixels.size()) != 0)
+        {
+            outError = "QTexture pixel data changed during round-trip.";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool CookProjectTextures(const std::filesystem::path& projectRoot, const std::filesystem::path& outputRoot, const Quiet::Project::AssetRegistry& registry)
+    {
+        bool success = true;
+
+        for (const Quiet::Project::AssetRecord& record : registry.Records)
+        {
+            if (record.BuiltIn || record.Type != Quiet::Project::AssetType::Texture) continue;
+
+            const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
+            if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
+            {
+                std::cerr << "Texture '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                success = false;
+                continue;
+            }
+
+            Quiet::Assets::TexturePixelData pixels = Quiet::Assets::TextureImporter::LoadPixelsFromFile(sourcePath);
+            if (!pixels.IsValid())
+            {
+                std::cerr << "Failed to import texture '" << record.ID << "': " << pixels.Metadata.Error << '\n';
+                success = false;
+                continue;
+            }
+
+            const std::filesystem::path cookedPath = outputRoot / "Content" / "Textures" / (record.ID + ".qtexture");
+            Quiet::Cooker::QTextureWriteStats stats{};
+            std::string writeError;
+
+            if (!Quiet::Cooker::WriteQTexture(cookedPath, pixels, stats, writeError))
+            {
+                std::cerr << "Failed to write texture '" << record.ID << "': " << writeError << '\n';
+                success = false;
+                continue;
+            }
+
+            std::string validationError;
+
+            if (!ValidateQTextureRoundTrip(cookedPath, pixels, validationError))
+            {
+                std::cerr << "Failed to validate texture '" << record.ID << "': " << validationError << '\n';
+                success = false;
+                continue;
+            }
+
+            const auto percentage = [](const std::uint64_t value, const std::uint64_t reference)
+            {
+                return reference > 0 ? static_cast<double>(value) / static_cast<double>(reference) * 100.0 : 0.0;
+            };
+
+            std::cout
+            << "Texture: " << record.ID << '\n'
+            << "  Source:      " << sourcePath.filename().string() << '\n'
+            << "  Format:      " << pixels.Metadata.Format << " -> QTexture/KTX2 RGBA8 sRGB\n"
+            << "  Dimensions:  " << stats.Width << 'x' << stats.Height << '\n'
+            << "  Mip levels:  " << stats.MipLevels << '\n'
+            << "  RGBA8 data:  " << stats.SourceBytes << " bytes\n"
+            << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.SourceBytes) << "% of raw)\n"
+            << "  QTexture:    " << cookedPath.filename().string() << '\n'
+            << "  File size:   " << stats.FileBytes << " bytes\n"
+            << "  Compression: none\n"
+            << "  Round-trip:  OK\n\n";
+        }
+
+        return success;
+    }
 }
 
 int main(int argc, char** argv)
@@ -751,6 +934,16 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    std::cout << "\nCooking texture assets...\n\n";
+
+    if (!CookProjectTextures(projectRoot, outputRoot, assetRegistry))
+    {
+        std::cerr << "Texture cooking completed with errors.\n";
+        return 1;
+    }
+
+    std::cout << "Texture cooking completed successfully.\n";
+
     const fs::path runtimeScenePath = fs::path("Scenes") / fs::path(descriptor.StartupScene);
     const fs::path cookedScenePath = outputRoot / runtimeScenePath;
 
@@ -787,6 +980,6 @@ int main(int argc, char** argv)
     << "  Runtime assets: " << runtimeManifest.Assets.size() << '\n'
     << "  Manifest:      " << runtimeManifestPath << '\n'
     << '\n'
-    << "Mesh optimization completed successfully.\n";
+    << "Asset cooking completed successfully.\n";
     return 0;
 }

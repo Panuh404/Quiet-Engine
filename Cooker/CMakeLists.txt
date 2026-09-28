@@ -5,6 +5,8 @@ target_sources(Quiet_Cooker
         src/main.cpp
         src/QMeshWriter.h
         src/QMeshWriter.cpp
+        src/QTextureWriter.h
+        src/QTextureWriter.cpp
 )
 
 target_link_libraries(Quiet_Cooker
@@ -12,4 +14,5 @@ target_link_libraries(Quiet_Cooker
         Quiet::Engine
         meshoptimizer
         libzstd_static
+        ktx
 )

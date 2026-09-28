@@ -11,6 +11,7 @@ target_sources(Quiet_Engine
         # Assets
         src/Assets/MeshImporter.cpp
         src/Assets/QMeshReader.cpp
+        src/Assets/QTextureReader.cpp
         src/Assets/TextureImporter.cpp
 
         # Platform
@@ -278,6 +279,8 @@ target_sources(Quiet_Engine
         include/Quiet/Assets/QAssetFormat.h
         include/Quiet/Assets/QMeshFormat.h
         include/Quiet/Assets/QMeshReader.h
+        include/Quiet/Assets/QTextureFormat.h
+        include/Quiet/Assets/QTextureReader.h
         include/Quiet/Assets/TextureImportResult.h
         include/Quiet/Assets/TexturePixelData.h
         include/Quiet/Assets/TextureImporter.h
