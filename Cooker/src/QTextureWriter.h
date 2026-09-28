@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "QTextureMipGenerator.h"
+#include "QTextureCompressor.h"
 
 namespace Quiet::Cooker
 {
@@ -15,8 +15,7 @@ namespace Quiet::Cooker
         std::uint32_t Height = 0;
         std::uint32_t MipLevels = 0;
 
-        std::uint64_t SourceBytes = 0;
-        std::uint64_t MipBytes = 0;
+        std::uint64_t BC7Bytes = 0;
 
         std::uint64_t KtxBytes = 0;
         std::uint64_t PayloadBytes = 0;
@@ -25,7 +24,7 @@ namespace Quiet::Cooker
 
     bool WriteQTexture(
         const std::filesystem::path& path,
-        const std::vector<QTextureMipLevel>& mipLevels,
+        const std::vector<QTextureBC7MipLevel>& mipLevels,
         QTextureWriteStats& outStats,
         std::string& outError);
 }

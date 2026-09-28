@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <chrono>
 
 #include <meshoptimizer.h>
 #include <ktx.h>
@@ -678,21 +679,75 @@ namespace
 
     using KtxTexture2Ptr = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 
-    bool ValidateQTextureRoundTrip(const std::filesystem::path& path, const std::vector<Quiet::Cooker::QTextureMipLevel>& expectedMipLevels, std::string& outError)
+    bool ValidateQTextureRoundTrip(
+        const std::filesystem::path& path,
+        const std::vector<Quiet::Cooker::QTextureBC7MipLevel>& expectedMipLevels,
+        std::string& outError)
     {
+        outError.clear();
+
         if (expectedMipLevels.empty())
         {
             outError = "Cannot validate an empty QTexture mip chain.";
             return false;
         }
 
-        Quiet::Assets::QTextureData cookedTexture{};
+        for (const Quiet::Cooker::QTextureBC7MipLevel& mip : expectedMipLevels)
+        {
+            if (!mip.IsValid())
+            {
+                outError = "Cannot validate an invalid BC7 mip chain.";
+                return false;
+            }
+        }
 
-        if (!Quiet::Assets::QTextureReader::LoadFromFile(path, cookedTexture, outError)) return false;
+        Quiet::Assets::QTextureData cookedTexture{};
+        if (!Quiet::Assets::QTextureReader::LoadFromFile(path, cookedTexture, outError))
+        {
+            return false;
+        }
+
         if (cookedTexture.Format != Quiet::Assets::QTexturePayloadFormat::Ktx2)
         {
             outError = "QTexture reader returned an unexpected payload format.";
             return false;
+        }
+
+        if (cookedTexture.VulkanFormat != static_cast<std::uint32_t>(VK_FORMAT_BC7_SRGB_BLOCK))
+        {
+            outError = "QTexture reader returned an unexpected Vulkan format.";
+            return false;
+        }
+
+        if (cookedTexture.Width != expectedMipLevels.front().Width ||
+            cookedTexture.Height != expectedMipLevels.front().Height)
+        {
+            outError = "QTexture reader changed the texture dimensions.";
+            return false;
+        }
+
+        if (cookedTexture.MipLevels.size() != expectedMipLevels.size())
+        {
+            outError = "QTexture reader returned an unexpected mip count.";
+            return false;
+        }
+
+        for (std::size_t level = 0; level < expectedMipLevels.size(); ++level)
+        {
+            const Quiet::Cooker::QTextureBC7MipLevel& expected = expectedMipLevels[level];
+            const Quiet::Assets::QTextureMipData& decoded = cookedTexture.MipLevels[level];
+
+            if (decoded.Width != expected.Width || decoded.Height != expected.Height)
+            {
+                outError = "QTexture reader changed BC7 mip dimensions.";
+                return false;
+            }
+
+            if (decoded.Data != expected.Blocks)
+            {
+                outError = "QTexture reader changed BC7 mip data.";
+                return false;
+            }
         }
 
         ktxTexture2* rawTexture = nullptr;
@@ -710,13 +765,15 @@ namespace
         }
 
         KtxTexture2Ptr texture(rawTexture);
-        if (texture->vkFormat != VK_FORMAT_R8G8B8A8_SRGB)
+
+        if (texture->vkFormat != VK_FORMAT_BC7_SRGB_BLOCK)
         {
             outError = "QTexture KTX2 has an unexpected Vulkan format.";
             return false;
         }
 
-        if (texture->baseWidth != expectedMipLevels.front().Width || texture->baseHeight != expectedMipLevels.front().Height)
+        if (texture->baseWidth != expectedMipLevels.front().Width ||
+            texture->baseHeight != expectedMipLevels.front().Height)
         {
             outError = "QTexture KTX2 dimensions changed during round-trip.";
             return false;
@@ -733,11 +790,12 @@ namespace
 
         if (texture->supercompressionScheme != KTX_SS_NONE)
         {
-            outError = "Baseline QTexture unexpectedly uses KTX2 supercompression.";
+            outError = "QTexture unexpectedly uses KTX2 supercompression.";
             return false;
         }
 
         ktxTexture* baseTexture = ktxTexture(texture.get());
+
         const ktx_uint8_t* imageData = ktxTexture_GetData(baseTexture);
         const ktx_size_t dataSize = ktxTexture_GetDataSize(baseTexture);
 
@@ -749,16 +807,17 @@ namespace
 
         for (std::size_t level = 0; level < expectedMipLevels.size(); ++level)
         {
-            const Quiet::Cooker::QTextureMipLevel& expected = expectedMipLevels[level];
+            const Quiet::Cooker::QTextureBC7MipLevel& expected = expectedMipLevels[level];
             const ktx_size_t imageSize = ktxTexture_GetImageSize(baseTexture, static_cast<ktx_uint32_t>(level));
 
-            if (imageSize != expected.Pixels.size())
+            if (imageSize != expected.Blocks.size())
             {
-                outError = "QTexture mip byte size changed during round-trip.";
+                outError = "QTexture BC7 mip byte size changed during round-trip.";
                 return false;
             }
 
             ktx_size_t imageOffset = 0;
+
             const KTX_error_code offsetResult = ktxTexture_GetImageOffset(baseTexture, static_cast<ktx_uint32_t>(level), 0, 0, &imageOffset);
             if (offsetResult != KTX_SUCCESS)
             {
@@ -766,15 +825,15 @@ namespace
                 return false;
             }
 
-            if (imageOffset > dataSize || expected.Pixels.size() > dataSize - imageOffset)
+            if (imageOffset > dataSize || expected.Blocks.size() > dataSize - imageOffset)
             {
-                outError = "QTexture mip range exceeds loaded KTX2 data.";
+                outError = "QTexture BC7 mip range exceeds loaded KTX2 data.";
                 return false;
             }
 
-            if (std::memcmp(imageData + imageOffset, expected.Pixels.data(), expected.Pixels.size()) != 0)
+            if (std::memcmp(imageData + imageOffset, expected.Blocks.data(), expected.Blocks.size()) != 0)
             {
-                outError = "QTexture mip data changed during round-trip.";
+                outError = "QTexture BC7 mip data changed during round-trip.";
                 return false;
             }
         }
@@ -820,7 +879,8 @@ namespace
             Quiet::Cooker::QTextureBC7CompressionStats bc7Stats{};
 
             std::string compressionError;
-            constexpr float BC7IntegrationQuality = 0.5f;
+            constexpr float BC7IntegrationQuality = 0.05f;
+            const auto bc7Start = std::chrono::steady_clock::now();
 
             if (!Quiet::Cooker::CompressRgba8MipChainToBC7(mipLevels, BC7IntegrationQuality, bc7MipLevels, bc7Stats, compressionError))
             {
@@ -829,11 +889,14 @@ namespace
                 continue;
             }
 
+            const auto bc7End = std::chrono::steady_clock::now();
+            const double bc7Seconds = std::chrono::duration<double>(bc7End - bc7Start).count();
+
             const std::filesystem::path cookedPath = outputRoot / "Content" / "Textures" / (record.ID + ".qtexture");
             Quiet::Cooker::QTextureWriteStats stats{};
             std::string writeError;
 
-            if (!Quiet::Cooker::WriteQTexture(cookedPath, mipLevels, stats, writeError))
+            if (!Quiet::Cooker::WriteQTexture(cookedPath, bc7MipLevels, stats, writeError))
             {
                 std::cerr << "Failed to write texture '" << record.ID << "': " << writeError << '\n';
                 success = false;
@@ -842,7 +905,7 @@ namespace
 
             std::string validationError;
 
-            if (!ValidateQTextureRoundTrip(cookedPath, mipLevels, validationError))
+            if (!ValidateQTextureRoundTrip(cookedPath, bc7MipLevels, validationError))
             {
                 std::cerr << "Failed to validate texture '" << record.ID << "': " << validationError << '\n';
                 success = false;
@@ -854,19 +917,24 @@ namespace
                 return reference > 0 ? static_cast<double>(value) / static_cast<double>(reference) * 100.0 : 0.0;
             };
 
+            const std::uint64_t baseRgbaBytes =
+                static_cast<std::uint64_t>(mipLevels.front().Pixels.size());
+
             std::cout
             << "Texture: " << record.ID << '\n'
             << "  Source:      " << sourcePath.filename().string() << '\n'
-            << "  Format:      " << pixels.Metadata.Format << " -> QTexture/KTX2 RGBA8 sRGB\n"
+            << "  Format:      " << pixels.Metadata.Format << " -> QTexture/KTX2 BC7 sRGB\n"
             << "  Dimensions:  " << stats.Width << 'x' << stats.Height << '\n'
             << "  Mip levels:  " << stats.MipLevels << '\n'
-            << "  RGBA8 data:  " << stats.SourceBytes << " bytes\n"
-            << "  Mip data:    " << stats.MipBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.MipBytes, stats.SourceBytes) << "% of base)\n"
-            << "  BC7 preview: " << bc7Stats.CompressedBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(bc7Stats.CompressedBytes, bc7Stats.SourceBytes) << "% of raw mip data)\n"
-            << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.MipBytes) << "% of raw)\n"
+            << "  RGBA8 data:  " << baseRgbaBytes << " bytes\n"
+            << "  Mip data:    " << bc7Stats.SourceBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(bc7Stats.SourceBytes, baseRgbaBytes) << "% of base)\n"
+            << "  BC7 data:    " << bc7Stats.CompressedBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(bc7Stats.CompressedBytes, bc7Stats.SourceBytes) << "% of raw mip data)\n"
+            << "  BC7 time:    " << std::fixed << std::setprecision(3) << bc7Seconds << " s\n"
+            << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.BC7Bytes) << "% of BC7 data)\n"
             << "  QTexture:    " << cookedPath.filename().string() << '\n'
             << "  File size:   " << stats.FileBytes << " bytes\n"
-            << "  Compression: none\n"
+            << "  GPU format:  BC7 sRGB (8 bpp)\n"
+            << "  Outer comp.: none\n"
             << "  Round-trip:  OK\n\n";
         }
 

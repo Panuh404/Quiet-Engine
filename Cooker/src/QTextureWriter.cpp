@@ -77,7 +77,7 @@ namespace Quiet::Cooker
 
     bool WriteQTexture(
         const std::filesystem::path& path,
-        const std::vector<QTextureMipLevel>& mipLevels,
+        const std::vector<QTextureBC7MipLevel>& mipLevels,
         QTextureWriteStats& outStats,
         std::string& outError)
     {
@@ -100,7 +100,7 @@ namespace Quiet::Cooker
 
         for (std::size_t level = 0; level < mipLevels.size(); ++level)
         {
-            const QTextureMipLevel& mip = mipLevels[level];
+            const QTextureBC7MipLevel& mip = mipLevels[level];
             if (!mip.IsValid())
             {
                 outError = "QTexture contains an invalid mip level.";
@@ -119,7 +119,7 @@ namespace Quiet::Cooker
 
         // Build the internal KTX2 object.
         ktxTextureCreateInfo createInfo{};
-        createInfo.vkFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        createInfo.vkFormat = VK_FORMAT_BC7_SRGB_BLOCK;
         createInfo.baseWidth = mipLevels.front().Width;
         createInfo.baseHeight = mipLevels.front().Height;
         createInfo.baseDepth = 1;
@@ -141,11 +141,12 @@ namespace Quiet::Cooker
         KtxTexture2Ptr texture(rawTexture);
         for (std::size_t level = 0; level < mipLevels.size(); ++level)
         {
-            const QTextureMipLevel& mip = mipLevels[level];
-            result = ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), static_cast<ktx_uint32_t>(level), 0, 0, mip.Pixels.data(), static_cast<ktx_size_t>(mip.Pixels.size()));
+            const QTextureBC7MipLevel& mip = mipLevels[level];
+
+            result = ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), static_cast<ktx_uint32_t>(level), 0, 0, mip.Blocks.data(), static_cast<ktx_size_t>(mip.Blocks.size()));
             if (result != KTX_SUCCESS)
             {
-                outError = MakeKtxError("Failed to set KTX2 mip image data", result);
+                outError = MakeKtxError("Failed to set KTX2 BC7 mip image data", result);
                 return false;
             }
         }
@@ -243,11 +244,12 @@ namespace Quiet::Cooker
         outStats.Width = mipLevels.front().Width;
         outStats.Height = mipLevels.front().Height;
         outStats.MipLevels = static_cast<std::uint32_t>(mipLevels.size());
-        outStats.SourceBytes = static_cast<std::uint64_t>(mipLevels.front().Pixels.size());
-        for (const QTextureMipLevel& mip : mipLevels)
+
+        for (const QTextureBC7MipLevel& mip : mipLevels)
         {
-            outStats.MipBytes += static_cast<std::uint64_t>(mip.Pixels.size());
+            outStats.BC7Bytes += static_cast<std::uint64_t>(mip.Blocks.size());
         }
+
         outStats.KtxBytes = static_cast<std::uint64_t>(ktxBytes.size());
         outStats.PayloadBytes = static_cast<std::uint64_t>(payload.size());
         outStats.FileBytes = QAssetHeaderSize + outStats.PayloadBytes;

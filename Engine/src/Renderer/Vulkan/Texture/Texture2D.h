@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 
 #include <vulkan/vulkan.h>
 
 namespace Quiet::Assets
 {
+    struct QTextureData;
     struct TexturePixelData;
 }
 
@@ -18,10 +20,17 @@ namespace Quiet::Renderer::Vulkan
     class Texture2D
     {
     public:
-        Texture2D(const PhysicalDevice& physicalDevice,
-                  const LogicalDevice& logicalDevice,
-                  const GraphicsCommands& graphicsCommands,
-                  const Assets::TexturePixelData& pixelData);
+        Texture2D(
+            const PhysicalDevice& physicalDevice,
+            const LogicalDevice& logicalDevice,
+            const GraphicsCommands& graphicsCommands,
+            const Assets::TexturePixelData& pixelData);
+
+        Texture2D(
+           const PhysicalDevice& physicalDevice,
+           const LogicalDevice& logicalDevice,
+           const GraphicsCommands& graphicsCommands,
+           const Assets::QTextureData& textureData);
 
         ~Texture2D();
 
@@ -39,8 +48,23 @@ namespace Quiet::Renderer::Vulkan
 
         [[nodiscard]] std::uint32_t GetWidth() const { return m_Width; }
         [[nodiscard]] std::uint32_t GetHeight() const { return m_Height; }
+        [[nodiscard]] std::uint32_t GetMipLevels() const { return m_MipLevels; }
 
     private:
+        struct UploadMip
+        {
+            std::uint32_t Width = 0;
+            std::uint32_t Height = 0;
+            std::span<const std::uint8_t> Data;
+        };
+
+        void Create(
+            const PhysicalDevice& physicalDevice,
+            const LogicalDevice& logicalDevice,
+            const GraphicsCommands& graphicsCommands,
+            VkFormat format,
+            std::span<const UploadMip> mipLevels);
+
         void Destroy();
 
         VkDevice m_Device = VK_NULL_HANDLE;
@@ -53,5 +77,6 @@ namespace Quiet::Renderer::Vulkan
 
         std::uint32_t m_Width = 0;
         std::uint32_t m_Height = 0;
+        std::uint32_t m_MipLevels = 1;
     };
 }

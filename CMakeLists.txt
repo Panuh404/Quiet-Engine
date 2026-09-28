@@ -295,6 +295,11 @@ if(QUIET_BUILD_COOKER)
                 PRIVATE
                     -Wno-unknown-pragmas
                     -msse4.1
+                    # Compressonator's BC7 encoder is extremely
+                    # compute-heavy. Keep Quiet itself debuggable,
+                    # but do not execute the third-party codec at -O0
+                    # during Debug cooker builds.
+                    $<$<CONFIG:Debug>:-O2>
         )
     endif()
 endif()
