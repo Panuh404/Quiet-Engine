@@ -5,6 +5,8 @@ target_sources(Quiet_Cooker
         src/main.cpp
         src/QMeshWriter.h
         src/QMeshWriter.cpp
+        src/QTextureCompressor.h
+        src/QTextureCompressor.cpp
         src/QTextureMipGenerator.h
         src/QTextureMipGenerator.cpp
         src/QTextureWriter.h

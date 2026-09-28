@@ -21,6 +21,7 @@
 #include "QMeshWriter.h"
 #include "QTextureWriter.h"
 #include "QTextureMipGenerator.h"
+#include "QTextureCompressor.h"
 
 #include "Quiet/Assets/MeshImporter.h"
 #include "Quiet/Assets/QMeshReader.h"
@@ -815,6 +816,19 @@ namespace
                 continue;
             }
 
+            std::vector<Quiet::Cooker::QTextureBC7MipLevel> bc7MipLevels;
+            Quiet::Cooker::QTextureBC7CompressionStats bc7Stats{};
+
+            std::string compressionError;
+            constexpr float BC7IntegrationQuality = 0.5f;
+
+            if (!Quiet::Cooker::CompressRgba8MipChainToBC7(mipLevels, BC7IntegrationQuality, bc7MipLevels, bc7Stats, compressionError))
+            {
+                std::cerr << "Failed to BC7-compress texture '" << record.ID << "': " << compressionError << '\n';
+                success = false;
+                continue;
+            }
+
             const std::filesystem::path cookedPath = outputRoot / "Content" / "Textures" / (record.ID + ".qtexture");
             Quiet::Cooker::QTextureWriteStats stats{};
             std::string writeError;
@@ -848,6 +862,7 @@ namespace
             << "  Mip levels:  " << stats.MipLevels << '\n'
             << "  RGBA8 data:  " << stats.SourceBytes << " bytes\n"
             << "  Mip data:    " << stats.MipBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.MipBytes, stats.SourceBytes) << "% of base)\n"
+            << "  BC7 preview: " << bc7Stats.CompressedBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(bc7Stats.CompressedBytes, bc7Stats.SourceBytes) << "% of raw mip data)\n"
             << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.MipBytes) << "% of raw)\n"
             << "  QTexture:    " << cookedPath.filename().string() << '\n'
             << "  File size:   " << stats.FileBytes << " bytes\n"
