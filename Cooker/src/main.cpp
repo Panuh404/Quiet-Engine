@@ -14,10 +14,12 @@
 
 #include <meshoptimizer.h>
 #include <ktx.h>
-#include "QMeshWriter.h"
 #include <vulkan/vulkan_core.h>
 
+#include "QMeshWriter.h"
 #include "QTextureWriter.h"
+#include "QTextureMipGenerator.h"
+
 #include "Quiet/Assets/MeshImporter.h"
 #include "Quiet/Assets/QMeshReader.h"
 #include "Quiet/Assets/QTextureReader.h"
@@ -27,15 +29,8 @@
 #include "Quiet/Project/ProjectDescriptor.h"
 #include "Quiet/Project/RuntimeManifest.h"
 
-static_assert(
-    MESHOPTIMIZER_VERSION == 1020,
-    "Quiet_Cooker expects meshoptimizer v1.2."
-);
-
-static_assert(
-    KTX_SUCCESS == 0,
-    "Quiet_Cooker expects the libktx API."
-);
+static_assert(MESHOPTIMIZER_VERSION == 1020, "Quiet_Cooker expects meshoptimizer v1.2.");
+static_assert(KTX_SUCCESS == 0, "Quiet_Cooker expects the libktx API.");
 
 namespace
 {
@@ -680,8 +675,14 @@ namespace
 
     using KtxTexture2Ptr = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 
-    bool ValidateQTextureRoundTrip(const std::filesystem::path& path, const Quiet::Assets::TexturePixelData& source, std::string& outError)
+    bool ValidateQTextureRoundTrip(const std::filesystem::path& path, const std::vector<Quiet::Cooker::QTextureMipLevel>& expectedMipLevels, std::string& outError)
     {
+        if (expectedMipLevels.empty())
+        {
+            outError = "Cannot validate an empty QTexture mip chain.";
+            return false;
+        }
+
         Quiet::Assets::QTextureData cookedTexture{};
 
         if (!Quiet::Assets::QTextureReader::LoadFromFile(path, cookedTexture, outError)) return false;
@@ -712,15 +713,14 @@ namespace
             return false;
         }
 
-        if (texture->baseWidth != source.Width ||
-            texture->baseHeight != source.Height)
+        if (texture->baseWidth != expectedMipLevels.front().Width || texture->baseHeight != expectedMipLevels.front().Height)
         {
             outError = "QTexture KTX2 dimensions changed during round-trip.";
             return false;
         }
 
         if (texture->numDimensions != 2 ||
-            texture->numLevels != 1 ||
+            texture->numLevels != expectedMipLevels.size() ||
             texture->numLayers != 1 ||
             texture->numFaces != 1)
         {
@@ -735,23 +735,6 @@ namespace
         }
 
         ktxTexture* baseTexture = ktxTexture(texture.get());
-        const ktx_size_t imageSize = ktxTexture_GetImageSize(baseTexture, 0);
-
-        if (imageSize != source.Pixels.size())
-        {
-            outError = "QTexture image byte size changed during round-trip.";
-            return false;
-        }
-
-        ktx_size_t imageOffset = 0;
-
-        const KTX_error_code offsetResult = ktxTexture_GetImageOffset(baseTexture, 0, 0, 0, &imageOffset);
-        if (offsetResult != KTX_SUCCESS)
-        {
-            outError = std::string("Failed to resolve KTX2 image offset: ") + ktxErrorString(offsetResult);
-            return false;
-        }
-
         const ktx_uint8_t* imageData = ktxTexture_GetData(baseTexture);
         const ktx_size_t dataSize = ktxTexture_GetDataSize(baseTexture);
 
@@ -761,16 +744,36 @@ namespace
             return false;
         }
 
-        if (imageOffset > dataSize || source.Pixels.size() > dataSize - imageOffset)
+        for (std::size_t level = 0; level < expectedMipLevels.size(); ++level)
         {
-            outError = "QTexture image range exceeds loaded KTX2 data.";
-            return false;
-        }
+            const Quiet::Cooker::QTextureMipLevel& expected = expectedMipLevels[level];
+            const ktx_size_t imageSize = ktxTexture_GetImageSize(baseTexture, static_cast<ktx_uint32_t>(level));
 
-        if (std::memcmp(imageData + imageOffset, source.Pixels.data(), source.Pixels.size()) != 0)
-        {
-            outError = "QTexture pixel data changed during round-trip.";
-            return false;
+            if (imageSize != expected.Pixels.size())
+            {
+                outError = "QTexture mip byte size changed during round-trip.";
+                return false;
+            }
+
+            ktx_size_t imageOffset = 0;
+            const KTX_error_code offsetResult = ktxTexture_GetImageOffset(baseTexture, static_cast<ktx_uint32_t>(level), 0, 0, &imageOffset);
+            if (offsetResult != KTX_SUCCESS)
+            {
+                outError = std::string("Failed to resolve KTX2 mip offset: ") + ktxErrorString(offsetResult);
+                return false;
+            }
+
+            if (imageOffset > dataSize || expected.Pixels.size() > dataSize - imageOffset)
+            {
+                outError = "QTexture mip range exceeds loaded KTX2 data.";
+                return false;
+            }
+
+            if (std::memcmp(imageData + imageOffset, expected.Pixels.data(), expected.Pixels.size()) != 0)
+            {
+                outError = "QTexture mip data changed during round-trip.";
+                return false;
+            }
         }
 
         return true;
@@ -800,11 +803,21 @@ namespace
                 continue;
             }
 
+            std::vector<Quiet::Cooker::QTextureMipLevel> mipLevels;
+            std::string mipError;
+
+            if (!Quiet::Cooker::BuildRgba8SrgbMipChain(pixels, mipLevels, mipError))
+            {
+                std::cerr << "Failed to generate mipmaps for texture '" << record.ID << "': " << mipError << '\n';
+                success = false;
+                continue;
+            }
+
             const std::filesystem::path cookedPath = outputRoot / "Content" / "Textures" / (record.ID + ".qtexture");
             Quiet::Cooker::QTextureWriteStats stats{};
             std::string writeError;
 
-            if (!Quiet::Cooker::WriteQTexture(cookedPath, pixels, stats, writeError))
+            if (!Quiet::Cooker::WriteQTexture(cookedPath, mipLevels, stats, writeError))
             {
                 std::cerr << "Failed to write texture '" << record.ID << "': " << writeError << '\n';
                 success = false;
@@ -813,7 +826,7 @@ namespace
 
             std::string validationError;
 
-            if (!ValidateQTextureRoundTrip(cookedPath, pixels, validationError))
+            if (!ValidateQTextureRoundTrip(cookedPath, mipLevels, validationError))
             {
                 std::cerr << "Failed to validate texture '" << record.ID << "': " << validationError << '\n';
                 success = false;
@@ -832,7 +845,8 @@ namespace
             << "  Dimensions:  " << stats.Width << 'x' << stats.Height << '\n'
             << "  Mip levels:  " << stats.MipLevels << '\n'
             << "  RGBA8 data:  " << stats.SourceBytes << " bytes\n"
-            << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.SourceBytes) << "% of raw)\n"
+            << "  Mip data:    " << stats.MipBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.MipBytes, stats.SourceBytes) << "% of base)\n"
+            << "  KTX2 data:   " << stats.KtxBytes << " bytes (" << std::fixed << std::setprecision(3) << percentage(stats.KtxBytes, stats.MipBytes) << "% of raw)\n"
             << "  QTexture:    " << cookedPath.filename().string() << '\n'
             << "  File size:   " << stats.FileBytes << " bytes\n"
             << "  Compression: none\n"

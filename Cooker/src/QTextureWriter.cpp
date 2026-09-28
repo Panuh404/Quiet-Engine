@@ -6,13 +6,13 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
 #include <ktx.h>
 #include <vulkan/vulkan_core.h>
 
 #include "Quiet/Assets/QAssetFormat.h"
 #include "Quiet/Assets/QTextureFormat.h"
-#include "Quiet/Assets/TexturePixelData.h"
 
 namespace Quiet::Cooker
 {
@@ -75,33 +75,56 @@ namespace Quiet::Cooker
         }
     }
 
-    bool WriteQTexture(const std::filesystem::path& path, const Assets::TexturePixelData& pixels, QTextureWriteStats& outStats, std::string& outError)
+    bool WriteQTexture(
+        const std::filesystem::path& path,
+        const std::vector<QTextureMipLevel>& mipLevels,
+        QTextureWriteStats& outStats,
+        std::string& outError)
     {
         static_assert(std::endian::native == std::endian::little, "QAsset v1 currently supports little-endian targets only.");
 
         outStats = {};
         outError.clear();
 
-        if (!pixels.IsValid())
+        if (mipLevels.empty())
         {
-            outError = "Cannot write invalid texture pixel data.";
+            outError = "Cannot write QTexture without mip levels.";
             return false;
         }
 
-        if (pixels.Channels != 4)
+        if (!mipLevels.front().IsValid())
         {
-            outError = "QTexture v1 requires RGBA8 source data.";
+            outError = "QTexture base mip level is invalid.";
             return false;
+        }
+
+        for (std::size_t level = 0; level < mipLevels.size(); ++level)
+        {
+            const QTextureMipLevel& mip = mipLevels[level];
+            if (!mip.IsValid())
+            {
+                outError = "QTexture contains an invalid mip level.";
+                return false;
+            }
+
+            const std::uint32_t expectedWidth = std::max(1u, mipLevels.front().Width >> static_cast<std::uint32_t>(level));
+            const std::uint32_t expectedHeight = std::max(1u, mipLevels.front().Height >> static_cast<std::uint32_t>(level));
+
+            if (mip.Width != expectedWidth || mip.Height != expectedHeight)
+            {
+                outError = "QTexture mip dimensions do not form a complete mip chain.";
+                return false;
+            }
         }
 
         // Build the internal KTX2 object.
         ktxTextureCreateInfo createInfo{};
         createInfo.vkFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        createInfo.baseWidth = pixels.Width;
-        createInfo.baseHeight = pixels.Height;
+        createInfo.baseWidth = mipLevels.front().Width;
+        createInfo.baseHeight = mipLevels.front().Height;
         createInfo.baseDepth = 1;
         createInfo.numDimensions = 2;
-        createInfo.numLevels = 1;   // Baseline QTexture v1 currently stores only the base image level.
+        createInfo.numLevels = static_cast<ktx_uint32_t>(mipLevels.size());
         createInfo.numLayers = 1;
         createInfo.numFaces = 1;
         createInfo.isArray = KTX_FALSE;
@@ -116,11 +139,15 @@ namespace Quiet::Cooker
         }
 
         KtxTexture2Ptr texture(rawTexture);
-        result = ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), 0, 0, 0, pixels.Pixels.data(), static_cast<ktx_size_t>(pixels.Pixels.size()));
-        if (result != KTX_SUCCESS)
+        for (std::size_t level = 0; level < mipLevels.size(); ++level)
         {
-            outError = MakeKtxError("Failed to set KTX2 image data", result);
-            return false;
+            const QTextureMipLevel& mip = mipLevels[level];
+            result = ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), static_cast<ktx_uint32_t>(level), 0, 0, mip.Pixels.data(), static_cast<ktx_size_t>(mip.Pixels.size()));
+            if (result != KTX_SUCCESS)
+            {
+                outError = MakeKtxError("Failed to set KTX2 mip image data", result);
+                return false;
+            }
         }
 
         // Serialize KTX2 into memory.
@@ -213,10 +240,14 @@ namespace Quiet::Cooker
             return false;
         }
 
-        outStats.Width = pixels.Width;
-        outStats.Height = pixels.Height;
-        outStats.MipLevels = 1;
-        outStats.SourceBytes = static_cast<std::uint64_t>(pixels.Pixels.size());
+        outStats.Width = mipLevels.front().Width;
+        outStats.Height = mipLevels.front().Height;
+        outStats.MipLevels = static_cast<std::uint32_t>(mipLevels.size());
+        outStats.SourceBytes = static_cast<std::uint64_t>(mipLevels.front().Pixels.size());
+        for (const QTextureMipLevel& mip : mipLevels)
+        {
+            outStats.MipBytes += static_cast<std::uint64_t>(mip.Pixels.size());
+        }
         outStats.KtxBytes = static_cast<std::uint64_t>(ktxBytes.size());
         outStats.PayloadBytes = static_cast<std::uint64_t>(payload.size());
         outStats.FileBytes = QAssetHeaderSize + outStats.PayloadBytes;
