@@ -14,10 +14,10 @@
 #include "Quiet/Assets/MeshImporter.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
-#include "Renderer/Vulkan/Texture/TextureImporter.h"
-#include "Renderer/Vulkan/Texture/TextureImportResult.h"
+#include "Quiet/Assets/TextureImporter.h"
+#include "Quiet/Assets/TextureImportResult.h"
+#include "Quiet/Assets/TexturePixelData.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 #include "Audio/AudioLibrary.h"
 
 
@@ -48,7 +48,7 @@ namespace
         return stats;
     }
 
-    Quiet::Renderer::Vulkan::TextureStats MakeTextureStatsFromImportResult(const Quiet::Renderer::Vulkan::TextureImportResult& importResult)
+    Quiet::Renderer::Vulkan::TextureStats MakeTextureStatsFromImportResult(const Quiet::Assets::TextureImportResult& importResult)
     {
         Quiet::Renderer::Vulkan::TextureStats stats{};
 
@@ -709,7 +709,7 @@ namespace Quiet::Project
             return false;
         }
 
-        const Renderer::Vulkan::TexturePixelData pixelData = Renderer::Vulkan::TextureImporter::LoadPixelsFromFile(assetPath);
+        const Assets::TexturePixelData pixelData = Assets::TextureImporter::LoadPixelsFromFile(assetPath);
 
         if (!pixelData.Metadata.Succeeded() || !pixelData.IsValid())
         {

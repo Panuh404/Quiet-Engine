@@ -8,7 +8,7 @@
 #include "Renderer/Vulkan/Context/LogicalDevice.h"
 #include "Renderer/Vulkan/Context/PhysicalDevice.h"
 #include "Renderer/Vulkan/Context/VulkanBuffer.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
+#include "Quiet/Assets/TexturePixelData.h"
 
 namespace
 {
@@ -146,7 +146,7 @@ namespace Quiet::Renderer::Vulkan
     Texture2D::Texture2D(const PhysicalDevice &physicalDevice,
                          const LogicalDevice &logicalDevice,
                          const GraphicsCommands &graphicsCommands,
-                         const TexturePixelData &pixelData)
+                         const Assets::TexturePixelData &pixelData)
                              : m_Device(logicalDevice.GetHandle())
                              , m_Width(pixelData.Width)
                              , m_Height(pixelData.Height)

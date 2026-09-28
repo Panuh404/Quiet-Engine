@@ -1,0 +1,24 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
+#include <Quiet/Assets/TextureImportResult.h>
+
+namespace Quiet::Assets
+{
+    struct TexturePixelData
+    {
+        TextureImportResult Metadata;
+
+        std::uint32_t Width = 0;
+        std::uint32_t Height = 0;
+        std::uint32_t Channels = 4;
+
+        std::vector<std::uint8_t> Pixels;
+
+        [[nodiscard]] bool IsValid() const { return Width > 0 && Height > 0 && Channels == 4 && !Pixels.empty(); }
+        [[nodiscard]] std::size_t GetByteSize() const { return Pixels.size(); }
+    };
+}

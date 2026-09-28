@@ -3,10 +3,12 @@
 #include "Quiet/Core/AppSpec.h"
 #include "Quiet/Core/Log.h"
 #include "Quiet/Platform/Window.h"
+#include "Quiet/Assets/TexturePixelData.h"
 
 #include <filesystem>
 #include <stdexcept>
 #include "GLFW/glfw3.h"
+#include "Quiet/Assets/TextureImporter.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
 
@@ -28,8 +30,6 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
-#include "Renderer/Vulkan/Texture/TextureImporter.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
 
 #include "Renderer/Vulkan/Editor/EditorGridPipeline.h"
 #include "Renderer/Vulkan/Editor/EditorGridRenderSystem.h"
@@ -389,7 +389,7 @@ namespace Quiet::Renderer::Vulkan
             return;
         }
 
-        const TexturePixelData pixelData = TextureImporter::LoadPixelsFromFile(logoPath);
+        const Assets::TexturePixelData pixelData = Assets::TextureImporter::LoadPixelsFromFile(logoPath);
         if (!pixelData.Metadata.Succeeded() || !pixelData.IsValid())
         {
             QUIET_CORE_WARN(

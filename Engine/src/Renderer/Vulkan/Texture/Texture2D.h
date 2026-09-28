@@ -4,12 +4,16 @@
 
 #include <vulkan/vulkan.h>
 
+namespace Quiet::Assets
+{
+    struct TexturePixelData;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
-    struct TexturePixelData;
 
     class Texture2D
     {
@@ -17,7 +21,7 @@ namespace Quiet::Renderer::Vulkan
         Texture2D(const PhysicalDevice& physicalDevice,
                   const LogicalDevice& logicalDevice,
                   const GraphicsCommands& graphicsCommands,
-                  const TexturePixelData& pixelData);
+                  const Assets::TexturePixelData& pixelData);
 
         ~Texture2D();
 

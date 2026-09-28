@@ -10,13 +10,17 @@
 
 #include <vulkan/vulkan.h>
 
+namespace Quiet::Assets
+{
+    struct TexturePixelData;
+}
+
 namespace Quiet::Renderer::Vulkan
 {
     class Texture2D;
     class PhysicalDevice;
     class LogicalDevice;
     class GraphicsCommands;
-    struct TexturePixelData;
 
     struct TextureStats
     {
@@ -42,14 +46,14 @@ namespace Quiet::Renderer::Vulkan
                              const PhysicalDevice& physicalDevice,
                              const LogicalDevice& logicalDevice,
                              const GraphicsCommands& graphicsCommands,
-                             const TexturePixelData& pixelData,
+                             const Assets::TexturePixelData& pixelData,
                              TextureStats stats);
 
         void ReplaceTexture2D(const std::string& name,
                               const PhysicalDevice& physicalDevice,
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
-                              const TexturePixelData& pixelData,
+                              const Assets::TexturePixelData& pixelData,
                               TextureStats stats);
 
         void RegisterTexture(const std::string& name, TextureStats stats);

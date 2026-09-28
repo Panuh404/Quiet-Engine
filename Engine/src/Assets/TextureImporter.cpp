@@ -1,4 +1,4 @@
-#include "Renderer/Vulkan/Texture/TextureImporter.h"
+#include "Quiet/Assets/TextureImporter.h"
 
 #include <algorithm>
 #include <cctype>
@@ -175,7 +175,7 @@ namespace
     }
 }
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Assets
 {
     TextureImportResult TextureImporter::LoadFromFile(const std::filesystem::path &path)
     {
@@ -208,7 +208,6 @@ namespace Quiet::Renderer::Vulkan
         }
 
         const std::string ext = ToLowerCopy(path.extension().string());
-
         if (ext == ".png")
         {
             result.Format = "PNG";
@@ -285,10 +284,7 @@ namespace Quiet::Renderer::Vulkan
             return result;
         }
 
-        const std::size_t byteCount =
-            static_cast<std::size_t>(width) *
-            static_cast<std::size_t>(height) *
-            4u;
+        const std::size_t byteCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u;
 
         result.Width = static_cast<std::uint32_t>(width);
         result.Height = static_cast<std::uint32_t>(height);
@@ -298,7 +294,9 @@ namespace Quiet::Renderer::Vulkan
         stbi_image_free(pixels);
 
         if (sourceChannels != 4)
+        {
             result.Metadata.Warnings.emplace_back("Texture was converted to RGBA8 during CPU import.");
+        }
 
         result.Metadata.Width = result.Width;
         result.Metadata.Height = result.Height;

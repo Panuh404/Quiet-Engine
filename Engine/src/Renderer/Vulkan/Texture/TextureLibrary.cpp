@@ -5,7 +5,8 @@
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
+#include "Quiet/Assets/TexturePixelData.h"
+
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -13,7 +14,7 @@ namespace Quiet::Renderer::Vulkan
                                          const PhysicalDevice &physicalDevice,
                                          const LogicalDevice &logicalDevice,
                                          const GraphicsCommands &graphicsCommands,
-                                         const TexturePixelData &pixelData,
+                                         const Assets::TexturePixelData& pixelData,
                                          TextureStats stats)
     {
         if (Has(name))
@@ -46,7 +47,7 @@ namespace Quiet::Renderer::Vulkan
                                           const PhysicalDevice &physicalDevice,
                                           const LogicalDevice &logicalDevice,
                                           const GraphicsCommands &graphicsCommands,
-                                          const TexturePixelData &pixelData,
+                                          const Assets::TexturePixelData& pixelData,
                                           TextureStats stats)
     {
         auto texture = std::make_shared<Texture2D>(

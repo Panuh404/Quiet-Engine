@@ -2,15 +2,16 @@
 
 #include <filesystem>
 
-#include "Renderer/Vulkan/Texture/TextureImportResult.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
+#include "Quiet/Assets/TextureImportResult.h"
+#include "Quiet/Assets/TexturePixelData.h"
 
-namespace Quiet::Renderer::Vulkan
+namespace Quiet::Assets
 {
     class TextureImporter
     {
     public:
         [[nodiscard]] static TextureImportResult LoadFromFile(const std::filesystem::path& path);
+
         [[nodiscard]] static TexturePixelData LoadPixelsFromFile(const std::filesystem::path& path);
     };
 }

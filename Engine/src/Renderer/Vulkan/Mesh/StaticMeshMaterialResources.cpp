@@ -6,13 +6,13 @@
 #include "Renderer/Vulkan/Context/LogicalDevice.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
-#include "Renderer/Vulkan/Texture/TexturePixelData.h"
+#include "Quiet/Assets/TexturePixelData.h"
 
 namespace
 {
-    Quiet::Renderer::Vulkan::TexturePixelData CreateFallbackWhitePixel()
+    Quiet::Assets::TexturePixelData CreateFallbackWhitePixel()
     {
-        Quiet::Renderer::Vulkan::TexturePixelData pixelData{};
+        Quiet::Assets::TexturePixelData pixelData{};
         pixelData.Metadata.Success = true;
         pixelData.Metadata.Format = "RGBA8";
         pixelData.Metadata.Width = 1;
@@ -55,7 +55,7 @@ namespace Quiet::Renderer::Vulkan
 
         try
         {
-            TexturePixelData fallbackPixel = CreateFallbackWhitePixel();
+            Assets::TexturePixelData fallbackPixel = CreateFallbackWhitePixel();
 
             m_FallbackWhiteTexture = std::make_unique<Texture2D>(
                 physicalDevice,

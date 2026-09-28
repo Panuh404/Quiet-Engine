@@ -11,6 +11,7 @@ target_sources(Quiet_Engine
         # Assets
         src/Assets/MeshImporter.cpp
         src/Assets/QMeshReader.cpp
+        src/Assets/TextureImporter.cpp
 
         # Platform
         src/Platform/Window.cpp
@@ -198,12 +199,8 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Texture/StbImage.cpp
         src/Renderer/Vulkan/Texture/Texture2D.cpp
         src/Renderer/Vulkan/Texture/Texture2D.h
-        src/Renderer/Vulkan/Texture/TextureImporter.cpp
-        src/Renderer/Vulkan/Texture/TextureImporter.h
-        src/Renderer/Vulkan/Texture/TextureImportResult.h
         src/Renderer/Vulkan/Texture/TextureLibrary.cpp
         src/Renderer/Vulkan/Texture/TextureLibrary.h
-        src/Renderer/Vulkan/Texture/TexturePixelData.h
 
         # Renderer - Vulkan - Context
         src/Renderer/Vulkan/Context/GraphicsCommands.cpp
@@ -281,6 +278,9 @@ target_sources(Quiet_Engine
         include/Quiet/Assets/QAssetFormat.h
         include/Quiet/Assets/QMeshFormat.h
         include/Quiet/Assets/QMeshReader.h
+        include/Quiet/Assets/TextureImportResult.h
+        include/Quiet/Assets/TexturePixelData.h
+        include/Quiet/Assets/TextureImporter.h
 
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h
