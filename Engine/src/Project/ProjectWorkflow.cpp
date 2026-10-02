@@ -240,7 +240,7 @@ namespace Quiet::Project
         }
         else
         {
-            QUIET_CORE_INFO("Loaded project assets from '{}' without loading the source startup scene.", m_ProjectContext.GetProjectFilePath().string());
+            QUIET_CORE_INFO("Loaded runtime support assets from '{}' without loading the source startup scene.", m_ProjectContext.GetProjectFilePath().string());
         }
 
         return true;
