@@ -2,6 +2,8 @@ add_executable(Quiet_Cooker)
 
 target_sources(Quiet_Cooker
     PRIVATE
+        src/CookCache.h
+        src/CookCache.cpp
         src/main.cpp
         src/QMeshWriter.h
         src/QMeshWriter.cpp

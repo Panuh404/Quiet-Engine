@@ -13,12 +13,14 @@
 #include <cstring>
 #include <memory>
 #include <chrono>
+#include <string_view>
 
 #include <meshoptimizer.h>
 #include <ktx.h>
 #include <cmp_core.h>
 #include <vulkan/vulkan_core.h>
 
+#include "CookCache.h"
 #include "QMeshWriter.h"
 #include "QTextureWriter.h"
 #include "QTextureMipGenerator.h"
@@ -38,6 +40,9 @@ static_assert(KTX_SUCCESS == 0, "Quiet_Cooker expects the libktx API.");
 
 namespace
 {
+    constexpr std::string_view MeshCookSignature = "qmesh-v1|meshopt-opt-v1|meshopt-encode-v1|quant-pos16-oct16-color8-halfuv|zstd-default";
+    constexpr std::string_view TextureCookSignature = "qtexture-v1|ktx2-bc7-srgb|mipgen-srgb-premul-v1|compressonator-bc7-q0.05";
+
     struct AssetCounts
     {
         std::size_t Meshes = 0;
@@ -556,6 +561,8 @@ namespace
     bool OptimizeProjectMeshes(const std::filesystem::path& projectRoot,
                                const std::filesystem::path& outputRoot,
                                const Quiet::Project::AssetRegistry& registry,
+                               const Quiet::Cooker::CookCache& previousCookCache,
+                               Quiet::Cooker::CookCache& outNextCookCache,
                                std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
     {
         bool success = true;
@@ -570,6 +577,100 @@ namespace
                 std::cerr << "Mesh '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
+            }
+
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Meshes" / (record.ID + ".qmesh");
+            const std::filesystem::path cookedPath = outputRoot / runtimePath;
+
+            std::string sourceHash;
+            std::string sourceHashError;
+
+            if (!Quiet::Cooker::ComputeFileHash(sourcePath, sourceHash, sourceHashError))
+            {
+                std::cerr << "Failed to fingerprint mesh '" << record.ID << "': " << sourceHashError << '\n';
+                success = false;
+                continue;
+            }
+
+            const auto cachedIterator = previousCookCache.Assets.find(record.ID);
+            if (cachedIterator != previousCookCache.Assets.end())
+            {
+                const Quiet::Cooker::CookCacheEntry& cached = cachedIterator->second;
+                const std::string runtimePathString = runtimePath.generic_string();
+
+                const bool metadataMatches =
+                    cached.Type == Quiet::Project::AssetType::Mesh &&
+                    cached.SourceHash == sourceHash &&
+                    cached.CookSignature == MeshCookSignature &&
+                    cached.RuntimePath == runtimePathString;
+
+                if (metadataMatches)
+                {
+                    std::error_code cacheFileError;
+                    const bool cookedFileExists = std::filesystem::is_regular_file(cookedPath, cacheFileError) && !cacheFileError;
+                    if (cookedFileExists)
+                    {
+                        std::string currentCookedHash;
+                        std::string cookedHashError;
+
+                        const bool cookedHashSucceeded = Quiet::Cooker::ComputeFileHash(cookedPath, currentCookedHash, cookedHashError);
+                        if (cookedHashSucceeded && currentCookedHash == cached.CookedHash)
+                        {
+                            Quiet::Assets::QMeshData cachedMesh{};
+                            std::string cachedMeshError;
+
+                            const bool meshValid = Quiet::Assets::QMeshReader::LoadFromFile(cookedPath, cachedMesh, cachedMeshError) &&
+                                !cachedMesh.Vertices.empty() &&
+                                !cachedMesh.Indices.empty() &&
+                                !cachedMesh.Submeshes.empty() &&
+                                cachedMesh.Bounds.Valid;
+
+                            if (meshValid)
+                            {
+                                Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+                                runtimeRecord.ID = record.ID;
+                                runtimeRecord.Type = Quiet::Project::AssetType::Mesh;
+                                runtimeRecord.Path = runtimePathString;
+
+                                outRuntimeAssets.push_back(std::move(runtimeRecord));
+                                outNextCookCache.Assets[record.ID] = cached;
+
+                                std::uint64_t fileSize = 0;
+                                cacheFileError.clear();
+
+                                const auto cachedFileSize = std::filesystem::file_size(cookedPath, cacheFileError);
+                                if (!cacheFileError)
+                                {
+                                    fileSize = static_cast<std::uint64_t>(cachedFileSize);
+                                }
+
+                                std::cout
+                                    << "Mesh: " << record.ID << '\n'
+                                    << "  Source:      " << sourcePath.filename().string() << '\n'
+                                    << "  Cook:        up to date\n"
+                                    << "  Vertices:    " << cachedMesh.Vertices.size() << '\n'
+                                    << "  Triangles:   " << cachedMesh.Indices.size() / 3 << '\n'
+                                    << "  Submeshes:   " << cachedMesh.Submeshes.size() << '\n'
+                                    << "  QMesh:       " << cookedPath.filename().string() << '\n'
+                                    << "  File size:   " << fileSize << " bytes\n"
+                                    << "  Cache:       hit\n\n";
+
+                                continue;
+                            }
+
+                            std::cerr << "Cached QMesh for '" << record.ID << "' failed validation";
+                            if (!cachedMeshError.empty())
+                            {
+                                std::cerr << ": " << cachedMeshError;
+                            }
+                            std::cerr << ". Recooking.\n";
+                        }
+                        else if (!cookedHashSucceeded)
+                        {
+                            std::cerr << "Could not fingerprint cached QMesh for '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                        }
+                    }
+                }
             }
 
             Quiet::Assets::MeshImportResult mesh = Quiet::Assets::MeshImporter::LoadFromFile(sourcePath);
@@ -590,8 +691,6 @@ namespace
                 continue;
             }
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Meshes" / (record.ID + ".qmesh");
-            const std::filesystem::path cookedPath = outputRoot / runtimePath;
             Quiet::Cooker::QMeshWriteStats writeStats{};
             std::string writeError;
 
@@ -612,11 +711,32 @@ namespace
                 continue;
             }
 
+            std::string cookedHash;
+            std::string cookedHashError;
+
+            const bool cookedHashSucceeded = Quiet::Cooker::ComputeFileHash(cookedPath, cookedHash, cookedHashError);
+            if (!cookedHashSucceeded)
+            {
+                std::cerr << "Warning: mesh '" << record.ID << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
+            }
+
             Quiet::Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
             runtimeRecord.Type = Quiet::Project::AssetType::Mesh;
             runtimeRecord.Path = runtimePath.generic_string();
             outRuntimeAssets.push_back(std::move(runtimeRecord));
+
+            if (cookedHashSucceeded)
+            {
+                Quiet::Cooker::CookCacheEntry cacheEntry{};
+                cacheEntry.Type = Quiet::Project::AssetType::Mesh;
+                cacheEntry.SourceHash = sourceHash;
+                cacheEntry.CookedHash = cookedHash;
+                cacheEntry.CookSignature = std::string(MeshCookSignature);
+                cacheEntry.RuntimePath = runtimePath.generic_string();
+
+                outNextCookCache.Assets[record.ID] = std::move(cacheEntry);
+            }
 
             std::cout
                 << "Mesh: " << record.ID << '\n'
@@ -663,7 +783,8 @@ namespace
             << "    Position max error: " << quantizationStats.MaxPositionError << '\n'
             << "    Normal max error:   " << quantizationStats.MaxNormalAngleDegrees << " deg\n"
             << "    Color max error:    " << quantizationStats.MaxColorError << '\n'
-            << "    UV max error:       " << quantizationStats.MaxTexCoordError << "\n\n";
+            << "    UV max error:       " << quantizationStats.MaxTexCoordError << '\n'
+            << "  Cache:           miss (recooked)\n\n";
         }
         return success;
     }
@@ -840,6 +961,8 @@ namespace
     bool CookProjectTextures(const std::filesystem::path& projectRoot,
                              const std::filesystem::path& outputRoot,
                              const Quiet::Project::AssetRegistry& registry,
+                             const Quiet::Cooker::CookCache& previousCookCache,
+                             Quiet::Cooker::CookCache& outNextCookCache,
                              std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
     {
         bool success = true;
@@ -854,6 +977,107 @@ namespace
                 std::cerr << "Texture '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
+            }
+
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Textures" / (record.ID + ".qtexture");
+            const std::filesystem::path cookedPath = outputRoot / runtimePath;
+
+            std::string sourceHash;
+            std::string sourceHashError;
+
+            if (!Quiet::Cooker::ComputeFileHash(sourcePath, sourceHash, sourceHashError))
+            {
+                std::cerr << "Failed to fingerprint texture '" << record.ID << "': " << sourceHashError << '\n';
+                success = false;
+                continue;
+            }
+
+            const auto cachedIterator = previousCookCache.Assets.find(record.ID);
+            if (cachedIterator != previousCookCache.Assets.end())
+            {
+                const Quiet::Cooker::CookCacheEntry& cached = cachedIterator->second;
+                const std::string runtimePathString = runtimePath.generic_string();
+
+                const bool metadataMatches =
+                    cached.Type == Quiet::Project::AssetType::Texture &&
+                    cached.SourceHash == sourceHash &&
+                    cached.CookSignature == TextureCookSignature &&
+                    cached.RuntimePath == runtimePathString;
+
+                if (metadataMatches)
+                {
+                    std::error_code cacheFileError;
+                    const bool cookedFileExists = std::filesystem::is_regular_file(cookedPath, cacheFileError) && !cacheFileError;
+                    if (cookedFileExists)
+                    {
+                        std::string currentCookedHash;
+                        std::string cookedHashError;
+                        const bool cookedHashSucceeded = Quiet::Cooker::ComputeFileHash(cookedPath, currentCookedHash, cookedHashError);
+
+                        if (cookedHashSucceeded && currentCookedHash == cached.CookedHash)
+                        {
+                            Quiet::Assets::QTextureData cachedTexture{};
+                            std::string cachedTextureError;
+
+                            const bool textureValid = Quiet::Assets::QTextureReader::LoadFromFile(cookedPath, cachedTexture, cachedTextureError) &&
+                                cachedTexture.IsValid() &&
+                                cachedTexture.Format == Quiet::Assets::QTexturePayloadFormat::Ktx2 &&
+                                cachedTexture.VulkanFormat == static_cast<std::uint32_t>(VK_FORMAT_BC7_SRGB_BLOCK);
+
+                            if (textureValid)
+                            {
+                                Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+                                runtimeRecord.ID = record.ID;
+                                runtimeRecord.Type = Quiet::Project::AssetType::Texture;
+                                runtimeRecord.Path = runtimePathString;
+
+                                outRuntimeAssets.push_back(std::move(runtimeRecord));
+                                outNextCookCache.Assets[record.ID] = cached;
+
+                                std::uint64_t gpuDataBytes = 0;
+
+                                for (const Quiet::Assets::QTextureMipData& mip : cachedTexture.MipLevels)
+                                {
+                                    gpuDataBytes += static_cast<std::uint64_t>(mip.Data.size());
+                                }
+
+                                std::uint64_t fileSize = 0;
+                                cacheFileError.clear();
+
+                                const auto cachedFileSize = std::filesystem::file_size(cookedPath, cacheFileError);
+                                if (!cacheFileError)
+                                {
+                                    fileSize = static_cast<std::uint64_t>(cachedFileSize);
+                                }
+
+                                std::cout
+                                    << "Texture: " << record.ID << '\n'
+                                    << "  Source:      " << sourcePath.filename().string() << '\n'
+                                    << "  Cook:        up to date\n"
+                                    << "  Dimensions:  " << cachedTexture.Width << 'x' << cachedTexture.Height << '\n'
+                                    << "  Mip levels:  " << cachedTexture.MipLevels.size() << '\n'
+                                    << "  BC7 data:    " << gpuDataBytes << " bytes\n"
+                                    << "  QTexture:    " << cookedPath.filename().string() << '\n'
+                                    << "  File size:   " << fileSize << " bytes\n"
+                                    << "  GPU format:  BC7 sRGB (8 bpp)\n"
+                                    << "  Cache:       hit\n\n";
+
+                                continue;
+                            }
+
+                            std::cerr << "Cached QTexture for '" << record.ID << "' failed validation";
+                            if (!cachedTextureError.empty())
+                            {
+                                std::cerr << ": " << cachedTextureError;
+                            }
+                            std::cerr << ". Recooking.\n";
+                        }
+                        else if (!cookedHashSucceeded)
+                        {
+                            std::cerr << "Could not fingerprint cached QTexture for '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                        }
+                    }
+                }
             }
 
             Quiet::Assets::TexturePixelData pixels = Quiet::Assets::TextureImporter::LoadPixelsFromFile(sourcePath);
@@ -891,8 +1115,6 @@ namespace
             const auto bc7End = std::chrono::steady_clock::now();
             const double bc7Seconds = std::chrono::duration<double>(bc7End - bc7Start).count();
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Textures" / (record.ID + ".qtexture");
-            const std::filesystem::path cookedPath = outputRoot / runtimePath;
             Quiet::Cooker::QTextureWriteStats stats{};
             std::string writeError;
 
@@ -912,11 +1134,32 @@ namespace
                 continue;
             }
 
+            std::string cookedHash;
+            std::string cookedHashError;
+
+            const bool cookedHashSucceeded = Quiet::Cooker::ComputeFileHash(cookedPath, cookedHash, cookedHashError);
+            if (!cookedHashSucceeded)
+            {
+                std::cerr << "Warning: texture '" << record.ID << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
+            }
+
             Quiet::Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
             runtimeRecord.Type = Quiet::Project::AssetType::Texture;
             runtimeRecord.Path = runtimePath.generic_string();
             outRuntimeAssets.push_back(std::move(runtimeRecord));
+
+            if (cookedHashSucceeded)
+            {
+                Quiet::Cooker::CookCacheEntry cacheEntry{};
+                cacheEntry.Type = Quiet::Project::AssetType::Texture;
+                cacheEntry.SourceHash = sourceHash;
+                cacheEntry.CookedHash = cookedHash;
+                cacheEntry.CookSignature = std::string(TextureCookSignature);
+                cacheEntry.RuntimePath = runtimePath.generic_string();
+
+                outNextCookCache.Assets[record.ID] = std::move(cacheEntry);
+            }
 
             const auto percentage = [](const std::uint64_t value, const std::uint64_t reference)
             {
@@ -941,7 +1184,8 @@ namespace
             << "  File size:   " << stats.FileBytes << " bytes\n"
             << "  GPU format:  BC7 sRGB (8 bpp)\n"
             << "  Outer comp.: none\n"
-            << "  Round-trip:  OK\n\n";
+            << "  Round-trip:  OK\n"
+            << "  Cache:       miss (recooked)\n\n";
         }
 
         return success;
@@ -1082,6 +1326,17 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    const fs::path cookCachePath = outputRoot / ".quiet-cook-cache.json";
+    Quiet::Cooker::CookCache previousCookCache{};
+    std::string cookCacheLoadError;
+
+    if (!Quiet::Cooker::LoadCookCache(cookCachePath, previousCookCache, cookCacheLoadError))
+    {
+        std::cerr << "Warning: ignoring invalid cook cache '" << cookCachePath << "': " << cookCacheLoadError << '\n';
+        previousCookCache = {};
+    }
+
+    Quiet::Cooker::CookCache nextCookCache{};
     const AssetCounts counts = CountProjectAssets(assetRegistry);
 
     std::cout
@@ -1103,7 +1358,7 @@ int main(int argc, char** argv)
     std::cout << "\nOptimizing mesh assets...\n\n";
 
     std::vector<Project::RuntimeAssetRecord> runtimeAssets;
-    if (!OptimizeProjectMeshes(projectRoot, outputRoot, assetRegistry, runtimeAssets))
+    if (!OptimizeProjectMeshes(projectRoot, outputRoot, assetRegistry, previousCookCache, nextCookCache, runtimeAssets))
     {
         std::cerr << "Mesh optimization completed with errors.\n";
         return 1;
@@ -1111,7 +1366,7 @@ int main(int argc, char** argv)
 
     std::cout << "\nCooking texture assets...\n\n";
 
-    if (!CookProjectTextures(projectRoot, outputRoot, assetRegistry, runtimeAssets))
+    if (!CookProjectTextures(projectRoot, outputRoot, assetRegistry, previousCookCache, nextCookCache, runtimeAssets))
     {
         std::cerr << "Texture cooking completed with errors.\n";
         return 1;
@@ -1146,6 +1401,12 @@ int main(int argc, char** argv)
     {
         std::cerr << "Failed to write runtime manifest: " << runtimeManifestPath << '\n';
         return 1;
+    }
+
+    std::string cookCacheSaveError;
+    if (!Quiet::Cooker::SaveCookCache(cookCachePath, nextCookCache, cookCacheSaveError))
+    {
+        std::cerr << "Warning: failed to save cook cache '" << cookCachePath << "': " << cookCacheSaveError << '\n';
     }
 
     std::cout
