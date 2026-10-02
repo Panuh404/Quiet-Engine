@@ -553,11 +553,10 @@ namespace
         return true;
     }
 
-    bool OptimizeProjectMeshes(
-        const std::filesystem::path& projectRoot,
-        const std::filesystem::path& outputRoot,
-        const Quiet::Project::AssetRegistry& registry,
-        std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
+    bool OptimizeProjectMeshes(const std::filesystem::path& projectRoot,
+                               const std::filesystem::path& outputRoot,
+                               const Quiet::Project::AssetRegistry& registry,
+                               std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
     {
         bool success = true;
 
@@ -679,10 +678,7 @@ namespace
 
     using KtxTexture2Ptr = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 
-    bool ValidateQTextureRoundTrip(
-        const std::filesystem::path& path,
-        const std::vector<Quiet::Cooker::QTextureBC7MipLevel>& expectedMipLevels,
-        std::string& outError)
+    bool ValidateQTextureRoundTrip(const std::filesystem::path& path, const std::vector<Quiet::Cooker::QTextureBC7MipLevel>& expectedMipLevels, std::string& outError)
     {
         outError.clear();
 
@@ -841,7 +837,10 @@ namespace
         return true;
     }
 
-    bool CookProjectTextures(const std::filesystem::path& projectRoot, const std::filesystem::path& outputRoot, const Quiet::Project::AssetRegistry& registry)
+    bool CookProjectTextures(const std::filesystem::path& projectRoot,
+                             const std::filesystem::path& outputRoot,
+                             const Quiet::Project::AssetRegistry& registry,
+                             std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
     {
         bool success = true;
 
@@ -892,7 +891,8 @@ namespace
             const auto bc7End = std::chrono::steady_clock::now();
             const double bc7Seconds = std::chrono::duration<double>(bc7End - bc7Start).count();
 
-            const std::filesystem::path cookedPath = outputRoot / "Content" / "Textures" / (record.ID + ".qtexture");
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Textures" / (record.ID + ".qtexture");
+            const std::filesystem::path cookedPath = outputRoot / runtimePath;
             Quiet::Cooker::QTextureWriteStats stats{};
             std::string writeError;
 
@@ -911,6 +911,12 @@ namespace
                 success = false;
                 continue;
             }
+
+            Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+            runtimeRecord.ID = record.ID;
+            runtimeRecord.Type = Quiet::Project::AssetType::Texture;
+            runtimeRecord.Path = runtimePath.generic_string();
+            outRuntimeAssets.push_back(std::move(runtimeRecord));
 
             const auto percentage = [](const std::uint64_t value, const std::uint64_t reference)
             {
@@ -1105,7 +1111,7 @@ int main(int argc, char** argv)
 
     std::cout << "\nCooking texture assets...\n\n";
 
-    if (!CookProjectTextures(projectRoot, outputRoot, assetRegistry))
+    if (!CookProjectTextures(projectRoot, outputRoot, assetRegistry, runtimeAssets))
     {
         std::cerr << "Texture cooking completed with errors.\n";
         return 1;

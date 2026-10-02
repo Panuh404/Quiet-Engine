@@ -5,11 +5,14 @@
 
 #include "Quiet/Core/Log.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
+#include "Quiet/Assets/QTextureReader.h"
 #include "Quiet/Assets/TexturePixelData.h"
 
 
 namespace Quiet::Renderer::Vulkan
 {
+    #pragma region Raw Texture
+
     void TextureLibrary::CreateTexture2D(const std::string &name,
                                          const PhysicalDevice &physicalDevice,
                                          const LogicalDevice &logicalDevice,
@@ -69,6 +72,74 @@ namespace Quiet::Renderer::Vulkan
 
         QUIET_CORE_INFO("Replaced Texture2D '{}'.", name);
     }
+
+    #pragma endregion
+
+    #pragma region Cooked Texture
+
+    void TextureLibrary::CreateTexture2D(const std::string& name,
+                                         const PhysicalDevice& physicalDevice,
+                                         const LogicalDevice& logicalDevice,
+                                         const GraphicsCommands& graphicsCommands,
+                                         const Assets::QTextureData& textureData,
+                                         TextureStats stats)
+    {
+        if (Has(name))
+        {
+            QUIET_CORE_ERROR("Texture '{}' is already registered.", name);
+            throw std::runtime_error("Texture already exists in TextureLibrary: " + name);
+        }
+
+        auto texture = std::make_shared<Texture2D>(physicalDevice, logicalDevice, graphicsCommands, textureData);
+        std::size_t textureBytes = 0;
+
+        for (const Assets::QTextureMipData& mip : textureData.MipLevels)
+        {
+            textureBytes += mip.Data.size();
+        }
+
+        stats.Width = texture->GetWidth();
+        stats.Height = texture->GetHeight();
+        stats.DimensionsValid = true;
+        stats.PixelBytes = textureBytes;
+        stats.GpuReady = true;
+        stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
+
+        m_Textures[name] = std::move(texture);
+        m_Stats[name] = std::move(stats);
+
+        QUIET_CORE_INFO("Registered cooked Texture2D '{}'.", name);
+    }
+
+    void TextureLibrary::ReplaceTexture2D(const std::string& name,
+                                          const PhysicalDevice& physicalDevice,
+                                          const LogicalDevice& logicalDevice,
+                                          const GraphicsCommands& graphicsCommands,
+                                          const Assets::QTextureData& textureData,
+                                          TextureStats stats)
+    {
+        auto texture = std::make_shared<Texture2D>(physicalDevice, logicalDevice, graphicsCommands, textureData);
+        std::size_t textureBytes = 0;
+
+        for (const Assets::QTextureMipData& mip : textureData.MipLevels)
+        {
+            textureBytes += mip.Data.size();
+        }
+
+        stats.Width = texture->GetWidth();
+        stats.Height = texture->GetHeight();
+        stats.DimensionsValid = true;
+        stats.PixelBytes = textureBytes;
+        stats.GpuReady = true;
+        stats.WarningCount = static_cast<std::uint32_t>(stats.Warnings.size());
+
+        m_Textures[name] = std::move(texture);
+        m_Stats[name] = std::move(stats);
+
+        QUIET_CORE_INFO("Replaced cooked Texture2D '{}'.", name);
+    }
+
+    #pragma endregion
 
     void TextureLibrary::RegisterTexture(const std::string &name, TextureStats stats)
     {

@@ -438,6 +438,7 @@ namespace Quiet::Core
 
             Project::RuntimeAssetLoader runtimeAssetLoader(
                 m_Renderer->GetMeshLibrary(),
+                m_Renderer->GetTextureLibrary(),
                 m_Renderer->GetPhysicalDevice(),
                 m_Renderer->GetLogicalDevice(),
                 m_Renderer->GetGraphicsCommands());
@@ -445,6 +446,11 @@ namespace Quiet::Core
             if (!runtimeAssetLoader.LoadMeshAssets(packageRoot, runtimeManifest))
             {
                 throw std::runtime_error("Failed to load one or more cooked runtime meshes.");
+            }
+
+            if (!runtimeAssetLoader.LoadTextureAssets(packageRoot, runtimeManifest))
+            {
+                throw std::runtime_error("Failed to load one or more cooked runtime textures.");
             }
 
             const std::filesystem::path runtimeScenePath = (packageRoot / std::filesystem::path(runtimeManifest.StartupScene)).lexically_normal();
@@ -458,7 +464,7 @@ namespace Quiet::Core
                 throw std::runtime_error("Failed to load runtime startup scene: " + runtimeScenePath.string());
             }
 
-            QUIET_CORE_INFO("Loaded cooked mesh override from runtime package '{}'.", packageRoot.string());
+            QUIET_CORE_INFO("Loaded cooked asset overrides from runtime package '{}'.", packageRoot.string());
             QUIET_CORE_INFO("Loaded runtime startup scene '{}'.", runtimeScenePath.string());
         }
 

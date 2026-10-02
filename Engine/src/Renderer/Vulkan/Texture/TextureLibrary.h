@@ -12,6 +12,7 @@
 
 namespace Quiet::Assets
 {
+    struct QTextureData;
     struct TexturePixelData;
 }
 
@@ -54,6 +55,20 @@ namespace Quiet::Renderer::Vulkan
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
                               const Assets::TexturePixelData& pixelData,
+                              TextureStats stats);
+
+        void CreateTexture2D(const std::string& name,
+                             const PhysicalDevice& physicalDevice,
+                             const LogicalDevice& logicalDevice,
+                             const GraphicsCommands& graphicsCommands,
+                             const Assets::QTextureData& textureData,
+                             TextureStats stats);
+
+        void ReplaceTexture2D(const std::string& name,
+                              const PhysicalDevice& physicalDevice,
+                              const LogicalDevice& logicalDevice,
+                              const GraphicsCommands& graphicsCommands,
+                              const Assets::QTextureData& textureData,
                               TextureStats stats);
 
         void RegisterTexture(const std::string& name, TextureStats stats);
