@@ -439,6 +439,7 @@ namespace Quiet::Core
             Project::RuntimeAssetLoader runtimeAssetLoader(
                 m_Renderer->GetMeshLibrary(),
                 m_Renderer->GetTextureLibrary(),
+                m_AudioSubsystem->GetLibrary(),
                 m_Renderer->GetPhysicalDevice(),
                 m_Renderer->GetLogicalDevice(),
                 m_Renderer->GetGraphicsCommands());
@@ -451,6 +452,11 @@ namespace Quiet::Core
             if (!runtimeAssetLoader.LoadTextureAssets(packageRoot, runtimeManifest))
             {
                 throw std::runtime_error("Failed to load one or more cooked runtime textures.");
+            }
+
+            if (!runtimeAssetLoader.LoadAudioAssets(packageRoot, runtimeManifest))
+            {
+                throw std::runtime_error("Failed to load one or more cooked runtime audio assets.");
             }
 
             const std::filesystem::path runtimeScenePath = (packageRoot / std::filesystem::path(runtimeManifest.StartupScene)).lexically_normal();

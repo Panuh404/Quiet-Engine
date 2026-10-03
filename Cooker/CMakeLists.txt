@@ -22,4 +22,5 @@ target_link_libraries(Quiet_Cooker
         libzstd_static
         ktx
         Quiet_CompressonatorCore
+        miniaudio
 )

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "Audio/AudioLibrary.h"
 #include "Quiet/Assets/QMeshReader.h"
 #include "Quiet/Assets/QTextureReader.h"
 #include "Quiet/Core/Log.h"
@@ -21,11 +22,13 @@ namespace Quiet::Project
     RuntimeAssetLoader::RuntimeAssetLoader(
         Renderer::Vulkan::MeshLibrary &meshLibrary,
         Renderer::Vulkan::TextureLibrary& textureLibrary,
+        Audio::AudioLibrary& audioLibrary,
         const Renderer::Vulkan::PhysicalDevice &physicalDevice,
         const Renderer::Vulkan::LogicalDevice &logicalDevice,
         const Renderer::Vulkan::GraphicsCommands &graphicsCommands)
             : m_MeshLibrary(meshLibrary)
             , m_TextureLibrary(textureLibrary)
+            , m_AudioLibrary(audioLibrary)
             , m_PhysicalDevice(physicalDevice)
             , m_LogicalDevice(logicalDevice)
             , m_GraphicsCommands(graphicsCommands) {}
@@ -51,6 +54,19 @@ namespace Quiet::Project
         {
             if (record.Type != AssetType::Texture) continue;
             if (!LoadTextureAsset(packageRoot, record)) success = false;
+        }
+
+        return success;
+    }
+
+    bool RuntimeAssetLoader::LoadAudioAssets(const std::filesystem::path &packageRoot, const RuntimeManifest &manifest)
+    {
+        bool success = true;
+
+        for (const RuntimeAssetRecord& record : manifest.Assets)
+        {
+            if (record.Type != AssetType::Audio) continue;
+            if (!LoadAudioAsset(packageRoot, record)) success = false;
         }
 
         return success;
@@ -251,6 +267,33 @@ namespace Quiet::Project
             textureData.MipLevels.size(),
             gpuDataBytes);
 
+        return true;
+    }
+
+    bool RuntimeAssetLoader::LoadAudioAsset(const std::filesystem::path& packageRoot, const RuntimeAssetRecord& record)
+    {
+        if (!record.IsValid() || record.Type != AssetType::Audio)
+        {
+            QUIET_CORE_WARN("Cannot load invalid runtime audio asset '{}'.", record.ID);
+            return false;
+        }
+
+        const std::filesystem::path assetPath = (packageRoot / record.Path).lexically_normal();
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(assetPath, ec) || ec)
+        {
+            QUIET_CORE_WARN("Runtime audio asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
+            return false;
+        }
+
+        const bool alreadyLoaded = m_AudioLibrary.Has(record.ID);
+        if (!m_AudioLibrary.LoadFromFile(record.ID, assetPath, true))
+        {
+            QUIET_CORE_WARN("Failed to load runtime audio asset '{}' from '{}'.", record.ID, assetPath.string());
+            return false;
+        }
+
+        QUIET_CORE_INFO("{} cooked audio asset '{}' from '{}'.", alreadyLoaded ? "Reloaded" : "Loaded", record.ID, assetPath.string());
         return true;
     }
 }

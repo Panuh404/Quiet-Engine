@@ -14,7 +14,10 @@
 #include <memory>
 #include <chrono>
 #include <string_view>
+#include <unordered_set>
+#include <cctype>
 
+#include <miniaudio.h>
 #include <meshoptimizer.h>
 #include <ktx.h>
 #include <cmp_core.h>
@@ -42,6 +45,7 @@ namespace
 {
     constexpr std::string_view MeshCookSignature = "qmesh-v1|meshopt-opt-v1|meshopt-encode-v1|quant-pos16-oct16-color8-halfuv|zstd-default";
     constexpr std::string_view TextureCookSignature = "qtexture-v1|ktx2-bc7-srgb|mipgen-srgb-premul-v1|compressonator-bc7-q0.05";
+    constexpr std::string_view AudioCookSignature = "audio-native-copy-v1";
 
     struct AssetCounts
     {
@@ -49,6 +53,18 @@ namespace
         std::size_t Textures = 0;
         std::size_t Audio = 0;
         std::size_t Scripts = 0;
+    };
+
+    struct PackageCleanupStats
+    {
+        std::size_t RemovedMeshes = 0;
+        std::size_t RemovedTextures = 0;
+        std::size_t RemovedAudio = 0;
+
+        [[nodiscard]] std::size_t TotalRemoved() const
+        {
+            return RemovedMeshes + RemovedTextures + RemovedAudio;
+        }
     };
 
     struct MeshOptimizationStats
@@ -132,6 +148,16 @@ namespace
         float MaxTexCoordError = 0.0f;
     };
 
+    struct AudioCookStats
+    {
+        std::string Encoding;
+
+        std::uint32_t Channels = 0;
+        std::uint32_t SampleRate = 0;
+
+        std::uint64_t FileSizeBytes = 0;
+    };
+
     AssetCounts CountProjectAssets(const Quiet::Project::AssetRegistry& registry)
     {
         AssetCounts counts{};
@@ -176,13 +202,101 @@ namespace
         return rawPath.is_absolute() ? rawPath.lexically_normal() : (projectRoot / rawPath).lexically_normal();
     }
 
+    std::string NormalizeAudioExtension(const std::filesystem::path& path)
+    {
+        std::string extension = path.extension().string();
+        std::transform(
+            extension.begin(),
+            extension.end(),
+            extension.begin(),
+            [](const unsigned char value)
+            {
+                return static_cast<char>(std::tolower(value));
+            });
+
+        if (extension == ".wav" ||
+            extension == ".flac" ||
+            extension == ".mp3")
+        {
+            return extension;
+        }
+
+        return {};
+    }
+
+    std::string AudioEncodingFromExtension(const std::string_view extension)
+    {
+        if (extension == ".wav")    return "WAV";
+        if (extension == ".flac")   return "FLAC";
+        if (extension == ".mp3")    return "MP3";
+        return "Unknown";
+    }
+
+    bool InspectAudioFile(const std::filesystem::path& path, AudioCookStats& outStats, std::string& outError)
+    {
+        outStats = {};
+        outError.clear();
+
+        const std::string extension = NormalizeAudioExtension(path);
+        if (extension.empty())
+        {
+            outError = "Unsupported audio extension: " + path.extension().string();
+            return false;
+        }
+
+        const std::string nativePath = path.string();
+        ma_decoder decoder{};
+
+        const ma_result initializeResult = ma_decoder_init_file(nativePath.c_str(), nullptr, &decoder);
+        if (initializeResult != MA_SUCCESS)
+        {
+            outError = std::string("miniaudio failed to open the audio file: ") + ma_result_description(initializeResult);
+            return false;
+        }
+
+        ma_format sampleFormat = ma_format_unknown;
+        ma_uint32 channels = 0;
+        ma_uint32 sampleRate = 0;
+
+        const ma_result formatResult = ma_decoder_get_data_format(&decoder, &sampleFormat, &channels, &sampleRate, nullptr, 0);
+
+        ma_decoder_uninit(&decoder);
+
+        if (formatResult != MA_SUCCESS)
+        {
+            outError = std::string("miniaudio failed to read audio metadata: ") + ma_result_description(formatResult);
+            return false;
+        }
+
+        if (channels == 0 || sampleRate == 0)
+        {
+            outError = "Audio file contains invalid channel or sample-rate metadata.";
+            return false;
+        }
+
+        std::error_code ec;
+        const std::uintmax_t fileSize = std::filesystem::file_size(path, ec);
+        if (ec)
+        {
+            outError = "Failed to determine audio file size: " + ec.message();
+            return false;
+        }
+
+        outStats.Encoding = AudioEncodingFromExtension(extension);
+        outStats.Channels = static_cast<std::uint32_t>(channels);
+        outStats.SampleRate = static_cast<std::uint32_t>(sampleRate);
+        outStats.FileSizeBytes = static_cast<std::uint64_t>(fileSize);
+        return true;
+    }
+
     bool PrepareOutputLayout(const std::filesystem::path& outputRoot, std::string& outError)
     {
-        static constexpr std::array<const char*, 3> directories =
+        static constexpr std::array<const char*, 4> directories =
         {
             "Scenes",
             "Content/Meshes",
-            "Content/Textures"
+            "Content/Textures",
+            "Content/Audio"
         };
 
         std::error_code ec;
@@ -197,6 +311,137 @@ namespace
             }
         }
 
+        return true;
+    }
+
+    bool PruneStaleCookedAssets(const std::filesystem::path& outputRoot,
+                                const Quiet::Project::RuntimeManifest& manifest,
+                                PackageCleanupStats& outStats,
+                                std::string& outError)
+    {
+        outStats = {};
+        outError.clear();
+
+        std::unordered_set<std::string> referencedAssets;
+        referencedAssets.reserve(manifest.Assets.size());
+
+        for (const Quiet::Project::RuntimeAssetRecord& record : manifest.Assets)
+        {
+            if (record.Type != Quiet::Project::AssetType::Mesh &&
+                record.Type != Quiet::Project::AssetType::Texture &&
+                record.Type != Quiet::Project::AssetType::Audio)
+                continue;
+
+            referencedAssets.insert(std::filesystem::path(record.Path).lexically_normal().generic_string());
+        }
+
+        struct CleanupTarget
+        {
+            std::filesystem::path Directory;
+            std::string_view Extension;
+            Quiet::Project::AssetType Type = Quiet::Project::AssetType::Unknown;
+        };
+
+        const std::array<CleanupTarget, 3> targets =
+        {{
+            { outputRoot / "Content" / "Meshes", ".qmesh", Quiet::Project::AssetType::Mesh },
+            { outputRoot / "Content" / "Textures", ".qtexture", Quiet::Project::AssetType::Texture },
+            { outputRoot / "Content" / "Audio", {}, Quiet::Project::AssetType::Audio }
+        }};
+
+        std::vector<std::pair<std::filesystem::path, Quiet::Project::AssetType>> staleFiles;
+
+        for (const CleanupTarget& target : targets)
+        {
+            std::error_code ec;
+            if (!std::filesystem::exists(target.Directory, ec))
+            {
+                if (ec)
+                {
+                    outError = "Failed to inspect cooked asset directory '" + target.Directory.string() + "': " + ec.message();
+                    return false;
+                }
+
+                continue;
+            }
+
+            std::filesystem::recursive_directory_iterator iterator(target.Directory, std::filesystem::directory_options::skip_permission_denied, ec);
+            if (ec)
+            {
+                outError = "Failed to enumerate cooked asset directory '" + target.Directory.string() + "': " + ec.message();
+                return false;
+            }
+
+            const std::filesystem::recursive_directory_iterator end;
+            while (iterator != end)
+            {
+                const std::filesystem::directory_entry entry = *iterator;
+                ec.clear();
+                const bool isRegularFile = entry.is_regular_file(ec);
+                if (ec)
+                {
+                    outError = "Failed to inspect cooked asset '" + entry.path().string() + "': " + ec.message();
+                    return false;
+                }
+
+                const bool supportedTargetFile =
+                    target.Type == Quiet::Project::AssetType::Audio
+                        ? !NormalizeAudioExtension(entry.path()).empty()
+                        : entry.path().extension() == target.Extension;
+
+                if (isRegularFile && supportedTargetFile)
+                {
+                    const std::filesystem::path relativePath = entry.path().lexically_relative(outputRoot);
+                    if (relativePath.empty())
+                    {
+                        outError = "Failed to resolve cooked asset relative path: " + entry.path().string();
+                        return false;
+                    }
+
+                    const std::string runtimePath = relativePath.lexically_normal().generic_string();
+                    if (!referencedAssets.contains(runtimePath))
+                    {
+                        staleFiles.emplace_back(entry.path(), target.Type);
+                    }
+                }
+
+                iterator.increment(ec);
+                if (ec)
+                {
+                    outError = "Failed while enumerating cooked assets in '" + target.Directory.string() + "': " + ec.message();
+                    return false;
+                }
+            }
+        }
+
+        for (const auto& [path, type] : staleFiles)
+        {
+            std::error_code ec;
+            const bool removed = std::filesystem::remove(path, ec);
+            if (ec || !removed)
+            {
+                outError = "Failed to remove stale cooked asset '" + path.string() + "'" + (ec ? ": " + ec.message() : ".");
+                return false;
+            }
+
+            switch (type)
+            {
+                case Quiet::Project::AssetType::Mesh:
+                    ++outStats.RemovedMeshes;
+                    break;
+
+                case Quiet::Project::AssetType::Texture:
+                    ++outStats.RemovedTextures;
+                    break;
+
+                case Quiet::Project::AssetType::Audio:
+                    ++outStats.RemovedAudio;
+                    break;
+
+                default:
+                    break;
+            }
+        }
         return true;
     }
 
@@ -1191,6 +1436,190 @@ namespace
         return success;
     }
 
+    bool CookProjectAudio(const std::filesystem::path& projectRoot,
+                          const std::filesystem::path& outputRoot,
+                          const Quiet::Project::AssetRegistry& registry,
+                          const Quiet::Cooker::CookCache& previousCookCache,
+                          Quiet::Cooker::CookCache& outNextCookCache,
+                          std::vector<Quiet::Project::RuntimeAssetRecord>& outRuntimeAssets)
+    {
+        bool success = true;
+
+        for (const Quiet::Project::AssetRecord& record : registry.Records)
+        {
+            if (record.BuiltIn || record.Type != Quiet::Project::AssetType::Audio) continue;
+
+            const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
+            if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
+            {
+                std::cerr << "Audio '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                success = false;
+                continue;
+            }
+
+            const std::string extension = NormalizeAudioExtension(sourcePath);
+            if (extension.empty())
+            {
+                std::cerr << "Audio '" << record.ID << "' uses an unsupported format: " << sourcePath.extension().string() << '\n';
+                success = false;
+                continue;
+            }
+
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Audio" / (record.ID + extension);
+            const std::filesystem::path cookedPath = outputRoot / runtimePath;
+
+            std::string sourceHash;
+            std::string sourceHashError;
+
+            if (!Quiet::Cooker::ComputeFileHash(sourcePath, sourceHash, sourceHashError))
+            {
+                std::cerr << "Failed to fingerprint audio '" << record.ID << "': " << sourceHashError << '\n';
+                success = false;
+                continue;
+            }
+
+            const auto cachedIterator = previousCookCache.Assets.find(record.ID);
+            if (cachedIterator != previousCookCache.Assets.end())
+            {
+                const Quiet::Cooker::CookCacheEntry& cached = cachedIterator->second;
+                const std::string runtimePathString = runtimePath.generic_string();
+
+                const bool metadataMatches =
+                    cached.Type == Quiet::Project::AssetType::Audio &&
+                    cached.SourceHash == sourceHash &&
+                    cached.CookSignature == AudioCookSignature &&
+                    cached.RuntimePath == runtimePathString;
+
+                if (metadataMatches)
+                {
+                    std::error_code cacheFileError;
+                    const bool cookedFileExists = std::filesystem::is_regular_file(cookedPath, cacheFileError) && !cacheFileError;
+                    if (cookedFileExists)
+                    {
+                        std::string currentCookedHash;
+                        std::string cookedHashError;
+
+                        const bool cookedHashSucceeded = Quiet::Cooker::ComputeFileHash(cookedPath, currentCookedHash, cookedHashError);
+
+                        if (cookedHashSucceeded &&
+                            currentCookedHash == cached.CookedHash &&
+                            currentCookedHash == sourceHash)
+                        {
+                            AudioCookStats stats{};
+                            std::string inspectError;
+
+                            if (InspectAudioFile(cookedPath, stats, inspectError))
+                            {
+                                Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+                                runtimeRecord.ID = record.ID;
+                                runtimeRecord.Type = Quiet::Project::AssetType::Audio;
+                                runtimeRecord.Path = runtimePathString;
+
+                                outRuntimeAssets.push_back(std::move(runtimeRecord));
+                                outNextCookCache.Assets[record.ID] = cached;
+
+                                std::cout
+                                    << "Audio: " << record.ID << '\n'
+                                    << "  Source:      " << sourcePath.filename().string() << '\n'
+                                    << "  Cook:        up to date\n"
+                                    << "  Format:      " << stats.Encoding << '\n'
+                                    << "  Channels:    " << stats.Channels << '\n'
+                                    << "  Sample rate: " << stats.SampleRate << " Hz\n"
+                                    << "  File size:   " << stats.FileSizeBytes << " bytes\n"
+                                    << "  Runtime:     " << cookedPath.filename().string() << '\n'
+                                    << "  Cache:       hit\n\n";
+
+                                continue;
+                            }
+
+                            std::cerr << "Cached audio asset '" << record.ID << "' failed validation: " << inspectError << ". Recooking.\n";
+                        }
+                        else if (!cookedHashSucceeded)
+                        {
+                            std::cerr << "Could not fingerprint cached audio '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                        }
+                    }
+                }
+            }
+
+            AudioCookStats sourceStats{};
+            std::string inspectError;
+
+            if (!InspectAudioFile(sourcePath, sourceStats, inspectError))
+            {
+                std::cerr << "Failed to validate audio '" << record.ID << "': " << inspectError << '\n';
+                success = false;
+                continue;
+            }
+
+            std::error_code copyError;
+            std::filesystem::copy_file(sourcePath, cookedPath, std::filesystem::copy_options::overwrite_existing, copyError);
+            if (copyError)
+            {
+                std::cerr << "Failed to package audio '" << record.ID << "': " << copyError.message() << '\n';
+                success = false;
+                continue;
+            }
+
+            std::string cookedHash;
+            std::string cookedHashError;
+
+            if (!Quiet::Cooker::ComputeFileHash(cookedPath, cookedHash, cookedHashError))
+            {
+                std::cerr << "Failed to fingerprint packaged audio '" << record.ID << "': " << cookedHashError << '\n';
+                success = false;
+                continue;
+            }
+
+            if (cookedHash != sourceHash)
+            {
+                std::cerr << "Packaged audio '" << record.ID << "' changed during copy.\n";
+                success = false;
+                continue;
+            }
+
+            AudioCookStats cookedStats{};
+            std::string cookedInspectError;
+
+            if (!InspectAudioFile(cookedPath, cookedStats, cookedInspectError))
+            {
+                std::cerr << "Packaged audio '" << record.ID << "' failed validation: " << cookedInspectError << '\n';
+                success = false;
+                continue;
+            }
+
+            Quiet::Project::RuntimeAssetRecord runtimeRecord{};
+            runtimeRecord.ID = record.ID;
+            runtimeRecord.Type = Quiet::Project::AssetType::Audio;
+            runtimeRecord.Path = runtimePath.generic_string();
+
+            outRuntimeAssets.push_back(std::move(runtimeRecord));
+
+            Quiet::Cooker::CookCacheEntry cacheEntry{};
+            cacheEntry.Type = Quiet::Project::AssetType::Audio;
+            cacheEntry.SourceHash = sourceHash;
+            cacheEntry.CookedHash = cookedHash;
+            cacheEntry.CookSignature = std::string(AudioCookSignature);
+            cacheEntry.RuntimePath = runtimePath.generic_string();
+
+            outNextCookCache.Assets[record.ID] = std::move(cacheEntry);
+
+            std::cout
+                << "Audio: " << record.ID << '\n'
+                << "  Source:      " << sourcePath.filename().string() << '\n'
+                << "  Format:      " << cookedStats.Encoding << '\n'
+                << "  Channels:    " << cookedStats.Channels << '\n'
+                << "  Sample rate: " << cookedStats.SampleRate << " Hz\n"
+                << "  File size:   " << cookedStats.FileSizeBytes << " bytes\n"
+                << "  Runtime:     " << cookedPath.filename().string() << '\n'
+                << "  Copy:        byte-for-byte\n"
+                << "  Validation:  OK\n"
+                << "  Cache:       miss (packaged)\n\n";
+        }
+
+        return success;
+    }
+
     struct CompressonatorBC7OptionsDeleter
     {
         void operator()(void* options) const noexcept
@@ -1350,7 +1779,7 @@ int main(int argc, char** argv)
         << "Cookable assets:\n"
         << "  Meshes:     " << counts.Meshes << '\n'
         << "  Textures:   " << counts.Textures << '\n'
-        << "  Audio:      " << counts.Audio << " (deferred)\n"
+        << "  Audio:      " << counts.Audio << '\n'
         << "  Scripts:    " << counts.Scripts << " (deferred)\n"
         << '\n'
         << "Output layout prepared successfully.\n";
@@ -1373,6 +1802,16 @@ int main(int argc, char** argv)
     }
 
     std::cout << "Texture cooking completed successfully.\n";
+
+    std::cout << "\nPackaging audio assets...\n\n";
+
+    if (!CookProjectAudio(projectRoot, outputRoot, assetRegistry, previousCookCache, nextCookCache, runtimeAssets))
+    {
+        std::cerr << "Audio packaging completed with errors.\n";
+        return 1;
+    }
+
+    std::cout << "Audio packaging completed successfully.\n";
 
     const fs::path runtimeScenePath = fs::path("Scenes") / fs::path(descriptor.StartupScene);
     const fs::path cookedScenePath = outputRoot / runtimeScenePath;
@@ -1403,6 +1842,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    PackageCleanupStats cleanupStats{};
+    std::string cleanupError;
+
+    if (!PruneStaleCookedAssets(outputRoot, runtimeManifest, cleanupStats, cleanupError))
+    {
+        std::cerr << "Warning: failed to prune stale cooked assets: " << cleanupError << '\n';
+    }
+
     std::string cookCacheSaveError;
     if (!Quiet::Cooker::SaveCookCache(cookCachePath, nextCookCache, cookCacheSaveError))
     {
@@ -1410,12 +1857,16 @@ int main(int argc, char** argv)
     }
 
     std::cout
-    << '\n'
-    << "Runtime package metadata:\n"
-    << "  Startup scene: " << runtimeManifest.StartupScene << '\n'
-    << "  Runtime assets: " << runtimeManifest.Assets.size() << '\n'
-    << "  Manifest:      " << runtimeManifestPath << '\n'
-    << '\n'
-    << "Asset cooking completed successfully.\n";
+        << '\n'
+        << "Runtime package metadata:\n"
+        << "  Startup scene: " << runtimeManifest.StartupScene << '\n'
+        << "  Runtime assets: " << runtimeManifest.Assets.size() << '\n'
+        << "  Stale removed:  " << cleanupStats.TotalRemoved() << '\n'
+        << "    Meshes:       " << cleanupStats.RemovedMeshes << '\n'
+        << "    Textures:     " << cleanupStats.RemovedTextures << '\n'
+        << "    Audio:        " << cleanupStats.RemovedAudio << '\n'
+        << "  Manifest:       " << runtimeManifestPath << '\n'
+        << '\n'
+        << "Asset cooking completed successfully.\n";
     return 0;
 }
