@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <memory>
+#include <filesystem>
+#include <string_view>
 
 #include "Quiet/Core/UUID.h"
 
@@ -13,6 +15,7 @@ namespace Quiet::Input
 namespace Quiet::Project
 {
     class ProjectContext;
+    struct RuntimeManifest;
 }
 
 namespace Quiet::Scene
@@ -26,7 +29,11 @@ namespace Quiet::Scripting
     class ScriptWorld
     {
     public:
-        ScriptWorld(Scene::Scene& scene, const Project::ProjectContext& projectContext, const Input::Input& input);
+        ScriptWorld(Scene::Scene& scene,
+                    const Project::ProjectContext& projectContext,
+                    const Input::Input& input,
+                    std::filesystem::path runtimePackageRoot = {},
+                    const Project::RuntimeManifest* runtimeManifest = nullptr);
         ~ScriptWorld();
 
         ScriptWorld(const ScriptWorld&) = delete;
@@ -52,6 +59,8 @@ namespace Quiet::Scripting
         void Initialize();
         void Shutdown();
 
+        bool ResolveScriptPath(std::string_view scriptAssetID, std::filesystem::path& outPath, std::string& outError) const;
+
         bool CreateInstance(const Scene::Actor& actor, bool recordFailure = true);
         void StartInstance(std::size_t index);
         void DestroyInstance(std::size_t index);
@@ -62,6 +71,8 @@ namespace Quiet::Scripting
         Scene::Scene& m_Scene;
         const Project::ProjectContext& m_ProjectContext;
         const Input::Input& m_Input;
+        std::filesystem::path m_RuntimePackageRoot;
+        std::unique_ptr<Project::RuntimeManifest> m_RuntimeManifest;
 
         std::unique_ptr<RuntimeState> m_State;
 

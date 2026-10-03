@@ -413,9 +413,15 @@ namespace Quiet::Core
 
     void Application::InitializeSandboxStartup()
     {
+        std::filesystem::path runtimePackageRoot;
+        Project::RuntimeManifest runtimeManifest{};
+        const Project::RuntimeManifest* runtimeManifestPtr = nullptr;
+
         if (!m_Spec.RuntimePackagePath.empty())
         {
-            const std::filesystem::path packageRoot = std::filesystem::absolute(m_Spec.RuntimePackagePath).lexically_normal();
+            runtimePackageRoot = std::filesystem::absolute(m_Spec.RuntimePackagePath).lexically_normal();
+            const std::filesystem::path& packageRoot = runtimePackageRoot;
+
             std::error_code ec;
             if (!std::filesystem::is_directory(packageRoot, ec) || ec)
             {
@@ -423,12 +429,12 @@ namespace Quiet::Core
             }
 
             const std::filesystem::path manifestPath = packageRoot / "RuntimeManifest.json";
-            Project::RuntimeManifest runtimeManifest{};
-
             if (!Project::RuntimeManifestIO::LoadFromFile(manifestPath, runtimeManifest))
             {
                 throw std::runtime_error("Failed to load runtime manifest: " + manifestPath.string());
             }
+
+            runtimeManifestPtr = &runtimeManifest;
 
             if (runtimeManifest.ProjectName != m_ProjectContext.GetProjectName())
             {
@@ -481,7 +487,14 @@ namespace Quiet::Core
             m_Renderer->RequestViewportResize(initialRuntimeExtent.width, initialRuntimeExtent.height);
         }
 
-        m_Scene->BeginRuntime(Scene::RuntimeMode::Play, *m_PhysicsSubsystem, *m_AudioSubsystem, m_ProjectContext, *m_Input);
+        m_Scene->BeginRuntime(
+            Scene::RuntimeMode::Play,
+            *m_PhysicsSubsystem,
+            *m_AudioSubsystem,
+            m_ProjectContext,
+            *m_Input,
+            runtimePackageRoot,
+            runtimeManifestPtr);
         QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
     }
 

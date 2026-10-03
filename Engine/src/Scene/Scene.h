@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <filesystem>
 
 #include <glm/vec3.hpp>
 
@@ -17,6 +18,7 @@
 namespace Quiet::Project
 {
     class ProjectContext;
+    struct RuntimeManifest;
 }
 
 namespace Quiet::Audio
@@ -91,7 +93,9 @@ namespace Quiet::Scene
                           Physics::PhysicsSubsystem& physicsSubsystem,
                           Audio::AudioSubsystem& audioSubsystem,
                           const Project::ProjectContext& projectContext,
-                          const Input::Input& input);
+                          const Input::Input& input,
+                          std::filesystem::path runtimePackageRoot = {},
+                          const Project::RuntimeManifest* runtimeManifest = nullptr);
         void EndRuntime();
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
         void Update(float deltaTime);
