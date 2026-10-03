@@ -13,10 +13,14 @@
 
 namespace Quiet::Project
 {
+    struct RuntimeManifest;
+
     class ProjectContext
     {
     public:
         ProjectContext() = default;
+
+        [[nodiscard]] bool InitializeRuntimePackage(std::filesystem::path packageRoot, const RuntimeManifest& manifest);
 
         void Initialize(std::filesystem::path projectFilePath, ProjectDescriptor descriptor)
         {

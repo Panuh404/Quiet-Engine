@@ -18,7 +18,6 @@
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/AssetType.h"
 #include "Quiet/Project/ProjectContext.h"
-#include "Quiet/Project/RuntimeManifest.h"
 #include "Scene/Components/ScriptComponent.h"
 #include "Scripting/Bindings/Bindings.h"
 #include "Physics/PhysicsContactEvent.h"
@@ -69,19 +68,11 @@ namespace Quiet::Scripting
 
     ScriptWorld::ScriptWorld(Scene::Scene& scene,
                              const Project::ProjectContext& projectContext,
-                             const Input::Input& input,
-                             std::filesystem::path runtimePackageRoot,
-                             const Project::RuntimeManifest* runtimeManifest)
+                             const Input::Input& input)
                                 : m_Scene(scene)
                                 , m_ProjectContext(projectContext)
                                 , m_Input(input)
-                                , m_RuntimePackageRoot(std::move(runtimePackageRoot))
     {
-        if (runtimeManifest)
-        {
-            m_RuntimeManifest = std::make_unique<Project::RuntimeManifest>(*runtimeManifest);
-        }
-
         Initialize();
     }
 
@@ -302,7 +293,7 @@ namespace Quiet::Scripting
         QUIET_CORE_INFO("Shut down scripting world.");
     }
 
-    bool ScriptWorld::ResolveScriptPath(std::string_view scriptAssetID, std::filesystem::path &outPath, std::string &outError) const
+    bool ScriptWorld::ResolveScriptPath(std::string_view scriptAssetID, std::filesystem::path& outPath, std::string& outError) const
     {
         outPath.clear();
         outError.clear();
@@ -313,66 +304,32 @@ namespace Quiet::Scripting
             return false;
         }
 
-        if (m_RuntimeManifest)
+        const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), scriptAssetID);
+        if (!record)
         {
-            if (m_RuntimePackageRoot.empty())
-            {
-                outError = "Runtime script resolution has no package root.";
-                return false;
-            }
-
-            const auto iterator = std::find_if(
-                m_RuntimeManifest->Assets.begin(),
-                m_RuntimeManifest->Assets.end(),
-                [scriptAssetID](const Project::RuntimeAssetRecord& record)
-                    {
-                        return record.ID == scriptAssetID;
-                    });
-
-            if (iterator == m_RuntimeManifest->Assets.end())
-            {
-                outError = "Script asset '" + std::string(scriptAssetID) + "' is not present in the runtime manifest.";
-                return false;
-            }
-
-            if (iterator->Type != Project::AssetType::Script)
-            {
-                outError = "Runtime asset '" + std::string(scriptAssetID) + "' is not a Script asset.";
-                return false;
-            }
-
-            outPath = (m_RuntimePackageRoot / std::filesystem::path(iterator->Path)).lexically_normal();
-        }
-        else
-        {
-            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), scriptAssetID);
-            if (!record)
-            {
-                outError = "Script asset '" + std::string(scriptAssetID) + "' is not registered.";
-                return false;
-            }
-
-            if (record->Type != Project::AssetType::Script)
-            {
-                outError = "Asset '" + std::string(scriptAssetID) + "' is not a Script asset.";
-                return false;
-            }
-
-            if (record->Path.empty())
-            {
-                outError = "Script asset '" + std::string(scriptAssetID) + "' has no source path.";
-                return false;
-            }
-
-            outPath = record->Path;
-            if (outPath.is_relative())
-            {
-                outPath = m_ProjectContext.GetRootPath() / outPath;
-            }
-
-            outPath = outPath.lexically_normal();
+            outError = "Script asset '" + std::string(scriptAssetID) + "' is not registered.";
+            return false;
         }
 
+        if (record->Type != Project::AssetType::Script)
+        {
+            outError = "Asset '" + std::string(scriptAssetID) + "' is not a Script asset.";
+            return false;
+        }
+
+        if (record->Path.empty())
+        {
+            outError = "Script asset '" + std::string(scriptAssetID) + "' has no path.";
+            return false;
+        }
+
+        outPath = std::filesystem::path(record->Path);
+        if (outPath.is_relative())
+        {
+            outPath = m_ProjectContext.GetRootPath() / outPath;
+        }
+
+        outPath = outPath.lexically_normal();
         std::error_code filesystemError;
         if (!std::filesystem::is_regular_file(outPath, filesystemError) || filesystemError)
         {

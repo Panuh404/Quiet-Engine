@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Quiet/Core/UUID.h"
+#include "Quiet/Project/RuntimeManifest.h"
 
 namespace
 {
@@ -181,6 +182,46 @@ namespace
 
 namespace Quiet::Project
 {
+    bool ProjectContext::InitializeRuntimePackage(std::filesystem::path packageRoot, const RuntimeManifest &manifest)
+    {
+        if (packageRoot.empty() || manifest.ProjectName.empty() || manifest.StartupScene.empty()) return false;
+        packageRoot = packageRoot.lexically_normal();
+
+        const std::filesystem::path startupScene = std::filesystem::path(manifest.StartupScene).lexically_normal();
+        if (startupScene.empty() || startupScene.is_absolute()) return false;
+
+        m_RootPath = std::move(packageRoot);
+
+        // Runtime packages are not editable Quiet projects and therefore
+        // intentionally have no .quiet project descriptor on disk.
+        m_ProjectFilePath.clear();
+        m_ProjectDescriptor = ProjectDescriptorIO::MakeDefault(manifest.ProjectName);
+
+        const std::filesystem::path sceneDirectory = startupScene.parent_path();
+        m_ProjectDescriptor.ScenesDirectory = sceneDirectory.empty() ? "." : sceneDirectory.generic_string();
+        m_ProjectDescriptor.StartupScene = startupScene.filename().generic_string();
+        m_ProjectDescriptor.AssetsDirectory = "Content";
+
+        m_ActiveScenePath = (m_RootPath / startupScene).lexically_normal();
+
+        // Start with Quiet's built-in assets such as Cube, Plane, Sphere, etc.
+        m_AssetRegistry = AssetRegistryIO::MakeDefault();
+
+        // Add the actual packaged assets.
+        for (const RuntimeAssetRecord& runtimeRecord : manifest.Assets)
+        {
+            AssetRecord record{};
+            record.ID = runtimeRecord.ID;
+            record.Type = runtimeRecord.Type;
+            record.Path = runtimeRecord.Path;
+            record.BuiltIn = false;
+
+            if (!AssetRegistryIO::AddOrUpdate(m_AssetRegistry, std::move(record))) return false;
+        }
+
+        return true;
+    }
+
     bool ProjectContext::LoadOrCreateAssetRegistry()
     {
         AssetRegistry registry{};

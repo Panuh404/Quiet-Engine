@@ -11,9 +11,7 @@
 #include "Scripting/ScriptWorld.h"
 #include "Scene/Camera/CameraPilotUtils.h"
 #include "Camera/CameraController.h"
-
 #include "Quiet/Core/Log.h"
-#include "Quiet/Project/RuntimeManifest.h"
 
 
 namespace Quiet::Scene
@@ -689,9 +687,7 @@ namespace Quiet::Scene
                              Physics::PhysicsSubsystem& physicsSubsystem,
                              Audio::AudioSubsystem& audioSubsystem,
                              const Project::ProjectContext& projectContext,
-                             const Input::Input& input,
-                             std::filesystem::path runtimePackageRoot,
-                             const Project::RuntimeManifest* runtimeManifest)
+                             const Input::Input& input)
     {
         if (mode == RuntimeMode::None)
         {
@@ -722,8 +718,7 @@ namespace Quiet::Scene
         m_AudioWorld->BuildSources(m_Registry, audioListenerEntity);
 
         // Scripting
-        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext, input, std::move(runtimePackageRoot), runtimeManifest);
-
+        m_ScriptWorld = std::make_unique<Scripting::ScriptWorld>(*this, projectContext, input);
         m_PendingRuntimeActorCreations.clear();
         m_PendingRuntimeActorDestructions.clear();
         m_RuntimeMode = mode;

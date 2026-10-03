@@ -345,15 +345,13 @@ namespace Quiet::Core
         if (m_Spec.IsEditor())
         {
             if (!m_ProjectWorkflow->InitializeProjectRegistry())
+            {
                 throw std::runtime_error("Failed to initialize the Quiet project registry.");
+            }
         }
-        else
+        else if (m_Spec.RuntimePackagePath.empty())
         {
-            const bool projectInitialized = m_Spec.RuntimePackagePath.empty()
-                ? m_ProjectWorkflow-> InitializeLastOpenedOrDefaultProject()
-                : m_ProjectWorkflow-> InitializeLastOpenedOrDefaultProjectAssetsOnly();
-
-            if (!projectInitialized)
+            if (!m_ProjectWorkflow->InitializeLastOpenedOrDefaultProject())
             {
                 throw std::runtime_error("Failed to initialize project workflow.");
             }
@@ -413,14 +411,11 @@ namespace Quiet::Core
 
     void Application::InitializeSandboxStartup()
     {
-        std::filesystem::path runtimePackageRoot;
         Project::RuntimeManifest runtimeManifest{};
-        const Project::RuntimeManifest* runtimeManifestPtr = nullptr;
 
         if (!m_Spec.RuntimePackagePath.empty())
         {
-            runtimePackageRoot = std::filesystem::absolute(m_Spec.RuntimePackagePath).lexically_normal();
-            const std::filesystem::path& packageRoot = runtimePackageRoot;
+            const std::filesystem::path packageRoot = std::filesystem::absolute(m_Spec.RuntimePackagePath).lexically_normal();
 
             std::error_code ec;
             if (!std::filesystem::is_directory(packageRoot, ec) || ec)
@@ -434,12 +429,14 @@ namespace Quiet::Core
                 throw std::runtime_error("Failed to load runtime manifest: " + manifestPath.string());
             }
 
-            runtimeManifestPtr = &runtimeManifest;
-
-            if (runtimeManifest.ProjectName != m_ProjectContext.GetProjectName())
+            if (!m_ProjectContext.InitializeRuntimePackage(packageRoot, runtimeManifest))
             {
-                throw std::runtime_error("Runtime package project '" + runtimeManifest.ProjectName +
-                    "' does not match loaded source project '" + m_ProjectContext.GetProjectName() + "'.");
+                throw std::runtime_error("Failed to initialize runtime project context from package.");
+            }
+
+            if (!m_ProjectAssetLoader->ReloadRuntimeSupportAssets())
+            {
+                throw std::runtime_error("Failed to initialize built-in runtime assets.");
             }
 
             Project::RuntimeAssetLoader runtimeAssetLoader(
@@ -492,9 +489,8 @@ namespace Quiet::Core
             *m_PhysicsSubsystem,
             *m_AudioSubsystem,
             m_ProjectContext,
-            *m_Input,
-            runtimePackageRoot,
-            runtimeManifestPtr);
+            *m_Input);
+
         QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
     }
 

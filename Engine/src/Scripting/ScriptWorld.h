@@ -15,7 +15,6 @@ namespace Quiet::Input
 namespace Quiet::Project
 {
     class ProjectContext;
-    struct RuntimeManifest;
 }
 
 namespace Quiet::Scene
@@ -31,9 +30,7 @@ namespace Quiet::Scripting
     public:
         ScriptWorld(Scene::Scene& scene,
                     const Project::ProjectContext& projectContext,
-                    const Input::Input& input,
-                    std::filesystem::path runtimePackageRoot = {},
-                    const Project::RuntimeManifest* runtimeManifest = nullptr);
+                    const Input::Input& input);
         ~ScriptWorld();
 
         ScriptWorld(const ScriptWorld&) = delete;
@@ -71,8 +68,6 @@ namespace Quiet::Scripting
         Scene::Scene& m_Scene;
         const Project::ProjectContext& m_ProjectContext;
         const Input::Input& m_Input;
-        std::filesystem::path m_RuntimePackageRoot;
-        std::unique_ptr<Project::RuntimeManifest> m_RuntimeManifest;
 
         std::unique_ptr<RuntimeState> m_State;
 
