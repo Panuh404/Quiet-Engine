@@ -470,7 +470,7 @@ namespace Quiet::Core
                 throw std::runtime_error("Failed to load runtime startup scene: " + runtimeScenePath.string());
             }
 
-            QUIET_CORE_INFO("Loaded cooked asset overrides from runtime package '{}'.", packageRoot.string());
+            QUIET_CORE_INFO("Loaded cooked assets from runtime package '{}'.", packageRoot.string());
             QUIET_CORE_INFO("Loaded runtime startup scene '{}'.", runtimeScenePath.string());
         }
 

@@ -394,12 +394,9 @@ namespace Quiet::Project
         return meshesLoaded && texturesLoaded && audioLoaded;
     }
 
-    bool ProjectAssetLoader::ReloadRuntimeSupportAssets(bool forceReimport)
+    bool ProjectAssetLoader::ReloadRuntimeSupportAssets()
     {
-        const bool builtInMeshesLoaded = ReloadBuiltInMeshAssets();
-        const bool audioLoaded = ReloadAudioAssets(forceReimport);
-
-        return builtInMeshesLoaded && audioLoaded;
+        return ReloadBuiltInMeshAssets();
     }
 
     bool ProjectAssetLoader::ReloadAssetByID(std::string_view assetID, bool forceReimport)

@@ -69,7 +69,7 @@ namespace Quiet::Project
         bool ReloadAudioAssets(bool forceReimport = false);
 
         bool ReloadAssets(bool forceReimport = false);
-        bool ReloadRuntimeSupportAssets(bool forceReimport = false);
+        bool ReloadRuntimeSupportAssets();
         bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
         void BeginIncrementalReload(bool forceReimport = false);
