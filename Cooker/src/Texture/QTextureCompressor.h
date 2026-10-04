@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "QTextureMipGenerator.h"
+#include "Texture/QTextureMipGenerator.h"
 
 namespace Quiet::Cooker
 {

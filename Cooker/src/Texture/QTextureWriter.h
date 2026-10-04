@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "QTextureCompressor.h"
+#include "Texture/QTextureCompressor.h"
 
 namespace Quiet::Cooker
 {

@@ -1,4 +1,4 @@
-#include "QTextureCompressor.h"
+#include "Texture/QTextureCompressor.h"
 
 #include <algorithm>
 #include <array>

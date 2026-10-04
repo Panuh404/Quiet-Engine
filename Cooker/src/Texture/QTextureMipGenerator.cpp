@@ -1,4 +1,4 @@
-#include "QTextureMipGenerator.h"
+#include "Texture/QTextureMipGenerator.h"
 
 #include <algorithm>
 #include <cmath>

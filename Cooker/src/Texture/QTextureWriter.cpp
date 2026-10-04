@@ -1,4 +1,4 @@
-#include "QTextureWriter.h"
+#include "Texture/QTextureWriter.h"
 
 #include <bit>
 #include <cstdlib>
