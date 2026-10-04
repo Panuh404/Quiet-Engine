@@ -4,6 +4,8 @@ target_sources(Quiet_Cooker
     PRIVATE
         src/main.cpp
 
+        src/Package/PackageBuilder.h
+        src/Package/PackageBuilder.cpp
         src/Package/PackageLayout.h
         src/Package/PackageLayout.cpp
 

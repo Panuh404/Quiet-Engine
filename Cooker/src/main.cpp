@@ -3,12 +3,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <utility>
 
 #include "Audio/AudioCooker.h"
 #include "Core/CookContext.h"
 #include "Core/CookCache.h"
 #include "Mesh/MeshCooker.h"
+#include "Package/PackageBuilder.h"
 #include "Package/PackageLayout.h"
 #include "Script/ScriptCooker.h"
 
@@ -35,25 +35,20 @@ namespace
         {
             // Engine-provided assets do not belong in the project package.
             if (record.BuiltIn) continue;
-
             switch (record.Type)
             {
                 case Quiet::Project::AssetType::Mesh:
                     ++counts.Meshes;
                     break;
-
                 case Quiet::Project::AssetType::Texture:
                     ++counts.Textures;
                     break;
-
                 case Quiet::Project::AssetType::Audio:
                     ++counts.Audio;
                     break;
-
                 case Quiet::Project::AssetType::Script:
                     ++counts.Scripts;
                     break;
-
                 case Quiet::Project::AssetType::Unknown:
                 default:
                     break;
@@ -187,7 +182,7 @@ int main(int argc, char** argv)
     std::cout << "\nCooking mesh assets...\n\n";
     if (!Quiet::Cooker::CookProjectMeshes(cookContext))
     {
-        std::cerr << "Mesh optimization completed with errors.\n";
+        std::cerr << "Mesh cooking completed with errors.\n";
         return 1;
     }
     std::cout << "Mesh cooking completed successfully.\n";
@@ -219,60 +214,35 @@ int main(int argc, char** argv)
     }
     std::cout << "Script packaging completed successfully.\n";
 
-    const fs::path runtimeScenePath = fs::path("Scenes") / fs::path(descriptor.StartupScene);
-    const fs::path cookedScenePath = outputRoot / runtimeScenePath;
-
-    fs::create_directories(cookedScenePath.parent_path(), ec);
-    if (ec)
+    Quiet::Cooker::PackageBuildResult packageResult{};
+    std::string packageError;
+    if (!Quiet::Cooker::FinalizeRuntimePackage(startupScenePath, descriptor, cookContext, packageResult, packageError))
     {
-        std::cerr << "Failed to prepare startup scene output directory: " << ec.message() << '\n';
+        std::cerr << packageError << '\n';
         return 1;
     }
 
-    fs::copy_file(startupScenePath, cookedScenePath, fs::copy_options::overwrite_existing, ec);
-    if (ec)
+    if (!packageResult.CleanupWarning.empty())
     {
-        std::cerr << "Failed to copy startup scene: " << ec.message() << '\n';
-        return 1;
+        std::cerr << "Warning: failed to prune stale cooked assets: " << packageResult.CleanupWarning << '\n';
     }
 
-    Project::RuntimeManifest runtimeManifest{};
-    runtimeManifest.ProjectName = descriptor.Name;
-    runtimeManifest.StartupScene = runtimeScenePath.generic_string();
-    runtimeManifest.Assets = std::move(runtimeAssets);
-
-    const fs::path runtimeManifestPath = outputRoot / "RuntimeManifest.json";
-    if (!Project::RuntimeManifestIO::SaveToFile(runtimeManifestPath, runtimeManifest))
+    if (!packageResult.CacheWarning.empty())
     {
-        std::cerr << "Failed to write runtime manifest: " << runtimeManifestPath << '\n';
-        return 1;
-    }
-
-    Quiet::Cooker::PackageCleanupStats cleanupStats{};
-    std::string cleanupError;
-
-    if (!Quiet::Cooker::PruneStaleCookedAssets(outputRoot, runtimeManifest, cleanupStats, cleanupError))
-    {
-        std::cerr << "Warning: failed to prune stale cooked assets: " << cleanupError << '\n';
-    }
-
-    std::string cookCacheSaveError;
-    if (!Quiet::Cooker::SaveCookCache(cookCachePath, nextCookCache, cookCacheSaveError))
-    {
-        std::cerr << "Warning: failed to save cook cache '" << cookCachePath << "': " << cookCacheSaveError << '\n';
+        std::cerr << "Warning: " << packageResult.CacheWarning << '\n';
     }
 
     std::cout
         << '\n'
         << "Runtime package metadata:\n"
-        << "  Startup scene: " << runtimeManifest.StartupScene << '\n'
-        << "  Runtime assets: " << runtimeManifest.Assets.size() << '\n'
-        << "  Stale removed:  " << cleanupStats.TotalRemoved() << '\n'
-        << "    Meshes:       " << cleanupStats.RemovedMeshes << '\n'
-        << "    Textures:     " << cleanupStats.RemovedTextures << '\n'
-        << "    Audio:        " << cleanupStats.RemovedAudio << '\n'
-        << "    Scripts:      " << cleanupStats.RemovedScripts << '\n'
-        << "  Manifest:       " << runtimeManifestPath << '\n'
+        << "  Startup scene: " << packageResult.Manifest.StartupScene << '\n'
+        << "  Runtime assets: " << packageResult.Manifest.Assets.size() << '\n'
+        << "  Stale removed:  " << packageResult.CleanupStats.TotalRemoved() << '\n'
+        << "    Meshes:       " << packageResult.CleanupStats.RemovedMeshes << '\n'
+        << "    Textures:     " << packageResult.CleanupStats.RemovedTextures << '\n'
+        << "    Audio:        " << packageResult.CleanupStats.RemovedAudio << '\n'
+        << "    Scripts:      " << packageResult.CleanupStats.RemovedScripts << '\n'
+        << "  Manifest:       " << packageResult.ManifestPath << '\n'
         << '\n'
         << "Asset cooking completed successfully.\n";
     return 0;
