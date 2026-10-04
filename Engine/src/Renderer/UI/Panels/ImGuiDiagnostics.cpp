@@ -130,11 +130,15 @@ namespace
 
     void DrawDebugMetric(const char* label, const char* value)
     {
+        ImGui::TableNextRow();
+
+        ImGui::TableSetColumnIndex(0);
+
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
         ImGui::TextUnformatted(label);
         ImGui::PopStyleColor();
 
-        ImGui::SameLine(SZ::Px(150.0f));
+        ImGui::TableSetColumnIndex(1);
 
         ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
         ImGui::TextUnformatted(value);
@@ -142,9 +146,7 @@ namespace
     }
 
     template <typename Entry>
-    void DrawConsoleEntry(const Entry& entry,
-                          const int rowIndex,
-                          ImFont* monoFont)
+    void DrawConsoleEntry(const Entry& entry, const int rowIndex, ImFont* monoFont)
     {
         const ImVec4 levelColor = GetLevelColor(entry.Level);
         const char* levelLabel = GetLevelLabel(entry.Level);
@@ -235,58 +237,54 @@ namespace Quiet::Renderer::UI
     {
         ImGui::Begin("Debug");
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
+            char frameTimeBuffer[64]{};
+            std::snprintf(
+                frameTimeBuffer,
+                sizeof(frameTimeBuffer),
+                "%.2f ms",
+                stats.FrameTimeMs
+            );
 
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
-            ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
+            char extentBuffer[64]{};
+            std::snprintf(
+                extentBuffer,
+                sizeof(extentBuffer),
+                "%u x %u",
+                stats.SwapchainExtent.width,
+                stats.SwapchainExtent.height
+            );
 
-            ImGui::BeginChild("##DebugStatsCard", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
+            char positionBuffer[128]{};
+            std::snprintf(
+                positionBuffer,
+                sizeof(positionBuffer),
+                "%.1f, %.1f, %.1f",
+                stats.CameraPosition.x,
+                stats.CameraPosition.y,
+                stats.CameraPosition.z
+            );
+
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, SZ::Px(ImVec2(6.0f, 4.0f)));
+
+            if (ImGui::BeginTable("##DebugMetrics", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
             {
-                DrawSectionTitle("Frame");
+                ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed, SZ::Px(88.0f)
+                );
+
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
                 DrawDebugMetric("FPS", std::to_string(static_cast<int>(stats.FPS)).c_str());
-
-                char frameTimeBuffer[64]{};
-                std::snprintf(frameTimeBuffer, sizeof(frameTimeBuffer), "%.3f ms", stats.FrameTimeMs);
-                DrawDebugMetric("Frame Time", frameTimeBuffer);
-
-                ImGui::Spacing();
-                DrawSectionTitle("Scene");
-
+                DrawDebugMetric("Frame", frameTimeBuffer);
                 DrawDebugMetric("Actors", std::to_string(stats.ActorCount).c_str());
-                DrawDebugMetric("Mesh Resources", std::to_string(stats.MeshCount).c_str());
+                DrawDebugMetric("Meshes", std::to_string(stats.MeshCount).c_str());
+                DrawDebugMetric("Swapchain", extentBuffer);
+                DrawDebugMetric("Mouse", stats.MouseCaptured ? "Captured" : "Free");
+                DrawDebugMetric("Camera", positionBuffer);
 
-                char extentBuffer[64]{};
-                std::snprintf(
-                    extentBuffer,
-                    sizeof(extentBuffer),
-                    "%u x %u",
-                    stats.SwapchainExtent.width,
-                    stats.SwapchainExtent.height
-                );
-                DrawDebugMetric("Swapchain Extent", extentBuffer);
-
-                ImGui::Spacing();
-                DrawSectionTitle("Camera");
-
-                DrawDebugMetric("Mouse Capture", stats.MouseCaptured ? "True" : "False");
-
-                char positionBuffer[128]{};
-                std::snprintf(
-                    positionBuffer,
-                    sizeof(positionBuffer),
-                    "%.2f, %.2f, %.2f",
-                    stats.CameraPosition.x,
-                    stats.CameraPosition.y,
-                    stats.CameraPosition.z
-                );
-                DrawDebugMetric("Position", positionBuffer);
+                ImGui::EndTable();
             }
-            ImGui::EndChild();
 
-            ImGui::PopStyleColor(2);
-            ImGui::PopStyleVar(2);
+            ImGui::PopStyleVar();
         }
         ImGui::End();
     }

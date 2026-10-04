@@ -328,6 +328,10 @@ namespace
         const float rightPadding = SZ::Px(8.0f);
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
+        if (availableWidth <= SZ::Px(1.0f))
+        {
+            return false;
+        }
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
         const ImVec2 rowMax = ImVec2(rowMin.x + availableWidth, rowMin.y + rowHeight);
 
@@ -488,6 +492,10 @@ namespace
         const float rightPadding = SZ::Px(8.0f);
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
+        if (availableWidth <= SZ::Px(1.0f))
+        {
+            return false;
+        }
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
         const ImVec2 rowMax = ImVec2(rowMin.x + availableWidth, rowMin.y + rowHeight);
 

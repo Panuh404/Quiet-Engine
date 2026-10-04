@@ -126,9 +126,9 @@ namespace Quiet::Renderer::UI
             dockspaceSize.x * (1.0f - leftRatio - rightRatioOfFullWidth);
 
         const float debugRatio = std::clamp(
-            std::max(0.30f, Scale(325.0f) / std::max(centerWidth, Scale(1.0f))),
-            0.28f,
-            0.45f
+            std::max(0.24f, Scale(250.0f) / std::max(centerWidth, Scale(1.0f))),
+            0.22f,
+            0.34f
         );
 
         ImGui::DockBuilderSplitNode(
@@ -167,8 +167,8 @@ namespace Quiet::Renderer::UI
         ImGui::DockBuilderDockWindow("Scene", dockLeft);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
         ImGui::DockBuilderDockWindow("Scene Settings", dockRight);
-        ImGui::DockBuilderDockWindow("Assets", dockBottom);
         ImGui::DockBuilderDockWindow("Console", dockBottom);
+        ImGui::DockBuilderDockWindow("Assets", dockBottom);
         ImGui::DockBuilderDockWindow("Debug", dockBottomRight);
 
         ImGui::DockBuilderFinish(dockspaceID);
