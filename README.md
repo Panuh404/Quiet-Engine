@@ -21,6 +21,7 @@ Implemented foundations:
 * Jolt Physics runtime foundation with fixed-step simulation, Static / Dynamic / Kinematic rigid bodies, primitive colliders, scene gravity, contact events, and runtime body controls
 * miniaudio runtime foundation with WAV / FLAC / MP3 assets, editor preview, Audio Source / Listener components, runtime playback controls, 3D spatial audio, attenuation, directional cones, Doppler, runtime source lifecycle synchronization, and Master / Music / SFX / UI mixing
 * Lua 5.4 + sol2 scripting foundation with Script assets, persistent Script components, per-Actor isolated environments, lifecycle and collision callbacks, engine bindings, deferred runtime Actor mutation, exposed Inspector properties, runtime hot reload, and editor source diagnostics
+* standalone asset cooking and runtime package pipeline with QMesh mesh optimization/compression, QTexture/KTX2 BC7 textures, native audio and Lua packaging, incremental content-hash caching, stale-output pruning, runtime manifests, and source-independent Sandbox loading
 * Dear ImGui dockspace editor shell
 * dark professional editor theme
 * high-DPI aware editor UI scaling
@@ -42,13 +43,14 @@ Implemented foundations:
 
 ## Workspace Targets
 
-The workspace currently contains four main targets:
+The workspace currently contains five main targets:
 
 ```text
 Quiet_Engine     - core static engine library
 Quiet_Launcher   - project launcher executable
 Quiet_Editor     - editor executable
-Quiet_Sandbox    - runtime sandbox executable
+Quiet_Sandbox    - standalone runtime sandbox executable
+Quiet_Cooker     - asset cooker and runtime-package builder
 ```
 
 The editor target is currently the primary development target.
@@ -271,6 +273,35 @@ Scene Settings are serialized with the scene and are tracked by dirty-state and 
 * direct Script source opening through double-click and context-menu actions
 * Script asset references included in active-scene reference validation
 
+### Asset Cooking and Runtime Packages
+
+Quiet provides a standalone `Quiet_Cooker` target that converts an editable `.quiet` project into a source-independent runtime package.
+
+Current cooked asset pipeline:
+
+* Mesh assets are imported from source, optimized with meshoptimizer, quantized, encoded, optionally Zstandard-compressed, and written as `.qmesh`
+* Texture assets generate full mip chains, compress to BC7 sRGB, store GPU-ready data inside KTX2, and are wrapped as `.qtexture`
+* Audio assets remain in their native WAV / FLAC / MP3 representation and are validated before being copied into the runtime package
+* Lua Script assets are packaged byte-for-byte as runtime `.lua` files
+* the project startup scene is copied into the runtime package
+* `RuntimeManifest.json` maps stable asset IDs to cooked runtime paths
+* `.quiet-cook-cache.json` stores source hashes, cooked hashes, cook signatures, and runtime paths for incremental cooking
+* unchanged assets are reused only when both source and cooked output validation succeed
+* missing, modified, or corrupt cooked outputs are rebuilt automatically
+* stale cooked assets no longer referenced by the runtime manifest are removed after a successful cook
+
+The cook cache is an optimization only. It is never authoritative package state.
+
+The Sandbox can launch directly from a runtime package:
+
+When a runtime package is supplied, it is authoritative. The Sandbox does not fall back to editable project source assets.
+
+Missing or corrupt Mesh, Texture, and Audio runtime assets abort package startup with a controlled error. Lua Script failures are isolated per Actor so a broken gameplay script does not terminate the whole runtime.
+
+```bash
+Quiet_Sandbox <runtime-package-directory>
+````
+
 ### Audio
 
 Quiet currently uses miniaudio as its native audio backend while keeping backend types private to the audio implementation.
@@ -439,7 +470,9 @@ MyProject/
 │   └── DefaultScene.json
 ├── Assets/
 │   ├── Meshes/
-│   └── Textures/
+│   ├── Textures/
+│   ├── Audio/
+│   └── Scripts/
 └── Cache/
 ```
 
@@ -459,6 +492,43 @@ The editor can:
 * protect destructive operations with validation, confirmation, staging, and rollback
 * diagnose missing, invalid, pathless, and external source paths
 * create built-in primitive actors from the Engine source
+
+Runtime packaging follows a separate flow:
+
+```text
+Editable .quiet Project
+        ↓
+Quiet_Cooker
+        ↓
+Cook / Validate Assets
+        ↓
+Build RuntimeManifest
+        ↓
+Prune Stale Outputs
+        ↓
+Source-Independent Runtime Package
+        ↓
+Quiet_Sandbox
+```
+
+Typical cooked runtime package:
+
+```text
+OutputProject/
+├── RuntimeManifest.json
+├── .quiet-cook-cache.json
+├── Scenes/
+│   └── DefaultScene.json
+└── Content/
+    ├── Meshes/
+    │   └── *.qmesh
+    ├── Textures/
+    │   └── *.qtexture
+    ├── Audio/
+    │   └── *.wav / *.flac / *.mp3
+    └── Scripts/
+        └── *.lua
+```
 
 ---
 
@@ -592,6 +662,12 @@ Fetched automatically by CMake:
 * EnTT
 * Jolt Physics
 * miniaudio
+* Lua 5.4
+* sol2
+* meshoptimizer
+* Zstandard
+* KTX-Software
+* Compressonator BC7 codec sources
 
 ---
 
@@ -599,14 +675,14 @@ Fetched automatically by CMake:
 
 ### Sandbox (Debug)
 ```bash
-cmake --preset debug
-cmake --build --preset build-debug
+cmake --preset debug-sandbox
+cmake --build --preset build-debug-sandbox
 ```
 
 ### Sandbox (Release)
 ```bash
-cmake --preset release
-cmake --build --preset build-release
+cmake --preset release-sandbox
+cmake --build --preset build-release-sandbox
 ```
 
 ### Editor (Debug)
@@ -633,6 +709,18 @@ cmake --preset release-launcher
 cmake --build --preset build-release-launcher
 ```
 
+### Cooker (Debug)
+```bash
+cmake --preset debug-cooker
+cmake --build --preset build-debug-cooker
+````
+
+### Cooker (Release)
+```bash
+cmake --preset release-cooker
+cmake --build --preset build-release-cooker
+````
+
 
 You can also build the editor target directly:
 
@@ -650,12 +738,14 @@ Executables and resources are written to:
 Build/Binaries/<Config>/
 ```
 
-Typical debug launcher/editor output:
+Typical debug executable output:
 
 ```text
 Build/Binaries/Debug/
 ├── Quiet_Launcher
 ├── Quiet_Editor
+├── Quiet_Sandbox
+├── Quiet_Cooker
 └── Resources/
     ├── Fonts/
     ├── Shaders/
@@ -778,10 +868,18 @@ Shift               Apply 2x Fly speed boost
 * runtime Audio Source lifecycle synchronization
 * Master / Music / SFX / UI runtime bus routing
 * persistent scene-wide audio mix levels with runtime mixer isolation
+* standalone Quiet Cooker and runtime-package pipeline
+* meshoptimizer-based QMesh cooking with quantized vertex streams and Zstandard compression
+* KTX2/BC7 QTexture cooking with generated mip chains
+* native runtime audio and Lua Script packaging
+* persistent incremental cook cache with source/output integrity validation
+* stale cooked-asset pruning
+* RuntimeManifest-based source-independent Sandbox startup
+* relocatable runtime packages with no editable-project dependency
+* graceful missing/corrupt runtime-package failure handling
 
 ### Upcoming Areas
 
-* asset cooking and runtime pipeline
 * text and runtime UI
 * navigation with Recast + Detour
 * advanced gameplay and physics systems
