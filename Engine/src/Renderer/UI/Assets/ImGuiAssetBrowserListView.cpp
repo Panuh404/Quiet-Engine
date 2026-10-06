@@ -126,14 +126,6 @@ namespace Quiet::Renderer::UI::Assets
                     }
                 }
 
-                // Type
-                ImGui::TableSetColumnIndex(1);
-                {
-                    const ImVec2 cellStart = ImGui::GetCursorScreenPos();
-                    ImGui::SetCursorScreenPos(ImVec2(cellStart.x, cellStart.y + SZ::Px(7.0f)));
-                    DrawAssetFolderPill();
-                }
-
                 // State
                 ImGui::TableSetColumnIndex(2);
                 {

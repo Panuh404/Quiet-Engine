@@ -22,6 +22,7 @@ namespace Quiet::Renderer::UI
             meshLibrary,
             textureLibrary,
             audioSubsystem,
+            m_Fonts,
             GetUIScale()
         };
 

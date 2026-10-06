@@ -427,12 +427,6 @@ namespace Quiet::Renderer::UI::Assets
                 contentY = secondaryMax.y;
             }
 
-            if (metrics.ShowMetadataPill)
-            {
-                ImGui::SetCursorScreenPos(ImVec2(cardMin.x + padding, contentY + metrics.MetadataGap));
-                DrawAssetFolderPill();
-            }
-
             DrawAssetCardSelectionIndicator(drawList, cardMin, cardMax, isSelectedFolder);
             if (hovered)
             {

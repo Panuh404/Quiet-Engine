@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <string>
+#include <algorithm>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -9,6 +10,7 @@
 #include "Quiet/Project/AssetRegistry.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
@@ -23,12 +25,11 @@ namespace
     namespace Project = Quiet::Project;
     namespace Vulkan = Quiet::Renderer::Vulkan;
 
-    std::string MakeAssetTypeFilterDropdownLabel(
-        const Assets::AssetBrowserTypeFilter filter,
-        const std::size_t meshCount,
-        const std::size_t textureCount,
-        const std::size_t audioCount,
-        const std::size_t scriptCount)
+    std::string MakeAssetTypeFilterDropdownLabel(const Assets::AssetBrowserTypeFilter filter,
+                                                 const std::size_t meshCount,
+                                                 const std::size_t textureCount,
+                                                 const std::size_t audioCount,
+                                                 const std::size_t scriptCount)
     {
         using Assets::AssetBrowserTypeFilter;
         switch (filter)
@@ -44,7 +45,7 @@ namespace
 
     const char* ToAssetBrowserViewModeLabel(const Assets::AssetBrowserViewMode viewMode)
     {
-        using Quiet::Renderer::UI::Assets::AssetBrowserViewMode;
+        using Assets::AssetBrowserViewMode;
         switch (viewMode)
         {
             case AssetBrowserViewMode::Browser: return "Browser";
@@ -67,21 +68,29 @@ namespace
         }
     }
 
-    bool DrawAssetToolbarDropdownButton(const std::string& label, const char* popupID, const ImVec2& size)
+    bool DrawAssetToolbarDropdownButton(const QUI::EditorFonts& fonts,
+                                        const char* id,
+                                        const char* icon,
+                                        const char* fallback,
+                                        const char* tooltip,
+                                        const char* popupID,
+                                        const bool active,
+                                        const ImVec2& size)
     {
-        if (QUI::EditorButton(label.c_str(), size))
+        if (QUI::DrawToolbarButton(fonts, id, icon, fallback, tooltip, active, true, size))
+        {
             ImGui::OpenPopup(popupID);
+        }
 
         return ImGui::BeginPopup(popupID);
     }
 
-    std::string MakeDiagnosticsDropdownLabel(
-        const Assets::AssetBrowserDiagnosticsFilter filter,
-        const std::size_t issueCount,
-        const std::size_t missingCount,
-        const std::size_t externalCount)
+    std::string MakeDiagnosticsDropdownLabel(const Assets::AssetBrowserDiagnosticsFilter filter,
+                                             const std::size_t issueCount,
+                                             const std::size_t missingCount,
+                                             const std::size_t externalCount)
     {
-        using Quiet::Renderer::UI::Assets::AssetBrowserDiagnosticsFilter;
+        using Assets::AssetBrowserDiagnosticsFilter;
 
         switch (filter)
         {
@@ -100,10 +109,9 @@ namespace
         }
     }
 
-    void DrawPrimitiveCreationPopup(
-        Editor::EditorState& editorState,
-        const Project::ProjectContext& projectContext,
-        const Vulkan::MeshLibrary& meshLibrary)
+    void DrawPrimitiveCreationPopup(Editor::EditorState& editorState,
+                                    const Project::ProjectContext& projectContext,
+                                    const Vulkan::MeshLibrary& meshLibrary)
     {
         if (!ImGui::BeginPopup("##AssetBrowserCreatePrimitive")) return;
         QUI::DrawMutedText("Create a primitive actor at the world origin.");
@@ -147,18 +155,18 @@ namespace
 
 namespace Quiet::Renderer::UI::Assets
 {
-    void DrawAssetBrowserToolbar(
-        Editor::EditorState& editorState,
-        const Project::ProjectContext& projectContext,
-        const Vulkan::MeshLibrary& meshLibrary,
-        std::array<char, 128>& searchBuffer,
-        AssetBrowserTypeFilter& typeFilter,
-        AssetBrowserDiagnosticsFilter& diagnosticsFilter,
-        AssetBrowserViewMode& viewMode,
-        AssetBrowserThumbnailSize& thumbnailSize,
-        AssetBrowserState& state,
-        AssetBrowserOperationRequest& operationRequest,
-        bool& openImportPopup)
+    void DrawAssetBrowserToolbar(Editor::EditorState& editorState,
+                                 const Project::ProjectContext& projectContext,
+                                 const Vulkan::MeshLibrary& meshLibrary,
+                                 const EditorFonts& fonts,
+                                 std::array<char, 128>& searchBuffer,
+                                 AssetBrowserTypeFilter& typeFilter,
+                                 AssetBrowserDiagnosticsFilter& diagnosticsFilter,
+                                 AssetBrowserViewMode& viewMode,
+                                 AssetBrowserThumbnailSize& thumbnailSize,
+                                 AssetBrowserState& state,
+                                 AssetBrowserOperationRequest& operationRequest,
+                                 bool& openImportPopup)
     {
         const std::size_t selectedAssetCount = state.SelectedAssetIDs.size();
         const bool clipboardAvailable = IsAssetClipboardAvailable(projectContext, state);
@@ -175,31 +183,39 @@ namespace Quiet::Renderer::UI::Assets
         const std::size_t missingCount = diagnosticsCounts.Missing;
         const std::size_t externalCount = diagnosticsCounts.External;
 
+        const float toolbarWidth = ImGui::GetContentRegionAvail().x;
+        const bool useSecondaryRow = !fonts.HasIcons || toolbarWidth < SZ::Px(820.0f);
+        const float compactButtonWidth = fonts.HasIcons ? ToolbarStyle::ButtonSize() : SZ::Px(92.0f);
+        const ImVec2 compactButtonSize(compactButtonWidth, ToolbarStyle::ButtonHeight());
+
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 8.0f)));
 
         if (projectSourceActive)
         {
-            if (EditorButton("Import", SZ::Px(ImVec2(86.0f, 0.0f)))) openImportPopup = true;
+            if (DrawToolbarButton(fonts, "AssetImport", Icons::FileImport, "Import", "Import Asset", false, true, compactButtonSize))
+            {
+                openImportPopup = true;
+            }
         }
         else
         {
             const bool canCreatePrimitive = editorState.Scene.Mode == Editor::SceneMode::Edit;
-            if (EditorButton("Create Primitive", SZ::Px(ImVec2(132.0f, 0.0f)), canCreatePrimitive))
+            const char* primitiveTooltip = canCreatePrimitive
+                ? "Create a built-in primitive actor at the world origin."
+                : "Primitive actors can only be created in Edit mode.";
+
+            if (DrawToolbarButton(
+                fonts,
+                "AssetCreatePrimitive",
+                Icons::Local,
+                "Create",
+                primitiveTooltip,
+                false,
+                canCreatePrimitive,
+                compactButtonSize))
             {
                 ImGui::OpenPopup("##AssetBrowserCreatePrimitive");
-            }
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-            {
-                if (canCreatePrimitive)
-                {
-                    ImGui::SetTooltip("Create a built-in primitive actor at the world origin.");
-                }
-                else
-                {
-                    ImGui::SetTooltip("Primitive actors can only be created in Edit mode.");
-                }
             }
 
             DrawPrimitiveCreationPopup(editorState, projectContext, meshLibrary);
@@ -207,24 +223,29 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::SameLine();
 
-        if (EditorButton("Reload", SZ::Px(ImVec2(86.0f, 0.0f))))
-            editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
-
-        if (selectedAssetCount > 0)
+        if (DrawToolbarButton(fonts, "AssetReload", Icons::Reload, "Reload", "Reload Assets", false, true, compactButtonSize))
         {
-            ImGui::SameLine();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
-            ImGui::Text("%zu selected", selectedAssetCount);
-            ImGui::PopStyleColor();
+            editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
         }
+
+        const std::string actionsTooltip = selectedAssetCount > 0
+            ? std::to_string(selectedAssetCount) + " selected - Asset Actions"
+            : "Asset Actions";
 
         const bool clipboardCanPasteHere = projectSourceActive && clipboardAvailable;
         if (projectSourceActive && (selectedAssetCount > 0 || clipboardCanPasteHere))
         {
             ImGui::SameLine();
 
-            if (DrawAssetToolbarDropdownButton("Actions", "##AssetSelectionActions", SZ::Px(ImVec2(104.0f, 0.0f))))
+            if (DrawAssetToolbarDropdownButton(
+                fonts,
+                "AssetActions",
+                Icons::More,
+                "Actions",
+                actionsTooltip.c_str(),
+                "##AssetSelectionActions",
+                selectedAssetCount > 0,
+                compactButtonSize))
             {
                 const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
                 const bool canEditProjectAssets = editMode && projectSourceActive;
@@ -319,23 +340,55 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::SameLine();
 
-        ImGui::SetNextItemWidth(SZ::Px(260.0f));
-        ImGui::InputTextWithHint("##AssetSearch", "Search assets...", searchBuffer.data(), searchBuffer.size());
+        const float secondaryControlsReserve = useSecondaryRow
+            ? 0.0f
+            : compactButtonWidth * 3.0f + ImGui::GetStyle().ItemSpacing.x * 4.0f + SZ::Px(8.0f);
 
-        if (searchBuffer[0] != '\0')
+        float searchAvailable = ImGui::GetContentRegionAvail().x - secondaryControlsReserve;
+        const bool showClearButton = searchBuffer[0] != '\0' && searchAvailable >= SZ::Px(160.0f) + compactButtonWidth + ImGui::GetStyle().ItemSpacing.x;
+
+        if (showClearButton)
         {
-            ImGui::SameLine();
-            if (EditorButton("Clear", SZ::Px(ImVec2(72.0f, 0.0f))))
-                searchBuffer[0] = '\0';
+            searchAvailable -= compactButtonWidth + ImGui::GetStyle().ItemSpacing.x;
         }
 
-        ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::SameLine();
+        const float searchWidth = std::min(SZ::Px(320.0f), std::max(SZ::Px(100.0f), searchAvailable));
+        ImGui::SetNextItemWidth(searchWidth);
+        ImGui::InputTextWithHint("##AssetSearch", "Search assets...", searchBuffer.data(), searchBuffer.size());
+
+        if (showClearButton)
+        {
+            ImGui::SameLine();
+
+            if (DrawToolbarButton(fonts, "ClearAssetSearch", Icons::Close, "Clear", "Clear Search", false, true, compactButtonSize))
+            {
+                searchBuffer[0] = '\0';
+            }
+        }
+
+        if (useSecondaryRow)
+        {
+            ImGui::Spacing();
+        }
+        else
+        {
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+        }
 
         const std::size_t totalAssetCount = meshCount + textureCount + audioCount + scriptCount;
-        const std::string filterDropdownLabel = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount, audioCount, scriptCount);
-        if (DrawAssetToolbarDropdownButton(filterDropdownLabel, "##AssetTypeFilterDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
+        const std::string filterTooltip = MakeAssetTypeFilterDropdownLabel(typeFilter, meshCount, textureCount, audioCount, scriptCount);
+
+        if (DrawAssetToolbarDropdownButton(
+            fonts,
+            "AssetTypeFilter",
+            Icons::Filter,
+            "Filter",
+            filterTooltip.c_str(),
+            "##AssetTypeFilterDropdown",
+            typeFilter != AssetBrowserTypeFilter::All,
+            compactButtonSize))
         {
             const std::string allLabel = "All " + std::to_string(totalAssetCount);
             const std::string meshesLabel = "Meshes " + std::to_string(meshCount);
@@ -368,8 +421,16 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::SameLine();
 
-        const std::string diagnosticsDropdownLabel = MakeDiagnosticsDropdownLabel(diagnosticsFilter, issueCount, missingCount, externalCount);
-        if (DrawAssetToolbarDropdownButton(diagnosticsDropdownLabel, "##AssetDiagnosticsDropdown", SZ::Px(ImVec2(190.0f, 0.0f))))
+        const std::string diagnosticsTooltip = MakeDiagnosticsDropdownLabel(diagnosticsFilter, issueCount, missingCount, externalCount);
+        if (DrawAssetToolbarDropdownButton(
+            fonts,
+            "AssetDiagnostics",
+            Icons::Diagnostics,
+            "Diag",
+            diagnosticsTooltip.c_str(),
+            "##AssetDiagnosticsDropdown",
+            diagnosticsFilter != AssetBrowserDiagnosticsFilter::All,
+            compactButtonSize))
         {
             // All
             if (EditorMenuItem("All", nullptr, diagnosticsFilter == AssetBrowserDiagnosticsFilter::All))
@@ -395,50 +456,68 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::SameLine();
 
-        const std::string viewDropdownLabel = std::string("View: ") + ToAssetBrowserViewModeLabel(viewMode);
-
-        if (DrawAssetToolbarDropdownButton(viewDropdownLabel, "##AssetViewModeDropdown", SZ::Px(ImVec2(142.0f, 0.0f))))
-        {
-            // List
-            if (EditorMenuItem("List", nullptr, viewMode == AssetBrowserViewMode::List))
-                viewMode = AssetBrowserViewMode::List;
-
-            // Browser
-            if (EditorMenuItem("Browser", nullptr, viewMode == AssetBrowserViewMode::Browser))
-                viewMode = AssetBrowserViewMode::Browser;
-
-            ImGui::EndPopup();
-        }
+        const char* viewIcon = viewMode == AssetBrowserViewMode::Browser ? Icons::Grid : Icons::List;
+        std::string viewTooltip = std::string("View: ") + ToAssetBrowserViewModeLabel(viewMode);
 
         if (viewMode == AssetBrowserViewMode::Browser)
         {
-            ImGui::SameLine();
+            viewTooltip += " - ";
+            viewTooltip += ToAssetBrowserThumbnailSizeLabel(thumbnailSize);
+        }
 
-            const std::string sizeDropdownLabel = std::string("Size: ") + ToAssetBrowserThumbnailSizeLabel(thumbnailSize);
-            if (DrawAssetToolbarDropdownButton(sizeDropdownLabel, "##AssetThumbnailSizeDropdown", SZ::Px(ImVec2(166.0f, 0.0f))))
+        if (DrawAssetToolbarDropdownButton(
+                fonts,
+                "AssetView",
+                viewIcon,
+                "View",
+                viewTooltip.c_str(),
+                "##AssetViewModeDropdown",
+                false,
+                compactButtonSize))
+        {
+            if (EditorMenuItem("List", nullptr, viewMode == AssetBrowserViewMode::List))
             {
+                viewMode = AssetBrowserViewMode::List;
+            }
+
+            if (EditorMenuItem("Browser", nullptr, viewMode == AssetBrowserViewMode::Browser))
+            {
+                viewMode = AssetBrowserViewMode::Browser;
+            }
+
+            if (viewMode == AssetBrowserViewMode::Browser)
+            {
+                ImGui::Separator();
+                ImGui::TextDisabled("Thumbnail Size");
+
                 if (EditorMenuItem("Tiny", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Tiny))
                 {
                     thumbnailSize = AssetBrowserThumbnailSize::Tiny;
                 }
+
                 if (EditorMenuItem("Small", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Small))
                 {
-                    thumbnailSize = AssetBrowserThumbnailSize::Small;
+                    thumbnailSize =
+                        AssetBrowserThumbnailSize::Small;
                 }
+
                 if (EditorMenuItem("Medium", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Medium))
                 {
                     thumbnailSize = AssetBrowserThumbnailSize::Medium;
                 }
+
                 if (EditorMenuItem("Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::Large))
                 {
                     thumbnailSize = AssetBrowserThumbnailSize::Large;
                 }
+
                 if (EditorMenuItem("Extra Large", nullptr, thumbnailSize == AssetBrowserThumbnailSize::ExtraLarge))
                 {
                     thumbnailSize = AssetBrowserThumbnailSize::ExtraLarge;
                 }
-                ImGui::EndPopup();
             }
+
+            ImGui::EndPopup();
         }
 
         ImGui::PopStyleVar(2);

@@ -195,6 +195,9 @@ namespace Quiet::Renderer::UI::Assets
         bool ConfirmPermanentAssetDelete = false;
         bool ConfirmPermanentFolderDelete = false;
 
+        bool SourcesPanelExpanded = true;
+        bool DetailsPanelExpanded = true;
+
         AssetBrowserTypeFilter TypeFilter = AssetBrowserTypeFilter::All;
         AssetBrowserViewMode ViewMode = AssetBrowserViewMode::Browser;
         AssetBrowserThumbnailSize ThumbnailSize = AssetBrowserThumbnailSize::Medium;

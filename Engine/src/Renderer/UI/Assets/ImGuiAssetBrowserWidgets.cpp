@@ -183,11 +183,6 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
-    void DrawAssetFolderPill()
-    {
-        DrawPillLabel("Folder", EditorColor::Warning, ImVec4(0.130f, 0.095f, 0.030f, 1.0f));
-    }
-
     void DrawAssetStatusPill(const std::string& status)
     {
         const ImVec4 statusColor = MakeStatusColor(status);

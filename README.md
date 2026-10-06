@@ -300,7 +300,7 @@ Missing or corrupt Mesh, Texture, and Audio runtime assets abort package startup
 
 ```bash
 Quiet_Sandbox <runtime-package-directory>
-````
+```
 
 ### Audio
 
@@ -713,13 +713,13 @@ cmake --build --preset build-release-launcher
 ```bash
 cmake --preset debug-cooker
 cmake --build --preset build-debug-cooker
-````
+```
 
 ### Cooker (Release)
 ```bash
 cmake --preset release-cooker
 cmake --build --preset build-release-cooker
-````
+```
 
 
 You can also build the editor target directly:

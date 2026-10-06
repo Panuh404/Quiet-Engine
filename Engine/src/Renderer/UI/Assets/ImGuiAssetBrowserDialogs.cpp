@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
-#include <vector>
 #include <filesystem>
 #include <string>
+#include <vector>
+
 #include <imgui.h>
 
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserOperations.h"
@@ -36,25 +38,6 @@ namespace
             case Quiet::Editor::EditorFeedbackSeverity::Info:
             default:
                 return QUI::EditorColor::Accent;
-        }
-    }
-
-    ImVec4 MakeAssetFeedbackBackgroundColor(const Quiet::Editor::EditorFeedbackSeverity severity)
-    {
-        switch (severity)
-        {
-            case Quiet::Editor::EditorFeedbackSeverity::Success:
-                return ImVec4(0.035f, 0.105f, 0.065f, 1.0f);
-
-            case Quiet::Editor::EditorFeedbackSeverity::Warning:
-                return ImVec4(0.130f, 0.095f, 0.030f, 1.0f);
-
-            case Quiet::Editor::EditorFeedbackSeverity::Error:
-                return ImVec4(0.140f, 0.045f, 0.050f, 1.0f);
-
-            case Quiet::Editor::EditorFeedbackSeverity::Info:
-            default:
-                return ImVec4(0.040f, 0.075f, 0.135f, 1.0f);
         }
     }
 
@@ -168,68 +151,207 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::EndPopup();
     }
 
-    void DrawAssetOperationFeedback(Editor::EditorState& editorState)
+    void DrawAssetOperationFeedback(const EditorFonts& fonts, Editor::EditorState& editorState)
     {
         auto& feedback = editorState.AssetOperationFeedback;
         if (!feedback.Visible) return;
 
-        const ImVec4 accentColor = MakeAssetFeedbackTextColor(feedback.Severity);
-        const ImVec4 backgroundColor = MakeAssetFeedbackBackgroundColor(feedback.Severity);
+        static std::uint64_t lastRevision = 0;
+        static double shownAtSeconds = 0.0;
+        const double now = ImGui::GetTime();
 
+        if (feedback.Revision != lastRevision)
+        {
+            lastRevision = feedback.Revision;
+            shownAtSeconds = now;
+        }
+
+        double autoDismissSeconds = 0.0;
+
+        switch (feedback.Severity)
+        {
+            case Editor::EditorFeedbackSeverity::Success:
+                autoDismissSeconds = 2.5;
+                break;
+            case Editor::EditorFeedbackSeverity::Info:
+                autoDismissSeconds = 3.5;
+                break;
+            case Editor::EditorFeedbackSeverity::Warning:
+                autoDismissSeconds = 5.0;
+                break;
+            case Editor::EditorFeedbackSeverity::Error:
+            default:
+                // Errors remain until explicitly dismissed.
+                autoDismissSeconds = 0.0;
+                break;
+        }
+
+        if (autoDismissSeconds > 0.0 && (now - shownAtSeconds) >= autoDismissSeconds)
+        {
+            feedback.Clear();
+            return;
+        }
+
+        const ImVec4 accentColor = MakeAssetFeedbackTextColor(feedback.Severity);
         const std::string title = feedback.Title.empty() ? "Asset operation" : feedback.Title;
         const std::string message = feedback.Message.empty() ? "Operation completed." : feedback.Message;
 
-        const ImVec2 feedbackPadding = SZ::Px(ImVec2(12.0f, 10.0f));
+        /*
+         * Anchor to the Assets window itself.
+         *
+         * This function is called while the Assets window is the current window,
+         * so these coordinates describe the docked Assets panel rather than the
+         * desktop or main viewport.
+         */
+        const ImVec2 hostWindowPosition = ImGui::GetWindowPos();
+        const ImVec2 hostContentMin = ImGui::GetWindowContentRegionMin();
+        const ImVec2 hostContentMax = ImGui::GetWindowContentRegionMax();
 
-        const float availableWidth = std::max(SZ::Px(180.0f), ImGui::GetContentRegionAvail().x);
-        const float messageWrapWidth = std::max(SZ::Px(1.0f), availableWidth - feedbackPadding.x * 2.0f - SZ::Px(4.0f));
-        const float titleRowHeight = std::max(ImGui::GetTextLineHeight(), ImGui::GetFrameHeight());
+        const float margin = SZ::Px(12.0f);
 
-        const float messageHeight = ImGui::CalcTextSize(
-            message.c_str(),
-            nullptr,
-            false,
-            messageWrapWidth
-        ).y;
+        const float hostContentWidth = hostContentMax.x - hostContentMin.x;
+        const float availableToastWidth = std::max(0.0f, hostContentWidth - margin * 2.0f);
 
-        const float feedbackHeight = std::max(
-            SZ::Px(74.0f),
-            feedbackPadding.y * 2.0f +
-            titleRowHeight +
-            ImGui::GetStyle().ItemSpacing.y +
-            messageHeight
+        if (availableToastWidth < SZ::Px(160.0f)) return;
+        const float toastWidth = std::min(SZ::Px(380.0f), availableToastWidth);
+
+        /*
+         * Bottom-right anchor.
+         *
+         * The pivot means we don't have to know the toast's final auto-sized
+         * height beforehand.
+         */
+        const ImVec2 toastAnchor(
+            hostWindowPosition.x + hostContentMax.x - margin,
+            hostWindowPosition.y + hostContentMax.y - margin
         );
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, feedbackPadding);
+        ImGui::SetNextWindowPos(toastAnchor, ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+        ImGui::SetNextWindowSize(ImVec2(toastWidth, 0.0f), ImGuiCond_Always);
 
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, backgroundColor);
-        ImGui::PushStyleColor(ImGuiCol_Border, accentColor);
+        const ImGuiWindowFlags toastFlags =
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoFocusOnAppearing |
+            ImGuiWindowFlags_AlwaysAutoResize;
 
-        ImGui::BeginChild("##AssetOperationFeedback", ImVec2(0.0f, feedbackHeight),
-            ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, SZ::Px(8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, SZ::Px(1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 9.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 5.0f)));
+
+        /*
+         * Keep the surface neutral. Severity is expressed through the
+         * accent stripe and title instead of tinting the entire notification.
+         */
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, EditorColor::Background2);
+        ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::Border);
+
+        bool dismissRequested = false;
+
+        if (ImGui::Begin("##AssetOperationFeedbackToast", nullptr, toastFlags))
         {
+            const float closeButtonSize = SZ::Px(22.0f);
+
+            // Header
             ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
             ImGui::TextUnformatted(title.c_str());
             ImGui::PopStyleColor();
 
-            const float dismissWidth = SZ::Px(82.0f);
-            const float dismissX = ImGui::GetWindowContentRegionMax().x - dismissWidth;
-
             ImGui::SameLine();
 
-            if (dismissX > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(dismissX);
-            if (EditorButton("Dismiss", ImVec2(dismissWidth, 0.0f)))
-                feedback.Clear();
+            const float closeButtonX = ImGui::GetWindowContentRegionMax().x - closeButtonSize;
+            if (closeButtonX > ImGui::GetCursorPosX())
+            {
+                ImGui::SetCursorPosX(closeButtonX);
+            }
 
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-            ImGui::TextWrapped("%s", message.c_str());
-            ImGui::PopStyleColor();
+            /*
+             * True ghost close button:
+             *
+             * - no persistent border
+             * - no persistent background
+             * - subtle hover surface only
+             */
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, SZ::Px(4.0f));
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorColor::Background4);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorColor::Background3);
+
+            dismissRequested = DrawToolbarButton(
+                fonts,
+                "DismissAssetFeedback",
+                Icons::Close,
+                "x",
+                "Dismiss",
+                false,
+                true,
+                ImVec2(closeButtonSize, closeButtonSize)
+            );
+
+            const bool dismissHovered = ImGui::IsItemHovered();
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+
+            /*
+             * Routine successes don't need to explain themselves twice.
+             *
+             * "Assets reloaded" is enough on screen. The longer message
+             * remains available as a tooltip.
+             *
+             * Warnings/errors keep their descriptive body.
+             */
+            const bool compactFeedback =
+                feedback.Severity == Editor::EditorFeedbackSeverity::Success ||
+                feedback.Severity == Editor::EditorFeedbackSeverity::Info;
+
+            if (!compactFeedback)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
+                ImGui::PushTextWrapPos(ImGui::GetWindowContentRegionMax().x);
+                ImGui::TextWrapped("%s", message.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::PopStyleColor();
+            }
+            else if (!message.empty() && !dismissHovered && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
+            {
+                ImGui::SetTooltip("%s", message.c_str());
+            }
+
+            // Small severity stripe.
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImVec2 toastPosition = ImGui::GetWindowPos();
+            const ImVec2 toastSize = ImGui::GetWindowSize();
+
+            const float stripeWidth = SZ::Px(3.0f);
+            const float stripeInset = SZ::Px(6.0f);
+
+            drawList->AddRectFilled(
+                ImVec2(toastPosition.x, toastPosition.y + stripeInset),
+                ImVec2(toastPosition.x + stripeWidth, toastPosition.y + toastSize.y - stripeInset),
+                ImGui::ColorConvertFloat4ToU32(accentColor),
+                SZ::Px(2.0f)
+            );
         }
-        ImGui::EndChild();
+
+        ImGui::End();
 
         ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(4);
+
+        if (dismissRequested)
+        {
+            feedback.Clear();
+        }
     }
 
     const char* GetAssetFolderActionPopupTitle(const AssetBrowserFolderAction action)

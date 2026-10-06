@@ -8,6 +8,7 @@
 #include <vector>
 #include <imgui.h>
 
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserWidgets.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContextMenu.h"
@@ -68,15 +69,14 @@ namespace
         ImGui::Dummy(ImVec2(0.0f, SZ::Px(3.0f)));
     }
 
-    void DrawFolderNode(
-        const Quiet::Project::ProjectContext& projectContext,
-        const std::string& relativeFolderPath,
-        std::string& currentAssetFolder,
-        const bool runtimeModeActive,
-        Assets::AssetBrowserState& state,
-        Assets::AssetBrowserFolderActionRequest& folderActionRequest,
-        Assets::AssetBrowserAssetMoveRequest& assetMoveRequest,
-        Assets::AssetBrowserOperationRequest& operationRequest)
+    void DrawFolderNode(const Quiet::Project::ProjectContext& projectContext,
+                        const std::string& relativeFolderPath,
+                        std::string& currentAssetFolder,
+                        const bool runtimeModeActive,
+                        Assets::AssetBrowserState& state,
+                        Assets::AssetBrowserFolderActionRequest& folderActionRequest,
+                        Assets::AssetBrowserAssetMoveRequest& assetMoveRequest,
+                        Assets::AssetBrowserOperationRequest& operationRequest)
     {
         const std::vector<Assets::AssetBrowserFolderEntry>childFolders = Assets::BuildAssetChildFolderList(projectContext, relativeFolderPath);
 
@@ -148,147 +148,176 @@ namespace
 
 namespace Quiet::Renderer::UI::Assets
 {
-    void DrawAssetBrowserSourcesPanel(
-        const Project::ProjectContext& projectContext,
-        std::string& currentAssetFolder,
-        float width,
-        bool runtimeModeActive,
-        AssetBrowserState& state,
-        AssetBrowserFolderActionRequest& folderActionRequest,
-        AssetBrowserAssetMoveRequest& assetMoveRequest,
-        AssetBrowserOperationRequest& operationRequest)
+    void DrawAssetBrowserSourcesPanel(const Project::ProjectContext& projectContext,
+                                      std::string& currentAssetFolder,
+                                      float width,
+                                      bool runtimeModeActive,
+                                      const EditorFonts& fonts,
+                                      AssetBrowserState& state,
+                                      AssetBrowserFolderActionRequest& folderActionRequest,
+                                      AssetBrowserAssetMoveRequest& assetMoveRequest,
+                                      AssetBrowserOperationRequest& operationRequest)
     {
         ValidateCurrentAssetFolder(projectContext, currentAssetFolder);
 
+        const float collapsedWidth = SZ::Px(42.0f);
+        const float panelWidth = state.SourcesPanelExpanded ? width : collapsedWidth;
+
+        const ImVec2 panelPadding = state.SourcesPanelExpanded ? SZ::Px(ImVec2(10.0f, 10.0f)) : SZ::Px(ImVec2(7.0f, 10.0f));
+
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, panelPadding);
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##AssetBrowserSourcesPanel", ImVec2(width, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+        ImGui::BeginChild("##AssetBrowserSourcesPanel", ImVec2(panelWidth, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
         {
-            ImGui::AlignTextToFramePadding();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-            ImGui::TextUnformatted("Sources");
-            ImGui::PopStyleColor();
-
-            const float createButtonWidth = SZ::Px(78.0f);
-            ImGui::SameLine();
-
-            const float createButtonX = ImGui::GetWindowContentRegionMax().x - createButtonWidth;
-            if (createButtonX > ImGui::GetCursorPosX()) ImGui::SetCursorPosX(createButtonX);
-
-            const bool canCreateFolder = !runtimeModeActive && state.CurrentSource == AssetBrowserSource::Project;
-
-            if (EditorButton("+ Folder", ImVec2(createButtonWidth, 0.0f), canCreateFolder))
-                RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create,currentAssetFolder);
-
-            if (!canCreateFolder && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            if (!state.SourcesPanelExpanded)
             {
-                ImGui::SetTooltip(state.CurrentSource == AssetBrowserSource::EngineBuiltIn
-                    ? "The Engine source is read-only."
-                    : "Folders cannot be created during runtime mode.");
-            }
-
-            ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
-            ImGui::Separator();
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
-
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(4.0f, 4.0f)));
-            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, SZ::Px(18.0f));
-
-            ImGui::PushStyleColor(ImGuiCol_Header, EditorColor::AccentSoft);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
-
-            const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
-            const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
-
-            std::error_code ec;
-
-            const bool projectAssetsAvailable = std::filesystem::exists(assetsRootPath, ec) && !ec &&
-                std::filesystem::is_directory(assetsRootPath, ec) && !ec;
-
-            DrawSourceSectionHeader("PROJECT CONTENT");
-
-            if (projectAssetsAvailable)
-            {
-                // The physical Assets root is represented directly by the
-                // top-level Project source. Its child folders appear beneath it.
-                DrawFolderNode(
-                    projectContext,
-                    assetsRoot,
-                    currentAssetFolder,
-                    runtimeModeActive,
-                    state,
-                    folderActionRequest,
-                    assetMoveRequest,
-                    operationRequest
-                );
+                if (DrawToolbarButton(fonts, "ExpandAssetSources", Icons::ChevronRight, ">", "Show Sources", false, true, SZ::Px(ImVec2(28.0f, 28.0f))))
+                {
+                    state.SourcesPanelExpanded = true;
+                }
             }
             else
             {
-                ImGuiTreeNodeFlags projectFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (state.CurrentSource == AssetBrowserSource::Project)
+                ImGui::AlignTextToFramePadding();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+                ImGui::TextUnformatted("Sources");
+                ImGui::PopStyleColor();
+
+                const float collapseButtonWidth = SZ::Px(28.0f);
+                const float createButtonWidth = fonts.HasIcons ? SZ::Px(30.0f) : SZ::Px(78.0f);
+                const float controlsWidth = collapseButtonWidth + ImGui::GetStyle().ItemSpacing.x + createButtonWidth;
+
+                ImGui::SameLine();
+
+                const float controlsX = ImGui::GetWindowContentRegionMax().x - controlsWidth;
+                if (controlsX > ImGui::GetCursorPosX())
                 {
-                    projectFlags |= ImGuiTreeNodeFlags_Selected;
+                    ImGui::SetCursorPosX(controlsX);
                 }
 
-                ImGui::TreeNodeEx("##AssetSourceProjectUnavailable", projectFlags, "Project");
+                if (DrawToolbarButton(fonts, "CollapseAssetSources", Icons::ChevronLeft, "<", "Collapse Sources", false, true, ImVec2(collapseButtonWidth, 0.0f)))
+                {
+                    state.SourcesPanelExpanded = false;
+                }
+
+                ImGui::SameLine();
+
+                const bool canCreateFolder = !runtimeModeActive && state.CurrentSource == AssetBrowserSource::Project;
+                if (DrawToolbarButton(fonts, "CreateAssetFolder", Icons::FolderPlus, "+ Folder", "Create Folder", false, canCreateFolder, ImVec2(createButtonWidth, 0.0f)))
+                {
+                    RequestFolderAction(folderActionRequest, AssetBrowserFolderAction::Create, currentAssetFolder);
+                }
+
+                if (!canCreateFolder && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                {
+                    ImGui::SetTooltip(state.CurrentSource == AssetBrowserSource::EngineBuiltIn
+                        ? "The Engine source is read-only."
+                        : "Folders cannot be created during runtime mode.");
+                }
+
+                ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+
+                ImGui::Spacing();
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(4.0f, 4.0f)));
+                ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, SZ::Px(18.0f));
+
+                ImGui::PushStyleColor(ImGuiCol_Header, EditorColor::AccentSoft);
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
+
+                const std::string assetsRoot = GetAssetsRootRelativePath(projectContext);
+                const std::filesystem::path assetsRootPath = projectContext.GetAssetsPath().lexically_normal();
+
+                std::error_code ec;
+
+                const bool projectAssetsAvailable = std::filesystem::exists(assetsRootPath, ec) && !ec &&
+                    std::filesystem::is_directory(assetsRootPath, ec) && !ec;
+
+                DrawSourceSectionHeader("PROJECT CONTENT");
+
+                if (projectAssetsAvailable)
+                {
+                    // The physical Assets root is represented directly by the
+                    // top-level Project source. Its child folders appear beneath it.
+                    DrawFolderNode(
+                        projectContext,
+                        assetsRoot,
+                        currentAssetFolder,
+                        runtimeModeActive,
+                        state,
+                        folderActionRequest,
+                        assetMoveRequest,
+                        operationRequest
+                    );
+                }
+                else
+                {
+                    ImGuiTreeNodeFlags projectFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+                    if (state.CurrentSource == AssetBrowserSource::Project)
+                    {
+                        projectFlags |= ImGuiTreeNodeFlags_Selected;
+                    }
+
+                    ImGui::TreeNodeEx("##AssetSourceProjectUnavailable", projectFlags, "Project");
+
+                    if (ImGui::IsItemHovered())
+                    {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    }
+
+                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                    {
+                        ActivateProjectFolder(state, currentAssetFolder,assetsRoot);
+                    }
+
+                    ImGui::Indent(SZ::Px(18.0f));
+
+                    DrawMutedText("Project Assets folder is missing.");
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+                    ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
+                    ImGui::PopStyleColor();
+
+                    ImGui::Unindent(SZ::Px(18.0f));
+                }
+
+                ImGui::Dummy(ImVec2(0.0f, SZ::Px(10.0f)));
+                DrawSourceSectionHeader("ENGINE CONTENT");
+
+                ImGuiTreeNodeFlags engineFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
+                {
+                    engineFlags |= ImGuiTreeNodeFlags_Selected;
+                }
+
+                ImGui::TreeNodeEx("##AssetSourceEngine", engineFlags, "Engine");
 
                 if (ImGui::IsItemHovered())
                 {
                     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                    ImGui::SetTooltip("Read-only built-in engine assets.");
                 }
 
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                 {
-                    ActivateProjectFolder(state, currentAssetFolder,assetsRoot);
+                    ActivateEngineSource(state);
                 }
 
-                ImGui::Indent(SZ::Px(18.0f));
-
-                DrawMutedText("Project Assets folder is missing.");
-
-                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
-                ImGui::TextWrapped("%s", assetsRootPath.generic_string().c_str());
-                ImGui::PopStyleColor();
-
-                ImGui::Unindent(SZ::Px(18.0f));
+                ImGui::PopStyleColor(3);
+                ImGui::PopStyleVar(2);
             }
+            ImGui::EndChild();
 
-            ImGui::Dummy(ImVec2(0.0f, SZ::Px(10.0f)));
-            DrawSourceSectionHeader("ENGINE CONTENT");
-
-            ImGuiTreeNodeFlags engineFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
-            {
-                engineFlags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            ImGui::TreeNodeEx("##AssetSourceEngine", engineFlags, "Engine");
-
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                ImGui::SetTooltip("Read-only built-in engine assets.");
-            }
-
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-            {
-                ActivateEngineSource(state);
-            }
-
-            ImGui::PopStyleColor(3);
+            ImGui::PopStyleColor(2);
             ImGui::PopStyleVar(2);
         }
-        ImGui::EndChild();
-
-        ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar(2);
     }
 }

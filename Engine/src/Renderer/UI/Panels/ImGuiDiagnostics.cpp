@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <string>
+#include <cstdio>
 
 #include <imgui.h>
 

@@ -10,6 +10,7 @@
 
 #include "Audio/AudioSubsystem.h"
 #include "Quiet/Project/AssetRegistry.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserContext.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDialogs.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserDetails.h"
@@ -93,7 +94,7 @@ namespace
         return label.empty() ? breadcrumbPath : label;
     }
 
-    void DrawAssetBrowserVirtualBreadcrumb()
+    void DrawAssetBrowserVirtualBreadcrumb(const QUI::EditorFonts& fonts)
     {
         const ImVec2 navigationPadding = SZ::Px(ImVec2(6.0f, 5.0f));
         const float navigationHeight = ImGui::GetFrameHeight() + navigationPadding.y * 2.0f;
@@ -108,13 +109,13 @@ namespace
             ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
         );
         {
-            QUI::EditorButton("<##AssetVirtualBack", SZ::Px(ImVec2(34.0f, 0.0f)), false);
+            QUI::DrawToolbarButton(fonts, "AssetVirtualBack", QUI::Icons::ChevronLeft, "<", "Back", false, false, SZ::Px(ImVec2(32.0f, 0.0f)));
             ImGui::SameLine();
 
-            QUI::EditorButton(">##AssetVirtualForward", SZ::Px(ImVec2(34.0f, 0.0f)), false);
+            QUI::DrawToolbarButton(fonts, "AssetVirtualForward", QUI::Icons::ChevronRight, ">", "Forward", false, false, SZ::Px(ImVec2(32.0f, 0.0f)));
             ImGui::SameLine();
 
-            QUI::EditorButton("Up##AssetVirtualUp", SZ::Px(ImVec2(52.0f, 0.0f)), false);
+            QUI::DrawToolbarButton(fonts, "AssetVirtualUp", QUI::Icons::ChevronUp, "Up", "Parent Folder", false, false, SZ::Px(ImVec2(32.0f, 0.0f)));
             ImGui::SameLine();
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
@@ -139,13 +140,13 @@ namespace
         ImGui::PopStyleVar(2);
     }
 
-    void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, Quiet::Renderer::UI::Assets::AssetBrowserState& state)
+    void DrawAssetBrowserBreadcrumb(const Quiet::Project::ProjectContext& projectContext, Quiet::Renderer::UI::Assets::AssetBrowserState& state, const QUI::EditorFonts& fonts)
     {
         using namespace Quiet::Renderer::UI::Assets;
 
         if (state.CurrentSource == AssetBrowserSource::EngineBuiltIn)
         {
-            DrawAssetBrowserVirtualBreadcrumb();
+            DrawAssetBrowserVirtualBreadcrumb(fonts);
             return;
         }
 
@@ -178,24 +179,48 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::Background4);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
 
-            if (QUI::EditorButton("<##AssetHistoryBack", SZ::Px(ImVec2(34.0f, 0.0f)), canGoBack))
+            if (QUI::DrawToolbarButton(
+                fonts,
+                "AssetHistoryBack",
+                QUI::Icons::ChevronLeft,
+                "<",
+                "Back",
+                false,
+                canGoBack,
+                SZ::Px(ImVec2(32.0f, 0.0f))))
+            {
                 NavigateAssetFolderBack(projectContext, state);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                ImGui::SetTooltip("Back");
+            }
 
             ImGui::SameLine();
 
-            if (QUI::EditorButton(">##AssetHistoryForward", SZ::Px(ImVec2(34.0f, 0.0f)), canGoForward))
+            if (QUI::DrawToolbarButton(
+                fonts,
+                "AssetHistoryForward",
+                QUI::Icons::ChevronRight,
+                ">",
+                "Forward",
+                false,
+                canGoForward,
+                SZ::Px(ImVec2(32.0f, 0.0f))))
+            {
                 NavigateAssetFolderForward(projectContext, state);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                ImGui::SetTooltip("Forward");
+            }
 
             ImGui::SameLine();
 
-            if (QUI::EditorButton("Up##AssetBreadcrumbUp", SZ::Px(ImVec2(52.0f, 0.0f)), canGoUp))
+            if (QUI::DrawToolbarButton(
+                fonts,
+                "AssetBreadcrumbUp",
+                QUI::Icons::ChevronUp,
+                "Up",
+                "Parent Folder",
+                false,
+                canGoUp,
+                SZ::Px(ImVec2(32.0f, 0.0f))))
+            {
                 NavigateToAssetFolder(projectContext, state, GetParentAssetFolder(projectContext, state.CurrentAssetFolder));
+            }
 
             ImGui::PopStyleColor(3);
             ImGui::SameLine();
@@ -360,6 +385,7 @@ namespace Quiet::Renderer::UI::Assets
                 editorState,
                 projectContext,
                 meshLibrary,
+                context.Fonts,
                 assetSearchBuffer,
                 assetTypeFilter,
                 assetDiagnosticsFilter,
@@ -395,7 +421,6 @@ namespace Quiet::Renderer::UI::Assets
             }
 
             DrawFailurePopup("Import Asset Failed", registerErrorMessage);
-            DrawAssetOperationFeedback(editorState);
 
             ImGui::Spacing();
 
@@ -407,18 +432,58 @@ namespace Quiet::Renderer::UI::Assets
 
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(0.0f, 0.0f)));
             ImGui::BeginChild("##AssetBrowserBodyRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, browserBodyFlags);
+            ImGui::PopStyleVar();
             {
                 const float bodyWidth = ImGui::GetContentRegionAvail().x;
-                const float sourcesPanelWidth = CalculateAssetSourcesPanelWidth(bodyWidth);
+                const float sidePanelCollapsedWidth = SZ::Px(42.0f);
+                const float horizontalSpacing = ImGui::GetStyle().ItemSpacing.x;
+
+                const float expandedSourcesPanelWidth = CalculateAssetSourcesPanelWidth(bodyWidth);
+                const float actualSourcesPanelWidth = state.SourcesPanelExpanded ? expandedSourcesPanelWidth : sidePanelCollapsedWidth;
+                const float widthAfterSources = std::max(0.0f, bodyWidth - actualSourcesPanelWidth - horizontalSpacing);
+
+                const float expandedDetailsPanelWidth = useSplitDetailsLayout
+                    ? CalculateAssetDetailsPanelWidth(widthAfterSources)
+                    : 0.0f;
+
+                const float detailsPanelWidth = useSplitDetailsLayout
+                    ? (state.DetailsPanelExpanded ? expandedDetailsPanelWidth : sidePanelCollapsedWidth)
+                    : 0.0f;
+
+                const float contentPanelWidth = useSplitDetailsLayout
+                    ? std::max(SZ::Px(1.0f), widthAfterSources - detailsPanelWidth - horizontalSpacing)
+                    : 0.0f;
 
                 AssetBrowserFolderActionRequest folderActionRequest{};
                 AssetBrowserAssetMoveRequest assetMoveRequest{};
 
+                auto DrawCurrentAssetDetails = [&]()
+                {
+                    if (state.SelectedAssetIDs.size() > 1)
+                    {
+                        DrawAssetSelectionSummaryInline(projectContext, state.SelectedAssetIDs, selectedDetailsAssetID);
+                    }
+                    else
+                    {
+                        DrawAssetDetailsInline(
+                            projectContext,
+                            meshLibrary,
+                            textureLibrary,
+                            audioSubsystem,
+                            scene,
+                            editorState,
+                            selectedDetailsAssetID,
+                            context.UIScale
+                        );
+                    }
+                };
+
                 DrawAssetBrowserSourcesPanel(
                     projectContext,
                     currentAssetFolder,
-                    sourcesPanelWidth,
+                    expandedSourcesPanelWidth,
                     editorState.Scene.Mode != Editor::SceneMode::Edit,
+                    context.Fonts,
                     state,
                     folderActionRequest,
                     assetMoveRequest,
@@ -430,11 +495,11 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::SameLine();
 
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(10.0f, 8.0f)));
-                ImGui::BeginChild("##AssetBrowserContentRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding, browserBodyFlags);
-                ImGui::PopStyleVar();
+                const ImVec2 contentRegionSize = useSplitDetailsLayout ? ImVec2(contentPanelWidth, 0.0f) : ImVec2(0.0f, 0.0f);
+
+                ImGui::BeginChild("##AssetBrowserContentRegion", contentRegionSize, ImGuiChildFlags_AlwaysUseWindowPadding, browserBodyFlags);
                 {
-                    DrawAssetBrowserBreadcrumb(projectContext, state);
+                    DrawAssetBrowserBreadcrumb(projectContext, state, context.Fonts);
                     ImGui::Spacing();
 
                     const bool projectSourceActive = state.CurrentSource == AssetBrowserSource::Project;
@@ -485,14 +550,11 @@ namespace Quiet::Renderer::UI::Assets
                     std::string pendingDetailsAssetID;
                     std::string pendingReimportAssetID;
                     std::string pendingNavigateFolder;
-                    
-                    const float assetBrowserWidth = ImGui::GetContentRegionAvail().x;
-                    const float detailsPanelWidth = useSplitDetailsLayout ? CalculateAssetDetailsPanelWidth(assetBrowserWidth) : 0.0f;
-                    const float tablePanelWidth = useSplitDetailsLayout ? std::max(SZ::Px(520.0f), assetBrowserWidth - detailsPanelWidth - ImGui::GetStyle().ItemSpacing.x) : 0.0f;
 
                     if (useSplitDetailsLayout)
-                        ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(tablePanelWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
-
+                    {
+                        ImGui::BeginChild("##AssetRegistryTableRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+                    }
                     const bool hasVisibleItems = !visibleFolders.empty() || !visibleAssets.empty();
                     const bool folderHasItems = !childFolders.empty() || !sourceAssets.empty();
 
@@ -560,7 +622,8 @@ namespace Quiet::Renderer::UI::Assets
                     if (!pendingNavigateFolder.empty())
                         NavigateToAssetFolder(projectContext, state, pendingNavigateFolder);
 
-                    if (useSplitDetailsLayout) ImGui::EndChild();
+                    if (useSplitDetailsLayout)
+                        ImGui::EndChild();
 
                     if (!pendingDetailsAssetID.empty())
                     {
@@ -574,31 +637,137 @@ namespace Quiet::Renderer::UI::Assets
                         editorState.QueueRequest(Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
                     }
 
-                    if (useSplitDetailsLayout)
+                    const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
+                    if (!selectedAssetStillExists)
                     {
-                        ImGui::SameLine();
-                        ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f), ImGuiChildFlags_None,
-                            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                        selectedDetailsAssetID.clear();
                     }
-                    else
+
+                    if (!useSplitDetailsLayout)
                     {
                         ImGui::Spacing();
+                        ImGui::AlignTextToFramePadding();
+
+                        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+                        ImGui::TextUnformatted("Details");
+                        ImGui::PopStyleColor();
+
+                        const float toggleButtonWidth = SZ::Px(32.0f);
+
+                        ImGui::SameLine();
+
+                        const float toggleButtonX = ImGui::GetWindowContentRegionMax().x - toggleButtonWidth;
+                        if (toggleButtonX > ImGui::GetCursorPosX())
+                        {
+                            ImGui::SetCursorPosX(toggleButtonX);
+                        }
+
+                        const char* toggleIcon = state.DetailsPanelExpanded ? Icons::ChevronUp : Icons::ChevronDown;
+                        const char* toggleFallback = state.DetailsPanelExpanded ? "^" : "v";
+                        const char* toggleTooltip = state.DetailsPanelExpanded ? "Collapse Details" : "Show Details";
+
+                        if (DrawToolbarButton(
+                                context.Fonts,
+                                "ToggleAssetDetails",
+                                toggleIcon,
+                                toggleFallback,
+                                toggleTooltip,
+                                false,
+                                true,
+                                ImVec2(toggleButtonWidth, 0.0f)))
+                        {
+                            state.DetailsPanelExpanded = !state.DetailsPanelExpanded;
+                        }
+
+                        if (state.DetailsPanelExpanded)
+                        {
+                            ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
+
+                            ImGui::Separator();
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+
+                            DrawCurrentAssetDetails();
+                        }
                     }
+                }
+                ImGui::EndChild();
 
-                    const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
-                    if (!selectedAssetStillExists) selectedDetailsAssetID.clear();
+                if (useSplitDetailsLayout)
+                {
+                    ImGui::SameLine();
 
-                    if (state.SelectedAssetIDs.size() > 1)
+                    const ImVec2 detailsPadding = state.DetailsPanelExpanded ? SZ::Px(ImVec2(10.0f, 10.0f)) : SZ::Px(ImVec2(7.0f, 10.0f));
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, SZ::Px(6.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, detailsPadding);
+
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
+                    ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
+
+                    ImGui::BeginChild("##AssetDetailsSideRegion", ImVec2(detailsPanelWidth, 0.0f),
+                        ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+
+                    if (!state.DetailsPanelExpanded)
                     {
-                        DrawAssetSelectionSummaryInline(projectContext, state.SelectedAssetIDs, selectedDetailsAssetID);
+                        if (DrawToolbarButton(
+                                context.Fonts,
+                                "ExpandAssetDetails",
+                                Icons::ChevronLeft,
+                                "<",
+                                "Show Details",
+                                false,
+                                true,
+                                SZ::Px(ImVec2(28.0f, 28.0f))))
+                        {
+                            state.DetailsPanelExpanded = true;
+                        }
                     }
                     else
                     {
-                        DrawAssetDetailsInline(projectContext, meshLibrary, textureLibrary, audioSubsystem, scene, editorState, selectedDetailsAssetID, context.UIScale);
+                        ImGui::AlignTextToFramePadding();
+
+                        ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
+                        ImGui::TextUnformatted("Details");
+                        ImGui::PopStyleColor();
+
+                        const float collapseButtonWidth = SZ::Px(28.0f);
+
+                        ImGui::SameLine();
+
+                        const float collapseButtonX = ImGui::GetWindowContentRegionMax().x - collapseButtonWidth;
+                        if (collapseButtonX > ImGui::GetCursorPosX())
+                        {
+                            ImGui::SetCursorPosX(collapseButtonX);
+                        }
+
+                        if (DrawToolbarButton(
+                                context.Fonts,
+                                "CollapseAssetDetails",
+                                Icons::ChevronRight,
+                                ">",
+                                "Collapse Details",
+                                false,
+                                true,
+                                ImVec2(collapseButtonWidth, 0.0f)))
+                        {
+                            state.DetailsPanelExpanded = false;
+                        }
+
+                        ImGui::PushStyleColor(ImGuiCol_Separator, EditorColor::BorderSoft);
+
+                        ImGui::Separator();
+                        ImGui::PopStyleColor();
+                        ImGui::Spacing();
+
+                        DrawCurrentAssetDetails();
                     }
-                    if (useSplitDetailsLayout) ImGui::EndChild();
+
+                    ImGui::EndChild();
+
+                    ImGui::PopStyleColor(2);
+                    ImGui::PopStyleVar(2);
                 }
-                ImGui::EndChild();
 
                 if (folderActionRequest.Action != AssetBrowserFolderAction::None)
                 {
@@ -622,10 +791,21 @@ namespace Quiet::Renderer::UI::Assets
             }
 
             ImGui::EndChild();
-            ImGui::PopStyleVar();
+
+            /*
+             * Floating asset-operation feedback.
+             *
+             * Draw after the browser body so operations performed this frame have
+             * already produced their feedback, but before modal popups so modals remain
+             * visually above the notification.
+             */
+            DrawAssetOperationFeedback(context.Fonts, editorState);
 
             // POPUPS
-            if (openAssetDetailsPopup) ImGui::OpenPopup("Asset Details");
+            if (openAssetDetailsPopup)
+            {
+                ImGui::OpenPopup("Asset Details");
+            }
             DrawAssetDetailsPopup(projectContext, meshLibrary, textureLibrary, audioSubsystem, editorState, selectedDetailsAssetID, context.UIScale);
             DrawRemoveAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);
             DrawDeleteAssetConfirmationPopup(projectContext, editorState, scene, state, context.UIScale);

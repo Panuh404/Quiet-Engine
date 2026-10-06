@@ -28,6 +28,19 @@ namespace Quiet::Renderer::UI
         inline constexpr const char* DebugIcons = "\xef\x81\xae"; // U+F06E eye
         inline constexpr const char* World     = "\xef\x82\xac"; // globe
         inline constexpr const char* Local     = "\xef\x86\xb2"; // cube
+
+        inline constexpr const char* FileImport   = "\xef\x95\xaf"; // U+F56F
+        inline constexpr const char* Reload       = "\xef\x8b\xb1"; // U+F2F1
+        inline constexpr const char* Filter       = "\xef\x82\xb0"; // U+F0B0
+        inline constexpr const char* Diagnostics  = "\xef\x81\xb1"; // U+F071
+        inline constexpr const char* List         = "\xef\x80\xba"; // U+F03A
+        inline constexpr const char* More         = "\xef\x85\x81"; // U+F141
+        inline constexpr const char* ChevronLeft  = "\xef\x81\x93"; // U+F053
+        inline constexpr const char* ChevronRight = "\xef\x81\x94"; // U+F054
+        inline constexpr const char* ChevronUp    = "\xef\x81\xb7"; // U+F077
+        inline constexpr const char* ChevronDown  = "\xef\x81\xb8"; // U+F078
+        inline constexpr const char* FolderPlus   = "\xef\x99\x9e"; // U+F65E
+        inline constexpr const char* Close        = "\xef\x80\x8d"; // U+F00D
     }
 
     namespace ToolbarStyle

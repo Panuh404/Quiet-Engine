@@ -4,6 +4,7 @@
 
 #include "Quiet/Editor/EditorState.h"
 #include "Quiet/Project/ProjectContext.h"
+#include "Renderer/UI/ImGuiFonts.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserTypes.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -17,6 +18,7 @@ namespace Quiet::Renderer::UI::Assets
         Editor::EditorState& editorState,
         const Project::ProjectContext& projectContext,
         const Vulkan::MeshLibrary& meshLibrary,
+        const EditorFonts& fonts,
         std::array<char, 128>& searchBuffer,
         AssetBrowserTypeFilter& typeFilter,
         AssetBrowserDiagnosticsFilter& diagnosticsFilter,

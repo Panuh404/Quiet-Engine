@@ -74,6 +74,7 @@ namespace Quiet::Editor
         EditorFeedbackSeverity Severity = EditorFeedbackSeverity::Info;
         std::string Title{};
         std::string Message{};
+        std::uint64_t Revision = 0;
 
         void Clear()
         {
@@ -85,10 +86,12 @@ namespace Quiet::Editor
 
         void Set(EditorFeedbackSeverity severity, std::string title, std::string message)
         {
+            ++Revision;
+
             Visible = true;
             Severity = severity;
-            Title = title;
-            Message = message;
+            Title = std::move(title);
+            Message = std::move(message);
         }
     };
 
