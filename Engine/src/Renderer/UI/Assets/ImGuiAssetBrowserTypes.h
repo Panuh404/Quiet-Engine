@@ -167,6 +167,7 @@ namespace Quiet::Renderer::UI::Assets
         std::array<char, 128> AssetRenameBuffer{};
 
         std::string ImportErrorMessage{};
+        std::string ImportTargetFolder{};
         std::string RemoveErrorMessage{};
         std::string DeleteErrorMessage{};
         std::string AssetRenameErrorMessage{};
@@ -188,6 +189,7 @@ namespace Quiet::Renderer::UI::Assets
         std::string FolderOperationTarget{};
         std::string FolderOperationErrorMessage{};
 
+        bool RequestOpenImportPopup = false;
         bool ReopenImportPopupAfterFileDialog = false;
         bool RequestOpenAssetRenamePopup = false;
         bool RequestOpenRemovePopup = false;

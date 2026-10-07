@@ -35,16 +35,30 @@ namespace
     void DrawFolderContextMenuContents(const Quiet::Project::ProjectContext& projectContext,
                                        const std::string& relativeFolderPath,
                                        const bool runtimeModeActive,
-                                       const Assets::AssetBrowserState& state,
+                                       Assets::AssetBrowserState& state,
                                        Assets::AssetBrowserOperationRequest& operationRequest,
                                        Assets::AssetBrowserFolderActionRequest& folderActionRequest)
     {
         const std::string assetsRoot = Assets::GetAssetsRootRelativePath(projectContext);
         const bool isAssetsRoot = relativeFolderPath == assetsRoot;
 
-        const bool clipboardAvailable = Assets::IsAssetClipboardAvailable(projectContext, state);
-        const bool canPaste = !runtimeModeActive && clipboardAvailable;
+        const bool canModifyFolder = !runtimeModeActive;
 
+        if (QUI::EditorMenuItem("Import Asset...", nullptr, false, canModifyFolder))
+        {
+            state.ImportTargetFolder = relativeFolderPath;
+            state.RequestOpenImportPopup = true;
+        }
+
+        if (QUI::EditorMenuItem("Create Folder", nullptr, false, canModifyFolder))
+        {
+            RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::Create, relativeFolderPath);
+        }
+
+        ImGui::Separator();
+
+        const bool clipboardAvailable = Assets::IsAssetClipboardAvailable(projectContext, state);
+        const bool canPaste = canModifyFolder && clipboardAvailable;
         const bool copying = state.Clipboard.Mode == Assets::AssetBrowserClipboardMode::Copy;
         const char* pasteLabel = copying ? "Paste Copies Here" : "Move Assets Here";
 
@@ -57,19 +71,12 @@ namespace
 
         ImGui::Separator();
 
-        if (QUI::EditorMenuItem("Create Folder", nullptr, false, !runtimeModeActive))
-        {
-            RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::Create, relativeFolderPath);
-        }
-
-        ImGui::Separator();
-
-        if (QUI::EditorMenuItem("Rename", nullptr, false, !runtimeModeActive && !isAssetsRoot))
+        if (QUI::EditorMenuItem("Rename", nullptr, false, canModifyFolder && !isAssetsRoot))
         {
             RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::Rename, relativeFolderPath);
         }
 
-        if (QUI::EditorMenuItem("Delete Folder...", nullptr, false, !runtimeModeActive && !isAssetsRoot))
+        if (QUI::EditorMenuItem("Delete Folder...", nullptr, false, canModifyFolder && !isAssetsRoot))
         {
             RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::Delete, relativeFolderPath);
         }
@@ -225,7 +232,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
         const bool runtimeModeActive,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest)
     {
@@ -250,7 +257,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const std::string& currentAssetFolder,
         const bool runtimeModeActive,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest)
     {

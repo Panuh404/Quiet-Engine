@@ -26,7 +26,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const std::string& relativeFolderPath,
         bool runtimeModeActive,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest
     );
@@ -36,7 +36,7 @@ namespace Quiet::Renderer::UI::Assets
         const Project::ProjectContext& projectContext,
         const std::string& currentAssetFolder,
         bool runtimeModeActive,
-        const AssetBrowserState& state,
+        AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
         AssetBrowserFolderActionRequest& folderActionRequest
     );

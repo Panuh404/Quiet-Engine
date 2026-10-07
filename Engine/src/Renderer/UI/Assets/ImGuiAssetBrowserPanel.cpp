@@ -398,10 +398,24 @@ namespace Quiet::Renderer::UI::Assets
 
             if (openImportPopup)
             {
+                state.ImportTargetFolder = currentAssetFolder;
+                state.RequestOpenImportPopup = true;
+            }
+
+            if (state.RequestOpenImportPopup)
+            {
+                if (state.ImportTargetFolder.empty())
+                {
+                    state.ImportTargetFolder = currentAssetFolder;
+                }
+
                 assetIDBuffer.fill('\0');
                 assetPathBuffer.fill('\0');
                 registerErrorMessage.clear();
                 reopenImportPopupAfterFileDialog = false;
+
+                state.RequestOpenImportPopup = false;
+
                 ImGui::OpenPopup("Import Asset");
             }
 
@@ -411,7 +425,16 @@ namespace Quiet::Renderer::UI::Assets
                 reopenImportPopupAfterFileDialog = false;
             }
 
-            DrawImportAssetPopup(projectContext, editorState, currentAssetFolder, assetIDBuffer, assetPathBuffer, registerErrorMessage, reopenImportPopupAfterFileDialog);
+            const std::string importTargetFolder = state.ImportTargetFolder.empty() ? currentAssetFolder : state.ImportTargetFolder;
+
+            DrawImportAssetPopup(
+                projectContext,
+                editorState,
+                importTargetFolder,
+                assetIDBuffer,
+                assetPathBuffer,
+                registerErrorMessage,
+                reopenImportPopupAfterFileDialog);
 
             if (const auto selectedAsset = DrawAssetFileDialog())
             {
