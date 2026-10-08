@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/UI/ImGuiFonts.h"
+
 namespace Quiet::Editor
 {
     class EditorCommands;
@@ -33,6 +35,8 @@ namespace Quiet::Renderer::UI::Inspector
         const Project::ProjectContext& ProjectContext;
         const Vulkan::MeshLibrary& MeshLibrary;
         const Vulkan::TextureLibrary& TextureLibrary;
+
+        const EditorFonts& Fonts;
 
         float UIScale = 1.0f;
     };

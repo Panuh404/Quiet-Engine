@@ -60,9 +60,17 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::CapsuleColliderComponent CapsuleCollider{};
     };
 
+    enum class InspectorSectionVisibilityRequest
+    {
+        None,
+        ExpandAll,
+        CollapseAll
+    };
+
     struct InspectorState
     {
         ComponentClipboardState Clipboard{};
+        InspectorSectionVisibilityRequest SectionVisibilityRequest = InspectorSectionVisibilityRequest::None;
         std::string OpenComponentMenuID{};
         ImVec2 OpenComponentMenuPosition{ 0.0f, 0.0f };
         int OpenComponentMenuFrame = -1;

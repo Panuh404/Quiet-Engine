@@ -334,6 +334,12 @@ namespace Quiet::Renderer::UI::Inspector
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColor::Background4);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColor::AccentDim);
 
+        if (state.SectionVisibilityRequest != InspectorSectionVisibilityRequest::None)
+        {
+            const bool open = state.SectionVisibilityRequest == InspectorSectionVisibilityRequest::ExpandAll;
+            ImGui::SetNextItemOpen(open, ImGuiCond_Always);
+        }
+
         result.Open = ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
 
         ImGui::PopStyleColor(3);

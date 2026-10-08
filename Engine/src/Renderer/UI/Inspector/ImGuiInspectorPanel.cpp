@@ -76,6 +76,8 @@ namespace Quiet::Renderer::UI::Inspector
         DrawAudioListenerSection(context, state, actor);
         DrawScriptSection(context, state, actor, tracked);
 
+        state.SectionVisibilityRequest = InspectorSectionVisibilityRequest::None;
+
         if (!isEditMode)
         {
             ImGui::EndDisabled();

@@ -20,6 +20,7 @@
 #include "Renderer/UI/ImGuiTexturePreview.h"
 #include "Renderer/UI/ImGuiTheme.h"
 #include "Renderer/UI/Assets/ImGuiAssetPicker.h"
+#include "Renderer/UI/ImGuiToolbarCommon.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 #include "Scene/Scene.h"
@@ -39,46 +40,105 @@ namespace Quiet::Renderer::UI::Inspector
 
     void DrawActorDetailsSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, EditorSizing::Px(9.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, EditorSizing::Px(ImVec2(12.0f, 10.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, EditorSizing::Px(7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, EditorSizing::Px(ImVec2(10.0f, 6.0f)));
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::Background2);
         ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderSoft);
 
-        ImGui::BeginChild("##ActorHeaderCard", ImVec2(0.0f, EditorSizing::Px(100.0f)), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ActorHeaderCard", ImVec2(0.0f, 0.0f),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+        );
         {
-            ImGui::TextUnformatted("Actor");
-            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, EditorSizing::Px(3.0f)));
 
-            ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
-            ImGui::TextUnformatted("Scene Object");
-            ImGui::PopStyleColor();
+            const float buttonSize = EditorSizing::Px(25.0f);
 
-            char nameBuffer[256]{};
-            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.GetName().c_str());
-            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, EditorSizing::Px(ImVec2(2.0f, 0.0f)));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-            const bool nameChanged = ImGui::InputText("##ActorName", nameBuffer, sizeof(nameBuffer));
-            tracked.Begin();
-            if (nameChanged)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorColor::Background4);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorColor::Background3);
+
+            if (ImGui::BeginTable("##ActorCardLayout", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoPadOuterX))
             {
-                context.Commands.RenameActor(context.Scene, actor.GetID(), nameBuffer);
-            }
-            tracked.End();
+                ImGui::TableSetupColumn("Information", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Controls", ImGuiTableColumnFlags_WidthFixed, buttonSize);
 
+                // First row: Actor title + Expand All
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted("Actor");
+
+                ImGui::SameLine();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextDim);
+                ImGui::TextUnformatted("Scene Object");
+                ImGui::PopStyleColor();
+
+                ImGui::TableSetColumnIndex(1);
+
+                if (DrawToolbarButton(context.Fonts, "CollapseAllInspectorSections", Icons::ChevronUp, "^",
+                    "Collapse all component sections", false, true, ImVec2(buttonSize, buttonSize)))
+                {
+                    state.SectionVisibilityRequest = InspectorSectionVisibilityRequest::CollapseAll;
+                }
+
+                // Second row: Actor name + Collapse All
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+
+                char nameBuffer[256]{};
+                std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", actor.GetName().c_str());
+                ImGui::SetNextItemWidth(-1.0f);
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, EditorSizing::Px(ImVec2(8.0f, 3.0f)));
+                const bool nameChanged = ImGui::InputText("##ActorName", nameBuffer, sizeof(nameBuffer));
+                ImGui::PopStyleVar();
+
+                tracked.Begin();
+                if (nameChanged)
+                {
+                    context.Commands.RenameActor(context.Scene, actor.GetID(), nameBuffer);
+                }
+
+                tracked.End();
+
+                ImGui::TableSetColumnIndex(1);
+
+                if (DrawToolbarButton(context.Fonts, "ExpandAllInspectorSections", Icons::ChevronDown, "v",
+                        "Expand all component sections", false, true, ImVec2(buttonSize, buttonSize)))
+                {
+                    state.SectionVisibilityRequest = InspectorSectionVisibilityRequest::ExpandAll;
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+
+            // Third row: Actor ID
             const std::string actorIDText = Quiet::Core::UUIDToString(actor.GetID());
+
+            ImGui::Dummy(ImVec2(0.0f, EditorSizing::Px(2.0f)));
 
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
             ImGui::Text("ID: %s", actorIDText.c_str());
             ImGui::PopStyleColor();
-        }
 
+            ImGui::Dummy(ImVec2(0.0f, EditorSizing::Px(2.0f)));
+
+            ImGui::PopStyleVar();
+        }
         ImGui::EndChild();
 
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
-
-        ImGui::Spacing();
 
         const bool canPasteTransform = state.Clipboard.Type == ComponentClipboardType::Transform;
         const auto transformHeader = BeginInspectorComponent(
