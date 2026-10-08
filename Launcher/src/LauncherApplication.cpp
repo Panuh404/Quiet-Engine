@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
+#include <vector>
 
 #include "imgui.h"
 
@@ -171,10 +172,17 @@ namespace Quiet::Launcher
         const std::filesystem::path projectFolder = m_ProjectRegistry.ProjectsRoot / trimmedName;
         const std::filesystem::path projectFile = projectFolder / (trimmedName + ".quiet");
 
-        if (std::filesystem::exists(projectFile))
+        std::error_code ec;
+        if (std::filesystem::exists(projectFolder, ec))
         {
             m_FeedbackIsError = true;
-            m_FeedbackMessage = "A project with that name already exists.";
+            m_FeedbackMessage = "A folder with that name already exists.";
+            return false;
+        }
+        if (ec)
+        {
+            m_FeedbackIsError = true;
+            m_FeedbackMessage = "Unable to verify the project destination.";
             return false;
         }
 
@@ -236,6 +244,8 @@ namespace Quiet::Launcher
     {
         namespace QUI = Renderer::UI;
 
+        bool requestCreateProject = false;
+
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         if (!viewport) return;
 
@@ -259,78 +269,53 @@ namespace Quiet::Launcher
 
         if (ImGui::Begin("##QuietLauncherRoot", nullptr, rootFlags))
         {
-            const float sidebarWidth = uiLayer.Scale(210.0f);
-            // ------------------------------------------------------------------
-            // Sidebar
-            // ------------------------------------------------------------------
+            const float availableWidth = ImGui::GetContentRegionAvail().x;
+            const float maxContentWidth = uiLayer.Scale(1040.0f);
+            const float horizontalPadding = std::max(
+                uiLayer.Scale(18.0f),
+                (availableWidth - maxContentWidth) * 0.5f
+            );
 
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background1);
-            ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background0);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(horizontalPadding, uiLayer.Scale(14.0f)));
 
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(22.0f, 22.0f)));
+            // Main content
+            ImGui::BeginChild("##LauncherMain", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 
-            ImGui::BeginChild("##LauncherSidebar", ImVec2(sidebarWidth, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
-
+            // Branding
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::AccentHover);
             ImGui::TextUnformatted("QUIET");
             ImGui::PopStyleColor();
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextUnformatted("LAUNCHER");
-            ImGui::PopStyleColor();
-
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(28.0f)));
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::AccentHover);
-            ImGui::TextUnformatted("Projects");
-            ImGui::PopStyleColor();
-
-            const float bottomBlockHeight = uiLayer.Scale(105.0f);
-
-            ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), ImGui::GetWindowHeight() - bottomBlockHeight));
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-            ImGui::TextUnformatted("PROJECTS ROOT");
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
+            ImGui::SameLine(0.0f, uiLayer.Scale(12.0f));
 
             ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("%s", m_ProjectRegistry.ProjectsRoot.string().c_str());
+            ImGui::TextUnformatted("PROJECT LAUNCHER");
             ImGui::PopStyleColor();
 
-            ImGui::EndChild();
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(7.0f)));
 
-            ImGui::PopStyleVar();
-            ImGui::PopStyleColor(2);
+            ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+            ImGui::Separator();
+            ImGui::PopStyleColor();
 
-            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
 
-            // ------------------------------------------------------------------
-            // Main content
-            // ------------------------------------------------------------------
-
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background0);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(30.0f, 26.0f)));
-            ImGui::BeginChild("##LauncherMain", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
-
-            // Header -----------------------------------------------------------
-
+            // Page header
             if (ImGui::BeginTable("##LauncherHeader", 2, ImGuiTableFlags_SizingStretchProp))
             {
                 ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(135.0f));
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(150.0f));
 
                 ImGui::TableNextRow();
-
                 ImGui::TableSetColumnIndex(0);
 
                 ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-                ImGui::TextUnformatted("Projects");
+                ImGui::TextUnformatted("Your projects");
                 ImGui::PopStyleColor();
 
                 ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                ImGui::TextUnformatted("Open or create a Quiet project.");
+                ImGui::TextUnformatted("Continue working or create a new project.");
                 ImGui::PopStyleColor();
 
                 ImGui::TableSetColumnIndex(1);
@@ -339,29 +324,36 @@ namespace Quiet::Launcher
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
 
-                if (QUI::EditorButton("New Project", ImVec2(-1.0f, 0.0f)))
+                if (QUI::EditorButton("+ New Project", ImVec2(-1.0f, 0.0f)))
                 {
                     m_NewProjectName.fill('\0');
                     m_FeedbackMessage.clear();
-
-                    ImGui::OpenPopup("Create Project");
+                    requestCreateProject = true;
                 }
 
                 ImGui::PopStyleColor(3);
                 ImGui::EndTable();
             }
 
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(12.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
 
-            // Search -----------------------------------------------------------
-
+            // Search
+            const float availableSearchWidth = ImGui::GetContentRegionAvail().x;
             const float refreshWidth = uiLayer.Scale(90.0f);
             const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
-            ImGui::SetNextItemWidth(std::max(uiLayer.Scale(160.0f), ImGui::GetContentRegionAvail().x - refreshWidth - spacing));
+            const bool horizontalSearchLayout = availableSearchWidth >= uiLayer.Scale(290.0f);
+            const float searchWidth = horizontalSearchLayout
+                ? std::max(uiLayer.Scale(1.0f), availableSearchWidth - refreshWidth - spacing)
+                : std::max(uiLayer.Scale(1.0f), availableSearchWidth);
+
+            ImGui::SetNextItemWidth(searchWidth);
             ImGui::InputTextWithHint("##ProjectSearch", "Search projects...", m_ProjectSearch.data(), m_ProjectSearch.size());
 
-            ImGui::SameLine();
+            if (horizontalSearchLayout)
+            {
+                ImGui::SameLine();
+            }
 
             if (QUI::EditorButton("Refresh", ImVec2(refreshWidth, 0.0f)))
             {
@@ -377,231 +369,448 @@ namespace Quiet::Launcher
                 ImGui::PopStyleColor();
             }
 
-            ImGui::Dummy(ImVec2(0.0f,uiLayer.Scale(16.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(9.0f)));
 
+            // Project filtering
             const std::string search = ToLowerCopy(TrimCopy(m_ProjectSearch.data()));
+
             const auto matchesSearch = [&](const std::filesystem::path& path)
-                {
-                    if (search.empty()) return true;
-                    return ToLowerCopy(path.generic_string()).find(search) != std::string::npos;
-                };
+            {
+                if (search.empty()) return true;
+                return ToLowerCopy(path.generic_string()).find(search) != std::string::npos;
+            };
 
             const auto isValidProject = [](const std::filesystem::path& path)
-                {
-                    std::error_code ec;
-                    return path.extension() == ".quiet" && std::filesystem::exists(path, ec) && !ec;
-                };
+            {
+                std::error_code ec;
+                return path.extension() == ".quiet" && std::filesystem::exists(path, ec) && !ec;
+            };
 
             const auto isRecentProject = [&](const std::filesystem::path& path)
-                {
-                    const std::filesystem::path normalized = path.lexically_normal();
-                    return std::any_of(
-                        m_ProjectRegistry.RecentProjectFiles.begin(),
-                        m_ProjectRegistry.RecentProjectFiles.end(),
-                        [&](const std::filesystem::path& recent)
-                        {
-                            return recent.lexically_normal() == normalized;
-                        }
-                    );
-                };
-
-            const auto drawProjectRow = [&](const std::filesystem::path& projectFile)
-                {
-                    ImGui::PushID(projectFile.generic_string().c_str());
-
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background1);
-                    ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
-
-                    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, uiLayer.Scale(5.0f));
-                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(14.0f, 11.0f)));
-
-                    ImGui::BeginChild("##ProjectCard", ImVec2(0.0f, uiLayer.Scale(66.0f)), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
-
-                    if (ImGui::BeginTable("##ProjectCardLayout", 2, ImGuiTableFlags_SizingStretchProp))
+            {
+                const std::filesystem::path normalized = path.lexically_normal();
+                return std::any_of(
+                    m_ProjectRegistry.RecentProjectFiles.begin(),
+                    m_ProjectRegistry.RecentProjectFiles.end(),
+                    [&](const std::filesystem::path& recent)
                     {
-                        ImGui::TableSetupColumn("Project", ImGuiTableColumnFlags_WidthStretch);
-                        ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(100.0f));
-
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-
-                        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-                        ImGui::TextUnformatted(projectFile.stem().string().c_str());
-                        ImGui::PopStyleColor();
-
-                        ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                        ImGui::TextUnformatted(projectFile.parent_path().string().c_str());
-                        ImGui::PopStyleColor();
-
-                        ImGui::TableSetColumnIndex(1);
-
-                        ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(5.0f)));
-
-                        ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
-
-                        if (QUI::EditorButton("Open", ImVec2(-1.0f, 0.0f)))
-                        {
-                            LaunchEditor(projectFile);
-                        }
-
-                        ImGui::PopStyleColor(3);
-                        ImGui::EndTable();
+                        return recent.lexically_normal() == normalized;
                     }
+                );
+            };
 
-                    ImGui::EndChild();
-
-                    ImGui::PopStyleVar(2);
-                    ImGui::PopStyleColor(2);
-
-                    ImGui::PopID();
-                    ImGui::Spacing();
-                };
-
-            // Recent -----------------------------------------------------------
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("Recent");
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
-
-            bool drewRecentProject = false;
-            ImGui::PushID("RecentProjects");
-
-            int recentIndex = 0;
+            std::vector<std::filesystem::path> recentProjects;
+            std::vector<std::filesystem::path> otherProjects;
 
             for (const auto& projectFile : m_ProjectRegistry.RecentProjectFiles)
             {
-                if (!isValidProject(projectFile) || !matchesSearch(projectFile))
+                if (isValidProject(projectFile) && matchesSearch(projectFile))
                 {
-                    continue;
+                    recentProjects.push_back(projectFile);
+                }
+            }
+
+            for (const auto& projectFile : m_DiscoveredProjects)
+            {
+                if (isValidProject(projectFile) &&
+                    matchesSearch(projectFile) &&
+                    !isRecentProject(projectFile))
+                {
+                    otherProjects.push_back(projectFile);
+                }
+            }
+
+            // Project cards
+            const auto drawProjectRow = [&](const std::filesystem::path& projectFile, const bool recent)
+            {
+                ImGui::PushID(projectFile.generic_string().c_str());
+
+                const bool compact = ImGui::GetContentRegionAvail().x < uiLayer.Scale(450.0f);
+                const float cardHeight = uiLayer.Scale(compact ? 112.0f : 72.0f);
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, uiLayer.Scale(9.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(14.0f, 11.0f)));
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, uiLayer.Scale(ImVec2(4.0f, 3.0f)));
+
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, QUI::EditorColor::Background2);
+                ImGui::PushStyleColor(ImGuiCol_Border, recent ? QUI::EditorColor::Border : QUI::EditorColor::BorderSoft);
+
+                ImGui::BeginChild("##ProjectCard", ImVec2(0.0f, cardHeight),
+                    ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+                const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+
+                if (ImGui::BeginTable("##ProjectCardLayout", compact ? 1 : 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoPadOuterX))
+                {
+                    if (compact)
+                    {
+                        ImGui::TableSetupColumn("Project", ImGuiTableColumnFlags_WidthStretch);
+                    }
+                    else
+                    {
+                        ImGui::TableSetupColumn("Icon", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(40.0f));
+                        ImGui::TableSetupColumn("Information", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(100.0f));
+                    }
+
+                    ImGui::TableNextRow();
+
+                    if (!compact)
+                    {
+                        ImGui::TableSetColumnIndex(0);
+
+                        const ImVec2 iconMin = ImGui::GetCursorScreenPos();
+                        const float iconSize = uiLayer.Scale(40.0f);
+                        const ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
+
+                        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+                        drawList->AddRectFilled(
+                            iconMin, iconMax,
+                            ImGui::ColorConvertFloat4ToU32(recent ? QUI::EditorColor::AccentSoft : QUI::EditorColor::Background3),
+                            uiLayer.Scale(7.0f)
+                        );
+
+                        const ImVec2 glyphSize = ImGui::CalcTextSize("Q");
+
+                        drawList->AddText(
+                            ImVec2(iconMin.x + (iconSize - glyphSize.x) * 0.5f, iconMin.y + (iconSize - glyphSize.y) * 0.5f),
+                            ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentHover),
+                            "Q"
+                        );
+
+                        ImGui::Dummy(ImVec2(iconSize, iconSize));
+
+                        ImGui::TableSetColumnIndex(1);
+                    }
+
+                    const std::string projectName = projectFile.stem().string();
+                    const std::string projectFolder = projectFile.parent_path().string();
+
+                    // Clip long project names and paths.
+                    const ImVec2 textMin = ImGui::GetCursorScreenPos();
+                    const float textWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+
+                    ImGui::PushClipRect(
+                        textMin,
+                        ImVec2(textMin.x + textWidth, textMin.y + uiLayer.Scale(80.0f)),
+                        true
+                    );
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                    ImGui::TextUnformatted(projectName.c_str());
+                    ImGui::PopStyleColor();
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                    ImGui::TextUnformatted(projectFolder.c_str());
+                    ImGui::PopStyleColor();
+
+                    ImGui::PopClipRect();
+
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                    {
+                        ImGui::SetTooltip("%s", projectFile.string().c_str());
+                    }
+
+                    if (compact)
+                    {
+                        ImGui::TableNextRow();
+                    }
+                    else
+                    {
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(7.0f)));
+                    }
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
+
+                    if (QUI::EditorButton("Open", ImVec2(compact ? -1.0f : uiLayer.Scale(94.0f), 0.0f)))
+                    {
+                        LaunchEditor(projectFile);
+                    }
+
+                    ImGui::PopStyleColor(3);
+                    ImGui::EndTable();
                 }
 
-                ImGui::PushID(recentIndex++);
-                drawProjectRow(projectFile);
+                // Project context menu
+                if (ImGui::BeginPopupContextWindow("##ProjectCardContext", ImGuiPopupFlags_MouseButtonRight))
+                {
+                    if (QUI::EditorMenuItem("Open Project"))
+                    {
+                        LaunchEditor(projectFile);
+                    }
+                    if (QUI::EditorMenuItem("Show in File Explorer"))
+                    {
+                        Platform::RevealPathInFileManager(projectFile);
+                    }
+                    if (QUI::EditorMenuItem("Copy Project Path"))
+                    {
+                        ImGui::SetClipboardText(projectFile.string().c_str());
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+                if (hovered)
+                {
+                    const ImVec2 cardMin = ImGui::GetWindowPos();
+                    const ImVec2 cardSize = ImGui::GetWindowSize();
+
+                    ImGui::GetWindowDrawList()->AddRect(
+                        ImVec2(cardMin.x + 1.0f, cardMin.y + 1.0f),
+                        ImVec2(cardMin.x + cardSize.x - 1.0f, cardMin.y + cardSize.y - 1.0f),
+                        ImGui::ColorConvertFloat4ToU32(QUI::EditorColor::AccentSoft),
+                        uiLayer.Scale(9.0f)
+                    );
+                }
+
+                ImGui::EndChild();
+
+                ImGui::PopStyleColor(2);
+                ImGui::PopStyleVar(3);
 
                 ImGui::PopID();
-                drewRecentProject = true;
-            }
-
-            ImGui::PopID();
-
-            if (!drewRecentProject)
-            {
-                QUI::DrawMutedText("No recent projects.");
                 ImGui::Spacing();
+            };
+
+            // Project library
+            const bool hasVisibleProjects = !recentProjects.empty() || !otherProjects.empty();
+            if (!hasVisibleProjects)
+            {
+                ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(20.0f)));
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                ImGui::TextUnformatted(search.empty() ? "No Quiet projects found" : "No matching projects");
+                ImGui::PopStyleColor();
+                ImGui::Spacing();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextWrapped("%s", search.empty() ? "Create your first project using New Project." : "Try a different project name or search term.");
+                ImGui::PopStyleColor();
+            }
+            else
+            {
+                if (!recentProjects.empty())
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                    ImGui::Text("Recent projects  (%zu)", recentProjects.size());
+                    ImGui::PopStyleColor();
+
+                    ImGui::Spacing();
+
+                    for (const auto& projectFile : recentProjects)
+                    {
+                        drawProjectRow(projectFile, true);
+                    }
+                }
+
+                if (!otherProjects.empty())
+                {
+                    if (!recentProjects.empty())
+                    {
+                        ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
+                    }
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                    ImGui::Text("Other projects  (%zu)", otherProjects.size());
+                    ImGui::PopStyleColor();
+
+                    ImGui::Spacing();
+
+                    for (const auto& projectFile : otherProjects)
+                    {
+                        drawProjectRow(projectFile, false);
+                    }
+                }
             }
 
+            // Projects location footer
             ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(12.0f)));
 
-            // All other projects ----------------------------------------------
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("All Projects");
+            ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+            ImGui::Separator();
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
 
-            bool drewProject = false;
-            ImGui::PushID("AllProjects");
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+            ImGui::TextUnformatted("PROJECTS LOCATION");
+            ImGui::PopStyleColor();
 
-            int projectIndex = 0;
-
-            for (const auto& projectFile : m_DiscoveredProjects)
+            if (QUI::EditorButton("Open Projects Folder"))
             {
-                if (!isValidProject(projectFile) || !matchesSearch(projectFile) || isRecentProject(projectFile))
-                {
-                    continue;
-                }
-
-                ImGui::PushID(projectIndex++);
-                drawProjectRow(projectFile);
-
-                ImGui::PopID();
-                drewProject = true;
+                Platform::OpenPathWithDefaultApplication(m_ProjectRegistry.ProjectsRoot);
             }
 
-            ImGui::PopID();
-
-            if (!drewProject)
-            {
-                QUI::DrawMutedText(drewRecentProject ? "No additional projects." : "No Quiet projects found.");
-            }
+            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+            ImGui::TextWrapped("%s", m_ProjectRegistry.ProjectsRoot.string().c_str());
+            ImGui::PopStyleColor();
 
             ImGui::EndChild();
 
             ImGui::PopStyleVar();
             ImGui::PopStyleColor();
+
+            // Create Project modal
+            // Both OpenPopup and BeginPopupModal share the root window's ID scope.
+            if (requestCreateProject)
+            {
+                ImGui::OpenPopup("Create Project");
+            }
+
+            const float modalWidth = std::min(
+                uiLayer.Scale(460.0f),
+                std::max(
+                    uiLayer.Scale(240.0f),
+                    viewport->WorkSize.x - uiLayer.Scale(32.0f)
+                )
+            );
+
+            ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowSize(ImVec2(modalWidth, 0.0f), ImGuiCond_Always);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(20.0f, 18.0f)));
+
+            if (ImGui::BeginPopupModal("Create Project", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                // Modal header
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
+                ImGui::TextUnformatted("Create a new project");
+                ImGui::PopStyleColor();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextWrapped("Choose a name and start building with QUIET.");
+                ImGui::PopStyleColor();
+
+                ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(12.0f)));
+
+                // Project name
+                ImGui::TextUnformatted("Project name");
+                ImGui::SetNextItemWidth(-1.0f);
+
+                if (ImGui::IsWindowAppearing())
+                {
+                    ImGui::SetKeyboardFocusHere();
+                }
+
+                const bool submitted = ImGui::InputTextWithHint("##NewProjectName", "MyProject", m_NewProjectName.data(), m_NewProjectName.size(), ImGuiInputTextFlags_EnterReturnsTrue);
+                if (ImGui::IsItemEdited())
+                {
+                    m_FeedbackMessage.clear();
+                }
+
+                const std::string projectName = TrimCopy(m_NewProjectName.data());
+                const bool validName = IsValidProjectName(projectName);
+                const std::filesystem::path targetFolder = m_ProjectRegistry.ProjectsRoot / projectName;
+
+                std::error_code destinationError;
+
+                const bool folderExists = validName && std::filesystem::exists(targetFolder, destinationError);
+                const bool canCreate = validName && !folderExists && !destinationError;
+
+                // Inline validation
+                const char* validationMessage = nullptr;
+                if (!projectName.empty() && !validName)
+                {
+                    validationMessage = "Invalid name. Avoid / \\ : * ? \" < > | and reserved names . or ..";
+                }
+                else if (folderExists)
+                {
+                    validationMessage = "A folder with this name already exists.";
+                }
+                else if (destinationError)
+                {
+                    validationMessage = "Unable to verify the destination folder.";
+                }
+
+                if (validationMessage)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Error);
+                    ImGui::TextWrapped("%s", validationMessage);
+                    ImGui::PopStyleColor();
+                }
+
+                if (m_FeedbackIsError && !m_FeedbackMessage.empty())
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Error);
+                    ImGui::TextWrapped("%s", m_FeedbackMessage.c_str());
+                    ImGui::PopStyleColor();
+                }
+
+                ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(12.0f)));
+
+                // Project destination
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+                ImGui::TextUnformatted("PROJECT LOCATION");
+                ImGui::PopStyleColor();
+
+                const std::string destinationText = (validName ? targetFolder : m_ProjectRegistry.ProjectsRoot).lexically_normal().string();
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextWrapped("%s", destinationText.c_str());
+                ImGui::PopStyleColor();
+
+                ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(16.0f)));
+
+                ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+
+                ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(6.0f)));
+
+                // Modal actions
+                const float cancelWidth = uiLayer.Scale(86.0f);
+                const float createWidth = uiLayer.Scale(156.0f);
+                const float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
+                const float available = ImGui::GetContentRegionAvail().x;
+
+                const bool horizontal = available >= cancelWidth + createWidth + buttonSpacing;
+                if (horizontal)
+                {
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + available - cancelWidth - createWidth - buttonSpacing);
+                }
+
+                const bool cancelPressed = QUI::EditorButton("Cancel", ImVec2(horizontal ? cancelWidth : -1.0f, 0.0f));
+                if (horizontal)
+                {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
+
+                const bool createPressed = QUI::EditorButton("Create and Open", ImVec2(horizontal ? createWidth : -1.0f, 0.0f), canCreate);
+
+                ImGui::PopStyleColor(3);
+
+                if (cancelPressed || ImGui::IsKeyPressed(ImGuiKey_Escape))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                else if ((createPressed || submitted) && canCreate)
+                {
+                    std::filesystem::path projectFile;
+
+                    if (CreateProject(projectName, projectFile))
+                    {
+                        ImGui::CloseCurrentPopup();
+                        LaunchEditor(projectFile);
+                    }
+                }
+
+                ImGui::EndPopup();
+            }
+
+            ImGui::PopStyleVar();
         }
 
         ImGui::End();
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
-
-        // ----------------------------------------------------------------------
-        // Create Project
-        // ----------------------------------------------------------------------
-
-        if (ImGui::BeginPopupModal("Create Project", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-            ImGui::TextUnformatted("Create a new Quiet project");
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextUnformatted("Choose a name for the project.");
-            ImGui::PopStyleColor();
-
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
-
-            ImGui::SetNextItemWidth(uiLayer.Scale(360.0f));
-
-            if (ImGui::IsWindowAppearing())
-            {
-                ImGui::SetKeyboardFocusHere();
-            }
-
-            ImGui::InputTextWithHint("##NewProjectName", "Project name", m_NewProjectName.data(), m_NewProjectName.size());
-
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-            ImGui::TextWrapped("Location: %s", m_ProjectRegistry.ProjectsRoot.string().c_str());
-            ImGui::PopStyleColor();
-
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(10.0f)));
-
-            const bool canCreate = !TrimCopy(m_NewProjectName.data()).empty();
-
-            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
-
-            if (QUI::EditorButton("Create and Open", ImVec2(uiLayer.Scale(160.0f), 0.0f), canCreate))
-            {
-                std::filesystem::path projectFile;
-
-                if (CreateProject(m_NewProjectName.data(), projectFile))
-                {
-                    ImGui::CloseCurrentPopup();
-                    LaunchEditor(projectFile);
-                }
-            }
-
-            ImGui::PopStyleColor(3);
-            ImGui::SameLine();
-
-            if (QUI::EditorButton("Cancel"))
-            {
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
-        }
     }
+
 }
