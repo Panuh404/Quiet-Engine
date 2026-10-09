@@ -1,0 +1,92 @@
+/**
+ * @defgroup quiet_systems Quiet Systems
+ * @brief C++ reference organized by system responsibility.
+ *
+ * Groups are populated incrementally as their source declarations
+ * receive documentation. Group membership does not imply that a
+ * system's documentation is complete.
+ */
+
+/**
+ * @defgroup quiet_core Core
+ * @ingroup quiet_systems
+ * @brief Application orchestration and shared core utilities.
+ */
+
+/**
+ * @defgroup quiet_platform Platform
+ * @ingroup quiet_systems
+ * @brief Window management and platform shell integration.
+ */
+
+/**
+ * @defgroup quiet_input Input
+ * @ingroup quiet_systems
+ * @brief Keyboard and mouse state, queries, and input codes.
+ */
+
+/**
+ * @defgroup quiet_project Projects
+ * @ingroup quiet_systems
+ * @brief Project descriptors, registries, context, and loading workflows.
+ */
+
+/**
+ * @defgroup quiet_scene Scene
+ * @ingroup quiet_systems
+ * @brief Actors, components, scene settings, lifecycle, and serialization.
+ */
+
+/**
+ * @defgroup quiet_editor Editor
+ * @ingroup quiet_systems
+ * @brief Editor controllers, workflows, commands, history, and tools.
+ */
+
+/**
+ * @defgroup quiet_renderer Renderer
+ * @ingroup quiet_systems
+ * @brief Vulkan rendering resources, render systems, and editor presentation.
+ */
+
+/**
+ * @defgroup quiet_assets Assets
+ * @ingroup quiet_systems
+ * @brief Asset representations, importers, cooked readers, and libraries.
+ */
+
+/**
+ * @defgroup quiet_physics Physics
+ * @ingroup quiet_systems
+ * @brief Physics subsystem initialization and runtime physics worlds.
+ */
+
+/**
+ * @defgroup quiet_audio Audio
+ * @ingroup quiet_systems
+ * @brief Audio assets, subsystem ownership, and runtime audio worlds.
+ */
+
+/**
+ * @defgroup quiet_scripting Scripting
+ * @ingroup quiet_systems
+ * @brief Lua runtime integration, script metadata, and engine bindings.
+ */
+
+/**
+ * @defgroup quiet_launcher Launcher
+ * @ingroup quiet_systems
+ * @brief Standalone project discovery, creation, and Editor handoff.
+ */
+
+/**
+ * @defgroup quiet_cooker Cooker
+ * @ingroup quiet_systems
+ * @brief Asset conversion, incremental caching, and runtime package creation.
+ */
+
+/**
+ * @defgroup quiet_sandbox Sandbox
+ * @ingroup quiet_systems
+ * @brief Standalone runtime application entry point.
+ */

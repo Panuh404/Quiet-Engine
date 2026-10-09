@@ -6,11 +6,14 @@ The repository's main introduction remains in the root [README](../README.md). T
 
 ## Documentation status
 
-The documentation foundation is being established. Architecture chapters, practical guides, format references, and the generated C++ reference are planned; they are not available yet.
+The documentation foundation includes conventions, local generation tooling, and C++ system groups. The generated reference currently provides an API inventory; detailed symbol contracts will be added incrementally.
+
+Architecture chapters, practical guides, and file-format references remain planned.
 
 Current pages:
 
 - [Documentation conventions](Contributing/Documentation.md): structure, writing standards, API comments, and verification requirements.
+- [Building the documentation](Contributing/BuildingDocumentation.md): prerequisites, theme initialization, generation, diagnostics, and troubleshooting.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -68,29 +71,13 @@ Planned chapters are listed below as paths rather than links. Links will be adde
 
 The C++ API reference will be generated from Quiet's source declarations and documentation comments. It will include relevant implementation headers, not only headers under `Engine/include/Quiet/`.
 
-## Documentation milestones
-
-| Milestone | Deliverable | State |
-| --- | --- | --- |
-| DOC-1 | Documentation index and conventions | Ready for review |
-| DOC-2 | Optional Doxygen generation and theme | Planned |
-| DOC-3 | Verified architecture overview | Planned |
-| DOC-4 | Scene and Actor documentation pilot | Planned |
-| DOC-5 | Remaining systems, one chapter at a time | Planned |
-| DOC-6 | Practical guides | Planned |
-| DOC-7 | File-format reference | Planned |
-| DOC-8 | Root README rewrite and engine roadmap | Planned |
-| DOC-9 | Complete documentation verification | Planned |
-| DOC-10 | Optional automated generation and publishing | Optional follow-up |
-
-DOC-5 proceeds through Application, Editor, Assets, Renderer, Physics, Audio, Scripting, and Cooking. Each system is reviewed and committed separately.
 
 ## Source and output layout
 
 - The main `README.md` stays at the repository root.
 - All other documentation source, configuration, and theme assets live under `Docs/`.
-- Proposed generated output is `Build/Docs/`, already covered by the repository's build-output ignore rules.
-- Documentation generation will be optional and independent of normal engine builds.
-- Until DOC-2 is implemented, this index does not prescribe a documentation build command.
+- Generated output is `Build/Docs/`, covered by the repository's build-output ignore rules.
+- Documentation generation is optional and uses the standalone CMake project in `Docs/`.
+- Generation commands and prerequisites are documented in [Building the documentation](Contributing/BuildingDocumentation.md).
 
 The handbook uses relative links so completed pages can be read directly in the repository. Doxygen publication will be checked separately for navigation and rendering compatibility.

@@ -1,6 +1,6 @@
 # Documentation Conventions
 
-These conventions apply to Quiet's Markdown handbook and C++ documentation comments. They establish how documentation is written and reviewed; the Doxygen toolchain will be introduced separately.
+These conventions apply to Quiet's Markdown handbook and C++ documentation comments. They establish how documentation is written and reviewed. Local generation is described in [Building the documentation](BuildingDocumentation.md).
 
 ## Audience and language
 
@@ -95,7 +95,7 @@ Prioritize the following where they apply:
 
 For example, component access documentation should explain the required Actor validity and component presence instead of merely saying that a component is returned. A lifetime guarantee must be checked against storage and mutation behavior before it is stated.
 
-## Planned system groups
+## System groups
 
 The initial grouping scheme is:
 
@@ -116,7 +116,9 @@ The initial grouping scheme is:
 | `quiet_cooker` | Cooking and runtime-package construction |
 | `quiet_sandbox` | Standalone runtime entry point |
 
-Groups describe responsibilities rather than forcing a one-to-one mapping to directories. Define the groups during DOC-2 before assigning `@ingroup` tags. Include relevant internal headers under `Engine/src/` as well as `Engine/include/Quiet/`.
+Group definitions live in `Docs/Groups.dox`, under the parent group `quiet_systems`. Assign declarations to the appropriate group using `@ingroup` as their documentation is written.
+
+Groups describe responsibilities rather than forcing a one-to-one mapping to directories. The reference includes relevant internal headers under `Engine/src/` as well as `Engine/include/Quiet/`.
 
 ## Links and formatting
 
