@@ -56,6 +56,8 @@ namespace Quiet::Launcher
         std::array<char, 128> m_NewProjectName{};
 
         std::string m_FeedbackMessage;
+        std::string m_LastFeedbackMessage;
+        double m_FeedbackStartedAt = 0.0;
 
         bool m_FeedbackIsError = false;
         bool m_ExitRequested = false;

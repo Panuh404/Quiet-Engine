@@ -25,29 +25,59 @@ namespace
         {
             return std::isspace(c) != 0;
         };
-
         while (!value.empty() && isSpace(static_cast<unsigned char>(value.front())))
         {
             value.erase(value.begin());
         }
-
         while (!value.empty() && isSpace(static_cast<unsigned char>(value.back())))
         {
             value.pop_back();
         }
-
         return value;
     }
 
     bool IsValidProjectName(const std::string& name)
     {
         if (name.empty() || name == "." || name == "..")
-        {
             return false;
-        }
 
         static constexpr const char* invalidCharacters = "\\/:*?\"<>|";
-        return name.find_first_of(invalidCharacters) == std::string::npos;
+
+        if (name.find_first_of(invalidCharacters) != std::string::npos || name.back() == '.' || name.back() == ' ')
+            return false;
+
+        for (const unsigned char c : name)
+        {
+            if (c < 32) return false;
+        }
+
+        std::string deviceName = name.substr(0, name.find('.'));
+
+        std::transform(
+            deviceName.begin(),
+            deviceName.end(),
+            deviceName.begin(),
+            [](const unsigned char c)
+            {
+                return static_cast<char>(std::toupper(c));
+            }
+        );
+
+        if (deviceName == "CON" ||
+            deviceName == "PRN" ||
+            deviceName == "AUX" ||
+            deviceName == "NUL" ||
+            deviceName == "CONIN$" ||
+            deviceName == "CONOUT$")
+            return false;
+
+        if (deviceName.size() == 4 &&
+            (deviceName.compare(0, 3, "COM") == 0 || deviceName.compare(0, 3, "LPT") == 0) &&
+            deviceName[3] >= '1' &&
+            deviceName[3] <= '9')
+            return false;
+
+        return true;
     }
 
     std::string ToLowerCopy(std::string value)
@@ -72,7 +102,7 @@ namespace Quiet::Launcher
         Platform::WindowDesc windowDesc{};
 
         windowDesc.Width = 1100;
-        windowDesc.Height = 700;
+        windowDesc.Height = 630;
         windowDesc.Title = "Quiet Launcher";
         windowDesc.IconPath = "Resources/Textures/Editor/quiet-icon.png";
         windowDesc.Resizable = true;
@@ -293,19 +323,25 @@ namespace Quiet::Launcher
             ImGui::TextUnformatted("PROJECT LAUNCHER");
             ImGui::PopStyleColor();
 
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(7.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(5.0f)));
 
             ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
             ImGui::Separator();
             ImGui::PopStyleColor();
 
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(5.0f)));
 
             // Page header
-            if (ImGui::BeginTable("##LauncherHeader", 2, ImGuiTableFlags_SizingStretchProp))
+            const bool compactHeader = ImGui::GetContentRegionAvail().x < uiLayer.Scale(520.0f);
+
+            if (ImGui::BeginTable("##LauncherHeader", compactHeader ? 1 : 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoPadOuterX))
             {
                 ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(150.0f));
+
+                if (!compactHeader)
+                {
+                    ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(150.0f));
+                }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -315,13 +351,21 @@ namespace Quiet::Launcher
                 ImGui::PopStyleColor();
 
                 ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                ImGui::TextUnformatted("Continue working or create a new project.");
+                ImGui::TextWrapped("Continue working or create a new project.");
                 ImGui::PopStyleColor();
 
-                ImGui::TableSetColumnIndex(1);
+                if (compactHeader)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                }
+                else
+                {
+                    ImGui::TableSetColumnIndex(1);
+                }
 
                 ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::AccentDim);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered,QUI::EditorColor::AccentSoft);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::Accent);
 
                 if (QUI::EditorButton("+ New Project", ImVec2(-1.0f, 0.0f)))
@@ -335,11 +379,11 @@ namespace Quiet::Launcher
                 ImGui::EndTable();
             }
 
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(5.0f)));
 
             // Search
             const float availableSearchWidth = ImGui::GetContentRegionAvail().x;
-            const float refreshWidth = uiLayer.Scale(90.0f);
+            const float refreshWidth = uiLayer.Scale(82.0f);
             const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
             const bool horizontalSearchLayout = availableSearchWidth >= uiLayer.Scale(290.0f);
@@ -355,25 +399,26 @@ namespace Quiet::Launcher
                 ImGui::SameLine();
             }
 
+            ImGui::PushStyleColor(ImGuiCol_Button, QUI::EditorColor::Background2);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, QUI::EditorColor::AccentSoft);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, QUI::EditorColor::AccentDim);
+
             if (QUI::EditorButton("Refresh", ImVec2(refreshWidth, 0.0f)))
             {
                 RefreshProjects();
             }
 
-            if (!m_FeedbackMessage.empty())
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
             {
-                ImGui::Spacing();
-
-                ImGui::PushStyleColor(ImGuiCol_Text, m_FeedbackIsError ? QUI::EditorColor::Error : QUI::EditorColor::Success);
-                ImGui::TextWrapped("%s", m_FeedbackMessage.c_str());
-                ImGui::PopStyleColor();
+                ImGui::SetTooltip("Rescan the projects directory");
             }
 
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(9.0f)));
+            ImGui::PopStyleColor(3);
+
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(5.0f)));
 
             // Project filtering
             const std::string search = ToLowerCopy(TrimCopy(m_ProjectSearch.data()));
-
             const auto matchesSearch = [&](const std::filesystem::path& path)
             {
                 if (search.empty()) return true;
@@ -488,27 +533,40 @@ namespace Quiet::Launcher
                     const std::string projectName = projectFile.stem().string();
                     const std::string projectFolder = projectFile.parent_path().string();
 
-                    // Clip long project names and paths.
-                    const ImVec2 textMin = ImGui::GetCursorScreenPos();
+                    // Reserve a bounded two-line text area.
                     const float textWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+                    const float lineHeight = ImGui::GetTextLineHeight();
+                    const float lineSpacing = uiLayer.Scale(3.0f);
+                    const float textHeight = lineHeight * 2.0f + lineSpacing;
 
-                    ImGui::PushClipRect(
+                    const ImVec2 textMin = ImGui::GetCursorScreenPos();
+
+                    ImGui::Dummy(ImVec2(textWidth, textHeight));
+
+                    const bool textHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort);
+
+                    // Draw the actual text without affecting ImGui layout width.
+                    ImGui::PushClipRect(textMin, ImVec2(textMin.x + textWidth, textMin.y + textHeight), true);
+                    ImDrawList* textDrawList = ImGui::GetWindowDrawList();
+
+                    textDrawList->AddText(
                         textMin,
-                        ImVec2(textMin.x + textWidth, textMin.y + uiLayer.Scale(80.0f)),
-                        true
-                    );
+                        ImGui::GetColorU32(QUI::EditorColor::Text),
+                        projectName.c_str());
 
-                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::Text);
-                    ImGui::TextUnformatted(projectName.c_str());
-                    ImGui::PopStyleColor();
-
-                    ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-                    ImGui::TextUnformatted(projectFolder.c_str());
-                    ImGui::PopStyleColor();
+                    textDrawList->AddText(
+                        ImVec2(textMin.x, textMin.y + lineHeight + lineSpacing),
+                        ImGui::GetColorU32(QUI::EditorColor::TextMuted),
+                        projectFolder.c_str());
 
                     ImGui::PopClipRect();
 
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+                    // Show complete paths if either line is truncated.
+                    const bool isTruncated =
+                        ImGui::CalcTextSize(projectName.c_str()).x > textWidth ||
+                        ImGui::CalcTextSize(projectFolder.c_str()).x > textWidth;
+
+                    if (textHovered && isTruncated)
                     {
                         ImGui::SetTooltip("%s", projectFile.string().c_str());
                     }
@@ -629,26 +687,52 @@ namespace Quiet::Launcher
             }
 
             // Projects location footer
-            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(12.0f)));
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(8.0f)));
 
             ImGui::PushStyleColor(ImGuiCol_Separator, QUI::EditorColor::BorderSoft);
             ImGui::Separator();
             ImGui::PopStyleColor();
 
-            ImGui::Spacing();
+            ImGui::Dummy(ImVec2(0.0f, uiLayer.Scale(3.0f)));
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
-            ImGui::TextUnformatted("PROJECTS LOCATION");
-            ImGui::PopStyleColor();
+            const bool compactFooter = ImGui::GetContentRegionAvail().x < uiLayer.Scale(460.0f);
 
-            if (QUI::EditorButton("Open Projects Folder"))
+            if (ImGui::BeginTable("##ProjectsLocationFooter", compactFooter ? 1 : 2,
+                ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoPadOuterX))
             {
-                Platform::OpenPathWithDefaultApplication(m_ProjectRegistry.ProjectsRoot);
-            }
+                ImGui::TableSetupColumn("Location", ImGuiTableColumnFlags_WidthStretch);
+                if (!compactFooter)
+                {
+                    ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, uiLayer.Scale(116.0f));
+                }
 
-            ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
-            ImGui::TextWrapped("%s", m_ProjectRegistry.ProjectsRoot.string().c_str());
-            ImGui::PopStyleColor();
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextDim);
+                ImGui::TextUnformatted("PROJECTS LOCATION");
+                ImGui::PopStyleColor();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, QUI::EditorColor::TextMuted);
+                ImGui::TextWrapped("%s", m_ProjectRegistry.ProjectsRoot.string().c_str());
+                ImGui::PopStyleColor();
+
+                if (compactFooter)
+                {
+                    ImGui::TableNextRow();
+                }
+                else
+                {
+                    ImGui::TableSetColumnIndex(1);
+                }
+
+                if (QUI::EditorButton("Open Folder", ImVec2(-1.0f, 0.0f)))
+                {
+                    Platform::OpenPathWithDefaultApplication(m_ProjectRegistry.ProjectsRoot);
+                }
+
+                ImGui::EndTable();
+            }
 
             ImGui::EndChild();
 
@@ -664,10 +748,7 @@ namespace Quiet::Launcher
 
             const float modalWidth = std::min(
                 uiLayer.Scale(460.0f),
-                std::max(
-                    uiLayer.Scale(240.0f),
-                    viewport->WorkSize.x - uiLayer.Scale(32.0f)
-                )
+                std::max(uiLayer.Scale(240.0f), viewport->WorkSize.x - uiLayer.Scale(32.0f))
             );
 
             ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
@@ -715,7 +796,7 @@ namespace Quiet::Launcher
                 const char* validationMessage = nullptr;
                 if (!projectName.empty() && !validName)
                 {
-                    validationMessage = "Invalid name. Avoid / \\ : * ? \" < > | and reserved names . or ..";
+                    validationMessage = "Invalid project name. Avoid reserved device names, trailing dots, and filesystem-invalid characters.";
                 }
                 else if (folderExists)
                 {
@@ -788,8 +869,10 @@ namespace Quiet::Launcher
 
                 if (cancelPressed || ImGui::IsKeyPressed(ImGuiKey_Escape))
                 {
+                    m_FeedbackMessage.clear();
                     ImGui::CloseCurrentPopup();
                 }
+
                 else if ((createPressed || submitted) && canCreate)
                 {
                     std::filesystem::path projectFile;
@@ -805,6 +888,78 @@ namespace Quiet::Launcher
             }
 
             ImGui::PopStyleVar();
+
+            // Launcher feedback ----------------------------------------------
+            if (m_FeedbackMessage != m_LastFeedbackMessage)
+            {
+                m_LastFeedbackMessage = m_FeedbackMessage;
+                m_FeedbackStartedAt = ImGui::GetTime();
+            }
+
+            if (!m_FeedbackMessage.empty() && !m_FeedbackIsError && ImGui::GetTime() - m_FeedbackStartedAt >= 4.0)
+            {
+                m_FeedbackMessage.clear();
+                m_LastFeedbackMessage.clear();
+            }
+
+            if (!m_FeedbackMessage.empty() && !ImGui::IsPopupOpen("Create Project"))
+            {
+                const float margin = uiLayer.Scale(14.0f);
+                const float notificationWidth = std::max(1.0f, std::min(uiLayer.Scale(360.0f), viewport->WorkSize.x - margin * 2.0f));
+
+                ImGui::SetNextWindowPos(
+                    ImVec2(
+                        viewport->WorkPos.x + viewport->WorkSize.x - margin,
+                        viewport->WorkPos.y + viewport->WorkSize.y - margin
+                    ),
+                    ImGuiCond_Always,
+                    ImVec2(1.0f, 1.0f)
+                );
+
+                ImGui::SetNextWindowSize(ImVec2(notificationWidth, 0.0f), ImGuiCond_Always);
+
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, uiLayer.Scale(8.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, uiLayer.Scale(ImVec2(12.0f, 10.0f)));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, QUI::EditorColor::Background2);
+                ImGui::PushStyleColor(ImGuiCol_Border, QUI::EditorColor::BorderSoft);
+
+                const ImGuiWindowFlags notificationFlags =
+                    ImGuiWindowFlags_NoDecoration |
+                    ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoDocking |
+                    ImGuiWindowFlags_NoFocusOnAppearing;
+
+                if (ImGui::Begin("##LauncherNotification", nullptr, notificationFlags))
+                {
+                    ImGui::TextColored(m_FeedbackIsError ? QUI::EditorColor::Error : QUI::EditorColor::Success, "%s", m_FeedbackIsError ? "ERROR" : "SUCCESS");
+                    ImGui::SameLine();
+
+                    const float closeWidth = ImGui::CalcTextSize("x").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+
+                    ImGui::SetCursorPosX(std::max(
+                        ImGui::GetCursorPosX(),
+                        ImGui::GetWindowContentRegionMax().x - closeWidth));
+
+                    if (ImGui::SmallButton("x##DismissLauncherNotification"))
+                    {
+                        m_FeedbackMessage.clear();
+                        m_LastFeedbackMessage.clear();
+                    }
+
+                    if (!m_FeedbackMessage.empty())
+                    {
+                        ImGui::TextWrapped("%s", m_FeedbackMessage.c_str());
+                    }
+                }
+
+                ImGui::End();
+
+                ImGui::PopStyleColor(2);
+                ImGui::PopStyleVar(3);
+            }
         }
 
         ImGui::End();
