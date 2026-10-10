@@ -14,6 +14,7 @@ Current pages:
 
 - [Documentation conventions](Contributing/Documentation.md): structure, writing standards, API comments, and verification requirements.
 - [Building the documentation](Contributing/BuildingDocumentation.md): prerequisites, theme initialization, generation, diagnostics, and troubleshooting.
+- [Architecture overview](Architecture.md): workspace targets, ownership, scene/runtime separation, startup, execution flow, and packaging.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -27,16 +28,16 @@ As chapters become available, the handbook will support three reading paths:
 | Understand and extend Quiet | Architecture → Scene → Application → Editor → individual system chapters |
 | Look up a specific contract | Generated C++ reference or File Formats reference |
 
-Planned chapters are listed below as paths rather than links. Links will be added when their target pages exist.
+Available chapters are linked below. Planned chapters are shown as paths until their target pages exist.
 
-## Planned handbook
+## Handbook structure
 
 ### Foundations
 
 | Proposed page | Scope |
 | --- | --- |
 | `Docs/GettingStarted.md` | Requirements, build presets, executable targets, resources, and first launch |
-| `Docs/Architecture.md` | System boundaries, ownership, lifecycle, and major data flows |
+| [Architecture overview](Architecture.md) | System boundaries, ownership, lifecycle, and major data flows |
 
 ### Practical guides
 
