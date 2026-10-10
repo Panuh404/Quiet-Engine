@@ -49,13 +49,35 @@ namespace Quiet::Editor
 {
     class EditorController;
 
+    /**
+     * @brief Provides Scene authoring operations through an Editor controller.
+     * @ingroup quiet_editor
+     *
+     * Borrows the controller. Individual operations receive their target Scene.
+     * Some operations record immediate mutations; others require an enclosing
+     * interaction boundary for history tracking.
+     */
     class EditorCommands
     {
     public:
         explicit EditorCommands(EditorController& editorController);
 
+        /**
+         * @brief Reports whether Editor state currently selects Edit mode.
+         */
         [[nodiscard]] bool CanEditScene() const;
+
+        /**
+         * @brief Begins a Scene history boundary when editing is permitted.
+         * @note An existing pending boundary retains its original snapshot.
+         */
         void BeginInteraction(const Scene::Scene& scene);
+
+        /**
+         * @brief Ends a Scene history boundary when editing is permitted.
+         * @return True when history records a differing final snapshot.
+         * @note A false result does not undo Scene changes.
+         */
         bool EndInteraction(const Scene::Scene& scene);
 
     #pragma region Actors

@@ -30,6 +30,13 @@ namespace Quiet::Renderer::Vulkan
 
 namespace Quiet::Editor
 {
+    /**
+     * @brief Owns Editor state and history and coordinates authoring interaction.
+     * @ingroup quiet_editor
+     *
+     * Scene and subsystem dependencies are supplied to individual operations.
+     * The controller does not own the Scene.
+     */
     class EditorController
     {
     public:

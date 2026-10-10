@@ -23,6 +23,13 @@ namespace Quiet::Scene
 
 namespace Quiet::Editor
 {
+    /**
+     * @brief Records supported Scene snapshots for undo, redo, and dirty tracking.
+     * @ingroup quiet_editor
+     *
+     * Maintains one pending mutation boundary and a clean comparison baseline.
+     * Snapshot restoration reconstructs Actors and invalidates existing handles.
+     */
     class EditorSceneHistory
     {
     public:
@@ -55,13 +62,45 @@ namespace Quiet::Editor
             std::optional<Core::UUID> SelectedActorID;
         };
 
+        /**
+         * @brief Clears history and establishes the current Scene as clean.
+         */
         void Reset(const Scene::Scene& scene, EditorState& state);
+
+        /**
+         * @brief Updates the clean baseline without clearing history.
+         * @note Does not write a Scene file or clear the pending mutation.
+         */
         void MarkSaved(const Scene::Scene& scene, EditorState& state);
 
+        /**
+         * @brief Captures a pre-mutation snapshot in Edit mode when none is pending.
+         * @note Repeated calls retain the original pending snapshot.
+         */
         void BeginMutation(const Scene::Scene& scene, const EditorState& state);
+
+        /**
+         * @brief Compares final state and consumes the pending mutation boundary.
+         * @return True when a differing snapshot is added to undo history.
+         * @note Selection participates in history equality but not dirty equality.
+         * @note Does not independently check Edit mode or roll back Scene changes.
+         */
         bool EndMutation(const Scene::Scene& scene, EditorState& state);
 
+        /**
+         * @brief Restores the newest undo snapshot in Edit mode.
+         * @return False outside Edit mode or when undo history is empty.
+         * @note Restoration reconstructs Actors; resolve them again by UUID.
+         * @note Exceptions propagate without atomic restoration guarantees.
+         */
         bool Undo(Scene::Scene& scene, EditorState& state);
+
+        /**
+         * @brief Restores the newest redo snapshot in Edit mode.
+         * @return False outside Edit mode or when redo history is empty.
+         * @note Restoration reconstructs Actors; resolve them again by UUID.
+         * @note Exceptions propagate without atomic restoration guarantees.
+         */
         bool Redo(Scene::Scene& scene, EditorState& state);
 
     private:
