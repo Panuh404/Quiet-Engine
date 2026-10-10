@@ -1,8 +1,8 @@
 # Scene and Actors
 
 This chapter explains Scene storage, Actor identity, component access,
-handle lifetime, copying, duplication, and runtime lifecycle.
-Detailed deferred Actor request contracts and serialization remain planned.
+handle lifetime, copying, duplication, runtime lifecycle, deferred Actor
+requests, and serialization.
 
 ## Purpose and concepts
 
@@ -37,6 +37,15 @@ Scene should be queried.
 | `Engine/src/Physics/PhysicsWorld.cpp` | Physics bodies, synchronization, and fixed stepping |
 | `Engine/src/Audio/AudioWorld.cpp` | Runtime sources, listener updates, and audio mix handling |
 | `Engine/src/Scripting/ScriptWorld.cpp` | Script instance construction, callbacks, updates, and teardown |
+| `Engine/src/Scripting/Bindings/SceneBindings.cpp` | Lua Scene creation and lookup bindings |
+| `Engine/src/Scripting/Bindings/ActorBindings.cpp` | UUID-based Lua Actor references, duplication, and destruction |
+| `Engine/src/Scene/SceneSerializer.h` | `Quiet::Scene::SceneSerializer` file persistence declarations |
+| `Engine/src/Scene/SceneSerializer.cpp` | JSON construction, loading, and mesh resolution |
+| `Engine/include/Quiet/Scene/SceneDocument.h` | `Quiet::Scene::SceneDocument` document operations |
+| `Engine/src/Scene/SceneDocument.cpp` | Persistence forwarding and default Scene construction |
+| `Engine/src/Renderer/Vulkan/Mesh/MeshLibrary.h` | Lookup of already-loaded mesh resources |
+| `Engine/src/Editor/EditorSceneWorkflow.cpp` | Editor load/save requests and session updates |
+| `Engine/src/Project/ProjectWorkflow.cpp` | Editable startup Scene loading and fallback |
 
 ## Ownership and storage
 
@@ -366,8 +375,7 @@ physics step.
 
 Runtime updates can create or destroy Actors while flushing requests.
 Actor pointers and references must therefore not be retained across updates
-as permanent handles. Detailed request acceptance and cancellation contracts
-will be documented in the next increment.
+as permanent handles. The deferred request contracts are described below.
 
 ### Runtime shutdown
 
@@ -408,7 +416,350 @@ teardown.
 Copy assignment begins with `Clear()`. It does not use the same Scene
 mode-end dispatch as an explicit `EndRuntime()` call.
 
+## Deferred Actor requests
+
+Runtime callbacks use queued Actor operations so structural changes can
+be applied after script updates and physics contact callbacks.
+
+The request methods are implemented in `Engine/src/Scene/Scene.cpp`.
+
+### Acceptance and materialization
+
+Acceptance records a request and, for creation or duplication, reserves
+a UUID in the pending creation queue.
+
+Materialization creates the registry entity, mandatory components, and
+Actor handle during the runtime creation phase.
+
+These are separate events. A reserved UUID does not yet identify an
+Actor that `FindActorByID()` can return.
+
+| Request | Acceptance result | Immediate effect | Deferred effect |
+| --- | --- | --- | --- |
+| Create | Reserved UUID, or invalid UUID if inactive | Adds a creation request | Creates an Actor |
+| Duplicate | Reserved UUID, or invalid UUID if inactive or source is invalid/absent | Adds a duplication request | Copies the source into a new Actor |
+| Destroy existing Actor | True when queued or already queued | Records destruction once | Notifies scripting, then removes the Actor |
+| Destroy pending creation | True when canceled | Removes the pending creation request | The Actor is never materialized |
+
+An invalid UUID is the default UUID value whose `IsValid()` returns false.
+
+A UUID-returning request generates an ID that is valid and does not match
+an existing Actor or another pending creation request.
+
+The request methods do not report eventual completion. Allocation
+exceptions are not caught by these methods.
+
+### Creation requests
+
+`RequestRuntimeActorCreate()` rejects requests while runtime is inactive.
+
+An accepted request records its UUID and name. An empty name becomes
+`Actor`, unlike immediate `CreateActor()`, which retains the supplied name.
+
+During `FlushRuntimeActorCreations()`, ordinary creation delegates to
+`CreateActorWithID()` and produces the usual identity and Transform
+components.
+
+Creation requests do not provide a component-initialization payload.
+Configure the Actor after it has materialized.
+
+### Duplication requests
+
+`RequestRuntimeActorDuplicate()` requires an existing source Actor.
+A UUID belonging only to another pending creation cannot be duplicated yet.
+
+Acceptance records the source UUID and reserved destination UUID.
+It does not capture the source's component values.
+
+During materialization, `TryDuplicateActorWithID()` reads the source's
+current name and supported components.
+
+Source data can change between acceptance and materialization. For example,
+physics runs before the creation phase and may update the source Transform.
+
+If the source is absent when the creation batch is processed, duplication
+is skipped. The reserved destination UUID does not become an Actor.
+
+A source queued for deferred destruction still exists during the creation
+phase. Its queued duplication can therefore materialize before that source
+is removed.
+
+### Destruction and cancellation
+
+`RequestRuntimeActorDestroy()` rejects inactive runtime, invalid UUIDs,
+and UUIDs that identify neither an existing Actor nor a pending creation.
+
+For an existing Actor, the UUID is added to the destruction queue once.
+Repeated requests return true without adding another entry.
+
+The Actor remains findable until the destruction phase. Acceptance does
+not immediately erase its components or make its Lua reference invalid.
+
+For an Actor that has not materialized, the method searches the pending
+creation queue and removes the matching request immediately.
+This also supports canceling a pending duplicate.
+
+Canceled creation does not construct an entity or script instance and
+therefore has no created instance to receive lifecycle callbacks.
+
+### Flush ordering and callbacks
+
+`Scene::UpdateRuntime()` flushes creations before destructions, after
+script updates, physics, and contact callbacks.
+
+The creation phase moves the pending creation queue into a local batch.
+Requests added later are left for a subsequent creation phase.
+
+The destruction phase walks its queue by index. Requests appended by an
+`OnDestroy` callback for another existing Actor can be processed later
+in that same destruction phase.
+
+For each existing Actor being destroyed:
+
+1. Scene calls `ScriptWorld::NotifyActorWillBeDestroyed()`.
+2. ScriptWorld removes the matching instance, invoking `OnDestroy` when
+   the instance started and supplies that callback.
+3. Scene calls `DestroyActorByID()`, removing the entity, Actor handle,
+   and hierarchy references.
+
+Script teardown occurs while the Actor still exists and the native worlds
+remain alive.
+
+Creation requested from an `OnDestroy` callback waits for a later creation
+phase because the current creation phase has already finished.
+
+After both flushes, physics reconciles its bodies and audio reconciles its
+sources during the remaining runtime update.
+
+Eligible scripts on newly materialized Actors are discovered during a
+subsequent ScriptWorld update. Successful instances begin then, rather
+than during the creation flush itself.
+
+### Lua Actor references
+
+The Lua bindings wrap a Scene reference and UUID, resolving the Actor when
+an operation needs it. They do not retain a pointer into the Actor vector.
+
+`Scene.CreateActor()` and an Actor reference's `Duplicate()` can return
+a wrapper for an accepted request before the Actor exists.
+
+For such a pending wrapper:
+
+- `GetID()` returns the reserved UUID string.
+- `IsValid()` returns false until the Actor materializes.
+- `Destroy()` can cancel its pending creation.
+- Name and component access require a materialized Actor.
+
+`Scene.FindActorByID()` returns nil for a pending UUID because its lookup
+requires an existing Actor.
+
+After deferred destruction, an existing wrapper's `IsValid()` returns false.
+The wrapper retaining a UUID does not keep the entity alive.
+
+The complete Lua API will be documented separately in the scripting guide.
+
+### Immediate operations and queue lifetime
+
+Immediate `CreateActor()`, duplication, and `DestroyActorByID()` are not
+blocked merely because runtime is active.
+
+They do not provide the deferred request phases. In particular,
+`DestroyActorByID()` does not itself notify ScriptWorld before removing
+the entity.
+
+Use the request APIs for structural operations issued from runtime callbacks.
+
+`EndRuntime()` and `Clear()` discard pending creation and destruction
+requests. Requests issued during runtime-end script callbacks can therefore
+be accepted and subsequently discarded during shutdown.
+
+Acceptance is not a guarantee that an Actor will materialize or that a
+queued destruction will execute.
+
 ## Worked examples
+
+## Scene serialization
+
+Serialization records supported Scene data as JSON. Loading reconstructs
+entities and components, resolving mesh references against an existing library.
+
+It does not restore a running physics, audio, or scripting world.
+
+### Document and serializer responsibilities
+
+`Quiet::Scene::SceneDocument` exposes default Scene construction and file
+load/save operations.
+
+Its `Save()` and `Load()` methods directly forward to SceneSerializer.
+They add no exception handling, rollback, resource importing, or fallback.
+
+`CreateDefault()` clears the destination and constructs a Cube Actor and
+primary Camera Actor. It requires the loaded `Cube` mesh resource through
+`MeshLibrary::Get()`. If that resource is absent, lookup throws after the
+destination has already been cleared.
+
+Fallback decisions belong to callers, not SceneDocument.
+
+### Persistent data
+
+The saved root contains these sections:
+
+| Section | Stored data |
+| --- | --- |
+| `actors` | Actor UUIDs, names, Transforms, and recognized optional components |
+| `audio_settings` | Master, music, SFX, and UI volumes |
+| `render_settings` | Scene light and ambient settings |
+| `physics_settings` | Gravity |
+| `editor_hierarchy` | Root ordering, folders, folder expansion, and membership |
+
+Transforms store position, rotation in degrees, and scale.
+
+Optional component serialization is explicit, like the copy paths described
+earlier. Adding a persistent component requires updating both save and load
+logic; EnTT storage alone does not make it serializable.
+
+Static meshes are represented by resource IDs, visibility, and material slots.
+The loaded mesh object itself is not embedded.
+
+A StaticMeshComponent is written only when its `IsValid()` returns true,
+which currently means its mesh pointer is non-null.
+
+Script components store the script asset ID and named property values.
+Properties with empty names are omitted. Actor-reference properties store
+UUID strings; asset-reference properties store asset IDs.
+
+EnTT entity identifiers, runtime worlds, physics body state, audio playback
+state, Lua environments, pending requests, and contact events are not written.
+
+The file contains no explicit schema-version field. The exhaustive field
+reference is reserved for `Docs/Reference/FileFormats.md`.
+
+### Save flow and result
+
+`SceneSerializer::SaveToFile()`:
+
+1. Constructs JSON from the current Scene data.
+2. Opens the destination file for writing.
+3. Returns false if the file cannot be opened.
+4. Writes JSON formatted with four-space indentation.
+5. Logs the save and returns true.
+
+The function does not create parent directories.
+EditorSceneWorkflow ensures project directories exist before calling Save.
+
+Saving opens the destination directly, replacing existing contents.
+There is no temporary-file-and-rename operation.
+
+The final stream state is not checked after writing. A true result means
+the function reached its success return after issuing the write; it does
+not establish that the complete file was successfully written and closed.
+
+JSON construction or serialization exceptions propagate.
+
+The serializer does not enforce Edit mode. Saving an active runtime Scene
+records its current component values rather than its pre-runtime state.
+
+Pending creation requests are absent from Actor storage and are not saved.
+Actors awaiting deferred destruction remain part of the saved data until
+that destruction is applied.
+
+### Load flow
+
+`SceneSerializer::LoadFromFile()`:
+
+1. Opens the file, returning false if it cannot be opened.
+2. Parses JSON.
+3. Checks that the root contains an `actors` array, returning false otherwise.
+4. Clears the destination Scene.
+5. Loads available scene settings.
+6. Recreates Actors and recognized components.
+7. Restores or rebuilds hierarchy metadata.
+8. Logs the load and returns true.
+
+Failure to open the file or failure of the explicit `actors` check leaves
+the destination unchanged.
+
+Parsing exceptions occur before Clear. Exceptions during reconstruction
+occur after Clear and can leave settings and Actors partially rebuilt.
+The loader neither catches those exceptions nor restores the original Scene.
+
+Successful reconstruction leaves runtime inactive. Starting runtime is a
+separate operation.
+
+### Identity, defaults, and validation
+
+Each Actor requires a string `id` and Transform data containing position,
+rotation, and scale. A missing name defaults to `Actor`.
+
+If UUIDFromString reports an Actor ID parse failure, that Actor is logged
+and skipped. Other required-field or type failures can throw.
+
+The Actor-loading loop does not separately enforce UUID `IsValid()` or
+uniqueness after parsing. It therefore must not be described as validating
+all identity invariants.
+
+Absent optional sections and fields use component or scene defaults where
+the corresponding load code provides them. This is field-specific handling,
+not comprehensive schema validation.
+
+Unsupported script-property types and unnamed properties are skipped.
+Script Actor-reference values are restored as UUID data without verifying
+that the referenced Actor exists.
+
+### Resource resolution
+
+Loading receives a MeshLibrary containing already-loaded resources.
+
+For each `static_mesh` section, the loader calls `MeshLibrary::TryGet()`
+with its resource ID.
+
+When lookup succeeds, the Actor receives StaticMeshComponent and shared
+ownership of that mesh. Visibility and material slots are restored.
+
+When lookup fails, the loader logs a warning and omits StaticMeshComponent.
+The Actor and its other recognized components can still load.
+
+The serializer does not import assets or populate the mesh library.
+Texture, audio, and script references are restored as component data;
+the serializer does not instantiate their runtime backends.
+
+Load required meshes before reconstructing a Scene that references them.
+
+### Hierarchy restoration
+
+Absent or unusable hierarchy metadata falls back to
+`ResetHierarchyFromActors()`.
+
+Parsed metadata is applied through `SetHierarchy()`, which sanitizes it.
+An empty parsed hierarchy also falls back to Actor-based reconstruction
+when the Scene contains Actors.
+
+Hierarchy restoration does not establish transform parenting.
+
+### Boolean results and caller policy
+
+A true load result means reconstruction reached its final return.
+It does not guarantee that every Actor or resource reference was retained.
+
+| Condition | Result |
+| --- | --- |
+| File cannot be opened | False; destination unchanged |
+| Root lacks an `actors` array | False; destination unchanged |
+| JSON parsing throws | Exception; destination not yet cleared |
+| Required reconstruction data throws | Exception; destination may be partially rebuilt |
+| Actor UUID parser reports failure | Actor skipped; loading continues |
+| Mesh lookup fails | Mesh component omitted; loading continues |
+
+EditorSceneWorkflow restricts normal load/save requests to Edit mode.
+After successful load, it resets the editor Scene session. After successful
+save, it marks the Scene saved.
+
+ProjectWorkflow's editable startup helper creates a default Scene when
+SceneDocument::Load returns false. That helper does not catch serializer
+exceptions and turn them into the same fallback.
+
+Packaged Sandbox startup treats a false Scene load result as an error.
+Its runtime begins separately after loading.
 
 ### Creation and lookup
 
@@ -498,6 +849,90 @@ The entry point is
 The authored Scene remains separate from runtime component changes.
 Stopping the runtime copy does not copy its values back into the authored Scene.
 
+### Canceling creation before materialization
+
+These statements are illustrative code using an existing active
+`Quiet::Scene::Scene& scene`, before its next runtime update.
+
+```cpp
+const auto pendingID = scene.RequestRuntimeActorCreate("Temporary");
+
+if (pendingID.IsValid())
+{
+    scene.RequestRuntimeActorDestroy(pendingID);
+}
+```
+
+The creation request reserves an ID but does not immediately create an Actor.
+The destruction request finds and cancels that pending creation.
+
+With no update between these statements, `Temporary` never materializes.
+No script instance is constructed for it.
+
+### Duplicating and destroying a source in one update
+
+Assume an existing source Actor issues these requests during a runtime
+callback, and no other operation removes it immediately:
+
+```cpp
+const auto duplicateID =
+    scene.RequestRuntimeActorDuplicate(sourceID);
+
+if (duplicateID.IsValid())
+{
+    scene.RequestRuntimeActorDestroy(sourceID);
+}
+```
+
+The remaining update proceeds as follows:
+
+| Phase | Result |
+| --- | --- |
+| Creation flush | The duplicate copies the still-existing source's current component values |
+| Destruction flush | The source's eligible OnDestroy callback runs before the source is removed |
+| Physics synchronization | Body bindings are reconciled with the resulting registry |
+| Audio update | Source bindings are reconciled with the resulting registry |
+| Subsequent script update | The duplicate's script can load and begin if eligible |
+
+The duplicate has a new UUID. Script Actor-reference properties retain their
+copied UUID values; they are not automatically redirected to the duplicate.
+
+### Loading a Scene with an unresolved mesh
+
+This illustrative file contains one Actor and no optional scene settings:
+
+```json
+{
+    "actors": [
+        {
+            "id": "0000000000000001-0000000000000001",
+            "name": "Example",
+            "transform": {
+                "position": [0.0, 0.0, 0.0],
+                "rotation": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0]
+            },
+            "static_mesh": {
+                "resource_id": "Cube",
+                "visible": true
+            }
+        }
+    ]
+}
+```
+
+Assume the supplied MeshLibrary has no `Cube` resource.
+
+Loading clears the destination, creates Example with its UUID and Transform,
+warns about the missing mesh, and omits StaticMeshComponent. With the remaining
+data valid, it returns true and reconstructs the hierarchy from the Actor.
+
+Saving that reconstructed Scene does not preserve the omitted `static_mesh`
+section: the component is no longer present.
+
+With Cube loaded before reconstruction, the loader instead adds the mesh
+component and connects it to the library's shared resource.
+
 ## Current limitations and extension points
 
 Actor lookup currently searches the handle vector linearly.
@@ -509,5 +944,10 @@ Direct component access modifies registry data. These templates do not
 themselves record editor history or explicitly synchronize runtime worlds.
 Those integrations require separate documentation.
 
-The remaining increments will cover detailed deferred Actor request
-contracts and serialization.
+Persistence currently has no explicit schema version, transactional loading,
+or atomic save replacement. Its boolean results do not summarize all skipped
+entries or final write failures.
+
+Future persistence changes should review identity validation, resource-loss
+diagnostics, exception handling, and compatibility alongside the exact format
+reference.

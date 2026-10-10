@@ -200,7 +200,10 @@ Bootstrap advancement occurs after a completed loading-screen frame. Asset loadi
 
 This is work distributed across bootstrap frames. The staged workflow itself does not establish an asynchronous background asset-loading system.
 
-Editable project startup can continue with diagnostics for assets that fail to load. If its startup scene cannot be loaded, the project workflow creates a default scene.
+Editable project startup can continue with diagnostics for assets that fail
+to load. When startup Scene loading returns false, the project workflow creates
+a default Scene. Serializer exceptions are not converted into that fallback
+by the startup Scene helper.
 
 ## Frame and runtime execution
 

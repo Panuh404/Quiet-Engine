@@ -138,7 +138,8 @@ For each chapter or system substep:
 4. Check relative links and planned-versus-available status.
 5. Once DOC-2 exists, generate and inspect the affected documentation pages and warnings.
 6. Exercise executable examples and commands in a suitable environment, or explicitly record what could not be verified.
-7. Review the result and commit the completed substep before starting the next one.
+7. Review each increment. Commit at the agreed chapter or system checkpoint
+   after its related increments and required corrections are complete.
 
 An automatically extracted declaration is not evidence that its behavior has been documented. Documentation warnings should be reviewed meaningfully; extraction settings must not hide missing contracts and be mistaken for full coverage.
 

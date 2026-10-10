@@ -84,6 +84,13 @@ namespace Quiet::Scene
             return m_Registry->get<T>(m_Entity);
         }
 
+        /**
+         * @brief Returns the requested component from the owning registry.
+         * @tparam T Component type other than ActorIdentityComponent.
+         * @pre The owning registry is alive and the entity is valid.
+         * @pre The Actor has component T.
+         * @return A const reference to the registry-owned component.
+         */
         template<typename T>
         [[nodiscard]] const T& GetComponent() const
         {
@@ -108,11 +115,11 @@ namespace Quiet::Scene
         }
 
         /**
-         * @brief Returns the requested component from the owning registry.
+         * @brief Looks up a component on a valid Actor without permitting mutation.
          * @tparam T Component type other than ActorIdentityComponent.
          * @pre The owning registry is alive and the entity is valid.
-         * @pre The Actor has component T.
-         * @return A const reference to the registry-owned component.
+         * @return A const registry-owned component pointer, or nullptr if absent.
+         * @note Missing-component handling does not validate an expired Actor.
          */
         template<typename T>
         [[nodiscard]] const T* TryGetComponent() const

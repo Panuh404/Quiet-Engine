@@ -163,6 +163,8 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
+        #pragma region Runtime Lifecycle
+
         /**
          * @brief Starts Scene physics, audio, and scripting for the requested mode.
          * @param mode Simulate or Play; None logs a warning and leaves state unchanged.
@@ -209,10 +211,43 @@ namespace Quiet::Scene
          */
         void Update(float deltaTime);
 
-        // Runtime Actor API
+        #pragma endregion
+
+        #pragma region Runtime Actor API
+
+        /**
+         * @brief Queues Actor creation for the runtime creation phase.
+         * @param name Initial name; an empty name becomes "Actor".
+         * @return A reserved UUID when accepted, or an invalid UUID if inactive.
+         * @note Acceptance does not immediately create an entity or Actor handle.
+         * @note The UUID avoids existing Actors and pending creation requests.
+         * @note Pending requests can be canceled or discarded before materialization.
+         */
         Core::UUID RequestRuntimeActorCreate(const std::string& name);
+
+        /**
+         * @brief Queues duplication of an existing runtime Actor.
+         * @param sourceActorID Valid UUID of an existing Actor in this Scene.
+         * @return A reserved duplicate UUID when accepted, or an invalid UUID
+         *         if runtime is inactive or the source is invalid or absent.
+         * @note Source component values are copied during the creation phase,
+         *       not when this request is accepted.
+         * @note Materialization is skipped if the source no longer exists.
+         */
         Core::UUID RequestRuntimeActorDuplicate(Core::UUID sourceActorID);
+
+        /**
+         * @brief Queues Actor destruction or cancels its pending creation.
+         * @param actorID UUID of an existing Actor or pending creation.
+         * @return True if destruction is queued, already queued, or a pending
+         *         creation is canceled. False if inactive, invalid, or unknown.
+         * @note Existing Actors remain available until the destruction phase.
+         * @note Script teardown is notified before an existing entity is removed.
+         * @note Canceling pending creation does not materialize the Actor.
+         */
         bool RequestRuntimeActorDestroy(Core::UUID actorID);
+
+        #pragma endregion
 
         // Physics Runtime API
         bool ApplyPhysicsImpulse(Core::UUID actorID, const glm::vec3& impulse);
