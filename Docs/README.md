@@ -8,13 +8,16 @@ The repository's main introduction remains in the root [README](../README.md). T
 
 The documentation foundation includes conventions, local generation tooling, and C++ system groups. The generated reference currently provides an API inventory; detailed symbol contracts will be added incrementally.
 
-Architecture chapters, practical guides, and file-format references remain planned.
+The architecture overview is available. Detailed system documentation is being
+added incrementally, starting with Scene and Actor contracts. Practical guides
+and file-format references remain planned.
 
 Current pages:
 
 - [Documentation conventions](Contributing/Documentation.md): structure, writing standards, API comments, and verification requirements.
 - [Building the documentation](Contributing/BuildingDocumentation.md): prerequisites, theme initialization, generation, diagnostics, and troubleshooting.
 - [Architecture overview](Architecture.md): workspace targets, ownership, scene/runtime separation, startup, execution flow, and packaging.
+- [Scene and Actors](Systems/Scene.md): ownership, identity, component access, and handle lifetime; cloning, runtime, and serialization sections remain in progress.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -53,7 +56,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 | Proposed page | Scope |
 | --- | --- |
-| `Docs/Systems/Scene.md` | Actor identity, EnTT storage, components, scene cloning, serialization, and runtime mutation |
+| [Scene and Actors](Systems/Scene.md) | Ownership, identity, component access, and handle lifetime; cloning, serialization, and runtime mutation remain planned |
 | `Docs/Systems/Application.md` | Application startup, project loading, frame orchestration, and shutdown |
 | `Docs/Systems/Editor.md` | Controllers, commands, history, dirty state, and runtime transitions |
 | `Docs/Systems/Assets.md` | Registry, importers, asset libraries, loading, and reference handling |

@@ -52,6 +52,18 @@ namespace Quiet::Scene
         Play
     };
 
+    /**
+     * @brief Owns scene entities, components, Actor handles, and runtime state.
+     * @ingroup quiet_scene
+     *
+     * Components reside in the EnTT registry. Actor handles reside in a
+     * separate vector and refer to entities in that registry.
+     *
+     * @note Creation may invalidate Actor pointers and references through
+     *       vector reallocation. Destruction invalidates those referring
+     *       to the erased element and subsequent elements.
+     */
+
     class Scene
     {
     public:
@@ -60,7 +72,24 @@ namespace Quiet::Scene
         Scene& operator=(const Scene& other);
         ~Scene();
 
+        /**
+         * @brief Creates an Actor with a generated UUID.
+         * @param name Initial Actor name.
+         * @return A Scene-owned handle with identity and Transform components.
+         * @note Appending the handle may invalidate existing Actor pointers
+         *       and references through vector reallocation.
+         */
         Actor& CreateActor(const std::string& name);
+
+        /**
+         * @brief Creates an Actor using a caller-supplied UUID.
+         * @param id Valid UUID not already used by an Actor in this Scene.
+         * @param name Initial Actor name.
+         * @pre id is valid and unused; this function does not check these conditions.
+         * @return A Scene-owned handle with identity and Transform components.
+         * @note Appending the handle may invalidate existing Actor pointers
+         *       and references through vector reallocation.
+         */
         Actor& CreateActorWithID(Core::UUID id, const std::string& name);
 
         Actor& DuplicateActor(Core::UUID sourceID);
