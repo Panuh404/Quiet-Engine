@@ -12,15 +12,15 @@ namespace Quiet::Renderer::Vulkan
     class MeshLibrary;
 }
 
-/**
- * @brief Exposes default Scene construction and file persistence operations.
- * @ingroup quiet_scene
- *
- * Save and Load forward directly to SceneSerializer without adding
- * fallback, exception handling, or rollback.
- */
 namespace Quiet::Scene
 {
+    /**
+     * @brief Exposes default Scene construction and file persistence operations.
+     * @ingroup quiet_scene
+     *
+     * Save and Load forward directly to SceneSerializer without adding
+     * fallback, exception handling, or rollback.
+     */
     class SceneDocument
     {
     public:

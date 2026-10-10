@@ -78,12 +78,34 @@ namespace Quiet::Math
 
 namespace Quiet::Core
 {
+    /**
+     * @brief Owns and coordinates the Editor or Sandbox application systems.
+     * @ingroup quiet_core
+     *
+     * Construction initializes shared systems and mode-specific startup.
+     * Editor project bootstrapping continues during application frames.
+     */
     class Application
     {
     public:
+        /**
+         * @brief Initializes shared systems and selects mode-specific startup.
+         * @param spec Initial configuration stored by the Application.
+         * @note Successful construction does not imply Editor project readiness.
+         * @note Startup exceptions propagate to the caller.
+         */
         explicit Application(AppSpec spec);
+
+        /**
+         * @brief Shuts down application resources and then logging.
+         */
         ~Application();
 
+        /**
+         * @brief Executes application frames until the loop terminates.
+         * @return Zero after ordinary loop termination.
+         * @note Execution exceptions propagate to the caller.
+         */
         int Run();
 
     private:

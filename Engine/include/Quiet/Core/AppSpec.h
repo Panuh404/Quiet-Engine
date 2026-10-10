@@ -6,12 +6,24 @@
 
 namespace Quiet::Core
 {
+    /**
+     * @brief Selects Editor or Sandbox application behavior.
+     * @ingroup quiet_core
+     */
     enum class AppMode : std::uint8_t
     {
         Sandbox = 0,
         Editor
     };
 
+    /**
+     * @brief Supplies initial window configuration and mode-specific startup inputs.
+     * @ingroup quiet_core
+     *
+     * ProjectFilePath selects an editable project for Editor startup.
+     * RuntimePackagePath selects a runtime package directory for Sandbox startup.
+     * Requested window dimensions do not guarantee the resulting maximized size.
+     */
     struct AppSpec
     {
         std::string Name = "Quiet Application";

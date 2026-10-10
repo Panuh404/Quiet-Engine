@@ -576,8 +576,6 @@ be accepted and subsequently discarded during shutdown.
 Acceptance is not a guarantee that an Actor will materialize or that a
 queued destruction will execute.
 
-## Worked examples
-
 ## Scene serialization
 
 Serialization records supported Scene data as JSON. Loading reconstructs
@@ -760,6 +758,8 @@ exceptions and turn them into the same fallback.
 
 Packaged Sandbox startup treats a false Scene load result as an error.
 Its runtime begins separately after loading.
+
+## Worked examples
 
 ### Creation and lookup
 

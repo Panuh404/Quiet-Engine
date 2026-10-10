@@ -18,6 +18,7 @@ Current pages:
 - [Building the documentation](Contributing/BuildingDocumentation.md): prerequisites, theme initialization, generation, diagnostics, and troubleshooting.
 - [Architecture overview](Architecture.md): workspace targets, ownership, scene/runtime separation, startup, execution flow, and packaging.
 - [Scene and Actors](Systems/Scene.md): ownership, identity, component access, copying, runtime lifecycle, deferred Actor requests, and serialization contracts.
+- [Application](Systems/Application.md): configuration, ownership, Editor and Sandbox startup, frame execution, Scene and camera selection, and shutdown.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -57,7 +58,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 | Proposed page | Scope |
 | --- | --- |
 | [Scene and Actors](Systems/Scene.md) | Ownership, identity, components, copying, runtime lifecycle, deferred requests, and load/save behavior |
-| `Docs/Systems/Application.md` | Application startup, project loading, frame orchestration, and shutdown |
+| [Application](Systems/Application.md) | Configuration, ownership, startup, frame orchestration, active Scene and camera selection, and shutdown |
 | `Docs/Systems/Editor.md` | Controllers, commands, history, dirty state, and runtime transitions |
 | `Docs/Systems/Assets.md` | Registry, importers, asset libraries, loading, and reference handling |
 | `Docs/Systems/Renderer.md` | Vulkan resource ownership, frame flow, viewport targets, meshes, and selection passes |
