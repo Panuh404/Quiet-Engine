@@ -1,8 +1,8 @@
 # Scene and Actors
 
-This chapter explains Scene storage, Actor identity, component access, and
-handle lifetime. Cloning, runtime transitions, deferred mutation, and
-serialization will be documented in the next increment.
+This chapter explains Scene storage, Actor identity, component access,
+handle lifetime, Scene copying, and Actor duplication. Runtime transitions,
+deferred mutation, and serialization remain planned.
 
 ## Purpose and concepts
 
@@ -119,7 +119,143 @@ Component references refer to registry storage rather than Actor vector
 storage. Their lifetime must be considered separately. Do not treat either
 kind of reference as a permanent handle.
 
-## Worked example
+## Scene copying and Actor duplication
+
+Scene copying and Actor duplication operate at different scopes.
+
+| Behavior | Scene copy | Actor duplication |
+| --- | --- | --- |
+| Destination | Separate Scene registry | Existing Scene registry |
+| Actor UUID | Preserved | Newly generated |
+| Actor name | Preserved | Source name followed by ` Copy` |
+| Transform | Copied | Copied |
+| Supported optional components | Copied when present | Copied when present |
+| Hierarchy | Entire hierarchy copied | New Actor appended to hierarchy root |
+| Scene settings | Copied | Existing settings remain |
+| Runtime worlds | Not copied; destination runtime is inactive | Duplication itself does not create runtime backend objects |
+
+An empty source name becomes `Actor Copy` during Actor duplication.
+
+### Scene copy flow
+
+The copy constructor delegates to copy assignment after constructing an
+empty Scene.
+
+`Quiet::Scene::Scene::operator=()` performs these operations:
+
+1. Returns immediately for self-assignment.
+2. Clears the destination through `Clear()`.
+3. Copies audio, physics, and render settings.
+4. Recreates each source Actor with its existing UUID and name.
+5. Copies its Transform and supported optional components.
+6. Copies the source hierarchy.
+7. Leaves the destination runtime mode as `RuntimeMode::None`.
+
+The destination owns separate entity and component storage. Its Actor
+handles refer to its own registry.
+
+Source Actor pointers and EnTT entity identifiers must not be used to
+access the destination. Resolve destination Actors by UUID through the
+destination Scene.
+
+Assignment invalidates the destination's previous Actor handles and
+component references. It replaces the destination in place; there is no
+rollback path if component copying or allocation throws.
+
+`Engine/src/Editor/EditorRuntimeController.cpp` uses this copy constructor
+in `Quiet::Editor::EditorRuntimeController::CreateRuntimeScene()`, then
+starts the copied Scene's runtime separately.
+
+### Supported component copies
+
+Both Scene copying and Actor duplication explicitly copy these optional
+components when present:
+
+- `StaticMeshComponent`
+- `MaterialComponent`
+- `DirectionalLightComponent`
+- `RotatorComponent`
+- `CameraComponent`
+- `AudioSourceComponent`
+- `AudioListenerComponent`
+- `ScriptComponent`
+- `RigidBodyComponent`
+- `BoxColliderComponent`
+- `SphereColliderComponent`
+- `CapsuleColliderComponent`
+
+These lists are implemented in `Engine/src/Scene/Scene.cpp`, inside
+`Quiet::Scene::Scene::operator=()` and
+`Quiet::Scene::Scene::TryDuplicateActorWithID()`.
+
+Copying is not automatically extended to every component stored in EnTT.
+Adding another component type requires reviewing both explicit copy paths.
+
+### Separate component storage and shared resources
+
+Copying `StaticMeshComponent` copies its `MeshResourceID`, material slots,
+visibility, and shared mesh pointer.
+
+The component objects and material-slot vectors are separate copies.
+The `Mesh` pointers retain shared ownership of the same loaded
+`Quiet::Renderer::Vulkan::StaticMesh`.
+
+Consequently, changing a copied Actor's Transform changes that Actor's
+component data. Copying the Scene does not create an independent copy of
+every loaded rendering resource.
+
+The relevant declaration is
+`Engine/src/Scene/Components/StaticMeshComponent.h`.
+
+### Script Actor references
+
+`ScriptComponent` and its property vector are copied by value.
+`ScriptProperty::ActorValue` UUIDs are preserved without remapping.
+
+A Scene copy preserves all Actor UUIDs, allowing those values to identify
+corresponding Actors when resolved against the copied Scene.
+
+Duplicating one Actor creates a new UUID but leaves its script properties
+unchanged. A property referring to the source Actor therefore continues
+to refer to the source; it is not automatically redirected to the duplicate.
+
+Both declarations are in
+`Engine/src/Scene/Components/ScriptComponent.h`.
+
+### Actor duplication flow
+
+`TryDuplicateActor()` generates a UUID and delegates to the private
+`TryDuplicateActorWithID()` implementation.
+
+That implementation:
+
+1. Rejects an invalid or already-used destination UUID.
+2. Finds the source Actor, returning `nullptr` if it is absent.
+3. Copies the name, Transform, and supported optional components into
+   local values.
+4. Creates the duplicate with the new UUID and derived name.
+5. Applies the saved component values.
+6. Returns a pointer to the new Scene-owned Actor handle.
+
+Saving component values before creating the duplicate matters because
+creation may reallocate the Actor vector and invalidate the source pointer.
+
+The duplicate is appended to the hierarchy root. It does not inherit the
+source Actor's folder placement.
+
+`DuplicateActor()` wraps the pointer-returning operation. If that operation
+returns `nullptr`, the wrapper logs an error and throws `std::runtime_error`.
+
+The `Try` variant reports its explicit rejection cases through `nullptr`;
+it does not guarantee that allocation or component copying cannot throw.
+
+Both immediate duplication APIs can invalidate existing Actor pointers and
+references through vector reallocation. Retain UUIDs and reacquire handles
+after structural changes.
+
+## Worked examples
+
+### Creation and lookup
 
 The following statements are illustrative code inside an initialized engine
 context with an existing editable `Quiet::Scene::Scene& scene`.
@@ -145,6 +281,44 @@ scene.DestroyActorByID(secondID);
 The component reference is used within the lookup scope, before another
 structural operation.
 
+### Scene copying and Actor duplication
+
+These statements are illustrative code inside an initialized engine context
+with an existing editable `Quiet::Scene::Scene& scene`. They use the Scene and
+Transform declarations introduced earlier.
+
+```cpp
+const auto sourceID = scene.CreateActor("Source").GetID();
+
+// The copied Scene preserves sourceID in a separate registry.
+Quiet::Scene::Scene copiedScene(scene);
+
+if (auto* copiedActor = copiedScene.FindActorByID(sourceID))
+{
+    copiedActor
+        ->GetComponent<Quiet::Scene::TransformComponent>()
+        .WorldTransform.Position.x = 3.0f;
+}
+
+// Duplication creates another Actor in the original Scene.
+if (auto* duplicate = scene.TryDuplicateActor(sourceID))
+{
+    duplicate
+        ->GetComponent<Quiet::Scene::TransformComponent>()
+        .WorldTransform.Position.x = 6.0f;
+}
+```
+
+Expected results:
+
+- The original `Source` Actor retains its initial Transform.
+- The corresponding Actor in `copiedScene` retains `sourceID` and has X = 3.
+- The duplicate in `scene` has a new UUID, the name `Source Copy`, and X = 6.
+- `copiedScene` remains runtime-inactive.
+
+The example uses each returned handle before another structural operation.
+It does not retain the source Actor pointer across duplication.
+
 ## Current limitations and extension points
 
 Actor lookup currently searches the handle vector linearly.
@@ -156,5 +330,5 @@ Direct component access modifies registry data. These templates do not
 themselves record editor history or explicitly synchronize runtime worlds.
 Those integrations require separate documentation.
 
-The next increment will cover Scene copying, Actor duplication, runtime
-lifecycle, deferred Actor requests, and serialization.
+The remaining increments will cover runtime lifecycle, deferred Actor
+requests, and serialization.

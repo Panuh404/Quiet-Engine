@@ -68,8 +68,29 @@ namespace Quiet::Scene
     {
     public:
         Scene();
+
+        /**
+         * @brief Creates an inactive Scene copy with preserved Actor UUIDs.
+         * @param other Source Scene.
+         * @note Copies supported component values, hierarchy, and scene settings.
+         *       Runtime worlds and pending requests are not copied.
+         * @note StaticMeshComponent mesh resources retain shared ownership.
+         */
         Scene(const Scene& other);
+
+        /**
+         * @brief Replaces this Scene with an inactive copy of another Scene.
+         * @param other Source Scene.
+         * @return This Scene.
+         * @note Self-assignment leaves the Scene unchanged.
+         * @note Otherwise, clears the destination before copying, invalidating
+         *       its previous Actor handles and component references.
+         * @note Preserves Actor UUIDs and copies supported component values,
+         *       hierarchy, and scene settings. Mesh resources remain shared.
+         * @note Copy failure does not restore the previous destination state.
+         */
         Scene& operator=(const Scene& other);
+
         ~Scene();
 
         /**
@@ -92,7 +113,29 @@ namespace Quiet::Scene
          */
         Actor& CreateActorWithID(Core::UUID id, const std::string& name);
 
+        /**
+         * @brief Immediately duplicates an Actor with a newly generated UUID.
+         * @param sourceID UUID of the source Actor in this Scene.
+         * @return A Scene-owned handle to the duplicate.
+         * @throws std::runtime_error If the duplication operation returns nullptr.
+         * @note Copies supported component values and appends the duplicate
+         *       to the hierarchy root. Script Actor references are not remapped.
+         * @note Creation may invalidate existing Actor pointers and references
+         *       through vector reallocation.
+         */
         Actor& DuplicateActor(Core::UUID sourceID);
+
+        /**
+         * @brief Attempts immediate Actor duplication with a newly generated UUID.
+         * @param sourceID UUID of the source Actor in this Scene.
+         * @return A Scene-owned duplicate handle, or nullptr if the source is
+         *         absent or the generated destination UUID is invalid or used.
+         * @note Copies supported component values and appends the duplicate
+         *       to the hierarchy root. Script Actor references are not remapped.
+         * @note Creation may invalidate existing Actor pointers and references
+         *       through vector reallocation.
+         * @note Allocation and component-copy exceptions are not caught.
+         */
         Actor* TryDuplicateActor(Core::UUID sourceID);
 
         bool DestroyActorByID(Core::UUID id);
