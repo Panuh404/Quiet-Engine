@@ -1,8 +1,8 @@
 # Scene and Actors
 
 This chapter explains Scene storage, Actor identity, component access,
-handle lifetime, Scene copying, and Actor duplication. Runtime transitions,
-deferred mutation, and serialization remain planned.
+handle lifetime, copying, duplication, and runtime lifecycle.
+Detailed deferred Actor request contracts and serialization remain planned.
 
 ## Purpose and concepts
 
@@ -32,6 +32,11 @@ Scene should be queried.
 | `Engine/src/Scene/Components/ActorIdentityComponent.h` | UUID and Actor name |
 | `Engine/src/Scene/Components/TransformComponent.h` | Actor transform component |
 | `Engine/src/Scene/Transform.h` | Position, rotation in degrees, scale, and matrix construction |
+| `Engine/src/Editor/EditorRuntimeController.cpp` | Editor runtime Scene creation, transitions, and destruction |
+| `Engine/src/Core/Application.cpp` | Frame input/update calls and application shutdown |
+| `Engine/src/Physics/PhysicsWorld.cpp` | Physics bodies, synchronization, and fixed stepping |
+| `Engine/src/Audio/AudioWorld.cpp` | Runtime sources, listener updates, and audio mix handling |
+| `Engine/src/Scripting/ScriptWorld.cpp` | Script instance construction, callbacks, updates, and teardown |
 
 ## Ownership and storage
 
@@ -253,6 +258,156 @@ Both immediate duplication APIs can invalidate existing Actor pointers and
 references through vector reallocation. Retain UUIDs and reacquire handles
 after structural changes.
 
+## Runtime lifecycle
+
+Runtime connects a Scene's component data to physics, audio, and scripting
+worlds. These worlds belong to the Scene; application-level dependencies
+are owned elsewhere.
+
+### Runtime modes
+
+`Quiet::Scene::RuntimeMode` describes the Scene's runtime state.
+
+| Mode | Scene behavior |
+| --- | --- |
+| `None` | Runtime input and update calls return without performing runtime work |
+| `Simulate` | Physics, audio, and scripting run; the Scene's Simulate input handler is currently empty |
+| `Play` | Physics, audio, and scripting run; Scene input updates the primary camera when one exists |
+
+Simulate runs scripting and audio as well as physics.
+
+The Editor's Edit, Simulate, and Play modes are managed separately by the
+editor controller. Scene runtime mode does not itself create a copied Scene,
+switch editor UI state, or control mouse capture.
+
+### Ownership and borrowed dependencies
+
+Scene owns its `PhysicsWorld`, `AudioWorld`, and `ScriptWorld`.
+
+- PhysicsWorld borrows the application-owned PhysicsSubsystem.
+- AudioWorld borrows the application-owned AudioSubsystem.
+- ScriptWorld borrows its Scene, ProjectContext, and Input.
+
+These dependencies must remain alive while the worlds use them.
+
+`Application::ShutdownCommon()` ends active runtime before destroying its
+Scenes and application-level subsystems.
+
+### Runtime startup
+
+`Scene::BeginRuntime()` performs these operations:
+
+1. Rejects `RuntimeMode::None` with a warning and returns without changing
+   the current runtime.
+2. Ends an existing active runtime before starting the requested mode.
+3. Clears contact events, creates PhysicsWorld, and builds physics bodies
+   from the registry.
+4. Creates AudioWorld, applies scene mix settings, resolves the primary
+   audio listener, and builds audio sources.
+5. Creates ScriptWorld using the Scene, ProjectContext, and Input.
+6. Clears pending Actor creation and destruction requests.
+7. Sets the requested runtime mode and invokes its Scene begin hook.
+8. Builds script instances and begins them.
+
+Script `OnCreate` callbacks therefore run after native world construction
+and after the Scene is marked runtime-active.
+
+AudioWorld establishes its listener before starting eligible
+`PlayOnStart` sources.
+
+The Scene's Simulate and Play begin/end hook bodies are currently empty.
+Their dispatch functions select the hook and log the transition.
+
+`BeginRuntime()` returns no success value. Startup exceptions are not caught
+by this function, and it has no rollback path for partially constructed
+runtime state.
+
+`IsRuntimeActive()` tests the mode flag. It does not confirm that every
+script loaded or every requested backend object was created successfully.
+
+### Input and frame updates
+
+Application frame code calls `HandleRuntimeInput()` before `Update()` for
+active runtime Scenes. Both methods return immediately while runtime is
+inactive.
+
+In Play, Scene input resolves the primary camera and updates its Transform
+through `CameraController::UpdateFromInput()` and the camera pilot helpers.
+Without a primary camera, that handler returns.
+
+Simulate viewport navigation is handled by Application's editor camera
+logic; the Scene's Simulate input handler currently performs no work.
+
+`deltaTime` is the frame duration in seconds. Scene does not perform a
+common validation or clamp before passing it through its runtime phases.
+
+`Scene::UpdateRuntime()` executes these phases in order:
+
+| Phase | Operation |
+| --- | --- |
+| 1 | Update eligible Rotator components |
+| 2 | Synchronize/reload script instances and run script updates |
+| 3 | Update physics and collect contact events |
+| 4 | Dispatch contact events to scripts |
+| 5 | Flush deferred Actor creation requests |
+| 6 | Flush deferred Actor destruction requests |
+| 7 | Synchronize physics bodies after structural changes |
+| 8 | Resolve the primary audio listener and update runtime audio |
+
+Rotators update Actors without RigidBodyComponent and Actors with kinematic
+rigid bodies. Actors with other rigid-body motion types are skipped.
+
+PhysicsWorld also synchronizes bodies at the beginning of its update.
+Its simulation uses a fixed step of `1 / 60` seconds, with accumulated time
+capped at four steps. Time beyond that cap is discarded.
+
+Script updates receive the frame duration rather than one callback for each
+physics step.
+
+Runtime updates can create or destroy Actors while flushing requests.
+Actor pointers and references must therefore not be retained across updates
+as permanent handles. Detailed request acceptance and cancellation contracts
+will be documented in the next increment.
+
+### Runtime shutdown
+
+`Scene::EndRuntime()` returns immediately when runtime mode is `None`.
+For an active runtime, it:
+
+1. Ends scripts.
+2. Invokes the Scene's mode-end hook.
+3. Releases ScriptWorld, AudioWorld, and PhysicsWorld, in that order.
+4. Clears pending Actor requests and contact events.
+5. Sets runtime mode to `None`.
+
+Script teardown runs before native worlds are released.
+ScriptWorld ends its instances in reverse creation order, invoking
+`OnDestroy` for started instances that provide that callback.
+
+AudioWorld destroys its sources and restores the previously saved
+application audio mix when applicable.
+
+Ending runtime does not clear the Actor registry, hierarchy, or scene
+settings, and does not restore component values to their pre-runtime state.
+
+The Editor separately destroys its runtime Scene copy after ending runtime.
+Discarding that copy leaves the authored editor Scene available.
+
+### EndRuntime and Clear
+
+`EndRuntime()` stops runtime while retaining scene data.
+
+`Clear()` resets runtime worlds, Actor storage, hierarchy, settings, queues,
+and contact events. It does not call `Scene::EndRuntime()` or dispatch the
+Scene mode-end hook.
+
+Resetting ScriptWorld still invokes its destructor, whose shutdown path
+ends scripts. Clear therefore must not be described as skipping all script
+teardown.
+
+Copy assignment begins with `Clear()`. It does not use the same Scene
+mode-end dispatch as an explicit `EndRuntime()` call.
+
 ## Worked examples
 
 ### Creation and lookup
@@ -319,6 +474,30 @@ Expected results:
 The example uses each returned handle before another structural operation.
 It does not retain the source Actor pointer across duplication.
 
+### Entering and stopping Play in the Editor
+
+This example traces the existing editor workflow rather than introducing
+another runtime controller.
+
+The entry point is
+`Quiet::Editor::EditorRuntimeController::EnterPlayMode()` in
+`Engine/src/Editor/EditorRuntimeController.cpp`.
+
+1. The controller checks that the Editor is in Edit mode.
+2. It clears the piloted-camera selection.
+3. `CreateRuntimeScene()` destroys any previous runtime Scene and stops
+   editor audio preview.
+4. It copy-constructs a Scene from the authored editor Scene.
+5. It calls `BeginRuntime(RuntimeMode::Play, ...)` on that copy.
+6. After startup returns, it sets the Editor mode to Play, saves the previous
+   mouse-capture state, and enables capture.
+7. Application frame code applies runtime input and updates the active copy.
+8. `StopPlayMode()` ends runtime and destroys the copy, returns the Editor
+   to Edit mode, and restores the previous mouse-capture state.
+
+The authored Scene remains separate from runtime component changes.
+Stopping the runtime copy does not copy its values back into the authored Scene.
+
 ## Current limitations and extension points
 
 Actor lookup currently searches the handle vector linearly.
@@ -330,5 +509,5 @@ Direct component access modifies registry data. These templates do not
 themselves record editor history or explicitly synchronize runtime worlds.
 Those integrations require separate documentation.
 
-The remaining increments will cover runtime lifecycle, deferred Actor
-requests, and serialization.
+The remaining increments will cover detailed deferred Actor request
+contracts and serialization.

@@ -107,6 +107,13 @@ namespace Quiet::Scene
             return m_Registry->try_get<T>(m_Entity);
         }
 
+        /**
+         * @brief Returns the requested component from the owning registry.
+         * @tparam T Component type other than ActorIdentityComponent.
+         * @pre The owning registry is alive and the entity is valid.
+         * @pre The Actor has component T.
+         * @return A const reference to the registry-owned component.
+         */
         template<typename T>
         [[nodiscard]] const T* TryGetComponent() const
         {

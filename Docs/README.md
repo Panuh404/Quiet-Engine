@@ -17,7 +17,8 @@ Current pages:
 - [Documentation conventions](Contributing/Documentation.md): structure, writing standards, API comments, and verification requirements.
 - [Building the documentation](Contributing/BuildingDocumentation.md): prerequisites, theme initialization, generation, diagnostics, and troubleshooting.
 - [Architecture overview](Architecture.md): workspace targets, ownership, scene/runtime separation, startup, execution flow, and packaging.
-- [Scene and Actors](Systems/Scene.md): ownership, identity, component access, handle lifetime, Scene copying, and Actor duplication; runtime and serialization sections remain in progress.
+- [Scene and Actors](Systems/Scene.md): ownership, identity, component access, handle lifetime, copying, duplication, and runtime lifecycle; detailed deferred requests and serialization remain in progress.
+
 Existing branding assets remain in `Docs/Brand/`.
 
 ## Reading paths
@@ -55,7 +56,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 | Proposed page | Scope |
 | --- | --- |
-| [Scene and Actors](Systems/Scene.md) | Ownership, identity, components, handle lifetime, copying, and duplication; runtime lifecycle, deferred mutation, and serialization remain planned |
+| [Scene and Actors](Systems/Scene.md) | Ownership, identity, components, copying, duplication, and runtime lifecycle; detailed deferred requests and serialization remain planned |
 | `Docs/Systems/Application.md` | Application startup, project loading, frame orchestration, and shutdown |
 | `Docs/Systems/Editor.md` | Controllers, commands, history, dirty state, and runtime transitions |
 | `Docs/Systems/Assets.md` | Registry, importers, asset libraries, loading, and reference handling |

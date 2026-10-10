@@ -45,11 +45,15 @@ namespace Quiet::Scripting
 
 namespace Quiet::Scene
 {
+    /**
+     * @brief Selects inactive, Simulate, or Play Scene runtime behavior.
+     * @ingroup quiet_scene
+     */
     enum class RuntimeMode
     {
-        None,
-        Simulate,
-        Play
+        None,     ///< Scene runtime input and updates are inactive.
+        Simulate, ///< Runs physics, audio, and scripts with Simulate input behavior.
+        Play      ///< Runs physics, audio, and scripts with Play camera input.
     };
 
     /**
@@ -159,13 +163,50 @@ namespace Quiet::Scene
         [[nodiscard]] SceneHierarchyState& GetHierarchy() { return m_Hierarchy; }
         [[nodiscard]] const SceneHierarchyState& GetHierarchy() const { return m_Hierarchy; }
 
+        /**
+         * @brief Starts Scene physics, audio, and scripting for the requested mode.
+         * @param mode Simulate or Play; None logs a warning and leaves state unchanged.
+         * @param physicsSubsystem Application-owned physics backend resources.
+         * @param audioSubsystem Application-owned audio backend resources.
+         * @param projectContext Project context borrowed by ScriptWorld.
+         * @param input Input object borrowed by ScriptWorld.
+         * @pre Supplied dependencies remain alive while runtime worlds use them.
+         * @note Ends an existing active runtime before starting the requested mode.
+         * @note Native worlds are constructed before script instances begin.
+         * @note Startup exceptions propagate without transactional rollback.
+         */
         void BeginRuntime(RuntimeMode mode,
                           Physics::PhysicsSubsystem& physicsSubsystem,
                           Audio::AudioSubsystem& audioSubsystem,
                           const Project::ProjectContext& projectContext,
                           const Input::Input& input);
+
+        /**
+         * @brief Ends active runtime while retaining Scene component data.
+         * @note Does nothing when runtime mode is None.
+         * @note Ends scripts before releasing scripting, audio, and physics worlds.
+         * @note Clears pending Actor requests and contact events.
+         * @note Does not restore component values to their pre-runtime state.
+         */
         void EndRuntime();
+
+        /**
+         * @brief Applies the active runtime mode's Scene input behavior.
+         * @param input Current input state.
+         * @param deltaTime Frame duration in seconds.
+         * @note Does nothing while runtime is inactive.
+         * @note Play updates the primary camera when present; Simulate currently
+         *       performs no Scene-level input work.
+         */
         void HandleRuntimeInput(const Input::Input& input, float deltaTime);
+
+        /**
+         * @brief Updates active Scene runtime using the supplied frame duration.
+         * @param deltaTime Frame duration in seconds.
+         * @note Does nothing while runtime is inactive.
+         * @note Physics uses its own fixed-step accumulator.
+         * @note Flushing Actor requests can invalidate Actor pointers and references.
+         */
         void Update(float deltaTime);
 
         // Runtime Actor API
