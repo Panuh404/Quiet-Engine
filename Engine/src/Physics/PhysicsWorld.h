@@ -24,6 +24,13 @@ namespace Quiet::Physics
 {
     class PhysicsSubsystem;
 
+    /**
+     * @brief Owns one Scene's runtime physics simulation and body bindings.
+     * @ingroup quiet_physics
+     *
+     * Borrows an initialized PhysicsSubsystem and receives registry references
+     * for body synchronization and simulation updates.
+     */
     class PhysicsWorld
     {
     public:
@@ -35,13 +42,51 @@ namespace Quiet::Physics
         PhysicsWorld(PhysicsWorld&&) = delete;
         PhysicsWorld& operator=(PhysicsWorld&&) = delete;
 
+        /**
+         * @brief Rebuilds runtime bodies from eligible registry entities.
+         * @note Requires identity, transform, rigid body, and exactly one collider.
+         * @note Invalid candidates are skipped; no aggregate success is returned.
+         */
         void BuildBodies(entt::registry& registry);
+
+        /**
+         * @brief Removes invalid bindings and creates missing eligible bodies.
+         * @note Does not refresh existing shapes, motion types, or creation settings.
+         * @note Checks recorded Actor UUIDs as well as entity validity.
+         */
         void SynchronizeBodies(entt::registry& registry);
+
+        /**
+         * @brief Synchronizes bodies and advances fixed-step physics.
+         * @param deltaTime Elapsed seconds accumulated up to four 60 Hz steps.
+         * @param registry Scene registry supplying bodies and receiving transforms.
+         * @note Body synchronization precedes delta validation.
+         * @note Excess elapsed time is discarded; no transform interpolation is added.
+         * @note Jolt update error masks are logged without stopping subsequent steps.
+         */
         void Update(float deltaTime, entt::registry& registry);
 
+        /**
+         * @brief Applies an impulse to a bound Dynamic physics body.
+         * @return True when the command is issued; false for unavailable bodies,
+         *         non-Dynamic bodies, or non-finite input.
+         * @note Checks the actual Jolt motion type.
+         */
         bool ApplyImpulse(entt::entity entity, const glm::vec3& impulse);
+
+        /**
+         * @brief Sets the linear velocity of a bound Dynamic physics body.
+         * @return True when the command is issued; false for unavailable bodies,
+         *         non-Dynamic bodies, or non-finite input.
+         * @note Actor transforms are updated through normal physics synchronization.
+         */
         bool SetLinearVelocity(entt::entity entity, const glm::vec3& velocity);
 
+        /**
+         * @brief Drains the buffered contact events.
+         * @return Events queued since the previous drain or queue clear.
+         * @note Events retain callback arrival order.
+         */
         [[nodiscard]] std::vector<PhysicsContactEvent> ConsumeContactEvents();
 
     private:

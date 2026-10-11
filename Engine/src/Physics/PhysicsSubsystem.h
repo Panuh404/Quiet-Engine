@@ -13,6 +13,13 @@ namespace Quiet::Physics
 {
     class PhysicsWorld;
 
+    /**
+     * @brief Manages shared Jolt initialization, allocation, and job infrastructure.
+     * @ingroup quiet_physics
+     *
+     * Must outlive all PhysicsWorld objects using its dependencies.
+     * Initialization requires that the global Jolt factory is not already set.
+     */
     class PhysicsSubsystem
     {
     public:
