@@ -9,7 +9,7 @@ The repository's main introduction remains in the root [README](../README.md). T
 The documentation foundation includes conventions, local generation tooling, and C++ system groups. The generated reference currently provides an API inventory; detailed symbol contracts will be added incrementally.
 
 The architecture overview and system chapters for Scene, Application,
-Editor, Assets, Renderer, Physics, and Audio are available. Additional system
+Editor, Assets, Renderer, Physics, Audio, and Scripting are available. Additional system
 chapters are being added incrementally. Practical guides and file-format
 references remain planned.
 
@@ -25,6 +25,7 @@ Current pages:
 - [Renderer](Systems/Renderer.md): ownership, synchronization, render passes, viewport resizing, swapchain recreation, and teardown.
 - [Physics](Systems/Physics.md): ownership, fixed stepping, body construction, transform synchronization, runtime commands, collision filtering, and contact delivery.
 - [Audio](Systems/Audio.md): ownership, sound construction, runtime synchronization, playback commands, listeners, spatialization, mixing, one-shots, previews, and teardown.
+- [Scripting](Systems/Scripting.md): Lua ownership, environments, callbacks, synchronization, hot reload, properties, bindings, deferred Actor requests, and shutdown.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -70,7 +71,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 | [Renderer](Systems/Renderer.md) | Ownership, frame synchronization, render passes, viewport resizing, swapchain recreation, and teardown |
 | [Physics](Systems/Physics.md) | Ownership, fixed stepping, body and collider contracts, runtime commands, contact delivery, and teardown |
 | [Audio](Systems/Audio.md) | Ownership, runtime sources, playback contracts, listeners, spatial updates, shared mixing, previews, and teardown |
-| `Docs/Systems/Scripting.md` | Environments, lifecycle, bindings, metadata, hot reload, and deferred mutation |
+| [Scripting](Systems/Scripting.md) | Lua lifecycle, environments, callbacks, synchronization, reload, property discovery, bindings, and deferred mutation |
 | `Docs/Systems/Cooking.md` | Conversion stages, cache integrity, package construction, and runtime loading |
 
 ### Reference and direction
