@@ -21,6 +21,7 @@ Current pages:
 - [Application](Systems/Application.md): configuration, ownership, Editor and Sandbox startup, frame execution, Scene and camera selection, and shutdown.
 - [Editor](Systems/Editor.md): responsibilities, ownership, requests, mutation boundaries, history, dirty state, Scene persistence, and runtime transitions.
 - [Assets](Systems/Assets.md): identity, registry persistence, importing, library ownership, incremental loading, replacement, and runtime package loading.
+- [Renderer](Systems/Renderer.md): ownership, synchronization, render passes, viewport resizing, swapchain recreation, and teardown.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -63,7 +64,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 | [Application](Systems/Application.md) | Configuration, ownership, startup, frame orchestration, active Scene and camera selection, and shutdown |
 | [Editor](Systems/Editor.md) | Responsibilities, ownership, commands, history, dirty state, Scene persistence, and runtime transitions |
 | [Assets](Systems/Assets.md) | Identity, registry persistence, importing, ownership, incremental loading, replacement, and runtime loading |
-| `Docs/Systems/Renderer.md` | Vulkan resource ownership, frame flow, viewport targets, meshes, and selection passes |
+| [Renderer](Systems/Renderer.md) | Ownership, frame synchronization, render passes, viewport resizing, swapchain recreation, and teardown |
 | `Docs/Systems/Physics.md` | Jolt integration, fixed stepping, transform authority, colliders, and contacts |
 | `Docs/Systems/Audio.md` | Subsystem and world ownership, sources, listeners, spatialization, and mixing |
 | `Docs/Systems/Scripting.md` | Environments, lifecycle, bindings, metadata, hot reload, and deferred mutation |

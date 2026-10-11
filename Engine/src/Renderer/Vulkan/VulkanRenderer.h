@@ -60,6 +60,13 @@ namespace Quiet::Renderer::Vulkan
     class SelectionOutlinePipeline;
     class SelectionOutlineRenderSystem;
 
+    /**
+     * @brief Owns Vulkan rendering infrastructure and coordinates frame rendering.
+     * @ingroup quiet_renderer
+     *
+     * Borrows the Window and receives Scene and camera inputs from Application.
+     * Owns mesh and texture libraries, frame resources, viewport targets, and UI.
+     */
     class VulkanRenderer
     {
     public:
@@ -69,14 +76,44 @@ namespace Quiet::Renderer::Vulkan
         VulkanRenderer(const VulkanRenderer&) = delete;
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
+        /**
+         * @brief Acquires an image, records and submits rendering, and presents it.
+         * @param scene Scene supplied by Application.
+         * @param cameraData Camera values uploaded for the acquired image.
+         * @param imguiLayer UI layer whose frame has been built by the caller.
+         * @param drawEditorGrid Requests Editor grid rendering.
+         * @param selectedActorID Optional Actor identity for selection feedback.
+         * @return True on the normal successful path; false after resize-driven
+         *         or out-of-date/suboptimal presentation recreation.
+         * @note True does not establish GPU completion.
+         * @note False can occur after graphics submission and does not undo updates.
+         * @note Exceptions propagate; retry synchronization is not restored.
+         */
         bool DrawFrame(Scene::Scene& scene,
                        const CameraUniformData& cameraData,
                        UI::ImGuiLayer& imguiLayer,
                        bool drawEditorGrid,
                        std::optional<Core::UUID> selectedActorID);
 
+        /**
+         * @brief Requests device idle when the logical device exists.
+         * @note The Vulkan result is not checked or returned.
+         */
         void WaitIdle() const;
+
+        /**
+         * @brief Rebuilds swapchain-dependent rendering resources.
+         * @note Waits for nonzero framebuffer dimensions and checks device idle.
+         * @note Invalidates references to replaced UI and graphics command objects.
+         * @note Clears pending viewport sizing; exceptions provide no rollback.
+         */
         void RecreateSwapchain();
+
+        /**
+         * @brief Advances or applies the pending Scene viewport resize.
+         * @note Different nonzero dimensions require three eligible application calls.
+         * @note The device-idle result is not checked.
+         */
         void ApplyPendingViewportResize();
 
         [[nodiscard]] MeshLibrary& GetMeshLibrary() { return *m_MeshLibrary; }
@@ -88,7 +125,18 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] UI::ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
         [[nodiscard]] const UI::ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
 
+        /**
+         * @brief Obtains the UI texture identifier for a ready Scene target.
+         * @return Empty when the layer or target is unavailable, invalid, or unready.
+         * @note Do not retain the identifier across target or UI recreation.
+         */
         [[nodiscard]] ImTextureID GetSceneViewportTextureID();
+
+        /**
+         * @brief Reports the renderer's Scene viewport readiness flag.
+         * @note Set during Scene command recording, before GPU execution completes.
+         * @note Not a submission fence or GPU completion query.
+         */
         [[nodiscard]] bool IsSceneViewportReady() const { return m_SceneViewportReady; }
 
         [[nodiscard]] const PhysicalDevice& GetPhysicalDevice() const { return *m_PhysicalDevice; }
@@ -100,6 +148,11 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] VkExtent2D GetSwapchainExtent() const;
         [[nodiscard]] VkExtent2D GetSceneViewportExtent() const;
 
+        /**
+         * @brief Stores a deferred Scene viewport size request.
+         * @note Changed dimensions reset the application-call stability counter.
+         * @note Zero dimensions remain pending without resizing.
+         */
         void RequestViewportResize(std::uint32_t width, std::uint32_t height);
 
     private:

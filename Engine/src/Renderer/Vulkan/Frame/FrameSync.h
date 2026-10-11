@@ -10,6 +10,14 @@ namespace Quiet::Renderer::Vulkan
     class LogicalDevice;
     class Swapchain;
 
+    /**
+     * @brief Owns frame acquisition, submission, and presentation synchronization.
+     * @ingroup quiet_renderer
+     *
+     * Uses one initially signaled in-flight fence and image-available semaphore,
+     * plus one render-finished semaphore per swapchain image.
+     * The logical device must outlive this object's synchronization resources.
+     */
     class FrameSync
     {
     public:
