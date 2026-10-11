@@ -15,6 +15,13 @@ namespace Quiet::Audio
     class AudioLibrary;
     class AudioWorld;
 
+    /**
+     * @brief Owns shared audio playback infrastructure and asset metadata.
+     * @ingroup quiet_audio
+     *
+     * Owns the miniaudio engine, audio library, preview sound, and mixing groups.
+     * Must outlive AudioWorld instances that borrow its playback infrastructure.
+     */
     class AudioSubsystem
     {
     public:
@@ -31,18 +38,47 @@ namespace Quiet::Audio
         [[nodiscard]] AudioLibrary& GetLibrary();
         [[nodiscard]] const AudioLibrary& GetLibrary() const;
 
+        /**
+         * @brief Sets a shared bus level, clamping finite input to 0–4.
+         * @return False for invalid input, unavailable infrastructure,
+         *         or a reported backend failure.
+         */
         bool SetBusVolume(AudioBus bus, float volume);
+
+        /** @brief Returns the stored bus level, or 1 for an invalid bus. */
         [[nodiscard]] float GetBusVolume(AudioBus bus) const;
 
+        /**
+         * @brief Requests one-shot file playback without a dedicated sound group.
+         * @return True when the backend request succeeds.
+         * @note Returns no playback control handle.
+         */
         [[nodiscard]] bool PlayOneShot(const std::filesystem::path& filepath) const;
+
+        /** @brief Resolves loaded metadata and requests one-shot playback. */
         [[nodiscard]] bool PlayOneShotAsset(std::string_view assetID) const;
 
+        /**
+         * @brief Replaces the preview with a streamed, nonspatial sound.
+         * @return True when initialization and playback startup succeed.
+         * @note Missing metadata preserves the current preview.
+         * @note Replacement failure after metadata resolution leaves no preview.
+         */
         [[nodiscard]] bool StartPreviewAsset(std::string_view assetID);
+
+        /** @brief Releases the preview sound and clears its recorded asset ID. */
         void StopPreview();
 
+        /** @brief Reports whether the preview sound is playing. */
         [[nodiscard]] bool IsPreviewPlaying() const;
+
+        /** @brief Reports whether the requested asset is the playing preview. */
         [[nodiscard]] bool IsPreviewingAsset(std::string_view assetID) const;
 
+        /**
+         * @brief Returns the recorded preview ID, which may remain after completion.
+         * @note Borrows storage that preview changes can invalidate.
+         */
         [[nodiscard]] std::string_view GetPreviewAssetID() const { return m_PreviewAssetID; }
 
     private:
