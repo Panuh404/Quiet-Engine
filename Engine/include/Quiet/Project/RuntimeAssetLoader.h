@@ -20,6 +20,13 @@ namespace Quiet::Renderer::Vulkan
 
 namespace Quiet::Project
 {
+    /**
+     * @brief Loads packaged assets into externally owned resource libraries.
+     * @ingroup quiet_assets
+     *
+     * Receives an already validated manifest and borrows runtime dependencies.
+     * Batch failure does not roll back previously loaded resources.
+     */
     class RuntimeAssetLoader
     {
     public:
@@ -31,10 +38,29 @@ namespace Quiet::Project
             const Renderer::Vulkan::LogicalDevice& logicalDevice,
             const Renderer::Vulkan::GraphicsCommands& graphicsCommands);
 
+        /**
+         * @brief Reads packaged QMesh records and creates or replaces mesh resources.
+         * @return True when no selected record reports failure.
+         * @note Reported failures do not stop remaining mesh records.
+         * @note Uncaught exceptions propagate; no batch rollback is provided.
+         */
         bool LoadMeshAssets(const std::filesystem::path& packageRoot, const RuntimeManifest& manifest);
-        bool LoadTextureAssets(const std::filesystem::path& packageRoot, const RuntimeManifest& manifest);
-        bool LoadAudioAssets(const std::filesystem::path& packageRoot, const RuntimeManifest& manifest);
 
+        /**
+         * @brief Reads packaged QTexture records and creates or replaces textures.
+         * @return True when no selected record reports failure.
+         * @note Reported failures do not stop remaining texture records.
+         * @note Uncaught exceptions propagate; no batch rollback is provided.
+         */
+        bool LoadTextureAssets(const std::filesystem::path& packageRoot, const RuntimeManifest& manifest);
+
+        /**
+         * @brief Loads packaged audio files with existing-entry replacement enabled.
+         * @return True when no selected record reports failure.
+         * @note Reported failures do not stop remaining audio records.
+         * @note Does not use a QAudio reader.
+         */
+        bool LoadAudioAssets(const std::filesystem::path& packageRoot, const RuntimeManifest& manifest);
     private:
         bool LoadMeshAsset(const std::filesystem::path& packageRoot, const RuntimeAssetRecord& record);
         bool LoadTextureAsset(const std::filesystem::path& packageRoot, const RuntimeAssetRecord& record);

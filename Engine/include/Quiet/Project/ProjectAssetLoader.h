@@ -47,6 +47,13 @@ namespace Quiet::Project
         bool HadFailures = false;
     };
 
+    /**
+     * @brief Loads project assets into externally owned resource libraries.
+     * @ingroup quiet_assets
+     *
+     * Borrows project context, libraries, and renderer resources.
+     * Loading can partially succeed and does not automatically relink Scenes.
+     */
     class ProjectAssetLoader
     {
     public:
@@ -72,11 +79,41 @@ namespace Quiet::Project
         bool ReloadRuntimeSupportAssets();
         bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
 
+        #pragma region Incremental Reloading
+        /**
+         * @brief Resets incremental progress, clears audio, and prepares mesh loading.
+         * @param forceReimport Requests replacement of existing external resources.
+         * @note Mesh and texture libraries are not cleared.
+         * @note Empty stages can complete immediately.
+         */
         void BeginIncrementalReload(bool forceReimport = false);
+
+        /**
+         * @brief Attempts one record or advances a completed loading stage.
+         * @note Failed results still advance progress and set HadFailures.
+         * @note Executes synchronously; uncaught exceptions interrupt advancement.
+         */
         void AdvanceIncrementalReload();
 
-        [[nodiscard]] bool IsIncrementalReloadComplete() const { return m_IncrementalReloadProgress.Stage == AssetReloadStage::Complete; }
-        [[nodiscard]] const AssetReloadProgress& GetIncrementalReloadProgress() const { return m_IncrementalReloadProgress; }
+        /**
+         * @brief Reports whether the sequence reached Complete.
+         * @note Completion does not imply that all loads succeeded.
+         */
+        [[nodiscard]] bool IsIncrementalReloadComplete() const
+        {
+            return m_IncrementalReloadProgress.Stage == AssetReloadStage::Complete;
+        }
+
+        /**
+         * @brief Returns current-stage counts and sequence failure information.
+         * @note Completed counts attempted records, including reported failures.
+         * @note Counts reset at stage transitions.
+         */
+        [[nodiscard]] const AssetReloadProgress& GetIncrementalReloadProgress() const
+        {
+            return m_IncrementalReloadProgress;
+        }
+        #pragma endregion
 
     private:
         bool LoadBuiltInMesh(const AssetRecord& record);
