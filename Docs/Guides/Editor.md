@@ -1,0 +1,205 @@
+# Editor
+
+This guide covers Scene editing, viewport navigation, Actor components,
+saving, and testing through Play and Simulate.
+
+## Prerequisites
+
+Build Quiet_Editor and open an editable project using
+[Getting Started](../GettingStarted.md) and [Projects](Projects.md).
+
+Wait for project loading to complete before editing.
+
+## Main panels
+
+| Panel | Purpose |
+| --- | --- |
+| Scene | Actor and folder hierarchy |
+| Inspector | Selected Actor properties and components |
+| Viewport | Scene viewing, selection, and transform gizmos |
+| Scene Settings | Scene-level rendering, physics, and audio settings |
+| Console | Engine messages and diagnostics |
+| Debug | Runtime and rendering diagnostics |
+
+Use View → Reset Layout to restore the default arrangement.
+
+## Select and inspect an Actor
+
+1. Select an Actor in the Scene panel.
+2. Inspect its components in Inspector.
+3. Edit its Transform fields while in Edit mode.
+
+Viewport selection is also available by left-clicking a pickable mesh
+or displayed debug icon. Clicking empty space clears selection.
+
+Selection is suppressed during navigation capture, dragging assets,
+and gizmo interaction.
+
+An empty Actor has no rendered mesh, so select it through the hierarchy.
+
+## Create and modify Actors
+
+Use Scene → Create Empty Actor from the main menu.
+
+The Scene panel's creation menu also provides Empty Actor, Directional
+Light, Folder, and available primitive or imported-mesh choices.
+
+Folders organize the hierarchy; they are not rendered mesh Actors.
+
+Select an Actor and use Inspector's + Add Component button to choose an
+available component. Where supported, the component menu provides
+Remove Component.
+
+Component availability and required dependencies vary by type.
+Use the Inspector's validation and feedback rather than assuming every
+component combination produces a runtime resource.
+
+Ctrl+D duplicates the selected Actor.
+Delete removes the selected Actor.
+
+These Actor shortcuts do not operate on Scene selection while the Asset
+Browser has keyboard focus.
+
+## Navigate the Viewport
+
+Begin mouse navigation over the Viewport image.
+
+| Input | Operation |
+| --- | --- |
+| Hold right mouse button and move mouse | Fly-camera look |
+| W / S while flying | Forward / backward |
+| A / D while flying | Left / right |
+| Q / E while flying | Down / up |
+| Space while flying | Up |
+| Shift while flying | Movement-speed boost |
+| Alt + left mouse drag | Orbit |
+| Middle mouse drag | Pan |
+| F with an Actor selected | Focus selected Actor |
+
+Release the navigation mouse button to end capture.
+Losing window focus also ends navigation capture.
+
+Use the viewport camera-speed control to adjust movement speed.
+
+## Transform gizmos
+
+Select an Actor in Edit mode, then use the viewport toolbar or shortcuts:
+
+| Shortcut | Operation |
+| --- | --- |
+| T | Translate |
+| R | Rotate |
+| S | Scale |
+| L | Toggle Local / World for translation and rotation |
+| G | Toggle snapping |
+
+Scale does not use the Local / World toggle.
+
+Drag the gizmo handles to edit the selected transform.
+Rotation fields use degrees.
+
+Gizmo shortcuts are suppressed during text input, UI keyboard capture,
+mouse capture, or active viewport navigation.
+
+## Undo and redo
+
+Ctrl+Z undoes recorded Scene changes.
+Ctrl+Y or Ctrl+Shift+Z redoes them.
+
+History operates in Edit mode. Loading or replacing a Scene resets the
+Scene editing session and history.
+
+Scene history is not a universal undo mechanism for project files,
+asset operations, or runtime activity.
+
+## Save and reload a Scene
+
+Use File → Save Scene or Ctrl+S to save to the active Scene path.
+
+Expected result: saving succeeds, the Scene's saved state is updated,
+and the Console reports the destination.
+
+File → Load Scene or Ctrl+O reloads that active path. This action is not
+an arbitrary-file picker.
+
+File → New Scene or Ctrl+N creates a default Scene and resets the active
+path to the project's startup Scene path. A later save writes there.
+
+Save work before creating or loading another Scene. These actions can
+replace the current in-memory Scene.
+
+Scene creation, saving, and loading are available in Edit mode.
+
+## Play and Simulate
+
+Both modes run a copy of the editable Scene.
+
+| Mode | Start / stop shortcut | Viewing and input |
+| --- | --- | --- |
+| Simulate | F6 | Editor viewing and navigation |
+| Play | F5 | Runtime camera selection and mouse capture |
+
+Use the matching shortcut again, or the Scene menu's stop action,
+to return to Edit mode. Stop the current mode before starting the other.
+
+Both modes initialize physics, audio, and scripting. Simulate is not
+limited to physics alone.
+
+Runtime changes affect the copy and are discarded when the mode stops.
+They are not automatically applied to the editable Scene.
+
+Inspector authoring and normal Scene mutation actions are disabled
+during runtime modes.
+
+Starting runtime also stops an active editor audio preview.
+
+### Mouse capture in Play
+
+Play requests mouse capture on entry.
+
+Shift+F1 toggles capture when editor viewport navigation is not active.
+Use this to regain pointer access when needed.
+
+Stopping Play restores the capture state recorded before entering Play.
+
+## Shortcut context
+
+Keyboard actions can be suppressed when the UI captures keyboard input
+or text entry.
+
+Normal Scene and history shortcuts are suppressed during mouse capture.
+Play and Simulate shortcuts are checked before that capture restriction,
+but still respect UI keyboard/text capture.
+
+When a shortcut appears inactive, finish text editing, release viewport
+navigation, and check the current mode and focused panel.
+
+## First editing exercise
+
+1. Open a project and remain in Edit mode.
+2. Select a visible Actor in the Scene panel.
+3. Press F to focus it.
+4. Change its position through Inspector or the translation gizmo.
+5. Undo and redo the change.
+6. Save with Ctrl+S.
+7. Reload with Ctrl+O and confirm the saved transform.
+8. Start Simulate with F6 and stop it with F6.
+9. Confirm the editable Scene is retained.
+10. Start and stop Play with F5.
+
+Check Console messages if saving, loading, or runtime startup fails.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Actor cannot be selected in the Viewport | Use Scene selection; check navigation, gizmo, and drag state |
+| Gizmo does not appear | Confirm Edit mode, an Actor selection, and an available Viewport |
+| Inspector is disabled | Stop Play or Simulate |
+| Shortcut does nothing | Check text entry, UI capture, mouse capture, panel focus, and mode |
+| Runtime motion disappears after stopping | Runtime uses a disposable Scene copy |
+| Scene does not reload as expected | Check the active path and the last successful save |
+| Layout is difficult to recover | Use View → Reset Layout |
+
+See [Editor internals](../Systems/Editor.md) for history and mutation
+contracts and [Scene and Actors](../Systems/Scene.md) for persistence.

@@ -28,6 +28,8 @@ Current pages:
 - [Scripting](Systems/Scripting.md): Lua ownership, environments, callbacks, synchronization, hot reload, properties, bindings, deferred Actor requests, and shutdown.
 - [Cooking](Systems/Cooking.md): pipeline ownership, caching, conversion, native packaging, writers, validation, cleanup, and runtime package consumption.
 - [Getting Started](GettingStarted.md): prerequisites, presets, configuration, building, resources, first launch, and troubleshooting.
+- [Projects](Guides/Projects.md): Launcher creation and opening, project locations and layout, direct Editor launch, and troubleshooting.
+- [Editor guide](Guides/Editor.md): panels, Actor editing, viewport navigation, gizmos, history, Scene persistence, and runtime testing.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -56,8 +58,8 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 | Proposed page | Scope |
 | --- | --- |
-| `Docs/Guides/Projects.md` | Launcher, project creation and opening, project layout, and Editor handoff |
-| `Docs/Guides/Editor.md` | Panels, viewport navigation, scene editing, component authoring, and shortcuts |
+| [Projects](Guides/Projects.md) | Launcher creation and opening, project layout, direct Editor launch, and handoff |
+| [Editor](Guides/Editor.md) | Panels, Actor components, navigation, gizmos, shortcuts, saving, and Play/Simulate |
 | `Docs/Guides/Assets.md` | Importing, browsing, assigning, moving, and deleting assets |
 | `Docs/Guides/Scripting.md` | Lua callbacks, exposed properties, script-facing bindings, and diagnostics |
 | `Docs/Guides/Cooking.md` | Cooking an editable project and launching its runtime package |
