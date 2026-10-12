@@ -14,6 +14,16 @@ namespace Quiet::Project
 
 namespace Quiet::Scripting
 {
+    /**
+     * @brief Resolves a registered Script asset to an available regular file.
+     * @ingroup quiet_scripting
+     * @param outSourcePath Resolved, lexically normalized path.
+     * @param outError Failure description; cleared before resolution.
+     * @return True when the asset type, path, and file checks succeed.
+     * @note Relative paths are resolved against the project root.
+     * @note Absolute paths are accepted; project-root containment is not enforced.
+     * @note On failure, outSourcePath may contain the attempted path.
+     */
     bool ResolveScriptSourcePath(
         const Project::ProjectContext& projectContext,
         std::string_view scriptAssetID,
@@ -34,6 +44,13 @@ namespace Quiet::Scripting
         std::vector<Scene::ScriptProperty>& outProperties,
         std::string& outError);
 
+    /**
+     * @brief Resolves a Script asset and reads its source modification timestamp.
+     * @ingroup quiet_scripting
+     * @param outWriteTime Timestamp on success; default-initialized on failure.
+     * @param outError Failure description; cleared before inspection.
+     * @return False when source resolution or timestamp inspection fails.
+     */
     bool GetScriptSourceWriteTime(
         const Project::ProjectContext& projectContext,
         std::string_view scriptAssetID,

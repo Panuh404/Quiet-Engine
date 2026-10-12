@@ -10,6 +10,12 @@
 
 namespace Quiet::Cooker
 {
+    /**
+     * @brief Supplies borrowed inputs and mutable outputs to cooking stages.
+     * @ingroup quiet_cooker
+     * @note All referenced objects must outlive stage execution.
+     * @note PreviousCache is read-only; stages populate NextCache and RuntimeAssets.
+     */
     struct CookContext
     {
         const std::filesystem::path& ProjectRoot;

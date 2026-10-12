@@ -11,6 +11,10 @@
 
 namespace Quiet::Cooker
 {
+    /**
+     * @brief Contains finalized package metadata and nonfatal maintenance warnings.
+     * @ingroup quiet_cooker
+     */
     struct PackageBuildResult
     {
         Project::RuntimeManifest Manifest;
@@ -22,6 +26,14 @@ namespace Quiet::Cooker
         std::string CacheWarning;
     };
 
+    /**
+     * @brief Copies the startup scene, writes the manifest, and maintains outputs.
+     * @ingroup quiet_cooker
+     * @return False on scene preparation, copying, or manifest-writing failure.
+     * @note Moves context.RuntimeAssets into the assembled manifest.
+     * @note Cleanup and cache-save failures are returned as warning strings.
+     * @note Does not roll back filesystem changes on failure.
+     */
     bool FinalizeRuntimePackage(const std::filesystem::path& startupScenePath,
                                 const Project::ProjectDescriptor& descriptor,
                                 CookContext& context,

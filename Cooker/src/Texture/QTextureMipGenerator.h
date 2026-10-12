@@ -12,6 +12,10 @@ namespace Quiet::Assets
 
 namespace Quiet::Cooker
 {
+    /**
+     * @brief Stores one mip's dimensions and four-channel RGBA8 pixels.
+     * @ingroup quiet_cooker
+     */
     struct QTextureMipLevel
     {
         std::uint32_t Width = 0;
@@ -25,5 +29,13 @@ namespace Quiet::Cooker
         }
     };
 
+    /**
+     * @brief Builds a complete RGBA8 sRGB mip chain ending at 1-by-1.
+     * @ingroup quiet_cooker
+     * @return False for invalid source data or a generated invalid level.
+     * @note Requires four channels and copies the source as the base level.
+     * @note Filters linear RGB with alpha weighting and supports odd dimensions.
+     * @note Clears output before generation and on reported generation failure.
+     */
     bool BuildRgba8SrgbMipChain(const Assets::TexturePixelData& source, std::vector<QTextureMipLevel>& outMipLevels, std::string& outError);
 }

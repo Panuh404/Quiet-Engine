@@ -8,6 +8,10 @@
 
 namespace Quiet::Cooker
 {
+    /**
+     * @brief Reports mesh packing, encoding, payload, and file byte counts.
+     * @ingroup quiet_cooker
+     */
     struct QMeshWriteStats
     {
         std::uint64_t RawVertexBytes = 0;
@@ -25,5 +29,16 @@ namespace Quiet::Cooker
         bool ZstdCompressed = false;
     };
 
+    /**
+     * @brief Writes quantized, meshoptimizer-encoded geometry in a QAsset container.
+     * @ingroup quiet_cooker
+     * @return False on reported input, encoding, compression, or write failure.
+     * @note Requires valid bounds and nonempty geometry within format count limits.
+     * @note Uses Zstandard only when its output is smaller.
+     * @note Caller must prepare the parent directory.
+     * @note Truncates the destination without atomic replacement.
+     * @note Resets statistics but does not clear outError on entry.
+     * @note Does not perform read-back validation.
+     */
     bool WriteQMesh(const std::filesystem::path& path, const Assets::MeshImportResult& mesh, QMeshWriteStats& outStats, std::string& outError);
 }

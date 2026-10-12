@@ -65,7 +65,7 @@ namespace Quiet::Scripting::Bindings
      * @brief Installs impulse and linear-velocity commands under Actor.RigidBody.
      * @ingroup quiet_scripting
      * @note Commands forward through Scene and return operation success.
-     * @note Requires a bound Dynamic physics body and finite vector input.
+     * @note Installed commands require a bound Dynamic body and finite vector input.
      */
     void InstallPhysicsBindings(sol::state& lua, sol::table& actorTable, Scene::Scene& scene, Core::UUID actorID);
 
