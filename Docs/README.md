@@ -27,6 +27,7 @@ Current pages:
 - [Audio](Systems/Audio.md): ownership, sound construction, runtime synchronization, playback commands, listeners, spatialization, mixing, one-shots, previews, and teardown.
 - [Scripting](Systems/Scripting.md): Lua ownership, environments, callbacks, synchronization, hot reload, properties, bindings, deferred Actor requests, and shutdown.
 - [Cooking](Systems/Cooking.md): pipeline ownership, caching, conversion, native packaging, writers, validation, cleanup, and runtime package consumption.
+- [Getting Started](GettingStarted.md): prerequisites, presets, configuration, building, resources, first launch, and troubleshooting.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -48,7 +49,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 | Proposed page | Scope |
 | --- | --- |
-| `Docs/GettingStarted.md` | Requirements, build presets, executable targets, resources, and first launch |
+| [Getting Started](GettingStarted.md) | Prerequisites, configuration, builds, resources, first launch, and troubleshooting |
 | [Architecture overview](Architecture.md) | System boundaries, ownership, lifecycle, and major data flows |
 
 ### Practical guides
