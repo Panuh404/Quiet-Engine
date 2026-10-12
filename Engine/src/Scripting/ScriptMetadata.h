@@ -17,6 +17,8 @@ namespace Quiet::Scripting
     /**
      * @brief Resolves a registered Script asset to an available regular file.
      * @ingroup quiet_scripting
+     * @param projectContext Project supplying the asset registry and root directory.
+     * @param scriptAssetID Registered Script asset ID to resolve.
      * @param outSourcePath Resolved, lexically normalized path.
      * @param outError Failure description; cleared before resolution.
      * @return True when the asset type, path, and file checks succeed.
@@ -47,6 +49,8 @@ namespace Quiet::Scripting
     /**
      * @brief Resolves a Script asset and reads its source modification timestamp.
      * @ingroup quiet_scripting
+     * @param projectContext Project supplying the asset registry and root directory.
+     * @param scriptAssetID Registered Script asset ID whose source is inspected.
      * @param outWriteTime Timestamp on success; default-initialized on failure.
      * @param outError Failure description; cleared before inspection.
      * @return False when source resolution or timestamp inspection fails.

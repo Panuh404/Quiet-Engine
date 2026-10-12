@@ -39,6 +39,7 @@ Current pages:
 - [Scene file format](Reference/SceneFiles.md): settings, Actor identity, component fields, hierarchy, defaults, and persistence boundaries.
 - [Runtime package formats](Reference/RuntimePackageFiles.md): manifest fields, path validation, cache entries, fingerprints, signatures, and persistence behavior.
 - [Binary asset formats](Reference/BinaryAssets.md): container headers, mesh payloads and codecs, texture payloads, byte offsets, and reader validation.
+- [Engine roadmap](Roadmap.md): implemented foundations, future development areas, and development principles.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -92,7 +93,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 | Proposed page | Scope |
 | --- | --- |
 | [File formats](Reference/FileFormats.md) | Project and Scene JSON, runtime manifest, cook cache, QAsset, QMesh, and QTexture |
-| `Docs/Roadmap.md` | Engine direction, future work, and implemented milestones |
+| [Engine roadmap](Roadmap.md) | Implemented foundations, future areas, and development principles |
 
 The C++ API reference will be generated from Quiet's source declarations and documentation comments. It will include relevant implementation headers, not only headers under `Engine/include/Quiet/`.
 

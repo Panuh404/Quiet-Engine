@@ -57,7 +57,11 @@ namespace Quiet::Cooker
     /**
      * @brief Compresses valid RGBA8 mip levels into edge-padded BC7 blocks.
      * @ingroup quiet_cooker
+     * @param sourceMipLevels Nonempty collection of valid RGBA8 mip levels.
      * @param quality Encoder quality; supply a finite value in the range 0–1.
+     * @param outMipLevels Compressed levels; cleared before processing.
+     * @param outStats Compression totals; reset before processing.
+     * @param outError Failure description; cleared before processing.
      * @return False on reported input validation or codec failure.
      * @note Resets output levels and statistics before processing.
      * @note Does not validate dimension progression between mip levels.

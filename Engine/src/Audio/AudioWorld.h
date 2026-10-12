@@ -106,6 +106,7 @@ namespace Quiet::Audio
 
         /**
          * @brief Seeks an existing source to a time in seconds.
+         * @param entity Scene entity identifying an existing runtime source binding.
          * @param seconds Finite, nonnegative target time.
          * @return True when the backend accepts the seek.
          * @note Does not explicitly change playback or paused state.
