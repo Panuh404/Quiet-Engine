@@ -8,10 +8,11 @@ The repository's main introduction remains in the root [README](../README.md). T
 
 The documentation foundation includes conventions, local generation tooling, and C++ system groups. The generated reference currently provides an API inventory; detailed symbol contracts will be added incrementally.
 
-The architecture overview and system chapters for Scene, Application,
-Editor, Assets, Renderer, Physics, Audio, Scripting, and Cooking are available. Additional system
-chapters are being added incrementally. Practical guides and file-format
-references remain planned.
+The architecture overview, Getting Started, system chapters for Scene,
+Application, Editor, Assets, Renderer, Physics, Audio, Scripting, and
+Cooking, and practical guides for Projects, Editor, Assets, Scripting,
+and Cooking are available. File-format references cover project and Scene JSON, runtime-package
+metadata, and cooked binary assets.
 
 Current pages:
 
@@ -30,6 +31,14 @@ Current pages:
 - [Getting Started](GettingStarted.md): prerequisites, presets, configuration, building, resources, first launch, and troubleshooting.
 - [Projects](Guides/Projects.md): Launcher creation and opening, project locations and layout, direct Editor launch, and troubleshooting.
 - [Editor guide](Guides/Editor.md): panels, Actor editing, viewport navigation, gizmos, history, Scene persistence, and runtime testing.
+- [Assets guide](Guides/Assets.md): importing, inspection, assignment, audio previews, organization, registry removal, and file deletion.
+- [Scripting guide](Guides/Scripting.md): Lua assignment, callbacks, exposed properties, runtime APIs, deferred creation, errors, and hot reload.
+- [Cooking guide](Guides/Cooking.md): project preparation, Cooker builds and execution, package contents, Sandbox launch, caching, and troubleshooting.
+- [File formats](Reference/FileFormats.md): navigation for persisted-data references.
+- [Project file formats](Reference/ProjectFiles.md): project descriptors, asset registries, and user project history.
+- [Scene file format](Reference/SceneFiles.md): settings, Actor identity, component fields, hierarchy, defaults, and persistence boundaries.
+- [Runtime package formats](Reference/RuntimePackageFiles.md): manifest fields, path validation, cache entries, fingerprints, signatures, and persistence behavior.
+- [Binary asset formats](Reference/BinaryAssets.md): container headers, mesh payloads and codecs, texture payloads, byte offsets, and reader validation.
 
 Existing branding assets remain in `Docs/Brand/`.
 
@@ -60,9 +69,9 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 | --- | --- |
 | [Projects](Guides/Projects.md) | Launcher creation and opening, project layout, direct Editor launch, and handoff |
 | [Editor](Guides/Editor.md) | Panels, Actor components, navigation, gizmos, shortcuts, saving, and Play/Simulate |
-| `Docs/Guides/Assets.md` | Importing, browsing, assigning, moving, and deleting assets |
-| `Docs/Guides/Scripting.md` | Lua callbacks, exposed properties, script-facing bindings, and diagnostics |
-| `Docs/Guides/Cooking.md` | Cooking an editable project and launching its runtime package |
+| [Assets](Guides/Assets.md) | Importing, inspection, assignment, previews, file organization, and removal |
+| [Scripting](Guides/Scripting.md) | Lua examples, assignment, properties, bindings, runtime testing, and diagnostics |
+| [Cooking](Guides/Cooking.md) | Project preparation, package production, Sandbox launch, caching, and diagnostics |
 
 ### System internals
 
@@ -82,7 +91,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 | Proposed page | Scope |
 | --- | --- |
-| `Docs/Reference/FileFormats.md` | Project and scene JSON, asset registry, runtime manifest, cook cache, and QAsset/QMesh/QTexture layouts |
+| [File formats](Reference/FileFormats.md) | Project and Scene JSON, runtime manifest, cook cache, QAsset, QMesh, and QTexture |
 | `Docs/Roadmap.md` | Engine direction, future work, and implemented milestones |
 
 The C++ API reference will be generated from Quiet's source declarations and documentation comments. It will include relevant implementation headers, not only headers under `Engine/include/Quiet/`.
