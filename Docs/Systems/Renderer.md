@@ -1,4 +1,4 @@
-# Renderer
+# Renderer <!--! {#quiet_system_renderer} -->
 
 Quiet::Renderer::Vulkan::VulkanRenderer owns the Vulkan rendering
 infrastructure used by Application.

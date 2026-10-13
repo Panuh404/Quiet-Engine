@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(QuietDocumentation LANGUAGES NONE)
-find_package(Doxygen 1.9.6 REQUIRED COMPONENTS doxygen)
+find_package(Doxygen 1.18.0 REQUIRED COMPONENTS doxygen)
 
 get_filename_component(
         QUIET_DOCS_SOURCE_ROOT

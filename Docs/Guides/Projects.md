@@ -1,4 +1,4 @@
-# Projects
+# Projects Guide <!--! {#quiet_guide_projects} -->
 
 This guide covers creating and opening editable Quiet projects through
 the Launcher, understanding their layout, and launching the Editor

@@ -1,4 +1,4 @@
-# Runtime Package Files
+# Runtime Package Files <!--! {#quiet_format_runtime_package} -->
 
 The package root contains two JSON documents with different purposes:
 

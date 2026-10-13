@@ -1,4 +1,4 @@
-# Application
+# Application <!--! {#quiet_system_application} -->
 
 Quiet::Core::Application coordinates the engine systems used by the Editor
 and Sandbox executables.
@@ -210,7 +210,7 @@ Application then resets the Editor Scene session and selects Ready.
 Ready therefore means that the bootstrap sequence completed. It does not
 guarantee that every registered asset loaded successfully.
 
-See [Scene serialization](Scene.md#scene-serialization) for the load-result,
+See [Scene serialization](Scene.md) for the load-result,
 partial-state, and exception contracts.
 
 ### Failure behavior

@@ -1,4 +1,4 @@
-# Assets
+# Assets Guide <!--! {#quiet_guide_assets} -->
 
 This guide covers importing, inspecting, assigning, organizing, and
 removing project assets through the Editor's Assets panel.

@@ -1,4 +1,4 @@
-# Architecture Overview
+# Architecture Overview <!--! {#quiet_architecture} -->
 
 Quiet is a C++20 engine and editor using Vulkan for rendering. Its workspace contains a shared engine library and separate executables for project management, editing, standalone runtime execution, and asset cooking.
 
@@ -306,4 +306,4 @@ For a new asset type, inspect registration, editable loading, assignment/referen
 
 These are review paths rather than a universal implementation checklist. The required changes depend on the component or asset's responsibilities.
 
-Further chapters will document these systems individually. Planned chapters remain listed in the [documentation index](README.md).
+Individual system chapters are linked from the [documentation index](../Docs/README.md).

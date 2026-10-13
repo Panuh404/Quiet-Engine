@@ -1,4 +1,4 @@
-# File Formats
+# File Formats <!--! {#quiet_format_overview} -->
 
 This reference describes Quiet's persisted data and the behavior of
 its current readers and writers.

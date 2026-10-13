@@ -1,0 +1,57 @@
+html {
+    --primary-color: #2563c7;
+    --primary-dark-color: #1b4896;
+    --primary-light-color: #7ba7ed;
+
+    --page-background-color: #ffffff;
+    --page-foreground-color: #24324a;
+    --page-secondary-foreground-color: #596980;
+    --side-nav-background: #f3f6fc;
+    --separator-color: #dfe6f0;
+
+    --content-maxwidth: 1100px;
+    --side-nav-fixed-width: 335px;
+    --top-height: 140px;
+    --side-nav-arrow-opacity: 0.65;
+    --side-nav-arrow-hover-opacity: 1;
+
+    --font-family-monospace: "Cascadia Code", Consolas,
+    "Liberation Mono", monospace;
+}
+
+html.dark-mode {
+    --primary-color: #75aaff;
+    --primary-dark-color: #9abdff;
+    --primary-light-color: #356bad;
+
+    --page-background-color: #111722;
+    --page-foreground-color: #e2e8f0;
+    --page-secondary-foreground-color: #a5b2c5;
+    --side-nav-background: #0c121c;
+    --separator-color: #253246;
+
+    --fragment-background: #1a2433;
+    --fragment-foreground: #e2e8f0;
+    --code-background: #1a2433;
+}
+
+#projectlogo {
+    padding: 12px 8px 12px 16px;
+}
+
+#projectlogo img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+#projectname {
+    font-weight: 700;
+}
+
+#projectbrief {
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: normal;
+}

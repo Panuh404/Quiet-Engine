@@ -1,4 +1,4 @@
-# Scene and Actors
+# Scene and Actors <!--! {#quiet_system_scene} -->
 
 This chapter explains Scene storage, Actor identity, component access,
 handle lifetime, copying, duplication, runtime lifecycle, deferred Actor

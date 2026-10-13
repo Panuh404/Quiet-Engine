@@ -1,4 +1,4 @@
-# Editor
+# Editor <!--! {#quiet_system_editor} -->
 
 Quiet's Editor system coordinates authoring state, Scene mutations,
 history, Scene file operations, and runtime transitions.
@@ -411,7 +411,7 @@ That fallback belongs to the editable project startup helper.
 Loading reconstructs the destination in place. A failure or exception is
 not a guarantee that the previous Scene content remains intact.
 
-See [Scene serialization](Scene.md#scene-serialization) for partial-state
+See [Scene serialization](Scene.md) for partial-state
 and exception contracts.
 
 ### Opening another project Scene

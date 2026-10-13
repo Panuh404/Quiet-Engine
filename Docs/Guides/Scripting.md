@@ -1,4 +1,4 @@
-# Scripting
+# Scripting Guide <!--! {#quiet_guide_scripting} -->
 
 This guide covers assigning Lua scripts, exposing Inspector properties,
 using Quiet's bindings, testing callbacks, and diagnosing failures.

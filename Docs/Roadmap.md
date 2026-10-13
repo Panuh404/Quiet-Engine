@@ -1,4 +1,4 @@
-# Engine Roadmap
+# Engine Roadmap <!--! {#quiet_roadmap} -->
 
 Quiet is developed incrementally, with emphasis on clear ownership,
 Editor/runtime separation, and practical workflows.

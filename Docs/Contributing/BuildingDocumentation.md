@@ -1,4 +1,4 @@
-# Building the Documentation
+# Building the Documentation <!--! {#quiet_building_documentation} -->
 
 Quiet's documentation combines Markdown handbook pages with a generated C++ reference.
 
@@ -8,10 +8,10 @@ Documentation generation uses the standalone CMake project in `Docs/`. It does n
 
 - CMake 3.28 or newer.
 - Ninja available on PATH.
-- Doxygen 1.9.6 or newer.
+- Doxygen 1.18.0 or newer.
 - The Doxygen Awesome submodule initialized.
 
-Doxygen 1.18.0 is the recommended starting version for the included Doxygen Awesome 2.5.0 theme.
+The navigation uses stable page labels embedded in HTML comments, verified with Doxygen 1.18.0 and the included Doxygen Awesome 2.5.0 theme.
 
 Verify the tools from PowerShell:
 

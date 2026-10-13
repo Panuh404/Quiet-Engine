@@ -1,4 +1,4 @@
-# Cooking
+# Cooking Guide <!--! {#quiet_guide_cooking} -->
 
 This guide covers preparing an editable project, cooking its runtime
 package, and launching that package through Quiet_Sandbox.

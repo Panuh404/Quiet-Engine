@@ -1,0 +1,70 @@
+/**
+ * @page quiet_handbook Handbook
+ *
+ * Build and use Quiet, understand its systems, and look up persisted-data contracts.
+ *
+ * - @subpage quiet_start_here
+ * - @subpage quiet_practical_guides
+ * - @subpage quiet_system_internals
+ * - @subpage quiet_file_formats
+ * - @subpage quiet_contributing
+ * - @subpage quiet_roadmap
+ */
+
+/**
+ * @page quiet_start_here Start Here
+ *
+ * Begin with setup, then explore the engine's architecture.
+ *
+ * - @subpage quiet_getting_started
+ * - @subpage quiet_architecture
+ */
+
+/**
+ * @page quiet_practical_guides Practical Guides
+ *
+ * Follow the workflows for creating, editing, scripting, and packaging a project.
+ *
+ * - @subpage quiet_guide_projects
+ * - @subpage quiet_guide_editor
+ * - @subpage quiet_guide_assets
+ * - @subpage quiet_guide_scripting
+ * - @subpage quiet_guide_cooking
+ */
+
+/**
+ * @page quiet_system_internals System Internals
+ *
+ * Understand ownership, execution, lifecycle, and contracts within each system.
+ *
+ * - @subpage quiet_system_scene
+ * - @subpage quiet_system_application
+ * - @subpage quiet_system_editor
+ * - @subpage quiet_system_assets
+ * - @subpage quiet_system_renderer
+ * - @subpage quiet_system_physics
+ * - @subpage quiet_system_audio
+ * - @subpage quiet_system_scripting
+ * - @subpage quiet_system_cooking
+ */
+
+/**
+ * @page quiet_file_formats File Formats
+ *
+ * Look up serialized fields, binary layouts, validation rules, and compatibility boundaries.
+ *
+ * - @subpage quiet_format_overview "Overview"
+ * - @subpage quiet_format_project
+ * - @subpage quiet_format_scene
+ * - @subpage quiet_format_runtime_package
+ * - @subpage quiet_format_binary_assets
+ */
+
+/**
+ * @page quiet_contributing Contributing
+ *
+ * Follow the documentation conventions and build the generated reference locally.
+ *
+ * - @subpage quiet_documentation_conventions
+ * - @subpage quiet_building_documentation
+ */

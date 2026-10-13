@@ -1,4 +1,4 @@
-# Editor
+# Editor Guide <!--! {#quiet_guide_editor} -->
 
 This guide covers Scene editing, viewport navigation, Actor components,
 saving, and testing through Play and Simulate.

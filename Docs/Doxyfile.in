@@ -3,13 +3,14 @@
 DOXYFILE_ENCODING       = UTF-8
 PROJECT_NAME            = "Quiet Engine"
 PROJECT_BRIEF           = "C++20 Vulkan engine and editor"
+PROJECT_LOGO            = "@QUIET_DOCS_SOURCE_ROOT@/Docs/Brand/quiet-logo.png"
+PROJECT_ICON            = "@QUIET_DOCS_SOURCE_ROOT@/Docs/Brand/quiet-logo.png"
 OUTPUT_LANGUAGE         = English
 OUTPUT_DIRECTORY        = "@QUIET_DOCS_OUTPUT_DIR@"
 
 # Handbook and Quiet-owned source
 
-INPUT                   = "@QUIET_DOCS_SOURCE_ROOT@/README.md" \
-                          "@QUIET_DOCS_SOURCE_ROOT@/Docs" \
+INPUT                   = "@QUIET_DOCS_SOURCE_ROOT@/Docs" \
                           "@QUIET_DOCS_SOURCE_ROOT@/Engine/include" \
                           "@QUIET_DOCS_SOURCE_ROOT@/Engine/src" \
                           "@QUIET_DOCS_SOURCE_ROOT@/Launcher/src" \
@@ -25,7 +26,9 @@ EXCLUDE                 = "@QUIET_DOCS_SOURCE_ROOT@/Docs/ThirdParty"
 FULL_PATH_NAMES         = YES
 STRIP_FROM_PATH         = "@QUIET_DOCS_SOURCE_ROOT@/"
 MARKDOWN_SUPPORT        = YES
-USE_MDFILE_AS_MAINPAGE   = "@QUIET_DOCS_SOURCE_ROOT@/Docs/README.md"
+TOC_INCLUDE_HEADINGS    = 0
+USE_MDFILE_AS_MAINPAGE  = "@QUIET_DOCS_SOURCE_ROOT@/Docs/README.md"
+LAYOUT_FILE             = "@QUIET_DOCS_SOURCE_ROOT@/Docs/DoxygenLayout.xml"
 
 # Initial browsable reference; this is not a coverage check
 
@@ -45,11 +48,22 @@ INLINE_SOURCES          = NO
 GENERATE_HTML           = YES
 HTML_OUTPUT             = html
 GENERATE_TREEVIEW       = YES
+TREEVIEW_WIDTH          = 335
 DISABLE_INDEX           = NO
 FULL_SIDEBAR            = NO
 SEARCHENGINE            = YES
 HTML_COLORSTYLE         = LIGHT
-HTML_EXTRA_STYLESHEET   = "@QUIET_DOCS_THEME_DIR@/doxygen-awesome.css"
+PAGE_OUTLINE_PANEL      = NO
+HTML_HEADER             = "@QUIET_DOCS_SOURCE_ROOT@/Docs/Theme/header.html"
+HTML_COPY_CLIPBOARD     = NO
+
+HTML_EXTRA_STYLESHEET   = "@QUIET_DOCS_THEME_DIR@/doxygen-awesome.css" \
+                          "@QUIET_DOCS_THEME_DIR@/doxygen-awesome-sidebar-only.css" \
+                          "@QUIET_DOCS_THEME_DIR@/doxygen-awesome-sidebar-only-darkmode-toggle.css" \
+                          "@QUIET_DOCS_SOURCE_ROOT@/Docs/Theme/quiet-docs.css"
+
+HTML_EXTRA_FILES        = "@QUIET_DOCS_THEME_DIR@/doxygen-awesome-darkmode-toggle.js" \
+                          "@QUIET_DOCS_THEME_DIR@/doxygen-awesome-fragment-copy-button.js"
 
 # Other output formats
 

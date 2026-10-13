@@ -1,4 +1,4 @@
-# Project Files
+# Project Files <!--! {#quiet_format_project} -->
 
 Quiet uses three distinct JSON documents:
 

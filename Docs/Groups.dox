@@ -1,5 +1,5 @@
 /**
- * @defgroup quiet_systems Quiet Systems
+ * @defgroup quiet_systems C++ Reference
  * @brief C++ reference organized by system responsibility.
  *
  * Groups are populated incrementally as their source declarations
@@ -7,86 +7,102 @@
  * system's documentation is complete.
  */
 
+
+/**
+ * @defgroup quiet_foundations Foundations
+ * @ingroup quiet_systems
+ * @brief Application, platform, input, and project infrastructure.
+ */
+
+/**
+ * @defgroup quiet_runtime Runtime Systems
+ * @ingroup quiet_systems
+ * @brief Scene state, physics, audio, and scripting execution.
+ */
+
+/**
+ * @defgroup quiet_content Content and Rendering
+ * @ingroup quiet_systems
+ * @brief Asset representation, loading, and rendering resources.
+ */
+
+/**
+ * @defgroup quiet_tools Applications and Tools
+ * @ingroup quiet_systems
+ * @brief Authoring workflows, project launching, cooking, and standalone execution.
+ */
+
+
 /**
  * @defgroup quiet_core Core
- * @ingroup quiet_systems
+ * @ingroup quiet_foundations
  * @brief Application orchestration and shared core utilities.
  */
-
 /**
  * @defgroup quiet_platform Platform
- * @ingroup quiet_systems
+ * @ingroup quiet_foundations
  * @brief Window management and platform shell integration.
  */
-
 /**
  * @defgroup quiet_input Input
- * @ingroup quiet_systems
+ * @ingroup quiet_foundations
  * @brief Keyboard and mouse state, queries, and input codes.
  */
-
 /**
  * @defgroup quiet_project Projects
- * @ingroup quiet_systems
+ * @ingroup quiet_foundations
  * @brief Project descriptors, registries, context, and loading workflows.
  */
 
 /**
  * @defgroup quiet_scene Scene
- * @ingroup quiet_systems
+ * @ingroup quiet_runtime
  * @brief Actors, components, scene settings, lifecycle, and serialization.
  */
-
-/**
- * @defgroup quiet_editor Editor
- * @ingroup quiet_systems
- * @brief Editor controllers, workflows, commands, history, and tools.
- */
-
-/**
- * @defgroup quiet_renderer Renderer
- * @ingroup quiet_systems
- * @brief Vulkan rendering resources, render systems, and editor presentation.
- */
-
-/**
- * @defgroup quiet_assets Assets
- * @ingroup quiet_systems
- * @brief Asset representations, importers, cooked readers, and libraries.
- */
-
 /**
  * @defgroup quiet_physics Physics
- * @ingroup quiet_systems
+ * @ingroup quiet_runtime
  * @brief Physics subsystem initialization and runtime physics worlds.
  */
-
 /**
  * @defgroup quiet_audio Audio
- * @ingroup quiet_systems
+ * @ingroup quiet_runtime
  * @brief Audio assets, subsystem ownership, and runtime audio worlds.
  */
-
 /**
  * @defgroup quiet_scripting Scripting
- * @ingroup quiet_systems
+ * @ingroup quiet_runtime
  * @brief Lua runtime integration, script metadata, and engine bindings.
  */
 
 /**
+ * @defgroup quiet_assets Assets
+ * @ingroup quiet_content
+ * @brief Asset representations, importers, cooked readers, and libraries.
+ */
+/**
+ * @defgroup quiet_renderer Renderer
+ * @ingroup quiet_content
+ * @brief Vulkan rendering resources, render systems, and editor presentation.
+ */
+
+/**
+ * @defgroup quiet_editor Editor
+ * @ingroup quiet_tools
+ * @brief Editor controllers, workflows, commands, history, and tools.
+ */
+/**
  * @defgroup quiet_launcher Launcher
- * @ingroup quiet_systems
+ * @ingroup quiet_tools
  * @brief Standalone project discovery, creation, and Editor handoff.
  */
-
 /**
  * @defgroup quiet_cooker Cooker
- * @ingroup quiet_systems
+ * @ingroup quiet_tools
  * @brief Asset conversion, incremental caching, and runtime package creation.
  */
-
 /**
  * @defgroup quiet_sandbox Sandbox
- * @ingroup quiet_systems
+ * @ingroup quiet_tools
  * @brief Standalone runtime application entry point.
  */

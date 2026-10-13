@@ -1,4 +1,4 @@
-# Documentation Conventions
+# Documentation Conventions <!--! {#quiet_documentation_conventions} -->
 
 These conventions apply to Quiet's Markdown handbook and C++ documentation comments. They establish how documentation is written and reviewed. Local generation is described in [Building the documentation](BuildingDocumentation.md).
 

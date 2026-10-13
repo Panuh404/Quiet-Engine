@@ -1,4 +1,4 @@
-# Binary Assets
+# Binary Assets <!--! {#quiet_format_binary_assets} -->
 
 Quiet stores cooked meshes and textures inside a shared QAsset container.
 

@@ -1,4 +1,4 @@
-# Scripting
+# Scripting <!--! {#quiet_system_scripting} -->
 
 Quiet integrates Lua through a Scene-owned ScriptWorld.
 

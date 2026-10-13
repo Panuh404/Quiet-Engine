@@ -2,7 +2,7 @@
 
 Quiet's documentation explains how to build and use the engine, understand its implementation, and extend its systems.
 
-The repository's main introduction remains in the root [README](../README.md). This directory is the entry point for the detailed handbook and documentation tooling.
+The repository's main introduction remains in the root `README.md`. This directory is the entry point for the detailed handbook and documentation tooling.
 
 ## Documentation status
 

@@ -1,4 +1,4 @@
-# Scene Files
+# Scene Files <!--! {#quiet_format_scene} -->
 
 Quiet stores Scene authoring data as JSON.
 

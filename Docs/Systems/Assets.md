@@ -1,4 +1,4 @@
-# Assets
+# Assets <!--! {#quiet_system_assets} -->
 
 Quiet separates asset records, source files, loading operations, and
 loaded resources.

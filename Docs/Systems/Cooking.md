@@ -1,4 +1,4 @@
-# Cooking
+# Cooking <!--! {#quiet_system_cooking} -->
 
 Quiet_Cooker converts and packages registered project assets for
 standalone runtime loading.

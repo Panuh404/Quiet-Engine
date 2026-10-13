@@ -1,4 +1,4 @@
-# Getting Started
+# Getting Started <!--! {#quiet_getting_started} -->
 
 This guide introduces the tools and build targets needed to run Quiet.
 
