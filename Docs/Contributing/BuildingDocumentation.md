@@ -63,7 +63,7 @@ The target generates HTML under `Build/Docs/html/` and copies branding assets in
 Start-Process .\Build\Docs\html\index.html
 ```
 
-The documentation homepage comes from `Docs/README.md`.
+The documentation homepage comes from the [documentation index](../README.md).
 
 The generated site contains the handbook, C++ system groups, namespaces, classes, and source listings. The repository's root README remains the GitHub entry point.
 

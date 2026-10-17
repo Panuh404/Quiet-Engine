@@ -28,8 +28,8 @@ If an implementation detail is unavailable, leave the claim unresolved rather th
 
 | Location | Responsibility |
 | --- | --- |
-| Root `README.md` | Project introduction, main capabilities, maturity, quick start, and documentation entry points |
-| `Docs/README.md` | Handbook navigation and documentation progress |
+| [Root README](https://github.com/Panuh404/Quiet-Engine/blob/main/README.md) | Project introduction, main capabilities, maturity, quick start, and documentation entry points |
+| [Documentation index](../README.md) | Handbook navigation and documentation progress |
 | `Docs/Guides/` | Task-oriented instructions and user-visible behavior |
 | `Docs/Systems/` | Concepts, architecture, ownership, lifecycle, and implementation flows |
 | `Docs/Reference/` | Exact formats and lookup material |

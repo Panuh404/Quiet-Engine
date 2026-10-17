@@ -2,7 +2,10 @@
 
 Quiet's documentation explains how to build and use the engine, understand its implementation, and extend its systems.
 
-The repository's main introduction remains in the root `README.md`. This directory is the entry point for the detailed handbook and documentation tooling.
+The repository's main introduction remains in the
+[root README](https://github.com/Panuh404/Quiet-Engine/blob/main/README.md).
+This directory is the entry point for the detailed handbook and
+documentation tooling.
 
 ## Documentation status
 
@@ -98,7 +101,7 @@ The C++ API reference is generated from Quiet's source declarations and document
 
 ## Source and output layout
 
-- The main `README.md` stays at the repository root.
+- The [main README](https://github.com/Panuh404/Quiet-Engine/blob/main/README.md) stays at the repository root.
 - All other documentation source, configuration, and theme assets live under `Docs/`.
 - Generated output is `Build/Docs/`, covered by the repository's build-output ignore rules.
 - Documentation generation is optional and uses the standalone CMake project in `Docs/`.

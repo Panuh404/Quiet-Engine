@@ -10,22 +10,13 @@ Launcher, and standalone runtime-package workflow.
 It is an actively developed prototype focused on explicit system
 ownership, practical tooling, and understandable engine architecture.
 
-<table align="center">
-  <tr>
-    <td align="center">
-      <h3>📖 Quiet Engine Documentation</h3>
-      <p>
-        Getting started, practical guides, engine architecture,
-        system internals, and the C++ API reference.
-      </p>
-      <p>
-        <a href="https://panuh404.github.io/Quiet-Engine/">
-          <strong>Explore the documentation →</strong>
-        </a>
-      </p>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://panuh404.github.io/Quiet-Engine/">
+    <img src="Docs/Brand/documentation-card.svg"
+         alt="Quiet Engine documentation — guides, architecture, and C++ API reference"
+         width="760">
+  </a>
+</p>
 
 ## Current capabilities
 
