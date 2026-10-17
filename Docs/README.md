@@ -104,4 +104,7 @@ The C++ API reference is generated from Quiet's source declarations and document
 - Documentation generation is optional and uses the standalone CMake project in `Docs/`.
 - Generation commands and prerequisites are documented in [Building the documentation](Contributing/BuildingDocumentation.md).
 
-The handbook uses relative links so completed pages can be read directly in the repository. Doxygen publication will be checked separately for navigation and rendering compatibility.
+The handbook uses relative links so pages can be read directly in the
+repository. The [published documentation](https://panuh404.github.io/Quiet-Engine/)
+combines the handbook with the generated C++ reference. GitHub Actions
+validates documentation changes and publishes successful builds from main.

@@ -10,6 +10,23 @@ Launcher, and standalone runtime-package workflow.
 It is an actively developed prototype focused on explicit system
 ownership, practical tooling, and understandable engine architecture.
 
+<table align="center">
+  <tr>
+    <td align="center">
+      <h3>📖 Quiet Engine Documentation</h3>
+      <p>
+        Getting started, practical guides, engine architecture,
+        system internals, and the C++ API reference.
+      </p>
+      <p>
+        <a href="https://panuh404.github.io/Quiet-Engine/">
+          <strong>Explore the documentation →</strong>
+        </a>
+      </p>
+    </td>
+  </tr>
+</table>
+
 ## Current capabilities
 
 - Vulkan static-mesh rendering with frame synchronization, an offscreen
