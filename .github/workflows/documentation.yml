@@ -1,0 +1,82 @@
+name: Documentation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Docs/**"
+      - "Engine/**"
+      - "Launcher/src/**"
+      - "Editor/src/**"
+      - "Sandbox/src/**"
+      - "Cooker/src/**"
+      - ".gitmodules"
+      - ".github/workflows/documentation.yml"
+  pull_request:
+    paths:
+      - "Docs/**"
+      - "Engine/**"
+      - "Launcher/src/**"
+      - "Editor/src/**"
+      - "Sandbox/src/**"
+      - "Cooker/src/**"
+      - ".gitmodules"
+      - ".github/workflows/documentation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository and theme
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cmake ninja-build
+
+      - name: Install Doxygen 1.18.0
+        run: |
+          tools_dir="$RUNNER_TEMP/quiet-doxygen"
+          mkdir -p "$tools_dir"
+          curl --fail --location --retry 3 \
+            https://www.doxygen.nl/files/doxygen-1.18.0.linux.bin.tar.gz \
+            --output "$tools_dir/doxygen.tar.gz"
+          echo "14fa81bdc34171edb5f1f02b1d60e74802f0439b77fa44e592565d517d72df90  $tools_dir/doxygen.tar.gz" | sha256sum --check -
+          tar -xzf "$tools_dir/doxygen.tar.gz" -C "$tools_dir"
+          "$tools_dir/doxygen-1.18.0/bin/doxygen" --version
+
+      - name: Configure documentation
+        run: |
+          cmake -S Docs -B Build/Intermediate/Docs -G Ninja \
+            -DDOXYGEN_EXECUTABLE="$RUNNER_TEMP/quiet-doxygen/doxygen-1.18.0/bin/doxygen"
+
+      - name: Generate documentation
+        run: cmake --build Build/Intermediate/Docs --target Quiet_Docs
+
+      - name: Check Doxygen diagnostics
+        run: |
+          test -f Build/Docs/warnings.log
+          if [ -s Build/Docs/warnings.log ]; then
+            cat Build/Docs/warnings.log
+            echo "::error::Doxygen reported diagnostics. Review warnings.log."
+            exit 1
+          fi
+          test -f Build/Docs/html/index.html
+
+      - name: Upload generated documentation and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quiet-documentation
+          path: Build/Docs/
+          retention-days: 7
+          if-no-files-found: warn

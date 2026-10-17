@@ -641,7 +641,7 @@ remain when an operation throws.
 This chapter documents the Editor's coordination, mutation, history,
 persistence, and runtime contracts.
 
-Panel controls and user-facing workflows belong in the planned Editor
-guide. Individual component commands, viewport picking algorithms,
+Panel controls and user-facing workflows are documented in the
+[Editor guide](../Guides/Editor.md). Individual component commands, viewport picking algorithms,
 gizmo details, and script reconciliation can receive more detailed API
 documentation as those systems are expanded.

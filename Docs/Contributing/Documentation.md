@@ -97,7 +97,7 @@ For example, component access documentation should explain the required Actor va
 
 ## System groups
 
-The initial grouping scheme is:
+Assign C++ declarations to the following system groups:
 
 | Group identifier | Scope |
 | --- | --- |
@@ -116,13 +116,30 @@ The initial grouping scheme is:
 | `quiet_cooker` | Cooking and runtime-package construction |
 | `quiet_sandbox` | Standalone runtime entry point |
 
-Group definitions live in `Docs/Groups.dox`, under the parent group `quiet_systems`. Assign declarations to the appropriate group using `@ingroup` as their documentation is written.
+Group definitions live in `Docs/Groups.dox`. Their category parents are `quiet_foundations`, `quiet_runtime`, `quiet_content`, and `quiet_tools`, beneath `quiet_systems`. Assign declarations to the appropriate system group using `@ingroup`.
+
+When adding or moving a system group, update its definition in `Docs/Groups.dox` and its sidebar entry in `Docs/DoxygenLayout.xml`.
 
 Groups describe responsibilities rather than forcing a one-to-one mapping to directories. The reference includes relevant internal headers under `Engine/src/` as well as `Engine/include/Quiet/`.
 
 ## Links and formatting
 
 Use relative Markdown links for handbook navigation. Refer to source using exact repository-relative paths and qualified symbols; avoid line numbers because they change as code evolves.
+
+Each handbook page uses a unique ID in its first heading, except for the
+landing page selected by `USE_MDFILE_AS_MAINPAGE`. For example:
+
+```markdown
+# Example Guide <!--! {#quiet_guide_example} -->
+```
+
+The HTML comment keeps the metadata hidden in GitHub's rendered Markdown.
+Doxygen 1.18.0 uses it as the page ID. Keep IDs stable when changing page
+titles or moving files.
+
+Add the page to `Docs/Navigation.dox` with `@subpage` under one parent.
+Use `@ref` for other Doxygen cross-links that do not assign a parent.
+Keep ordinary handbook links relative to the referring Markdown file.
 
 Introduce tables for exact mappings and comparisons. Use fenced code blocks with a language identifier for examples. Keep formatting readable both in the repository and in generated HTML; verify Doxygen-specific links and formatting when the toolchain exists.
 
@@ -136,11 +153,12 @@ For each chapter or system substep:
 2. Write the handbook explanation and meaningful declaration comments.
 3. Check source paths, qualified symbols, units, state transitions, and failure behavior.
 4. Check relative links and planned-versus-available status.
-5. Once DOC-2 exists, generate and inspect the affected documentation pages and warnings.
+5. Generate and inspect the affected documentation pages and warnings.
 6. Exercise executable examples and commands in a suitable environment, or explicitly record what could not be verified.
 7. Review each increment. Commit at the agreed chapter or system checkpoint
    after its related increments and required corrections are complete.
 
 An automatically extracted declaration is not evidence that its behavior has been documented. Documentation warnings should be reviewed meaningfully; extraction settings must not hide missing contracts and be mistaken for full coverage.
 
-Generated documentation belongs under `Build/Docs/` and is not committed. Documentation generation remains optional for normal builds. The root README rewrite is reserved for DOC-8, after the detailed pages are available.
+Generated documentation belongs under `Build/Docs/` and is not committed. Documentation generation remains optional for normal builds.
+Update the root README when a completed project milestone changes capabilities, setup, or documentation entry points.

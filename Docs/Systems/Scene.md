@@ -556,7 +556,7 @@ requires an existing Actor.
 After deferred destruction, an existing wrapper's `IsValid()` returns false.
 The wrapper retaining a UUID does not keep the entity alive.
 
-The complete Lua API will be documented separately in the scripting guide.
+The Lua-facing API is documented in the [Scripting guide](../Guides/Scripting.md).
 
 ### Immediate operations and queue lifetime
 
@@ -630,7 +630,7 @@ EnTT entity identifiers, runtime worlds, physics body state, audio playback
 state, Lua environments, pending requests, and contact events are not written.
 
 The file contains no explicit schema-version field. The exhaustive field
-reference is reserved for `Docs/Reference/FileFormats.md`.
+reference is documented in the [Scene file format](../Reference/SceneFiles.md).
 
 ### Save flow and result
 

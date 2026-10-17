@@ -6,8 +6,7 @@ The repository's main introduction remains in the root `README.md`. This directo
 
 ## Documentation status
 
-The documentation foundation includes conventions, local generation tooling, and C++ system groups. The generated reference currently provides an API inventory; detailed symbol contracts will be added incrementally.
-
+The documentation includes conventions, local generation tooling, and C++ system groups. The generated reference combines documented symbol contracts with a browsable API inventory; contract coverage is expanded incrementally.
 The architecture overview, Getting Started, system chapters for Scene,
 Application, Editor, Assets, Renderer, Physics, Audio, Scripting, and
 Cooking, and practical guides for Projects, Editor, Assets, Scripting,
@@ -45,7 +44,7 @@ Existing branding assets remain in `Docs/Brand/`.
 
 ## Reading paths
 
-As chapters become available, the handbook will support three reading paths:
+Use the following reading paths:
 
 | Goal | Suggested order |
 | --- | --- |
@@ -53,20 +52,20 @@ As chapters become available, the handbook will support three reading paths:
 | Understand and extend Quiet | Architecture → Scene → Application → Editor → individual system chapters |
 | Look up a specific contract | Generated C++ reference or File Formats reference |
 
-Available chapters are linked below. Planned chapters are shown as paths until their target pages exist.
+The tables below link to the available handbook chapters.
 
 ## Handbook structure
 
 ### Foundations
 
-| Proposed page | Scope |
+| Page | Scope |
 | --- | --- |
 | [Getting Started](GettingStarted.md) | Prerequisites, configuration, builds, resources, first launch, and troubleshooting |
 | [Architecture overview](Architecture.md) | System boundaries, ownership, lifecycle, and major data flows |
 
 ### Practical guides
 
-| Proposed page | Scope |
+| Page | Scope |
 | --- | --- |
 | [Projects](Guides/Projects.md) | Launcher creation and opening, project layout, direct Editor launch, and handoff |
 | [Editor](Guides/Editor.md) | Panels, Actor components, navigation, gizmos, shortcuts, saving, and Play/Simulate |
@@ -76,7 +75,7 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 ### System internals
 
-| Proposed page | Scope |
+| Page | Scope |
 | --- | --- |
 | [Scene and Actors](Systems/Scene.md) | Ownership, identity, components, copying, runtime lifecycle, deferred requests, and load/save behavior |
 | [Application](Systems/Application.md) | Configuration, ownership, startup, frame orchestration, active Scene and camera selection, and shutdown |
@@ -90,13 +89,12 @@ Available chapters are linked below. Planned chapters are shown as paths until t
 
 ### Reference and direction
 
-| Proposed page | Scope |
+| Page | Scope |
 | --- | --- |
 | [File formats](Reference/FileFormats.md) | Project and Scene JSON, runtime manifest, cook cache, QAsset, QMesh, and QTexture |
 | [Engine roadmap](Roadmap.md) | Implemented foundations, future areas, and development principles |
 
-The C++ API reference will be generated from Quiet's source declarations and documentation comments. It will include relevant implementation headers, not only headers under `Engine/include/Quiet/`.
-
+The C++ API reference is generated from Quiet's source declarations and documentation comments. It includes public headers under `Engine/include/Quiet/` and relevant implementation headers.
 
 ## Source and output layout
 

@@ -55,7 +55,7 @@ CMake expands `Docs/Doxyfile.in` into the generated configuration:
 cmake --build Build/Intermediate/Docs --target Quiet_Docs
 ```
 
-The target generates HTML and copies the existing branding assets needed by the root README.
+The target generates HTML under `Build/Docs/html/` and copies branding assets into the output. Doxygen copies the configured logo, icon, stylesheets, and scripts.
 
 ## Open the result
 
@@ -65,7 +65,7 @@ Start-Process .\Build\Docs\html\index.html
 
 The documentation homepage comes from `Docs/README.md`.
 
-The root README, handbook pages, system groups, namespaces, classes, and source listings are included in the generated site.
+The generated site contains the handbook, C++ system groups, namespaces, classes, and source listings. The repository's root README remains the GitHub entry point.
 
 ## Review diagnostics
 
@@ -77,9 +77,26 @@ Review configuration warnings, unresolved references, and documentation parsing 
 
 The initial configuration uses `EXTRACT_ALL = YES` to expose a browsable API inventory. This suppresses undocumented-member warnings. A successful generation is not a documentation coverage result.
 
+## Documentation configuration
+
+| Source | Responsibility |
+| --- | --- |
+| `Docs/CMakeLists.txt` | Standalone configuration and the `Quiet_Docs` target |
+| `Docs/Doxyfile.in` | Doxygen inputs, extraction, diagnostics, and HTML assets |
+| `Docs/Navigation.dox` | Handbook categories and chapter parent relationships |
+| `Docs/Groups.dox` | C++ system groups and category membership |
+| `Docs/DoxygenLayout.xml` | Sidebar entries and the symbol indexes |
+| `Docs/Theme/header.html` | HTML template and theme-extension initialization |
+| `Docs/Theme/quiet-docs.css` | Quiet colors, typography, logo sizing, and header spacing |
+| `Docs/ThirdParty/DoxygenAwesome/` | Pinned upstream theme styles and extensions |
+
+The custom header was generated with Doxygen 1.18.0. Review it against the
+generator's template when upgrading Doxygen. Keep Quiet's customizations
+in `Docs/Theme/`.
+
 ## Rebuild after changes
 
-After editing handbook pages or C++ documentation comments, rerun the generation command.
+After editing handbook pages, C++ documentation comments, `Docs/Navigation.dox`, `Docs/Groups.dox`, `Docs/DoxygenLayout.xml`, or files in `Docs/Theme/`, rerun the generation command.
 
 After editing `Docs/CMakeLists.txt` or `Docs/Doxyfile.in`, rerun configuration and generation.
 

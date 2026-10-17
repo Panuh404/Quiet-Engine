@@ -718,5 +718,6 @@ When adding reload behavior, distinguish:
 
 A success result at one stage does not establish success at every stage.
 
-Binary layouts and exact JSON schemas belong in the planned file-format
-reference. Package construction belongs in the Cooking chapter.
+Binary layouts and exact JSON schemas are documented in the
+[file-format reference](../Reference/FileFormats.md). Package construction
+is documented in [Cooking](Cooking.md).
