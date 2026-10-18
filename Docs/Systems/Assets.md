@@ -676,6 +676,36 @@ three batches before combining their results.
 Startup Scene loading occurs after the required asset batches succeed.
 A Scene load failure does not undo those completed asset loads.
 
+## Font atlas foundation
+
+FontImporter::LoadFromFile() imports the first face of a trusted local
+font file into an owned FontAtlasData result. Check Succeeded() before
+using the result; Error describes expected import failures. Allocation
+exceptions propagate.
+
+The current importer supports printable ASCII, U+0020 through U+007E,
+in a fixed 512x512 atlas. PixelHeight specifies the scaled
+ascender-to-descender height. Glyph bounds are baseline-relative, with
+positive Y pointing down. The result retains glyph advances, vertical
+metrics, and pair kerning independently of the source file's lifetime.
+
+Pixels contains one linear coverage byte per texel. GetGlyph() and
+GetKerningAdjustment() substitute '?' for unsupported codepoints.
+Text layout must handle control characters separately.
+
+Texture2D accepts a successful FontAtlasData result and uploads its
+coverage as a single-mip R8_UNORM texture with linear filtering and
+clamp-to-edge addressing. Coverage is sampled from the red channel.
+Construction does not retain the CPU atlas reference. The logical
+device must outlive the texture, and outstanding GPU use must finish
+before destruction.
+
+Texture2D validates sampled-image, transfer-destination, and linear
+filtering support for its selected format.
+
+This foundation does not yet register fonts as project assets, load
+them automatically, render text, or package fonts for runtime use.
+
 ## Worked example: registry acceptance
 
 This example uses an in-memory registry. It does not require an initialized

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Quiet/Assets/FontAtlasData.h"
 #include "Quiet/Assets/QTextureReader.h"
 #include "Quiet/Assets/TexturePixelData.h"
 #include "Quiet/Core/Log.h"
@@ -137,6 +138,11 @@ namespace
     {
         switch (format)
         {
+            case VK_FORMAT_R8_UNORM:
+            {
+                return static_cast<VkDeviceSize>(width) * static_cast<VkDeviceSize>(height);
+            }
+
             case VK_FORMAT_R8G8B8A8_SRGB:
             {
                 return static_cast<VkDeviceSize>(width) * static_cast<VkDeviceSize>(height) * 4;
@@ -171,10 +177,10 @@ namespace Quiet::Renderer::Vulkan
         {
             pixelData.Width,
             pixelData.Height,
-            std::span<const std::uint8_t>(pixelData.Pixels.data(), pixelData.Pixels.size())
+            std::span(pixelData.Pixels.data(), pixelData.Pixels.size())
         };
 
-        Create(physicalDevice, logicalDevice, graphicsCommands, VK_FORMAT_R8G8B8A8_SRGB, std::span<const UploadMip>(&mip, 1));
+        Create(physicalDevice, logicalDevice, graphicsCommands, VK_FORMAT_R8G8B8A8_SRGB, std::span(&mip, 1));
     }
 
     Texture2D::Texture2D(
@@ -205,11 +211,39 @@ namespace Quiet::Renderer::Vulkan
             {
                 mip.Width,
                 mip.Height,
-                std::span<const std::uint8_t>(mip.Data.data(), mip.Data.size())
+                std::span(mip.Data.data(), mip.Data.size())
             });
         }
 
         Create(physicalDevice, logicalDevice, graphicsCommands, format, mipLevels);
+    }
+
+    Texture2D::Texture2D(
+        const PhysicalDevice& physicalDevice,
+        const LogicalDevice& logicalDevice,
+        const GraphicsCommands& graphicsCommands,
+        const Assets::FontAtlasData& atlas)
+            : m_Device(logicalDevice.GetHandle())
+    {
+        if (!atlas.Succeeded())
+        {
+            throw std::runtime_error("Texture2D cannot be created from an unsuccessful font atlas.");
+        }
+
+        const UploadMip mip
+        {
+            atlas.Width,
+            atlas.Height,
+            std::span(atlas.Pixels.data(), atlas.Pixels.size())
+        };
+
+        Create(
+            physicalDevice,
+            logicalDevice,
+            graphicsCommands,
+            VK_FORMAT_R8_UNORM,
+            std::span(&mip, 1),
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     }
 
     Texture2D::~Texture2D()
@@ -227,11 +261,12 @@ namespace Quiet::Renderer::Vulkan
     }
 
     void Texture2D::Create(
-        const PhysicalDevice& physicalDevice,
-        const LogicalDevice& logicalDevice,
-        const GraphicsCommands& graphicsCommands,
-        const VkFormat format,
-        const std::span<const UploadMip> mipLevels)
+            const PhysicalDevice& physicalDevice,
+            const LogicalDevice& logicalDevice,
+            const GraphicsCommands& graphicsCommands,
+            const VkFormat format,
+            const std::span<const UploadMip> mipLevels,
+            const VkSamplerAddressMode addressMode)
     {
         if (mipLevels.empty())
             throw std::runtime_error("Texture2D cannot be created without mip levels.");
@@ -251,7 +286,12 @@ namespace Quiet::Renderer::Vulkan
 
         vkGetPhysicalDeviceFormatProperties(physicalDevice.GetHandle(), m_Format, &formatProperties);
 
-        constexpr VkFormatFeatureFlags RequiredFeatures = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+        // Every Texture2D sampler created below uses linear filtering.
+        constexpr VkFormatFeatureFlags RequiredFeatures =
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+            VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
         if ((formatProperties.optimalTilingFeatures & RequiredFeatures) != RequiredFeatures)
             throw std::runtime_error("Selected GPU does not support the texture format for optimal sampled transfer-destination images.");
 
@@ -390,9 +430,9 @@ namespace Quiet::Renderer::Vulkan
             samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             samplerInfo.minFilter = VK_FILTER_LINEAR;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeU = addressMode;
+            samplerInfo.addressModeV = addressMode;
+            samplerInfo.addressModeW = addressMode;
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.maxAnisotropy = 1.0f;
             samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;

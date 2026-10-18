@@ -7,6 +7,7 @@
 
 namespace Quiet::Assets
 {
+    struct FontAtlasData;
     struct QTextureData;
     struct TexturePixelData;
 }
@@ -31,6 +32,12 @@ namespace Quiet::Renderer::Vulkan
            const LogicalDevice& logicalDevice,
            const GraphicsCommands& graphicsCommands,
            const Assets::QTextureData& textureData);
+
+        Texture2D(
+            const PhysicalDevice& physicalDevice,
+            const LogicalDevice& logicalDevice,
+            const GraphicsCommands& graphicsCommands,
+            const Assets::FontAtlasData& atlas);
 
         ~Texture2D();
 
@@ -63,7 +70,8 @@ namespace Quiet::Renderer::Vulkan
             const LogicalDevice& logicalDevice,
             const GraphicsCommands& graphicsCommands,
             VkFormat format,
-            std::span<const UploadMip> mipLevels);
+            std::span<const UploadMip> mipLevels,
+            VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
         void Destroy();
 
