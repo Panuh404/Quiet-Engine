@@ -65,7 +65,8 @@ uses them.
 
 ## Owned resource groups
 
-VulkanRenderer stores its rendering objects through unique pointers.
+VulkanRenderer owns Vulkan resource wrappers through unique pointers.
+It also stores the default runtime font's CPU atlas by value.
 
 | Group | Owned objects |
 | --- | --- |
@@ -74,6 +75,7 @@ VulkanRenderer stores its rendering objects through unique pointers.
 | Scene viewport | SceneViewportTarget |
 | Frame infrastructure | GraphicsCommands, CameraResources, FrameSync |
 | Asset libraries | MeshLibrary and TextureLibrary |
+| Runtime font | Default FontAtlasData and its Texture2D coverage texture |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -115,6 +117,28 @@ An external shared pointer can extend a resource object's lifetime.
 That extension does not keep the renderer's Vulkan device alive.
 Resource lifetime must remain compatible with the device and other Vulkan
 dependencies used by the resource.
+
+### Default runtime font
+
+CreateRenderResources() imports Resources/Fonts/Inter-Regular.ttf at a
+32-pixel ascender-to-descender height and uploads its coverage through
+Texture2D. The path is relative to QUIET_ENGINE_RESOURCES_PATH.
+
+VulkanRenderer owns the CPU atlas by value and the GPU texture through
+a unique pointer. Import failure throws with the font path and importer
+error. Texture creation failures propagate from Texture2D.
+
+The font is created in both Editor and Sandbox modes. It survives Scene
+viewport resizing and swapchain recreation because its uploaded texture
+depends on the retained logical device.
+
+DestroyRenderResources() releases the font texture after TextureLibrary
+and before Swapchain and LogicalDevice. Member declaration order also
+keeps the logical device alive while the font texture is released during
+construction failure unwinding.
+
+This resource is independent of ImGui's font atlas. It does not yet
+submit text draws or provide project font-asset lookup.
 
 ### UI layer
 
@@ -574,7 +598,7 @@ result, then releases owned pointers in this order:
 8. SceneViewportTarget.
 9. ImGuiLayer.
 10. DepthResources.
-11. MeshLibrary and TextureLibrary.
+11. MeshLibrary, TextureLibrary, and the default runtime font texture.
 12. Swapchain.
 13. LogicalDevice and PhysicalDevice.
 14. VulkanSurface and VulkanInstance.

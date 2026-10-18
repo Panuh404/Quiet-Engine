@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include "GLFW/glfw3.h"
+#include "Quiet/Assets/FontImporter.h"
 #include "Quiet/Assets/TextureImporter.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
@@ -29,6 +30,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
+#include "Renderer/Vulkan/Texture/Texture2D.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
 #include "Renderer/Vulkan/Editor/EditorGridPipeline.h"
@@ -324,19 +326,28 @@ namespace Quiet::Renderer::Vulkan
                 m_CameraResources->GetDescriptorSetLayout());
 
             m_SelectionMaskRenderSystem = std::make_unique<SelectionMaskRenderSystem>();
-
-            m_SelectionOutlinePipeline = std::make_unique<SelectionOutlinePipeline>(
-                *m_LogicalDevice,
-                m_SceneViewportTarget->GetColorFormat());
-
+            m_SelectionOutlinePipeline = std::make_unique<SelectionOutlinePipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat());
             m_SelectionOutlineRenderSystem = std::make_unique<SelectionOutlineRenderSystem>();
         }
 
-        m_FrameSync = std::make_unique<FrameSync>(
-            *m_LogicalDevice,
-            *m_Swapchain);
-
+        m_FrameSync = std::make_unique<FrameSync>(*m_LogicalDevice, *m_Swapchain);
         m_StaticMeshRenderSystem = std::make_unique<StaticMeshRenderSystem>();
+
+        const std::filesystem::path defaultFontPath = std::filesystem::path(QUIET_ENGINE_RESOURCES_PATH) / "Fonts" / "Inter-Regular.ttf";
+
+        m_DefaultFontAtlas = Assets::FontImporter::LoadFromFile(defaultFontPath, 32.0f);
+        if (!m_DefaultFontAtlas.Succeeded())
+        {
+            throw std::runtime_error("Failed to import default runtime font '" + defaultFontPath.string() + "': " + m_DefaultFontAtlas.Error);
+        }
+
+        m_DefaultFontTexture = std::make_unique<Texture2D>(*m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands, m_DefaultFontAtlas);
+
+        QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
+            defaultFontPath.string(),
+            m_DefaultFontAtlas.PixelHeight,
+            m_DefaultFontAtlas.Width,
+            m_DefaultFontAtlas.Height);
     }
 
     void VulkanRenderer::DestroyRenderResources()
@@ -366,6 +377,7 @@ namespace Quiet::Renderer::Vulkan
         m_DepthResources.reset();
         m_MeshLibrary.reset();
         m_TextureLibrary.reset();
+        m_DefaultFontTexture.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();

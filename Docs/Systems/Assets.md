@@ -703,8 +703,9 @@ before destruction.
 Texture2D validates sampled-image, transfer-destination, and linear
 filtering support for its selected format.
 
-This foundation does not yet register fonts as project assets, load
-them automatically, render text, or package fonts for runtime use.
+VulkanRenderer automatically imports and uploads the bundled Inter
+Regular font during initialization. Project font registration, text
+drawing, and font packaging remain unimplemented.
 
 ## Worked example: registry acceptance
 

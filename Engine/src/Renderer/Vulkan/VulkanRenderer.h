@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #include "imgui.h"
 
+#include "Quiet/Assets/FontAtlasData.h"
 #include "Quiet/Core/UUID.h"
 #include "Quiet/Platform/Window.h"
 
@@ -47,6 +48,7 @@ namespace Quiet::Renderer::Vulkan
     class SceneViewportTarget;
     class GraphicsCommands;
     class MeshLibrary;
+    class Texture2D;
     class TextureLibrary;
     class CameraResources;
     class StaticMeshPipeline;
@@ -181,6 +183,8 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<UI::ImGuiLayer> m_ImGuiLayer;
         std::unique_ptr<MeshLibrary> m_MeshLibrary;
         std::unique_ptr<TextureLibrary> m_TextureLibrary;
+        Assets::FontAtlasData m_DefaultFontAtlas;
+        std::unique_ptr<Texture2D> m_DefaultFontTexture;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<FrameSync> m_FrameSync;
