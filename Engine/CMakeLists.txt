@@ -9,6 +9,7 @@ target_sources(Quiet_Engine
         src/Core/UUID.cpp
 
         # Assets
+        src/Assets/FontImporter.cpp
         src/Assets/MeshImporter.cpp
         src/Assets/QMeshReader.cpp
         src/Assets/QTextureReader.cpp
@@ -273,6 +274,8 @@ target_sources(Quiet_Engine
         include/Quiet/Core/Log.h
         include/Quiet/Core/UUID.h
 
+        include/Quiet/Assets/FontAtlasData.h
+        include/Quiet/Assets/FontImporter.h
         include/Quiet/Assets/MeshData.h
         include/Quiet/Assets/MeshImportResult.h
         include/Quiet/Assets/MeshImporter.h
