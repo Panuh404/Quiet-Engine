@@ -120,6 +120,9 @@ target_sources(Quiet_Engine
         src/Editor/Viewport/EditorViewportProjection.cpp
         src/Editor/Viewport/EditorViewportProjection.h
 
+        # Renderer - Text
+        src/Renderer/TextLayout.cpp
+
         # Renderer - UI
         src/Renderer/UI/ImGuiFonts.h
         src/Renderer/UI/ImGuiLayer.cpp
@@ -313,6 +316,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorState.h
 
         include/Quiet/Renderer/RenderConventions.h
+        include/Quiet/Renderer/TextLayout.h
         include/Quiet/Platform/Window.h
         include/Quiet/Platform/Shell.h
         include/Quiet/Math/Direction.h

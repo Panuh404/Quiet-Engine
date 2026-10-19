@@ -150,6 +150,31 @@ before passing it to DrawFrame().
 The renderer and Application therefore coordinate different parts of
 the same UI frame lifecycle.
 
+## CPU text layout
+
+Quiet::Renderer::TextLayout::Build() converts Unicode codepoints and a
+successful FontAtlasData result into owned TextGlyphQuad values.
+
+Input uses std::u32string_view. This function does not decode UTF-8.
+Unsupported codepoints use the font atlas's '?' fallback.
+
+Positions are relative to a top-left origin, with positive Y pointing
+down. The first baseline uses the scaled font ascent. Subsequent lines
+advance by the scaled LineHeight. Kerning and glyph advances use the
+requested pixel height.
+
+LF, CRLF, and standalone CR create line breaks. Tabs advance by four
+spaces rather than to tab stops. Kerning does not cross a line break
+or tab. Spaces can advance the pen without producing drawable geometry.
+
+Size reports logical line-box dimensions, including trailing spaces
+and empty lines. It is not a tight visible-pixel bounding box. Empty
+text produces zero dimensions and no quads; a trailing line break
+creates an additional empty line.
+
+Layout results retain no references to the font or input string.
+This stage performs no wrapping, alignment, clipping, or GPU drawing.
+
 ## Swapchain and Scene viewport
 
 The renderer distinguishes presentation extent from Scene viewport extent.
