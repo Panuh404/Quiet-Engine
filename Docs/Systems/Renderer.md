@@ -76,6 +76,7 @@ It also stores the default runtime font's CPU atlas by value.
 | Frame infrastructure | GraphicsCommands, CameraResources, FrameSync |
 | Asset libraries | MeshLibrary and TextureLibrary |
 | Runtime font | Default FontAtlasData and its Texture2D coverage texture |
+| Text rendering | TextPipeline and its font descriptor resources |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -174,6 +175,47 @@ creates an additional empty line.
 
 Layout results retain no references to the font or input string.
 This stage performs no wrapping, alignment, clipping, or GPU drawing.
+
+## Text shader interface
+
+TextPushConstants describes one glyph using four aligned vectors:
+pixel-space rectangle, atlas UV rectangle, straight-alpha linear color,
+and target dimensions. Its C++ size is 64 bytes, with members at offsets
+0, 16, 32, and 48.
+
+Text.vert generates two triangles from six vertices using gl_VertexIndex.
+Its intended draw uses vertexCount=6 and firstVertex=0, without vertex
+buffers. Positions use a top-left pixel origin and require positive
+target dimensions and a positive-height Vulkan viewport.
+
+The vertex shader converts pixels directly to normalized device
+coordinates. It does not use the Scene camera or its projection Y-flip.
+
+Text.frag samples font coverage from the red channel at descriptor set 0,
+binding 0, using a combined image sampler. Coverage multiplies output
+alpha while RGB remains unmultiplied. The intended pipeline uses
+straight-alpha blending with depth testing and writing disabled.
+
+TextPipeline creates the graphics pipeline, pipeline layout, descriptor-set
+layout, descriptor pool, and font descriptor set. It uses color-only
+dynamic rendering with one sample, straight-alpha blending, no vertex
+inputs, and disabled depth testing, depth writing, and face culling.
+Viewport and scissor are dynamic.
+
+The push-constant range is visible to the vertex stage. The font sampler
+is visible to the fragment stage. The supplied R8_UNORM font texture is
+borrowed and must outlive the pipeline's use.
+
+VulkanRenderer creates the text pipeline after the default font texture.
+Swapchain recreation destroys and rebuilds the pipeline while retaining
+the font texture. Normal teardown destroys the pipeline before that
+texture and the logical device.
+
+TextPipeline releases partially created Vulkan resources if construction
+throws. Destruction requires outstanding GPU use to have finished.
+
+Pipeline creation is implemented; text draw submission remains
+unimplemented.
 
 ## Swapchain and Scene viewport
 
@@ -623,7 +665,7 @@ result, then releases owned pointers in this order:
 8. SceneViewportTarget.
 9. ImGuiLayer.
 10. DepthResources.
-11. MeshLibrary, TextureLibrary, and the default runtime font texture.
+11. MeshLibrary, TextureLibrary, TextPipeline, and the default runtime font texture.
 12. Swapchain.
 13. LogicalDevice and PhysicalDevice.
 14. VulkanSurface and VulkanInstance.

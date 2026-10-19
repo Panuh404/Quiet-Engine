@@ -3,6 +3,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <cstddef>
 
 namespace Quiet::Renderer::Vulkan
 {
@@ -28,4 +29,30 @@ namespace Quiet::Renderer::Vulkan
         // rgb = ambient color, w = ambient intensity
         alignas(16) glm::vec4 AmbientColorIntensity{ 1.0f, 1.0f, 1.0f, 0.25f };
     };
+
+    /**
+     * @brief Supplies one screen-space glyph to the text vertex shader.
+     * @ingroup quiet_renderer
+     *
+     * Rect contains pixel-space minimum XY and maximum XY.
+     * UVRect contains atlas UV minimum XY and maximum XY.
+     * Color contains straight-alpha linear RGBA.
+     * Viewport contains target width and height in XY; ZW are reserved.
+     *
+     * Requires positive viewport dimensions and a positive-height
+     * Vulkan viewport. This data does not use the Scene camera.
+     */
+    struct TextPushConstants
+     {
+         alignas(16) glm::vec4 Rect{0.0f};
+         alignas(16) glm::vec4 UVRect{0.0f};
+         alignas(16) glm::vec4 Color{1.0f};
+         alignas(16) glm::vec4 Viewport{1.0f, 1.0f, 0.0f, 0.0f};
+     };
+
+    static_assert(sizeof(TextPushConstants) == 64);
+    static_assert(offsetof(TextPushConstants, Rect) == 0);
+    static_assert(offsetof(TextPushConstants, UVRect) == 16);
+    static_assert(offsetof(TextPushConstants, Color) == 32);
+    static_assert(offsetof(TextPushConstants, Viewport) == 48);
 }

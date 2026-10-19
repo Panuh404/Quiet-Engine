@@ -200,6 +200,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
+        # Renderer - Vulkan - Text
+        src/Renderer/Vulkan/Text/TextPipeline.h
+        src/Renderer/Vulkan/Text/TextPipeline.cpp
+
         # Renderer - Vulkan - Texture
         src/Renderer/Vulkan/Texture/StbImage.cpp
         src/Renderer/Vulkan/Texture/Texture2D.cpp

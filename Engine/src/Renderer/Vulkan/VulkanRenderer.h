@@ -49,6 +49,7 @@ namespace Quiet::Renderer::Vulkan
     class GraphicsCommands;
     class MeshLibrary;
     class Texture2D;
+    class TextPipeline;
     class TextureLibrary;
     class CameraResources;
     class StaticMeshPipeline;
@@ -185,6 +186,7 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<TextureLibrary> m_TextureLibrary;
         Assets::FontAtlasData m_DefaultFontAtlas;
         std::unique_ptr<Texture2D> m_DefaultFontTexture;
+        std::unique_ptr<TextPipeline> m_TextPipeline;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<FrameSync> m_FrameSync;

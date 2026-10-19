@@ -30,6 +30,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
+#include "Renderer/Vulkan/Text/TextPipeline.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
@@ -342,6 +343,7 @@ namespace Quiet::Renderer::Vulkan
         }
 
         m_DefaultFontTexture = std::make_unique<Texture2D>(*m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands, m_DefaultFontAtlas);
+        m_TextPipeline = std::make_unique<TextPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat(), *m_DefaultFontTexture);
 
         QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
             defaultFontPath.string(),
@@ -377,6 +379,7 @@ namespace Quiet::Renderer::Vulkan
         m_DepthResources.reset();
         m_MeshLibrary.reset();
         m_TextureLibrary.reset();
+        m_TextPipeline.reset();
         m_DefaultFontTexture.reset();
         m_Swapchain.reset();
         m_LogicalDevice.reset();
@@ -546,6 +549,7 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
+        m_TextPipeline.reset();
 
         m_SelectionOutlineRenderSystem.reset();
         m_SelectionOutlinePipeline.reset();
@@ -603,6 +607,11 @@ namespace Quiet::Renderer::Vulkan
             m_SceneViewportTarget->GetDepthFormat(),
             m_CameraResources->GetDescriptorSetLayout(),
             m_StaticMeshMaterialResources->GetDescriptorSetLayout());
+
+        m_TextPipeline = std::make_unique<TextPipeline>(
+            *m_LogicalDevice,
+            m_SceneViewportTarget->GetColorFormat(),
+            *m_DefaultFontTexture);
 
         if (m_EditorMode)
         {
