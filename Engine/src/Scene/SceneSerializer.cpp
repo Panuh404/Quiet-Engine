@@ -371,7 +371,7 @@ namespace Quiet::Scene
             actorJson["id"] = Quiet::Core::UUIDToString(actor.GetID());
             actorJson["name"] = actor.GetName();
 
-            const TransformComponent& transform = actor.GetComponent<TransformComponent>();
+            const auto& transform = actor.GetComponent<TransformComponent>();
             actorJson["transform"] =
             {
                 { "position", SerializeVec3(transform.WorldTransform.Position) },
@@ -379,7 +379,18 @@ namespace Quiet::Scene
                 { "scale", SerializeVec3(transform.WorldTransform.Scale) }
             };
 
-            if (const StaticMeshComponent* staticMesh = actor.TryGetComponent<StaticMeshComponent>(); staticMesh && staticMesh->IsValid())
+            if (const auto* text = actor.TryGetComponent<TextComponent>())
+            {
+                actorJson["text"] =
+                {
+                    { "content", text->Content },
+                    { "pixel_height", text->PixelHeight },
+                    { "color", SerializeVec4(text->Color) },
+                    { "visible", text->Visible }
+                };
+            }
+
+            if (const auto* staticMesh = actor.TryGetComponent<StaticMeshComponent>(); staticMesh && staticMesh->IsValid())
             {
                 json staticMeshJson =
                 {
@@ -399,12 +410,12 @@ namespace Quiet::Scene
                 actorJson["static_mesh"] = std::move(staticMeshJson);
             }
 
-            if (const MaterialComponent* material = actor.TryGetComponent<MaterialComponent>())
+            if (const auto* material = actor.TryGetComponent<MaterialComponent>())
             {
                 actorJson["material"] = SerializeMaterial(*material);
             }
 
-            if (const DirectionalLightComponent* light = actor.TryGetComponent<DirectionalLightComponent>())
+            if (const auto* light = actor.TryGetComponent<DirectionalLightComponent>())
             {
                 actorJson["directional_light"] =
                 {
@@ -415,7 +426,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const RotatorComponent* rotator = actor.TryGetComponent<RotatorComponent>())
+            if (const auto* rotator = actor.TryGetComponent<RotatorComponent>())
             {
                 actorJson["rotator"] =
                 {
@@ -423,12 +434,12 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const CameraComponent* camera = actor.TryGetComponent<CameraComponent>())
+            if (const auto* camera = actor.TryGetComponent<CameraComponent>())
             {
                 actorJson["camera"] = SerializeCamera(*camera);
             }
 
-            if (const AudioSourceComponent* audioSource = actor.TryGetComponent<AudioSourceComponent>())
+            if (const auto* audioSource = actor.TryGetComponent<AudioSourceComponent>())
             {
                 actorJson["audio_source"] =
                 {
@@ -449,7 +460,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const AudioListenerComponent* audioListener = actor.TryGetComponent<AudioListenerComponent>())
+            if (const auto* audioListener = actor.TryGetComponent<AudioListenerComponent>())
             {
                 actorJson["audio_listener"] =
                 {
@@ -457,7 +468,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const ScriptComponent* script = actor.TryGetComponent<ScriptComponent>())
+            if (const auto* script = actor.TryGetComponent<ScriptComponent>())
             {
                 json scriptJson =
                 {
@@ -535,7 +546,7 @@ namespace Quiet::Scene
                 actorJson["script"] = std::move(scriptJson);
             }
 
-            if (const RigidBodyComponent* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
+            if (const auto* rigidBody = actor.TryGetComponent<RigidBodyComponent>())
             {
                 actorJson["rigid_body"] =
                 {
@@ -549,7 +560,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const BoxColliderComponent* boxCollider = actor.TryGetComponent<BoxColliderComponent>())
+            if (const auto* boxCollider = actor.TryGetComponent<BoxColliderComponent>())
             {
                 actorJson["box_collider"] =
                 {
@@ -558,7 +569,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const SphereColliderComponent* sphereCollider = actor.TryGetComponent<SphereColliderComponent>())
+            if (const auto* sphereCollider = actor.TryGetComponent<SphereColliderComponent>())
             {
                 actorJson["sphere_collider"] =
                 {
@@ -567,7 +578,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const CapsuleColliderComponent* capsuleCollider = actor.TryGetComponent<CapsuleColliderComponent>())
+            if (const auto* capsuleCollider = actor.TryGetComponent<CapsuleColliderComponent>())
             {
                 actorJson["capsule_collider"] =
                 {
@@ -666,10 +677,27 @@ namespace Quiet::Scene
             auto& actor = scene.CreateActorWithID(id, actorJson.value("name", "Actor"));
 
             const auto& transformJson = actorJson.at("transform");
-            TransformComponent& transform = actor.GetComponent<TransformComponent>();
+            auto& transform = actor.GetComponent<TransformComponent>();
             transform.WorldTransform.Position = DeserializeVec3(transformJson.at("position"));
             transform.WorldTransform.RotationDegrees = DeserializeVec3(transformJson.at("rotation"));
             transform.WorldTransform.Scale = DeserializeVec3(transformJson.at("scale"));
+
+            if (actorJson.contains("text"))
+            {
+                const auto& textJson = actorJson.at("text");
+
+                TextComponent text{};
+                text.Content = textJson.value("content", text.Content);
+                text.PixelHeight = textJson.value("pixel_height", text.PixelHeight);
+                text.Visible = textJson.value("visible", text.Visible);
+
+                if (textJson.contains("color"))
+                {
+                    text.Color = DeserializeVec4(textJson.at("color"));
+                }
+
+                actor.AddComponent<TextComponent>(text);
+            }
 
             if (actorJson.contains("static_mesh"))
             {
@@ -678,7 +706,7 @@ namespace Quiet::Scene
 
                 if (auto mesh = meshLibrary.TryGet(resourceId))
                 {
-                    StaticMeshComponent& staticMesh = actor.AddComponent<StaticMeshComponent>();
+                    auto& staticMesh = actor.AddComponent<StaticMeshComponent>();
                     staticMesh.MeshResourceID = resourceId;
                     staticMesh.Mesh = mesh;
                     staticMesh.Visible = staticMeshJson.value("visible", true);

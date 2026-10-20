@@ -241,6 +241,39 @@ The loader can add multiple collider components.
 It does not enforce PhysicsWorld's exactly-one-supported-collider
 requirement or construct runtime bodies.
 
+## Text component
+
+An Actor's optional text object stores authored content and appearance.
+
+| Field | Type | Default |
+| --- | --- | --- |
+| content | UTF-8 string | "Text" |
+| pixel_height | Number | 32 |
+| color | RGBA array | [1, 1, 1, 1] |
+| visible | Boolean | true |
+
+Example Actor member:
+
+```json
+"text": {
+  "content": "Score: 100",
+  "pixel_height": 32,
+  "color": [1, 1, 1, 1],
+  "visible": true
+}
+```
+
+Absence of the text object leaves the Actor without TextComponent.
+Missing fields within the object retain component defaults.
+
+Pixel height is intended to be finite and positive. Color uses
+straight-alpha linear RGBA. These values are stored without clamping.
+The existing typed JSON reads and exception behavior apply.
+
+This component contains no position, font asset reference, GPU resource,
+or layout cache. The renderer uses the default font at shared****
+screen-space origin (24, 24). Inspector integration is not implemented.
+
 ## Script component
 
 | Field | Type | Default |

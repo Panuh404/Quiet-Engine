@@ -294,6 +294,18 @@ namespace
                AreMaterialSlotsEqual(lhs->MaterialSlots, rhs->MaterialSlots);
     }
 
+    bool AreTextsEqual(const std::optional<Quiet::Scene::TextComponent>& lhs,
+                       const std::optional<Quiet::Scene::TextComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return lhs->Content == rhs->Content &&
+               AreFloatsEqual(lhs->PixelHeight, rhs->PixelHeight) &&
+               AreVec4Equal(lhs->Color, rhs->Color) &&
+               lhs->Visible == rhs->Visible;
+    }
+
     bool AreActorsEqual(const Quiet::Editor::EditorSceneHistory::ActorSnapshot& lhs,
                         const Quiet::Editor::EditorSceneHistory::ActorSnapshot& rhs)
     {
@@ -312,7 +324,8 @@ namespace
             AreRigidBodiesEqual(lhs.RigidBody, rhs.RigidBody) &&
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
             AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
-            AreCapsuleCollidersEqual(lhs.CapsuleCollider, rhs.CapsuleCollider);
+            AreCapsuleCollidersEqual(lhs.CapsuleCollider, rhs.CapsuleCollider) &&
+            AreTextsEqual(lhs.Text, rhs.Text);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
@@ -468,6 +481,9 @@ namespace Quiet::Editor
             if (const auto* capsuleCollider = actor.TryGetComponent<Scene::CapsuleColliderComponent>())
                 actorSnapshot.CapsuleCollider = *capsuleCollider;
 
+            if (const auto* text = actor.TryGetComponent<Scene::TextComponent>())
+                actorSnapshot.Text = *text;
+
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
@@ -488,6 +504,9 @@ namespace Quiet::Editor
         {
             Scene::Actor& actor = scene.CreateActorWithID(actorSnapshot.ID, actorSnapshot.Name);
             actor.GetComponent<Scene::TransformComponent>() = actorSnapshot.Transform;
+
+            if (actorSnapshot.Text)
+                actor.AddComponent<Scene::TextComponent>(*actorSnapshot.Text);
 
             if (actorSnapshot.StaticMesh)
                 actor.AddComponent<Scene::StaticMeshComponent>(*actorSnapshot.StaticMesh);

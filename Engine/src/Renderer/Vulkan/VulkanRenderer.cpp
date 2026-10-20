@@ -10,6 +10,7 @@
 #include "GLFW/glfw3.h"
 #include "Quiet/Assets/FontImporter.h"
 #include "Quiet/Assets/TextureImporter.h"
+#include "Quiet/Renderer/TextLayout.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
 
@@ -42,6 +43,7 @@
 #include "Renderer/Vulkan/Editor/SelectionOutlinePipeline.h"
 #include "Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.h"
 
+#include "Scene/Components/TextComponent.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -346,12 +348,6 @@ namespace Quiet::Renderer::Vulkan
         m_DefaultFontTexture = std::make_unique<Texture2D>(*m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands, m_DefaultFontAtlas);
         m_TextPipeline = std::make_unique<TextPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat(), *m_DefaultFontTexture);
         m_TextRenderSystem = std::make_unique<TextRenderSystem>();
-
-        m_TextPreviewLayout = TextLayout::BuildUTF8(m_DefaultFontAtlas, "QUIET ENGINE\nRuntime text 0123456789", 32.0f);
-        if (!m_TextPreviewLayout.Succeeded())
-        {
-            throw std::runtime_error("Failed to build runtime text preview: " + m_TextPreviewLayout.Error);
-        }
 
         QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
             defaultFontPath.string(),
@@ -984,7 +980,7 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
-            if (m_TextPipeline && m_TextRenderSystem && !m_TextPreviewLayout.Quads.empty())
+            if (m_TextPipeline && m_TextRenderSystem)
             {
                 SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
 
@@ -1004,15 +1000,25 @@ namespace Quiet::Renderer::Vulkan
 
                 vkCmdBeginRendering(commandBuffer, &textRenderingInfo);
 
-                TextRenderContext textContext{};
-                textContext.CommandBuffer = commandBuffer;
-                textContext.Pipeline = m_TextPipeline.get();
-                textContext.Extent = m_SceneViewportTarget->GetExtent();
-                textContext.Quads = std::span<const TextGlyphQuad>(m_TextPreviewLayout.Quads);
-                textContext.Offset = glm::vec2(24.0f, 24.0f);
-                textContext.Color = glm::vec4(1.0f);
+                for (const Scene::Actor& actor : scene.GetActors())
+                {
+                    const auto* text = actor.TryGetComponent<Scene::TextComponent>();
+                    if (!text || !text->Visible || text->Content.empty()) continue;
 
-                m_TextRenderSystem->Record(textContext);
+                    const TextLayoutResult layout = TextLayout::BuildUTF8(m_DefaultFontAtlas, text->Content, text->PixelHeight);
+                    if (!layout.Succeeded() || layout.Quads.empty()) continue;
+
+                    TextRenderContext textContext{};
+                    textContext.CommandBuffer = commandBuffer;
+                    textContext.Pipeline = m_TextPipeline.get();
+                    textContext.Extent = m_SceneViewportTarget->GetExtent();
+                    textContext.Quads = std::span(layout.Quads);
+                    textContext.Offset = glm::vec2(24.0f, 24.0f);
+                    textContext.Color = text->Color;
+
+                    m_TextRenderSystem->Record(textContext);
+                }
+
                 vkCmdEndRendering(commandBuffer);
             }
 

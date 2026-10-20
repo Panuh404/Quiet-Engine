@@ -40,6 +40,9 @@ namespace Quiet::Scene
             Actor& target = CreateActorWithID(source.GetID(), source.GetName());
             target.GetComponent<TransformComponent>() = source.GetComponent<TransformComponent>();
 
+            if (const auto* component = source.TryGetComponent<TextComponent>())
+                target.AddComponent<TextComponent>(*component);
+
             if (const auto* component = source.TryGetComponent<StaticMeshComponent>())
                 target.AddComponent<StaticMeshComponent>(*component);
 
@@ -628,6 +631,7 @@ namespace Quiet::Scene
         std::optional<BoxColliderComponent> boxCollider;
         std::optional<SphereColliderComponent> sphereCollider;
         std::optional<CapsuleColliderComponent> capsuleCollider;
+        std::optional<TextComponent> text;
 
         if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
             staticMesh = *component;
@@ -665,6 +669,9 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<CapsuleColliderComponent>())
             capsuleCollider = *component;
 
+        if (const auto* component = source->TryGetComponent<TextComponent>())
+            text = *component;
+
         Actor& duplicate = CreateActorWithID(duplicateID, duplicateName);
         duplicate.GetComponent<TransformComponent>() = transform;
 
@@ -680,6 +687,7 @@ namespace Quiet::Scene
         if (boxCollider)        duplicate.AddComponent<BoxColliderComponent>(*boxCollider);
         if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
         if (capsuleCollider)    duplicate.AddComponent<CapsuleColliderComponent>(*capsuleCollider);
+        if (text)               duplicate.AddComponent<TextComponent>(*text);
         return &duplicate;
     }
 

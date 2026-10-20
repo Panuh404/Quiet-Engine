@@ -76,7 +76,7 @@ It also stores the default runtime font's CPU atlas by value.
 | Frame infrastructure | GraphicsCommands, CameraResources, FrameSync |
 | Asset libraries | MeshLibrary and TextureLibrary |
 | Runtime font | Default FontAtlasData and its Texture2D coverage texture |
-| Text rendering | TextPipeline, TextRenderSystem, and cached preview layout |
+| Text rendering | TextPipeline and TextRenderSystem |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -167,7 +167,7 @@ A byte-order mark is treated as a codepoint rather than stripped.
 
 Valid unsupported codepoints use the font atlas's '?' fallback once per
 codepoint. UTF-8 decoding does not expand the atlas's ASCII coverage.
-The temporary renderer preview uses BuildUTF8().
+Scene text rendering uses BuildUTF8().
 
 Positions are relative to a top-left origin, with positive Y pointing
 down. The first baseline uses the scaled font ascent. Subsequent lines
@@ -229,19 +229,30 @@ vertex-stage push constants. It binds the text pipeline and font
 descriptor, sets a positive-height viewport, and clips to the full target
 through a scissor rectangle. It retains no references between calls.
 
-VulkanRenderer builds a temporary two-line preview layout once during
-initialization. It draws that layout in white at logical position
-(24, 24), using the actual Scene target dimensions.
+VulkanRenderer reads TextComponent values from the Scene supplied to
+DrawFrame(). It processes Actors in Scene::GetActors() order, using the
+default font atlas and each component's content, pixel height, color,
+and visibility.
+
+The fixed preview has been removed. Until positioning is implemented,
+all text uses logical origin (24, 24); multiple components can overlap.
+Actor world transforms do not affect this screen-space rendering.
+
+Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
+layouts and layouts without visible glyphs are skipped. Layout errors
+are not currently surfaced in the Inspector or logged per frame.
 
 The text pass runs after Scene and selection rendering, before the
 Scene image transitions to shader-read layout. It synchronizes preceding
 color writes and loads the existing color attachment for blending.
 No depth attachment is used.
 
-The preview appears wherever the Scene target is presented, including
-Editor and Sandbox. It is renderer-owned validation content, not
-Scene-authored text. The layout and render system survive swapchain
-recreation; each frame supplies the current pipeline.
+Temporary layouts remain alive while TextRenderSystem records their
+draws. The render system retains no references afterward. No component
+stores a font resource, GPU handle, or layout cache.
+
+This path is shared by Editor and Sandbox presentation. Editor runtime
+testing renders the disposable runtime Scene supplied by Application.
 
 ## Swapchain and Scene viewport
 
@@ -431,7 +442,7 @@ The implementation uses dynamic rendering scopes.
 | 2 | Same Scene attachments | Optionally render the Editor grid |
 | 3 | Selection mask and Scene depth | Clear the mask and record selected geometry |
 | 4 | Scene color | Optionally composite the selection outline |
-| 5 | Scene color | Blend the temporary text preview |
+| 5 | Scene color | Blend visible Scene text |
 | 6 | Swapchain image | Clear and render ImGui |
 
 The Scene passes require an existing, valid SceneViewportTarget.

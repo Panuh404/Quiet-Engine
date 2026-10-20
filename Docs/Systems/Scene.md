@@ -133,6 +133,19 @@ Component references refer to registry storage rather than Actor vector
 storage. Their lifetime must be considered separately. Do not treat either
 kind of reference as a permanent handle.
 
+## Authored text data
+
+TextComponent owns UTF-8 content, pixel height, linear RGBA color, and
+visibility. It contains no backend resource or execution state.
+
+Scene copying, Actor duplication, Scene persistence, and Editor history
+preserve these values. History compares content and visibility exactly
+and uses the existing float tolerance for height and color.
+
+The renderer consumes visible text components using its default font.
+All text currently shares screen-space origin (24, 24). Positioning,
+font selection, and Inspector editing remain unimplemented.
+
 ## Scene copying and Actor duplication
 
 Scene copying and Actor duplication operate at different scopes.
