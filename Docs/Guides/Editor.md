@@ -60,6 +60,26 @@ Delete removes the selected Actor.
 These Actor shortcuts do not operate on Scene selection while the Asset
 Browser has keyboard focus.
 
+## Author text
+
+1. Create or select an Actor.
+2. Choose Inspector → + Add Component → Text.
+3. Expand the Text section and edit Content.
+4. Use Enter to insert line breaks.
+5. Click outside the content field to finish the history interaction.
+
+Content updates appear in the Viewport while editing. Use the Text
+component's options menu to remove it. Addition, removal, and completed
+content interactions participate in undo/redo and dirty tracking.
+
+Save the Scene to persist the text. Authoring is disabled during Play
+and Simulate.
+
+All text currently uses the default font and shared screen-space origin
+(24, 24), so multiple text components can overlap. The atlas currently
+renders printable ASCII; other valid Unicode codepoints display '?'.
+Appearance and positioning controls are not available yet.
+
 ## Navigate the Viewport
 
 Begin mouse navigation over the Viewport image.

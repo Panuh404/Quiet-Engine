@@ -71,6 +71,7 @@ namespace Quiet::Renderer::UI::Inspector
 
         DrawDirectionalLightSection(context, state, actor, tracked);
         DrawRotatorSection(context, state, actor, tracked);
+        DrawTextSection(context, state, actor, tracked);
         DrawCameraSection(context, state, actor, tracked, isEditMode);
         DrawAudioSourceSection(context, state, actor, tracked);
         DrawAudioListenerSection(context, state, actor);

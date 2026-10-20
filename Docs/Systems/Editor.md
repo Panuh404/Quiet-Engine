@@ -172,6 +172,20 @@ An immediate command's false result is not a general rollback guarantee.
 The helper does not restore the previous Scene when the mutation reports
 false, and it does not catch exceptions.
 
+### Text authoring commands
+
+AddText() and RemoveText() use ApplyImmediateMutation() for Edit-mode
+authoring with immediate history tracking.
+
+SetTextContent() changes component content but does not open or close
+a history boundary. The multiline Text Inspector brackets the edit
+through TrackedInspectorInteraction: it begins before applying changed
+content and ends after the widget deactivates.
+
+The Inspector uses a local string while drawing the widget, leaving
+Scene mutation to EditorCommands. It returns immediately after component
+removal so it does not reuse the removed component pointer.
+
 ### Interaction operations
 
 BeginInteraction() starts a history boundary in Edit mode.

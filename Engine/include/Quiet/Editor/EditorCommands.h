@@ -67,6 +67,8 @@ namespace Quiet::Editor
          */
         [[nodiscard]] bool CanEditScene() const;
 
+    #pragma region Interaction
+
         /**
          * @brief Begins a Scene history boundary when editing is permitted.
          * @note An existing pending boundary retains its original snapshot.
@@ -79,6 +81,30 @@ namespace Quiet::Editor
          * @note A false result does not undo Scene changes.
          */
         bool EndInteraction(const Scene::Scene& scene);
+
+    #pragma endregion
+
+    #pragma region Text
+
+        /**
+         * @brief Adds default text and records an immediate history mutation.
+         */
+        bool AddText(Scene::Scene& scene, Core::UUID actorID);
+
+        /**
+         * @brief Removes text and records an immediate history mutation.
+         */
+        bool RemoveText(Scene::Scene& scene, Core::UUID actorID);
+
+        /**
+         * @brief Changes authored UTF-8 content in Edit mode.
+         * @return True when the component content changed.
+         * @note Requires an enclosing interaction boundary for undo/redo
+         *       and dirty-state tracking.
+         */
+        bool SetTextContent(Scene::Scene& scene, Core::UUID actorID, const std::string& content);
+
+    #pragma endregion
 
     #pragma region Actors
 

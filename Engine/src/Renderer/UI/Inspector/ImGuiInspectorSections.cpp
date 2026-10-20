@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <array>
 
+#include <misc/cpp/imgui_stdlib.h>
 #include <imgui.h>
 
 #include "ImGuiInspectorState.h"
@@ -201,6 +202,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddMaterial = hasStaticMesh && !actor.HasComponent<Scene::MaterialComponent>();
         const bool canAddDirectionalLight = !actor.HasComponent<Scene::DirectionalLightComponent>();
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
+        const bool canAddText = !actor.HasComponent<Scene::TextComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
         const bool canAddAudioSource = !actor.HasComponent<Scene::AudioSourceComponent>();
         const bool canAddAudioListener = !actor.HasComponent<Scene::AudioListenerComponent>();
@@ -220,6 +222,7 @@ namespace Quiet::Renderer::UI::Inspector
             canAddStaticMesh ||
             canAddMaterial ||
             canAddDirectionalLight ||
+            canAddText ||
             canAddRotator ||
             canAddCamera ||
             canAddAudioSource ||
@@ -284,6 +287,12 @@ namespace Quiet::Renderer::UI::Inspector
             if (EditorMenuItem("Rotator", nullptr, false, canAddRotator))
             {
                 context.Commands.AddRotator(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("Text", nullptr, false, canAddText))
+            {
+                context.Commands.AddText(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -822,6 +831,35 @@ namespace Quiet::Renderer::UI::Inspector
         {
             context.Commands.SetCameraFarClip(context.Scene, actor.GetID(), farClip);
         }
+        ImGui::PopID();
+    }
+
+    void DrawTextSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)
+    {
+        auto* text = actor.TryGetComponent<Scene::TextComponent>();
+        if (!text) return;
+
+        const auto header = BeginInspectorComponent(state, "Text", "TextComponentOptions", true);
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveText(context.Scene, actor.GetID());
+            return;
+        }
+
+        if (!header.Open) return;
+        std::string content = text->Content;
+
+        ImGui::PushID("TextContent");
+        ImGui::TextUnformatted("Content");
+
+        const bool changed = ImGui::InputTextMultiline("##Value", &content, ImVec2(-1.0f, ImGui::GetTextLineHeightWithSpacing() * 5.0f));
+        tracked.Begin();
+        if (changed)
+        {
+            context.Commands.SetTextContent(context.Scene, actor.GetID(), content);
+        }
+
+        tracked.End();
         ImGui::PopID();
     }
 

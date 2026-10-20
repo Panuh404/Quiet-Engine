@@ -271,8 +271,9 @@ straight-alpha linear RGBA. These values are stored without clamping.
 The existing typed JSON reads and exception behavior apply.
 
 This component contains no position, font asset reference, GPU resource,
-or layout cache. The renderer uses the default font at shared****
-screen-space origin (24, 24). Inspector integration is not implemented.
+or layout cache. The renderer uses the default font at shared
+screen-space origin (24, 24). Inspector supports addition, removal, and
+multiline content editing; appearance controls are not implemented yet.
 
 ## Script component
 

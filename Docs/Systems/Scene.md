@@ -143,8 +143,9 @@ preserve these values. History compares content and visibility exactly
 and uses the existing float tolerance for height and color.
 
 The renderer consumes visible text components using its default font.
-All text currently shares screen-space origin (24, 24). Positioning,
-font selection, and Inspector editing remain unimplemented.
+All text currently shares screen-space origin (24, 24). Inspector supports
+addition, removal, and multiline content editing. Positioning, font
+selection, and appearance controls remain unimplemented.
 
 ## Scene copying and Actor duplication
 

@@ -103,6 +103,50 @@ namespace Quiet::Editor
         return m_EditorController.EndSceneMutation(scene);
     }
 
+#pragma region Text
+
+    bool EditorCommands::AddText(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::TextComponent>())
+            {
+                return false;
+            }
+
+            actor->AddComponent<Scene::TextComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveText(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            return actor->RemoveComponent<Scene::TextComponent>();
+        });
+    }
+
+    bool EditorCommands::SetTextContent(Scene::Scene& scene, const Core::UUID actorID, const std::string& content)
+    {
+        if (!CanEditScene()) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* text = actor->TryGetComponent<Scene::TextComponent>();
+        if (!text || text->Content == content) return false;
+
+        text->Content = content;
+        return true;
+    }
+
+#pragma endregion
+
 #pragma region Actors
 
     bool EditorCommands::CreateEmptyActor(Scene::Scene& scene, const std::string& name)
