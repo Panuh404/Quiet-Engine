@@ -76,7 +76,7 @@ It also stores the default runtime font's CPU atlas by value.
 | Frame infrastructure | GraphicsCommands, CameraResources, FrameSync |
 | Asset libraries | MeshLibrary and TextureLibrary |
 | Runtime font | Default FontAtlasData and its Texture2D coverage texture |
-| Text rendering | TextPipeline and its font descriptor resources |
+| Text rendering | TextPipeline, TextRenderSystem, and cached preview layout |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -156,8 +156,18 @@ the same UI frame lifecycle.
 Quiet::Renderer::TextLayout::Build() converts Unicode codepoints and a
 successful FontAtlasData result into owned TextGlyphQuad values.
 
-Input uses std::u32string_view. This function does not decode UTF-8.
-Unsupported codepoints use the font atlas's '?' fallback.
+Build() accepts Unicode codepoints through std::u32string_view.
+BuildUTF8() accepts UTF-8 bytes through std::string_view, decodes them
+into temporary codepoint storage, and delegates layout to Build().
+
+Malformed UTF-8 returns an error with a zero-based byte offset and no
+geometry. Overlong encodings, surrogate codepoints, truncated sequences,
+invalid continuation bytes, and values above U+10FFFF are rejected.
+A byte-order mark is treated as a codepoint rather than stripped.
+
+Valid unsupported codepoints use the font atlas's '?' fallback once per
+codepoint. UTF-8 decoding does not expand the atlas's ASCII coverage.
+The temporary renderer preview uses BuildUTF8().
 
 Positions are relative to a top-left origin, with positive Y pointing
 down. The first baseline uses the scaled font ascent. Subsequent lines
@@ -214,8 +224,24 @@ texture and the logical device.
 TextPipeline releases partially created Vulkan resources if construction
 throws. Destruction requires outstanding GPU use to have finished.
 
-Pipeline creation is implemented; text draw submission remains
-unimplemented.
+TextRenderSystem records one six-vertex draw per visible glyph using
+vertex-stage push constants. It binds the text pipeline and font
+descriptor, sets a positive-height viewport, and clips to the full target
+through a scissor rectangle. It retains no references between calls.
+
+VulkanRenderer builds a temporary two-line preview layout once during
+initialization. It draws that layout in white at logical position
+(24, 24), using the actual Scene target dimensions.
+
+The text pass runs after Scene and selection rendering, before the
+Scene image transitions to shader-read layout. It synchronizes preceding
+color writes and loads the existing color attachment for blending.
+No depth attachment is used.
+
+The preview appears wherever the Scene target is presented, including
+Editor and Sandbox. It is renderer-owned validation content, not
+Scene-authored text. The layout and render system survive swapchain
+recreation; each frame supplies the current pipeline.
 
 ## Swapchain and Scene viewport
 
@@ -405,7 +431,8 @@ The implementation uses dynamic rendering scopes.
 | 2 | Same Scene attachments | Optionally render the Editor grid |
 | 3 | Selection mask and Scene depth | Clear the mask and record selected geometry |
 | 4 | Scene color | Optionally composite the selection outline |
-| 5 | Swapchain image | Clear and render ImGui |
+| 5 | Scene color | Blend the temporary text preview |
+| 6 | Swapchain image | Clear and render ImGui |
 
 The Scene passes require an existing, valid SceneViewportTarget.
 When that condition is false, the Scene block is skipped, but swapchain
@@ -665,7 +692,7 @@ result, then releases owned pointers in this order:
 8. SceneViewportTarget.
 9. ImGuiLayer.
 10. DepthResources.
-11. MeshLibrary, TextureLibrary, TextPipeline, and the default runtime font texture.
+11. MeshLibrary, TextureLibrary, TextRenderSystem, TextPipeline, and the default runtime font texture.
 12. Swapchain.
 13. LogicalDevice and PhysicalDevice.
 14. VulkanSurface and VulkanInstance.

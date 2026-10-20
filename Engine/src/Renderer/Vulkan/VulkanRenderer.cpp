@@ -31,6 +31,7 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include "Renderer/Vulkan/Text/TextPipeline.h"
+#include "Renderer/Vulkan/Text/TextRenderSystem.h"
 #include "Renderer/Vulkan/Texture/Texture2D.h"
 #include "Renderer/Vulkan/Texture/TextureLibrary.h"
 
@@ -344,6 +345,13 @@ namespace Quiet::Renderer::Vulkan
 
         m_DefaultFontTexture = std::make_unique<Texture2D>(*m_PhysicalDevice, *m_LogicalDevice, *m_GraphicsCommands, m_DefaultFontAtlas);
         m_TextPipeline = std::make_unique<TextPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat(), *m_DefaultFontTexture);
+        m_TextRenderSystem = std::make_unique<TextRenderSystem>();
+
+        m_TextPreviewLayout = TextLayout::BuildUTF8(m_DefaultFontAtlas, "QUIET ENGINE\nRuntime text 0123456789", 32.0f);
+        if (!m_TextPreviewLayout.Succeeded())
+        {
+            throw std::runtime_error("Failed to build runtime text preview: " + m_TextPreviewLayout.Error);
+        }
 
         QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
             defaultFontPath.string(),
@@ -379,6 +387,7 @@ namespace Quiet::Renderer::Vulkan
         m_DepthResources.reset();
         m_MeshLibrary.reset();
         m_TextureLibrary.reset();
+        m_TextRenderSystem.reset();
         m_TextPipeline.reset();
         m_DefaultFontTexture.reset();
         m_Swapchain.reset();
@@ -975,6 +984,38 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
+            if (m_TextPipeline && m_TextRenderSystem && !m_TextPreviewLayout.Quads.empty())
+            {
+                SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
+
+                VkRenderingAttachmentInfo textAttachment{};
+                textAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                textAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
+                textAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                textAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                textAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+                VkRenderingInfo textRenderingInfo{};
+                textRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                textRenderingInfo.renderArea.extent = m_SceneViewportTarget->GetExtent();
+                textRenderingInfo.layerCount = 1;
+                textRenderingInfo.colorAttachmentCount = 1;
+                textRenderingInfo.pColorAttachments = &textAttachment;
+
+                vkCmdBeginRendering(commandBuffer, &textRenderingInfo);
+
+                TextRenderContext textContext{};
+                textContext.CommandBuffer = commandBuffer;
+                textContext.Pipeline = m_TextPipeline.get();
+                textContext.Extent = m_SceneViewportTarget->GetExtent();
+                textContext.Quads = std::span<const TextGlyphQuad>(m_TextPreviewLayout.Quads);
+                textContext.Offset = glm::vec2(24.0f, 24.0f);
+                textContext.Color = glm::vec4(1.0f);
+
+                m_TextRenderSystem->Record(textContext);
+                vkCmdEndRendering(commandBuffer);
+            }
+
             TransitionImageLayout(
                 commandBuffer,
                 m_SceneViewportTarget->GetColorImage(),
@@ -982,6 +1023,7 @@ namespace Quiet::Renderer::Vulkan
                 m_SceneViewportTarget->GetColorLayout(),
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             );
+
             m_SceneViewportTarget->SetColorLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             m_SceneViewportReady = true;
         }

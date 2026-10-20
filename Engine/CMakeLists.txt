@@ -1,5 +1,7 @@
 # ENGINE
-add_library(Quiet_Engine STATIC)
+add_library(Quiet_Engine STATIC
+        src/Renderer/Vulkan/Text/TextRenderSystem.h
+        src/Renderer/Vulkan/Text/TextRenderSystem.cpp)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -201,8 +203,10 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
         # Renderer - Vulkan - Text
-        src/Renderer/Vulkan/Text/TextPipeline.h
         src/Renderer/Vulkan/Text/TextPipeline.cpp
+        src/Renderer/Vulkan/Text/TextPipeline.h
+        src/Renderer/Vulkan/Text/TextRenderSystem.cpp
+        src/Renderer/Vulkan/Text/TextRenderSystem.h
 
         # Renderer - Vulkan - Texture
         src/Renderer/Vulkan/Texture/StbImage.cpp

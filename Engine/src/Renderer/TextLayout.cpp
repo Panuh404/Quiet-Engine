@@ -106,4 +106,78 @@ namespace Quiet::Renderer
 
         return result;
     }
+
+    TextLayoutResult TextLayout::BuildUTF8(const Assets::FontAtlasData& font, const std::string_view text, const float pixelHeight)
+    {
+        TextLayoutResult result{};
+        std::u32string codepoints;
+        codepoints.reserve(text.size());
+
+        std::size_t index = 0;
+        while (index < text.size())
+        {
+            const auto first = static_cast<unsigned char>(text[index]);
+            std::uint32_t codepoint = 0;
+            std::uint32_t minimumCodepoint = 0;
+            std::size_t length = 0;
+
+            if (first <= 0x7F)
+            {
+                codepoint = first;
+                length = 1;
+            }
+            else if (first >= 0xC2 && first <= 0xDF)
+            {
+                codepoint = first & 0x1F;
+                minimumCodepoint = 0x80;
+                length = 2;
+            }
+            else if (first >= 0xE0 && first <= 0xEF)
+            {
+                codepoint = first & 0x0F;
+                minimumCodepoint = 0x800;
+                length = 3;
+            }
+            else if (first >= 0xF0 && first <= 0xF4)
+            {
+                codepoint = first & 0x07;
+                minimumCodepoint = 0x10000;
+                length = 4;
+            }
+            else
+            {
+                result.Error = "Invalid UTF-8 leading byte at byte " + std::to_string(index) + ".";
+                return result;
+            }
+
+            if (length > text.size() - index)
+            {
+                result.Error = "Truncated UTF-8 sequence at byte " + std::to_string(index) + ".";
+                return result;
+            }
+
+            for (std::size_t offset = 1; offset < length; ++offset)
+            {
+                const auto continuation = static_cast<unsigned char>(text[index + offset]);
+                if ((continuation & 0xC0) != 0x80)
+                {
+                    result.Error = "Invalid UTF-8 continuation byte at byte " + std::to_string(index + offset) + ".";
+                    return result;
+                }
+
+                codepoint = (codepoint << 6) | (continuation & 0x3F);
+            }
+
+            if (codepoint < minimumCodepoint || codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+            {
+                result.Error = "Invalid UTF-8 codepoint at byte " + std::to_string(index) + ".";
+                return result;
+            }
+
+            codepoints.push_back(static_cast<char32_t>(codepoint));
+            index += length;
+        }
+
+        return Build(font, codepoints, pixelHeight);
+    }
 }

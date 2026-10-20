@@ -8,6 +8,7 @@
 
 #include "Quiet/Assets/FontAtlasData.h"
 #include "Quiet/Core/UUID.h"
+#include "Quiet/Renderer/TextLayout.h"
 #include "Quiet/Platform/Window.h"
 
 namespace Quiet::Platform
@@ -49,6 +50,7 @@ namespace Quiet::Renderer::Vulkan
     class GraphicsCommands;
     class MeshLibrary;
     class Texture2D;
+    class TextRenderSystem;
     class TextPipeline;
     class TextureLibrary;
     class CameraResources;
@@ -186,6 +188,8 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<TextureLibrary> m_TextureLibrary;
         Assets::FontAtlasData m_DefaultFontAtlas;
         std::unique_ptr<Texture2D> m_DefaultFontTexture;
+        std::unique_ptr<TextRenderSystem> m_TextRenderSystem;
+        TextLayoutResult m_TextPreviewLayout;
         std::unique_ptr<TextPipeline> m_TextPipeline;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
