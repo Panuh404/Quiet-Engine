@@ -203,6 +203,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool canAddDirectionalLight = !actor.HasComponent<Scene::DirectionalLightComponent>();
         const bool canAddRotator = !actor.HasComponent<Scene::RotatorComponent>();
         const bool canAddText = !actor.HasComponent<Scene::TextComponent>();
+        const bool canAddUIRect = !actor.HasComponent<Scene::UIRectComponent>();
         const bool canAddCamera = !actor.HasComponent<Scene::CameraComponent>();
         const bool canAddAudioSource = !actor.HasComponent<Scene::AudioSourceComponent>();
         const bool canAddAudioListener = !actor.HasComponent<Scene::AudioListenerComponent>();
@@ -223,6 +224,7 @@ namespace Quiet::Renderer::UI::Inspector
             canAddMaterial ||
             canAddDirectionalLight ||
             canAddText ||
+            canAddUIRect ||
             canAddRotator ||
             canAddCamera ||
             canAddAudioSource ||
@@ -287,6 +289,12 @@ namespace Quiet::Renderer::UI::Inspector
             if (EditorMenuItem("Rotator", nullptr, false, canAddRotator))
             {
                 context.Commands.AddRotator(context.Scene, actor.GetID());
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (EditorMenuItem("UI Rectangle", nullptr, false, canAddUIRect))
+            {
+                context.Commands.AddUIRect(context.Scene, actor.GetID());
                 ImGui::CloseCurrentPopup();
             }
 
@@ -904,6 +912,75 @@ namespace Quiet::Renderer::UI::Inspector
 
         tracked.End();
         ImGui::PopID();
+    }
+
+    void DrawUIRectSection(InspectorContext& context, InspectorState& state, Scene::Actor& actor, const TrackedInspectorInteraction& tracked)
+    {
+        auto* uiRect = actor.TryGetComponent<Scene::UIRectComponent>();
+        if (!uiRect) return;
+
+        const auto header = BeginInspectorComponent(state, "UI Rectangle", "UIRectComponentOptions", true);
+        if (header.RemoveRequested)
+        {
+            context.Commands.RemoveUIRect(context.Scene, actor.GetID());
+            return;
+        }
+
+        if (!header.Open) return;
+
+        glm::vec2 offset = uiRect->Offset;
+        BeginInspectorPropertyRow("Offset");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool offsetChanged = ImGui::DragFloat2("##UIRectOffset", &offset.x, 0.5f);
+        tracked.Begin();
+        if (offsetChanged)
+        {
+            context.Commands.SetUIRectOffset(context.Scene, actor.GetID(), offset);
+        }
+        tracked.End();
+
+        glm::vec2 anchor = uiRect->Anchor;
+
+        BeginInspectorPropertyRow("Anchor");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool anchorChanged = ImGui::DragFloat2(
+            "##UIRectAnchor",
+            &anchor.x,
+            0.005f,
+            0.0f,
+            1.0f,
+            "%.3f",
+            ImGuiSliderFlags_AlwaysClamp);
+
+        tracked.Begin();
+        if (anchorChanged)
+        {
+            context.Commands.SetUIRectAnchor(context.Scene, actor.GetID(), anchor);
+        }
+        tracked.End();
+
+        glm::vec2 pivot = uiRect->Pivot;
+
+        BeginInspectorPropertyRow("Pivot");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool pivotChanged = ImGui::DragFloat2(
+            "##UIRectPivot",
+            &pivot.x,
+            0.005f,
+            0.0f,
+            1.0f,
+            "%.3f",
+            ImGuiSliderFlags_AlwaysClamp);
+
+        tracked.Begin();
+        if (pivotChanged)
+        {
+            context.Commands.SetUIRectPivot(context.Scene, actor.GetID(), pivot);
+        }
+        tracked.End();
     }
 
     void DrawAudioSourceSection(InspectorContext &context, InspectorState &state, Scene::Actor &actor, const TrackedInspectorInteraction &tracked)

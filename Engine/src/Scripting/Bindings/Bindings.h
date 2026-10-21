@@ -42,7 +42,7 @@ namespace Quiet::Scripting::Bindings
     /**
      * @brief Installs the owning Actor reference in the script environment.
      * @ingroup quiet_scripting
-     * @note Includes Transform, RigidBody, and Audio tables.
+    * @note Includes Transform, Text, RigidBody, and Audio tables.
      * @note Operations resolve the captured UUID against the borrowed Scene.
      */
     void InstallActorBindings(sol::state& lua, sol::environment& environment, Scene::Scene& scene, Core::UUID actorID);

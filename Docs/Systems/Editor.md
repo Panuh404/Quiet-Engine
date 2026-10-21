@@ -172,6 +172,20 @@ An immediate command's false result is not a general rollback guarantee.
 The helper does not restore the previous Scene when the mutation reports
 false, and it does not catch exceptions.
 
+### UI rectangle authoring commands
+
+AddUIRect() and RemoveUIRect() use immediate history mutations.
+Adding or removing a rectangle does not add or remove TextComponent.
+
+SetUIRectOffset(), SetUIRectAnchor(), and SetUIRectPivot() require an
+enclosing interaction boundary. The Inspector begins before applying
+widget changes and ends after deactivation.
+
+Commands reject nonfinite coordinates. Offset remains unclamped;
+Anchor and Pivot are clamped to [0, 1]. All commands reject authoring
+outside Edit mode. Scene-file loading retains its existing unclamped
+behavior.
+
 ### Text authoring commands
 
 AddText() and RemoveText() use ApplyImmediateMutation() for Edit-mode

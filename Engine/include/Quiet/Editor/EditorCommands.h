@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "Quiet/Core/UUID.h"
+#include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 #include "Scene/SceneHierarchy.h"
@@ -81,6 +82,34 @@ namespace Quiet::Editor
          * @note A false result does not undo Scene changes.
          */
         bool EndInteraction(const Scene::Scene& scene);
+
+    #pragma endregion
+
+    #pragma region UI Rectangle
+
+        /** @brief Adds a UI rectangle through an immediate history mutation. */
+        bool AddUIRect(Scene::Scene& scene, Core::UUID actorID);
+
+        /** @brief Removes a UI rectangle without removing content components. */
+        bool RemoveUIRect(Scene::Scene& scene, Core::UUID actorID);
+
+        /**
+         * @brief Sets finite pixel offsets without clamping.
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetUIRectOffset(Scene::Scene& scene, Core::UUID actorID, const glm::vec2& offset);
+
+        /**
+         * @brief Sets finite anchor coordinates, clamped to [0, 1].
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetUIRectAnchor(Scene::Scene& scene, Core::UUID actorID, const glm::vec2& anchor);
+
+        /**
+         * @brief Sets finite pivot coordinates, clamped to [0, 1].
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetUIRectPivot(Scene::Scene& scene, Core::UUID actorID, const glm::vec2& pivot);
 
     #pragma endregion
 

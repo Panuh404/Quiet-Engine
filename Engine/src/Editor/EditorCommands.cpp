@@ -103,6 +103,90 @@ namespace Quiet::Editor
         return m_EditorController.EndSceneMutation(scene);
     }
 
+#pragma region UI Rectangle
+
+    bool EditorCommands::AddUIRect(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor || actor->HasComponent<Scene::UIRectComponent>()) return false;
+
+            actor->AddComponent<Scene::UIRectComponent>();
+            return true;
+        });
+    }
+
+    bool EditorCommands::RemoveUIRect(Scene::Scene& scene, const Core::UUID actorID)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            return actor->RemoveComponent<Scene::UIRectComponent>();
+        });
+    }
+
+    bool EditorCommands::SetUIRectOffset(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& offset)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(offset.x) ||
+            !std::isfinite(offset.y))
+            return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* uiRect = actor->TryGetComponent<Scene::UIRectComponent>();
+        if (!uiRect) return false;
+
+        uiRect->Offset = offset;
+        return true;
+    }
+
+    bool EditorCommands::SetUIRectAnchor(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& anchor)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(anchor.x) ||
+            !std::isfinite(anchor.y))
+            return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* uiRect = actor->TryGetComponent<Scene::UIRectComponent>();
+        if (!uiRect) return false;
+
+        uiRect->Anchor = glm::vec2(
+            std::clamp(anchor.x, 0.0f, 1.0f),
+            std::clamp(anchor.y, 0.0f, 1.0f));
+
+        return true;
+    }
+
+    bool EditorCommands::SetUIRectPivot(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& pivot)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(pivot.x) ||
+            !std::isfinite(pivot.y))
+            return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* uiRect = actor->TryGetComponent<Scene::UIRectComponent>();
+        if (!uiRect) return false;
+
+        uiRect->Pivot = glm::vec2(
+            std::clamp(pivot.x, 0.0f, 1.0f),
+            std::clamp(pivot.y, 0.0f, 1.0f));
+
+        return true;
+    }
+
+#pragma endregion
+
 #pragma region Text
 
     bool EditorCommands::AddText(Scene::Scene& scene, const Core::UUID actorID)

@@ -87,7 +87,27 @@ editing and participate in undo/redo when the interaction finishes.
 Visibility changes record an immediate history operation.
 
 Larger text scales the existing bitmap atlas rather than rerasterizing
-the font. Positioning controls are not available yet.
+the font. Use UI Rectangle to control screen-space placement.
+
+## Position text
+
+Select an Actor with Text, then choose + Add Component → UI Rectangle.
+
+- Offset moves the text in pixels.
+- Anchor selects a normalized point in the Scene viewport.
+- Pivot selects the corresponding point in the logical text box.
+
+For centered text, use Offset (0, 0), Anchor (0.5, 0.5), and Pivot
+(0.5, 0.5).
+
+For bottom-right placement with a 24-pixel margin, use Offset (-24, -24),
+Anchor (1, 1), and Pivot (1, 1).
+
+Placement updates while editing. Finish the interaction before testing
+Scene undo/redo. Save the Scene to persist the rectangle.
+
+Removing UI Rectangle preserves Text and restores its (24, 24) fallback.
+The rectangle does not create visible content by itself.
 
 ## Navigate the Viewport
 

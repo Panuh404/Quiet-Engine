@@ -4,8 +4,10 @@
 #include <cmath>
 #include <stdexcept>
 #include <tuple>
+#include <string>
 
 #include "Quiet/Core/UUID.h"
+#include "Scene/Components/TextComponent.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting::Bindings
@@ -112,6 +114,58 @@ namespace Quiet::Scripting::Bindings
         #pragma endregion
 
         InstallPhysicsBindings(lua, actorTable, scene, actorID);
+
+        #pragma region Text
+
+        sol::table textTable = lua.create_table();
+
+        textTable.set_function("HasComponent", [requireActor]()
+        {
+            return requireActor().HasComponent<Scene::TextComponent>();
+        });
+
+        textTable.set_function("GetContent", [requireActor]() -> std::string
+        {
+            const auto* text =
+                requireActor().TryGetComponent<Scene::TextComponent>();
+
+            if (!text)
+            {
+                throw std::runtime_error(
+                    "The script Actor has no Text component.");
+            }
+
+            return text->Content;
+        });
+
+        textTable.set_function(
+            "SetContent",
+            [requireActor](const std::string& content)
+            {
+                auto* text =
+                    requireActor().TryGetComponent<Scene::TextComponent>();
+
+                if (!text) return false;
+
+                text->Content = content;
+                return true;
+            });
+
+        textTable.set_function("SetVisible", [requireActor](const bool visible)
+        {
+            auto* text =
+                requireActor().TryGetComponent<Scene::TextComponent>();
+
+            if (!text) return false;
+
+            text->Visible = visible;
+            return true;
+        });
+
+        actorTable["Text"] = textTable;
+
+#pragma endregion
+
         InstallAudioBindings(lua, actorTable, scene, actorID);
 
         return actorTable;

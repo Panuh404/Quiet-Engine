@@ -151,8 +151,9 @@ size comes from TextLayoutResult::Size. Resolution runs each frame, so
 viewport resizing and text-size changes affect placement immediately.
 
 A missing UIRectComponent retains the text origin (24, 24). The component
-is not automatically attached to text Actors, and Inspector positioning
-controls remain pending. A rectangle without text draws nothing.
+is not automatically attached to text Actors. Inspector supports
+addition, removal, and editing Offset, Anchor, and Pivot. A rectangle
+without text draws nothing.
 
 ## Authored text data
 
@@ -167,7 +168,8 @@ The renderer consumes visible text components using its default font.
 UIRectComponent optionally controls screen-space placement. Text without
 it retains origin (24, 24). Inspector supports addition, removal,
 multiline content, pixel height, color, and visibility. Inspector
-positioning controls and font selection remain unimplemented.
+positioning controls are provided by UI Rectangle. Font selection
+remains unimplemented.
 
 ## Scene copying and Actor duplication
 

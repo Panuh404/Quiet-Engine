@@ -275,7 +275,10 @@ text Actors.
 Text rendering resolves origin as anchor * target extent + offset -
 pivot * logical text size. It uses the actual Scene render target and
 logical line-box dimensions. Nonfinite resolved origins skip drawing.
-Inspector positioning controls remain unimplemented.
+Inspector supports rectangle addition, removal, and coordinate editing.
+Editor commands reject nonfinite coordinates, preserve finite offsets,
+and clamp edited Anchor and Pivot values to [0, 1]. These authoring
+rules do not change the loader's unclamped behavior.
 
 ## Text component
 

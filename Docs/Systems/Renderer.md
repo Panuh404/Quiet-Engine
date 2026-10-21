@@ -248,8 +248,8 @@ values produce the same origin. Placement is recalculated each frame,
 and nonfinite resolved origins skip that Actor's text.
 
 Actor world transforms and Editor hierarchy folders do not affect this
-screen-space placement. Inspector positioning controls are not yet
-implemented.
+screen-space placement. Inspector exposes Offset, Anchor, and Pivot
+through the separate UI Rectangle component section.
 
 Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
 layouts and layouts without visible glyphs are skipped. Layout errors
