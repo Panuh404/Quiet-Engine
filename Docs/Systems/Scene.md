@@ -144,8 +144,8 @@ and uses the existing float tolerance for height and color.
 
 The renderer consumes visible text components using its default font.
 All text currently shares screen-space origin (24, 24). Inspector supports
-addition, removal, and multiline content editing. Positioning, font
-selection, and appearance controls remain unimplemented.
+addition, removal, multiline content, pixel height, color, and visibility.
+Positioning and font selection remain unimplemented.
 
 ## Scene copying and Actor duplication
 

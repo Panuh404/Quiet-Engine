@@ -186,6 +186,19 @@ The Inspector uses a local string while drawing the widget, leaving
 Scene mutation to EditorCommands. It returns immediately after component
 removal so it does not reuse the removed component pointer.
 
+SetTextPixelHeight() and SetTextColor() require an enclosing interaction
+boundary. The Inspector begins that boundary before applying widget
+changes and ends it after deactivation.
+
+Pixel-height commands reject nonfinite input and clamp accepted values
+to [1, 256]. Color commands reject nonfinite channels and clamp accepted
+linear RGBA values to [0, 1]. Scene-file loading does not apply these
+Editor-command limits.
+
+SetTextVisible() uses ApplyImmediateMutation() to record a discrete
+visibility change. All text authoring commands reject changes outside
+Edit mode.
+
 ### Interaction operations
 
 BeginInteraction() starts a history boundary in Edit mode.

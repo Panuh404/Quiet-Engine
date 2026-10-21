@@ -840,6 +840,7 @@ namespace Quiet::Renderer::UI::Inspector
         if (!text) return;
 
         const auto header = BeginInspectorComponent(state, "Text", "TextComponentOptions", true);
+
         if (header.RemoveRequested)
         {
             context.Commands.RemoveText(context.Scene, actor.GetID());
@@ -847,14 +848,56 @@ namespace Quiet::Renderer::UI::Inspector
         }
 
         if (!header.Open) return;
+
+        bool visible = text->Visible;
+        if (DrawCheckboxPropertyRow("Visible", visible))
+        {
+            context.Commands.SetTextVisible(context.Scene, actor.GetID(), visible);
+        }
+
+        float pixelHeight = text->PixelHeight;
+
+        BeginInspectorPropertyRow("Pixel Height");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool heightChanged = ImGui::DragFloat(
+            "##TextPixelHeight",
+            &pixelHeight,
+            0.25f,
+            1.0f,
+            256.0f,
+            "%.1f",
+            ImGuiSliderFlags_AlwaysClamp);
+
+        tracked.Begin();
+        if (heightChanged)
+        {
+            context.Commands.SetTextPixelHeight(context.Scene, actor.GetID(), pixelHeight);
+        }
+        tracked.End();
+
+        glm::vec4 color = text->Color;
+
+        BeginInspectorPropertyRow("Color");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool colorChanged = ImGui::ColorEdit4("##TextColor", &color.x);
+
+        tracked.Begin();
+        if (colorChanged)
+        {
+            context.Commands.SetTextColor(context.Scene, actor.GetID(), color);
+        }
+        tracked.End();
+
         std::string content = text->Content;
 
         ImGui::PushID("TextContent");
         ImGui::TextUnformatted("Content");
 
-        const bool changed = ImGui::InputTextMultiline("##Value", &content, ImVec2(-1.0f, ImGui::GetTextLineHeightWithSpacing() * 5.0f));
+        const bool contentChanged = ImGui::InputTextMultiline("##Value", &content, ImVec2(-1.0f, ImGui::GetTextLineHeightWithSpacing() * 5.0f));
         tracked.Begin();
-        if (changed)
+        if (contentChanged)
         {
             context.Commands.SetTextContent(context.Scene, actor.GetID(), content);
         }

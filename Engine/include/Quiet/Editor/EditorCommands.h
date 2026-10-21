@@ -104,6 +104,23 @@ namespace Quiet::Editor
          */
         bool SetTextContent(Scene::Scene& scene, Core::UUID actorID, const std::string& content);
 
+        /**
+         * @brief Sets finite pixel height, clamped to [1, 256].
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetTextPixelHeight(Scene::Scene& scene, Core::UUID actorID, float pixelHeight);
+
+        /**
+         * @brief Sets finite linear RGBA, clamped to [0, 1].
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetTextColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& color);
+
+        /**
+         * @brief Changes visibility through an immediate history mutation.
+         */
+        bool SetTextVisible(Scene::Scene& scene, Core::UUID actorID, bool visible);
+
     #pragma endregion
 
     #pragma region Actors

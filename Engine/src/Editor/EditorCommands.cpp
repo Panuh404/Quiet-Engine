@@ -145,6 +145,59 @@ namespace Quiet::Editor
         return true;
     }
 
+    bool EditorCommands::SetTextPixelHeight(Scene::Scene& scene, const Core::UUID actorID, const float pixelHeight)
+    {
+        if (!CanEditScene() || !std::isfinite(pixelHeight)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* text = actor->TryGetComponent<Scene::TextComponent>();
+        if (!text) return false;
+
+        text->PixelHeight = std::clamp(pixelHeight, 1.0f, 256.0f);
+        return true;
+    }
+
+    bool EditorCommands::SetTextColor(Scene::Scene& scene, const Core::UUID actorID, const glm::vec4& color)
+    {
+        if (!CanEditScene() ||
+            !std::isfinite(color.x) ||
+            !std::isfinite(color.y) ||
+            !std::isfinite(color.z) ||
+            !std::isfinite(color.w))
+            return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* text = actor->TryGetComponent<Scene::TextComponent>();
+        if (!text) return false;
+
+        text->Color = glm::vec4(
+            std::clamp(color.x, 0.0f, 1.0f),
+            std::clamp(color.y, 0.0f, 1.0f),
+            std::clamp(color.z, 0.0f, 1.0f),
+            std::clamp(color.w, 0.0f, 1.0f));
+
+        return true;
+    }
+
+    bool EditorCommands::SetTextVisible(Scene::Scene& scene, const Core::UUID actorID, const bool visible)
+    {
+        return ApplyImmediateMutation(m_EditorController, scene, [&]()
+        {
+            Scene::Actor* actor = scene.FindActorByID(actorID);
+            if (!actor) return false;
+
+            auto* text = actor->TryGetComponent<Scene::TextComponent>();
+            if (!text) return false;
+
+            text->Visible = visible;
+            return true;
+        });
+    }
+
 #pragma endregion
 
 #pragma region Actors

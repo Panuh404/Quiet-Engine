@@ -272,8 +272,12 @@ The existing typed JSON reads and exception behavior apply.
 
 This component contains no position, font asset reference, GPU resource,
 or layout cache. The renderer uses the default font at shared
-screen-space origin (24, 24). Inspector supports addition, removal, and
-multiline content editing; appearance controls are not implemented yet.
+screen-space origin (24, 24).
+
+Inspector supports addition, removal, multiline content, pixel height,
+color, and visibility. Editor commands clamp pixel height to [1, 256]
+and finite RGBA channels to [0, 1]. These authoring limits do not change
+the loader's field defaults or unclamped persistence behavior.
 
 ## Script component
 

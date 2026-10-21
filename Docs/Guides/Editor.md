@@ -78,7 +78,13 @@ and Simulate.
 All text currently uses the default font and shared screen-space origin
 (24, 24), so multiple text components can overlap. The atlas currently
 renders printable ASCII; other valid Unicode codepoints display '?'.
-Appearance and positioning controls are not available yet.
+Visible toggles rendering. Pixel Height controls text size from 1 to 256.
+Color edits linear RGBA, including opacity. Size and color update while
+editing and participate in undo/redo when the interaction finishes.
+Visibility changes record an immediate history operation.
+
+Larger text scales the existing bitmap atlas rather than rerasterizing
+the font. Positioning controls are not available yet.
 
 ## Navigate the Viewport
 
