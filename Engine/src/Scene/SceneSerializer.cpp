@@ -390,6 +390,16 @@ namespace Quiet::Scene
                 };
             }
 
+            if (const auto* uiRect = actor.TryGetComponent<UIRectComponent>())
+            {
+                actorJson["ui_rect"] =
+                {
+                    { "offset", SerializeVec2(uiRect->Offset) },
+                    { "anchor", SerializeVec2(uiRect->Anchor) },
+                    { "pivot", SerializeVec2(uiRect->Pivot) }
+                };
+            }
+
             if (const auto* staticMesh = actor.TryGetComponent<StaticMeshComponent>(); staticMesh && staticMesh->IsValid())
             {
                 json staticMeshJson =
@@ -640,16 +650,12 @@ namespace Quiet::Scene
             SceneRenderSettings& renderSettings = scene.GetRenderSettings();
 
             if (renderSettingsJson.contains("light_direction"))
-            {
                 renderSettings.LightDirection = DeserializeVec3(renderSettingsJson.at("light_direction"));
-            }
 
             renderSettings.LightIntensity = renderSettingsJson.value("light_intensity", renderSettings.LightIntensity);
 
             if (renderSettingsJson.contains("ambient_color"))
-            {
                 renderSettings.AmbientColor = DeserializeVec3(renderSettingsJson.at("ambient_color"));
-            }
 
             renderSettings.AmbientIntensity = renderSettingsJson.value("ambient_intensity", renderSettings.AmbientIntensity);
         }
@@ -660,9 +666,7 @@ namespace Quiet::Scene
             ScenePhysicsSettings& physicsSettings = scene.GetPhysicsSettings();
 
             if (physicsSettingsJson.contains("gravity"))
-            {
                 physicsSettings.Gravity = DeserializeVec3(physicsSettingsJson.at("gravity"));
-            }
         }
 
         for (const auto& actorJson : root["actors"])
@@ -682,6 +686,24 @@ namespace Quiet::Scene
             transform.WorldTransform.RotationDegrees = DeserializeVec3(transformJson.at("rotation"));
             transform.WorldTransform.Scale = DeserializeVec3(transformJson.at("scale"));
 
+            if (actorJson.contains("ui_rect"))
+            {
+                const auto& uiRectJson = actorJson.at("ui_rect");
+
+                UIRectComponent uiRect{};
+
+                if (uiRectJson.contains("offset"))
+                    uiRect.Offset = DeserializeVec2(uiRectJson.at("offset"));
+
+                if (uiRectJson.contains("anchor"))
+                    uiRect.Anchor = DeserializeVec2(uiRectJson.at("anchor"));
+
+                if (uiRectJson.contains("pivot"))
+                    uiRect.Pivot = DeserializeVec2(uiRectJson.at("pivot"));
+
+                actor.AddComponent<UIRectComponent>(uiRect);
+            }
+
             if (actorJson.contains("text"))
             {
                 const auto& textJson = actorJson.at("text");
@@ -692,9 +714,7 @@ namespace Quiet::Scene
                 text.Visible = textJson.value("visible", text.Visible);
 
                 if (textJson.contains("color"))
-                {
                     text.Color = DeserializeVec4(textJson.at("color"));
-                }
 
                 actor.AddComponent<TextComponent>(text);
             }
@@ -740,14 +760,10 @@ namespace Quiet::Scene
                 light.Enabled = lightJson.value("enabled", true);
 
                 if (lightJson.contains("direction"))
-                {
                     light.Direction = DeserializeVec3(lightJson.at("direction"));
-                }
 
                 if (lightJson.contains("color"))
-                {
                     light.Color = DeserializeVec3(lightJson.at("color"));
-                }
 
                 light.Intensity = lightJson.value("intensity", light.Intensity);
                 actor.AddComponent<DirectionalLightComponent>(light);

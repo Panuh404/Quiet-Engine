@@ -23,6 +23,7 @@
 #include "Scene/Components/AudioListenerComponent.h"
 #include "Scene/Components/ScriptComponent.h"
 #include "Scene/Components/TextComponent.h"
+#include "Scene/Components/UIRectComponent.h"
 
 namespace Quiet::Scene
 {

@@ -241,6 +241,42 @@ The loader can add multiple collider components.
 It does not enforce PhysicsWorld's exactly-one-supported-collider
 requirement or construct runtime bodies.
 
+## UI rectangle component
+
+An Actor's optional ui_rect object stores screen-space placement data.
+
+| Field | Representation | Default |
+| --- | --- | --- |
+| offset | Two numbers | [24, 24] |
+| anchor | Two numbers | [0, 0] |
+| pivot | Two numbers | [0, 0] |
+
+Example Actor member:
+
+```json
+"ui_rect": {
+    "offset": [24, 24],
+    "anchor": [0, 0],
+    "pivot": [0, 0]
+}
+```
+
+Offset uses pixels, with positive X rightward and positive Y downward.
+Anchor and pivot are intended normalized coordinates within [0, 1].
+The loader preserves supplied values without clamping.
+
+An absent object leaves the Actor without UIRectComponent. Missing
+fields within an existing object retain component defaults.
+
+Scene copying, Actor duplication, persistence, and Editor history
+preserve this data. The component is not automatically attached to
+text Actors.
+
+Text rendering resolves origin as anchor * target extent + offset -
+pivot * logical text size. It uses the actual Scene render target and
+logical line-box dimensions. Nonfinite resolved origins skip drawing.
+Inspector positioning controls remain unimplemented.
+
 ## Text component
 
 An Actor's optional text object stores authored content and appearance.
@@ -271,8 +307,9 @@ straight-alpha linear RGBA. These values are stored without clamping.
 The existing typed JSON reads and exception behavior apply.
 
 This component contains no position, font asset reference, GPU resource,
-or layout cache. The renderer uses the default font at shared
-screen-space origin (24, 24).
+or layout cache. The renderer uses the default font and resolves
+placement through an optional UIRectComponent. Without that component,
+text retains origin (24, 24).
 
 Inspector supports addition, removal, multiline content, pixel height,
 color, and visibility. Editor commands clamp pixel height to [1, 256]

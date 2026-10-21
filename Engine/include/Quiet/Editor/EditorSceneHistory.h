@@ -51,6 +51,7 @@ namespace Quiet::Editor
             std::optional<Scene::SphereColliderComponent> SphereCollider;
             std::optional<Scene::CapsuleColliderComponent> CapsuleCollider;
             std::optional<Scene::TextComponent> Text;
+            std::optional<Scene::UIRectComponent> UIRect;
         };
 
         struct SceneSnapshot

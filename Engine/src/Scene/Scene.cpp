@@ -43,6 +43,9 @@ namespace Quiet::Scene
             if (const auto* component = source.TryGetComponent<TextComponent>())
                 target.AddComponent<TextComponent>(*component);
 
+            if (const auto* component = source.TryGetComponent<UIRectComponent>())
+                target.AddComponent<UIRectComponent>(*component);
+
             if (const auto* component = source.TryGetComponent<StaticMeshComponent>())
                 target.AddComponent<StaticMeshComponent>(*component);
 
@@ -198,7 +201,7 @@ namespace Quiet::Scene
         return folderID;
     }
 
-    SceneHierarchyFolder * Scene::FindHierarchyFolder(Core::UUID folderID)
+    SceneHierarchyFolder* Scene::FindHierarchyFolder(Core::UUID folderID)
     {
         const auto it = std::find_if(
                 m_Hierarchy.Folders.begin(),
@@ -212,7 +215,7 @@ namespace Quiet::Scene
         return it != m_Hierarchy.Folders.end() ? &(*it) : nullptr;
     }
 
-    const SceneHierarchyFolder * Scene::FindHierarchyFolder(Core::UUID folderID) const
+    const SceneHierarchyFolder* Scene::FindHierarchyFolder(Core::UUID folderID) const
     {
         const auto it = std::find_if(
                 m_Hierarchy.Folders.begin(),
@@ -601,7 +604,7 @@ namespace Quiet::Scene
         m_Hierarchy.RootNodes = std::move(sanitizedRootNodes);
     }
 
-    Actor * Scene::TryDuplicateActorWithID(Core::UUID sourceID, Core::UUID duplicateID)
+    Actor* Scene::TryDuplicateActorWithID(Core::UUID sourceID, Core::UUID duplicateID)
     {
         if (!duplicateID.IsValid() || FindActorByID(duplicateID))
         {
@@ -632,6 +635,7 @@ namespace Quiet::Scene
         std::optional<SphereColliderComponent> sphereCollider;
         std::optional<CapsuleColliderComponent> capsuleCollider;
         std::optional<TextComponent> text;
+        std::optional<UIRectComponent> uiRect;
 
         if (const auto* component = source->TryGetComponent<StaticMeshComponent>())
             staticMesh = *component;
@@ -672,6 +676,9 @@ namespace Quiet::Scene
         if (const auto* component = source->TryGetComponent<TextComponent>())
             text = *component;
 
+        if (const auto* component = source->TryGetComponent<UIRectComponent>())
+            uiRect = *component;
+
         Actor& duplicate = CreateActorWithID(duplicateID, duplicateName);
         duplicate.GetComponent<TransformComponent>() = transform;
 
@@ -688,6 +695,7 @@ namespace Quiet::Scene
         if (sphereCollider)     duplicate.AddComponent<SphereColliderComponent>(*sphereCollider);
         if (capsuleCollider)    duplicate.AddComponent<CapsuleColliderComponent>(*capsuleCollider);
         if (text)               duplicate.AddComponent<TextComponent>(*text);
+        if (uiRect)             duplicate.AddComponent<UIRectComponent>(*uiRect);
         return &duplicate;
     }
 

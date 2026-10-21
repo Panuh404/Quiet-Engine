@@ -5,6 +5,7 @@
 #include "Quiet/Platform/Window.h"
 #include "Quiet/Assets/TexturePixelData.h"
 
+#include <cmath>
 #include <filesystem>
 #include <stdexcept>
 #include "GLFW/glfw3.h"
@@ -44,6 +45,7 @@
 #include "Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.h"
 
 #include "Scene/Components/TextComponent.h"
+#include "Scene/Components/UIRectComponent.h"
 #include "Scene/Scene.h"
 
 namespace
@@ -1008,12 +1010,23 @@ namespace Quiet::Renderer::Vulkan
                     const TextLayoutResult layout = TextLayout::BuildUTF8(m_DefaultFontAtlas, text->Content, text->PixelHeight);
                     if (!layout.Succeeded() || layout.Quads.empty()) continue;
 
+                    const VkExtent2D targetExtent = m_SceneViewportTarget->GetExtent();
+                    glm::vec2 origin(24.0f, 24.0f);
+
+                    if (const auto* uiRect = actor.TryGetComponent<Scene::UIRectComponent>())
+                    {
+                        const glm::vec2 targetSize(static_cast<float>(targetExtent.width), static_cast<float>(targetExtent.height));
+                        origin = uiRect->Anchor * targetSize + uiRect->Offset - uiRect->Pivot * layout.Size;
+                    }
+
+                    if (!std::isfinite(origin.x) || !std::isfinite(origin.y)) continue;
+
                     TextRenderContext textContext{};
                     textContext.CommandBuffer = commandBuffer;
                     textContext.Pipeline = m_TextPipeline.get();
-                    textContext.Extent = m_SceneViewportTarget->GetExtent();
+                    textContext.Extent = targetExtent;
                     textContext.Quads = std::span(layout.Quads);
-                    textContext.Offset = glm::vec2(24.0f, 24.0f);
+                    textContext.Offset = origin;
                     textContext.Color = text->Color;
 
                     m_TextRenderSystem->Record(textContext);

@@ -234,9 +234,22 @@ DrawFrame(). It processes Actors in Scene::GetActors() order, using the
 default font atlas and each component's content, pixel height, color,
 and visibility.
 
-The fixed preview has been removed. Until positioning is implemented,
-all text uses logical origin (24, 24); multiple components can overlap.
-Actor world transforms do not affect this screen-space rendering.
+The fixed preview has been removed. Text Actors with UIRectComponent
+resolve their origin as:
+
+origin = anchor * target extent + offset - pivot * layout.Size
+
+Target extent is the actual Scene render target size, not the requested
+viewport size or swapchain size. Pivot uses logical line-box dimensions,
+including trailing spaces and empty lines, rather than tight ink bounds.
+
+Text without UIRectComponent retains origin (24, 24). Default rectangle
+values produce the same origin. Placement is recalculated each frame,
+and nonfinite resolved origins skip that Actor's text.
+
+Actor world transforms and Editor hierarchy folders do not affect this
+screen-space placement. Inspector positioning controls are not yet
+implemented.
 
 Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
 layouts and layouts without visible glyphs are skipped. Layout errors

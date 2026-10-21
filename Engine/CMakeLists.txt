@@ -1,8 +1,5 @@
 # ENGINE
-add_library(Quiet_Engine STATIC
-        src/Renderer/Vulkan/Text/TextRenderSystem.h
-        src/Renderer/Vulkan/Text/TextRenderSystem.cpp
-        src/Scene/Components/TextComponent.h)
+add_library(Quiet_Engine STATIC)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -104,6 +101,7 @@ target_sources(Quiet_Engine
         src/Scene/Components/RigidBodyComponent.h
         src/Scene/Components/BoxColliderComponent.h
         src/Scene/Components/SphereColliderComponent.h
+        src/Scene/Components/UIRectComponent.h
 
         # Editor
         src/Editor/EditorActions.cpp

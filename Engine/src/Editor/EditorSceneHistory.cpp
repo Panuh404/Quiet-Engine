@@ -306,6 +306,17 @@ namespace
                lhs->Visible == rhs->Visible;
     }
 
+    bool AreUIRectsEqual(const std::optional<Quiet::Scene::UIRectComponent>& lhs,
+                         const std::optional<Quiet::Scene::UIRectComponent>& rhs)
+    {
+        if (lhs.has_value() != rhs.has_value()) return false;
+        if (!lhs.has_value()) return true;
+
+        return AreVec2Equal(lhs->Offset, rhs->Offset) &&
+               AreVec2Equal(lhs->Anchor, rhs->Anchor) &&
+               AreVec2Equal(lhs->Pivot, rhs->Pivot);
+    }
+
     bool AreActorsEqual(const Quiet::Editor::EditorSceneHistory::ActorSnapshot& lhs,
                         const Quiet::Editor::EditorSceneHistory::ActorSnapshot& rhs)
     {
@@ -325,7 +336,8 @@ namespace
             AreBoxCollidersEqual(lhs.BoxCollider, rhs.BoxCollider) &&
             AreSphereCollidersEqual(lhs.SphereCollider, rhs.SphereCollider) &&
             AreCapsuleCollidersEqual(lhs.CapsuleCollider, rhs.CapsuleCollider) &&
-            AreTextsEqual(lhs.Text, rhs.Text);
+            AreTextsEqual(lhs.Text, rhs.Text) &&
+            AreUIRectsEqual(lhs.UIRect, rhs.UIRect);
     }
 
     bool AreActorListsEqual(const std::vector<Quiet::Editor::EditorSceneHistory::ActorSnapshot>& lhs,
@@ -484,6 +496,9 @@ namespace Quiet::Editor
             if (const auto* text = actor.TryGetComponent<Scene::TextComponent>())
                 actorSnapshot.Text = *text;
 
+            if (const auto* uiRect = actor.TryGetComponent<Scene::UIRectComponent>())
+                actorSnapshot.UIRect = *uiRect;
+
             snapshot.Actors.push_back(std::move(actorSnapshot));
         }
 
@@ -504,6 +519,9 @@ namespace Quiet::Editor
         {
             Scene::Actor& actor = scene.CreateActorWithID(actorSnapshot.ID, actorSnapshot.Name);
             actor.GetComponent<Scene::TransformComponent>() = actorSnapshot.Transform;
+
+            if (actorSnapshot.UIRect)
+                actor.AddComponent<Scene::UIRectComponent>(*actorSnapshot.UIRect);
 
             if (actorSnapshot.Text)
                 actor.AddComponent<Scene::TextComponent>(*actorSnapshot.Text);

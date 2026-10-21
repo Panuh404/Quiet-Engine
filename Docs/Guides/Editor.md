@@ -75,9 +75,12 @@ content interactions participate in undo/redo and dirty tracking.
 Save the Scene to persist the text. Authoring is disabled during Play
 and Simulate.
 
-All text currently uses the default font and shared screen-space origin
-(24, 24), so multiple text components can overlap. The atlas currently
-renders printable ASCII; other valid Unicode codepoints display '?'.
+Text uses the default font. An optional ui_rect Scene member controls
+offset, anchor, and pivot. Without it, text retains origin (24, 24).
+Inspector positioning controls are not available yet.
+
+The atlas currently renders printable ASCII; other valid Unicode
+codepoints display '?'.
 Visible toggles rendering. Pixel Height controls text size from 1 to 256.
 Color edits linear RGBA, including opacity. Size and color update while
 editing and participate in undo/redo when the interaction finishes.

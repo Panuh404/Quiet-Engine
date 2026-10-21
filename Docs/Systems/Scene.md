@@ -133,6 +133,27 @@ Component references refer to registry storage rather than Actor vector
 storage. Their lifetime must be considered separately. Do not treat either
 kind of reference as a permanent handle.
 
+## UI rectangle data foundation
+
+UIRectComponent owns pixel offset, normalized anchor, and normalized
+pivot independently of TextComponent and the Actor's 3D transform.
+
+The component participates in Scene copying, Actor duplication,
+serialization, and Editor history. It contains no GPU resource,
+resolved rectangle, parent relationship, or runtime cache.
+
+Text rendering resolves placement using:
+
+origin = anchor * target extent + offset - pivot * logical element size
+
+Target extent comes from the actual Scene render target. Logical element
+size comes from TextLayoutResult::Size. Resolution runs each frame, so
+viewport resizing and text-size changes affect placement immediately.
+
+A missing UIRectComponent retains the text origin (24, 24). The component
+is not automatically attached to text Actors, and Inspector positioning
+controls remain pending. A rectangle without text draws nothing.
+
 ## Authored text data
 
 TextComponent owns UTF-8 content, pixel height, linear RGBA color, and
@@ -143,9 +164,10 @@ preserve these values. History compares content and visibility exactly
 and uses the existing float tolerance for height and color.
 
 The renderer consumes visible text components using its default font.
-All text currently shares screen-space origin (24, 24). Inspector supports
-addition, removal, multiline content, pixel height, color, and visibility.
-Positioning and font selection remain unimplemented.
+UIRectComponent optionally controls screen-space placement. Text without
+it retains origin (24, 24). Inspector supports addition, removal,
+multiline content, pixel height, color, and visibility. Inspector
+positioning controls and font selection remain unimplemented.
 
 ## Scene copying and Actor duplication
 
