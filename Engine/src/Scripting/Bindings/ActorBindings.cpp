@@ -8,6 +8,7 @@
 
 #include "Quiet/Core/UUID.h"
 #include "Scene/Components/TextComponent.h"
+#include "Scene/Components/UIRectComponent.h"
 #include "Scene/Scene.h"
 
 namespace Quiet::Scripting::Bindings
@@ -162,9 +163,68 @@ namespace Quiet::Scripting::Bindings
             return true;
         });
 
+        textTable.set_function("SetPixelHeight", [requireActor](const float pixelHeight)
+        {
+            if (!std::isfinite(pixelHeight)) return false;
+
+            auto* text = requireActor().TryGetComponent<Scene::TextComponent>();
+            if (!text) return false;
+
+            text->PixelHeight = std::clamp(pixelHeight, 1.0f, 256.0f);
+            return true;
+        });
+
+        textTable.set_function("SetColor", [requireActor](const float r, const float g, const float b, const float a)
+        {
+            if (!std::isfinite(r) || !std::isfinite(g) || !std::isfinite(b) || !std::isfinite(a)) return false;
+
+            auto* text = requireActor().TryGetComponent<Scene::TextComponent>();
+            if (!text) return false;
+
+            text->Color = glm::vec4(
+                std::clamp(r, 0.0f, 1.0f),
+                std::clamp(g, 0.0f, 1.0f),
+                std::clamp(b, 0.0f, 1.0f),
+                std::clamp(a, 0.0f, 1.0f));
+
+            return true;
+        });
+
         actorTable["Text"] = textTable;
 
 #pragma endregion
+
+        #pragma region UI Rectangle
+
+        sol::table uiRectTable = lua.create_table();
+
+        uiRectTable.set_function("HasComponent", [requireActor]()
+        {
+            return requireActor().HasComponent<Scene::UIRectComponent>();
+        });
+
+        uiRectTable.set_function("GetOffset", [requireActor]()
+        {
+            const auto* uiRect = requireActor().TryGetComponent<Scene::UIRectComponent>();
+            if (!uiRect) throw std::runtime_error("The script Actor has no UI Rectangle component.");
+
+            return std::make_tuple(uiRect->Offset.x, uiRect->Offset.y);
+        });
+
+        uiRectTable.set_function("SetOffset", [requireActor](const float x, const float y)
+        {
+            if (!std::isfinite(x) || !std::isfinite(y)) return false;
+
+            auto* uiRect = requireActor().TryGetComponent<Scene::UIRectComponent>();
+            if (!uiRect) return false;
+
+            uiRect->Offset = glm::vec2(x, y);
+            return true;
+        });
+
+        actorTable["UIRect"] = uiRectTable;
+
+        #pragma endregion
 
         InstallAudioBindings(lua, actorTable, scene, actorID);
 

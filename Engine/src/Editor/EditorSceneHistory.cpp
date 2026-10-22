@@ -313,6 +313,7 @@ namespace
         if (!lhs.has_value()) return true;
 
         return AreVec2Equal(lhs->Offset, rhs->Offset) &&
+               AreVec2Equal(lhs->Size, rhs->Size) &&
                AreVec2Equal(lhs->Anchor, rhs->Anchor) &&
                AreVec2Equal(lhs->Pivot, rhs->Pivot);
     }

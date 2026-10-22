@@ -75,9 +75,9 @@ content interactions participate in undo/redo and dirty tracking.
 Save the Scene to persist the text. Authoring is disabled during Play
 and Simulate.
 
-Text uses the default font. An optional ui_rect Scene member controls
-offset, anchor, and pivot. Without it, text retains origin (24, 24).
-Inspector positioning controls are not available yet.
+Text uses the default font. An optional UI Rectangle component controls
+offset, dimensions, anchor, and pivot. Without it, text retains origin
+(24, 24).
 
 The atlas currently renders printable ASCII; other valid Unicode
 codepoints display '?'.
@@ -94,20 +94,41 @@ the font. Use UI Rectangle to control screen-space placement.
 Select an Actor with Text, then choose + Add Component → UI Rectangle.
 
 - Offset moves the text in pixels.
+- Size defines rectangle dimensions in pixels. Zero on either axis uses
+  the text's natural logical dimension on that axis.
 - Anchor selects a normalized point in the Scene viewport.
-- Pivot selects the corresponding point in the logical text box.
+- Pivot selects the corresponding point in the resolved rectangle.
 
-For centered text, use Offset (0, 0), Anchor (0.5, 0.5), and Pivot
-(0.5, 0.5).
+For centered text, use Size (0, 0), Offset (0, 0), Anchor (0.5, 0.5),
+and Pivot (0.5, 0.5).
 
-For bottom-right placement with a 24-pixel margin, use Offset (-24, -24),
-Anchor (1, 1), and Pivot (1, 1).
+For bottom-right text placement with a 24-pixel margin, use Size (0, 0),
+Offset (-24, -24), Anchor (1, 1), and Pivot (1, 1).
+
+For an explicit 300 by 80 rectangle centered in the viewport, use Size
+(300, 80), Offset (0, 0), and Anchor/Pivot (0.5, 0.5). Text starts at
+that rectangle's top-left, 150 pixels left and 40 pixels above viewport
+center. Explicit dimensions do not scale, wrap, clip, or align text
+within the rectangle. Negative dimensions entered through the Inspector
+are clamped to zero.
 
 Placement updates while editing. Finish the interaction before testing
 Scene undo/redo. Save the Scene to persist the rectangle.
 
 Removing UI Rectangle preserves Text and restores its (24, 24) fallback.
 The rectangle does not create visible content by itself.
+
+### Fixed panel preview
+
+The renderer currently draws a translucent dark-blue panel measuring
+320 by 120 pixels at offset (24, 24) from the Scene viewport's top-left.
+It appears in Edit, Play, and Simulate independently of Actor components.
+Scene text renders afterward, above the panel.
+
+This is a fixed rendering preview. It has no Scene component or Inspector
+controls, and editing UI Rectangle does not move or resize it. Scene-owned
+panels remain future work. See [Renderer](../Systems/Renderer.md) for its
+rendering and resource contracts.
 
 ## Navigate the Viewport
 

@@ -130,6 +130,135 @@ components. Check IsValid() before accessing a retained reference.
 Transform edits do not teleport physics bodies or rebuild colliders.
 Dynamic physics can overwrite Scene position and rotation.
 
+## Text API
+
+Actor.Text controls an existing Text component on the referenced Actor.
+Use dot calls inside runtime callbacks:
+
+| Operation | Result |
+| --- | --- |
+| Actor.Text.HasComponent() | Whether the valid Actor has Text |
+| Actor.Text.GetContent() | Copy of the current content; errors if Text is missing |
+| Actor.Text.SetContent(content) | Success flag; false if Text is missing |
+| Actor.Text.SetVisible(visible) | Success flag; false if Text is missing |
+| Actor.Text.SetPixelHeight(height) | Success flag; finite height clamped to [1, 256] |
+| Actor.Text.SetColor(r, g, b, a) | Success flag; finite linear RGBA clamped per channel to [0, 1] |
+
+Operations that resolve the Actor raise an error if its UUID no longer
+resolves. Check Actor.IsValid() before using a retained Actor reference.
+HasComponent() checks component presence, not Actor validity. These
+functions do not add a missing Text component.
+
+The size and color setters return false without mutation for nonfinite
+input, before Actor lookup. For finite input, they return false when
+Text is missing and true after assignment. Height changes scale the
+existing bitmap atlas; they do not rerasterize it. Color is straight-alpha
+linear RGBA. With natural rectangle dimensions, height changes also
+affect the dimensions used for pivot placement.
+
+SetContent copies the supplied string without validating UTF-8. The
+renderer skips text whose layout rejects malformed UTF-8. Valid Unicode
+characters outside the current atlas use its fallback glyph.
+
+### Runtime timer example
+
+Add Text and Script to the same Actor. Optionally add UI Rectangle to
+control placement, as described in the [Editor guide](Editor.md).
+Import and assign a Lua file containing:
+
+```lua
+local elapsed = 0.0
+local previousSecond = -1
+
+function OnCreate()
+    if Actor.Text.HasComponent() then
+        Actor.Text.SetVisible(true)
+        Actor.Text.SetContent("Elapsed: 0 s")
+    end
+end
+
+function OnUpdate(deltaTime)
+    if not Actor.Text.HasComponent() then
+        return
+    end
+
+    elapsed = elapsed + deltaTime
+    local second = math.floor(elapsed)
+
+    if second ~= previousSecond then
+        previousSecond = second
+        Actor.Text.SetContent("Elapsed: " .. second .. " s")
+    end
+end
+```
+
+Enter Play or Simulate. Expected result: the displayed elapsed time
+updates in whole seconds.
+
+The bindings edit the runtime Scene directly without Editor history
+entries. Stop runtime to return to the original authored content.
+Keep the calls inside callbacks so property discovery can execute the
+file without runtime bindings.
+
+## UI Rectangle API
+
+Actor.UIRect controls placement data on the referenced Actor:
+
+| Operation | Result |
+| --- | --- |
+| Actor.UIRect.HasComponent() | Whether the valid Actor has UI Rectangle |
+| Actor.UIRect.GetOffset() | Two pixel coordinates; errors if the component is missing |
+| Actor.UIRect.SetOffset(x, y) | Success flag; false for nonfinite input or a missing component |
+
+Offset is unclamped, with positive X rightward and positive Y downward.
+SetOffset rejects nonfinite input before Actor lookup. Otherwise the
+functions resolve the captured Actor UUID and raise an error if it no
+longer exists. They do not create a component. Size, Anchor, and Pivot
+currently have Inspector controls but no Lua bindings.
+
+### Runtime movement example
+
+Place Text, UI Rectangle, and Script on the same Actor, and assign a Lua
+file containing the following example. Use visible text color and leave
+UI Rectangle Size at (0, 0) for natural text dimensions.
+
+```lua
+local elapsed = 0.0
+local baseX = 0.0
+local baseY = 0.0
+
+function OnCreate()
+    if not Actor.Text.HasComponent() then
+        error("Movement example requires Text on the same Actor.")
+    end
+
+    if not Actor.UIRect.HasComponent() then
+        error("Movement example requires UI Rectangle on the same Actor.")
+    end
+
+    baseX, baseY = Actor.UIRect.GetOffset()
+    Actor.Text.SetContent("Moving runtime text")
+    Actor.Text.SetVisible(true)
+end
+
+function OnUpdate(deltaTime)
+    elapsed = elapsed + deltaTime
+    Actor.UIRect.SetOffset(
+        baseX + math.sin(elapsed * 2.0) * 40.0,
+        baseY
+    )
+end
+```
+
+Enter Play or Simulate. Expected result: text moves 40 pixels left and
+right of its authored position. Stop runtime to restore authored content
+and placement. The script does not move the renderer's fixed panel.
+
+Actor refers to the script's owning Actor, not the selected Actor or a
+child. Putting Text on one Actor and UI Rectangle/Script on another does
+not connect them. To operate on a different Actor, obtain its reference
+through the Scene API and call that reference's Text/UIRect functions.
+
 ## Scene API and deferred creation
 
 | Operation | Result |

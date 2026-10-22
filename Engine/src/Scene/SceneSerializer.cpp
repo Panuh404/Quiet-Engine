@@ -395,6 +395,7 @@ namespace Quiet::Scene
                 actorJson["ui_rect"] =
                 {
                     { "offset", SerializeVec2(uiRect->Offset) },
+                    { "size", SerializeVec2(uiRect->Size) },
                     { "anchor", SerializeVec2(uiRect->Anchor) },
                     { "pivot", SerializeVec2(uiRect->Pivot) }
                 };
@@ -694,6 +695,9 @@ namespace Quiet::Scene
 
                 if (uiRectJson.contains("offset"))
                     uiRect.Offset = DeserializeVec2(uiRectJson.at("offset"));
+
+                if (uiRectJson.contains("size"))
+                    uiRect.Size = DeserializeVec2(uiRectJson.at("size"));
 
                 if (uiRectJson.contains("anchor"))
                     uiRect.Anchor = DeserializeVec2(uiRectJson.at("anchor"));

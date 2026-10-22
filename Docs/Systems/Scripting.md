@@ -368,6 +368,8 @@ Runtime environments receive these tables:
 | --- | --- |
 | Actor | Reference to the instance's owning Actor |
 | Actor.Transform | Scene transform reads and writes |
+| Actor.Text | Existing Text component content, visibility, size, and color |
+| Actor.UIRect | Existing UI Rectangle offset reads and writes |
 | Actor.RigidBody | Physics impulse and velocity commands |
 | Actor.Audio | Playback commands and state queries |
 | Scene | Actor lookup and runtime creation requests |
@@ -391,6 +393,64 @@ the runtime contracts documented in their respective chapters.
 
 Binding functions use dot-call syntax, such as
 Actor.Transform.GetPosition().
+
+### Text component bindings
+
+CreateActorReference() in Engine/src/Scripting/Bindings/ActorBindings.cpp
+installs Actor.Text on Actor references, including references returned by
+Scene lookups. Its functions capture the existing requireActor closure,
+which borrows the Scene and resolves the captured UUID on every call.
+They retain no Actor or component pointers between calls and do not keep
+the Actor alive.
+
+HasComponent() checks for TextComponent after resolving the Actor.
+GetContent() returns a string copy and raises an error if Text is absent.
+SetContent() copies into TextComponent::Content, and SetVisible() assigns
+TextComponent::Visible. Both setters return false if Text is absent and
+true after assignment. These four functions raise the existing unavailable
+Actor error if UUID lookup fails; HasComponent() is not a validity query.
+
+SetPixelHeight() and SetColor() reject nonfinite inputs before resolving
+the Actor. For finite inputs they resolve the Actor, return false for
+missing Text, and otherwise assign height clamped to [1, 256] or
+straight-alpha linear RGBA clamped per channel to [0, 1]. They return
+true after assignment, including assignments equal to existing values.
+An unresolved Actor raises the same error when lookup is reached.
+
+The Scene owns the component and its content. These bindings directly
+mutate Scene data without Editor commands or history. Editor runtime
+uses a cloned Scene, so stopping runtime discards these changes and
+preserves the editable Scene.
+
+The renderer reads visibility and content and builds text layout each
+frame. The bindings create no font resources or layout caches.
+SetContent() accepts string bytes without UTF-8 validation; malformed
+UTF-8 causes the renderer to skip that text when layout fails. Valid
+unsupported codepoints use the atlas fallback glyph.
+
+### UI rectangle bindings
+
+The same CreateActorReference() function installs Actor.UIRect.
+HasComponent() checks UIRectComponent after UUID resolution. GetOffset()
+returns a tuple of copied X/Y values and raises an error if the component
+is missing. SetOffset() rejects nonfinite inputs before Actor lookup;
+otherwise it returns false for a missing component and assigns finite,
+unclamped pixel coordinates on success. An unresolved Actor raises an
+error whenever UUID lookup is reached.
+
+These closures retain no component references and create no missing
+components. They edit runtime Scene data directly, without Editor history
+or 3D transform changes. The renderer resolves placement each frame from
+Anchor, Offset, Pivot, and authored/natural dimensions. There are no Lua
+bindings for Size, Anchor, or Pivot yet.
+
+The owning Actor reference does not search other Actors for components.
+A script using Actor.Text and Actor.UIRect needs those components on its
+own Actor. Other Actor references obtained through Scene lookup expose
+the same tables and resolve their own captured UUIDs.
+
+The [Scripting guide](../Guides/Scripting.md) documents signatures,
+validation results, and timer/movement examples.
 
 ## Exposed property types
 

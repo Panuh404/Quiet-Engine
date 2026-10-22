@@ -177,14 +177,20 @@ false, and it does not catch exceptions.
 AddUIRect() and RemoveUIRect() use immediate history mutations.
 Adding or removing a rectangle does not add or remove TextComponent.
 
-SetUIRectOffset(), SetUIRectAnchor(), and SetUIRectPivot() require an
-enclosing interaction boundary. The Inspector begins before applying
-widget changes and ends after deactivation.
+SetUIRectOffset(), SetUIRectSize(), SetUIRectAnchor(), and
+SetUIRectPivot() require an enclosing interaction boundary. The Inspector
+begins before applying widget changes and ends after deactivation.
 
 Commands reject nonfinite coordinates. Offset remains unclamped;
-Anchor and Pivot are clamped to [0, 1]. All commands reject authoring
-outside Edit mode. Scene-file loading retains its existing unclamped
-behavior.
+Size axes are clamped to nonnegative values, with zero selecting natural
+content sizing on that axis. Anchor and Pivot are clamped to [0, 1].
+All commands reject authoring outside Edit mode. Scene-file loading
+retains its existing unclamped behavior.
+
+Size participates in snapshot equality through AreUIRectsEqual().
+Capture and restoration copy the whole component. The Inspector's Size
+control changes placement bounds, not text wrapping or clipping. See
+[Scene and Actors](Scene.md) for dimension resolution.
 
 ### Text authoring commands
 

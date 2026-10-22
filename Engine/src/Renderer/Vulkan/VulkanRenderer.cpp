@@ -15,6 +15,8 @@
 
 #include "Renderer/UI/ImGuiLayer.h"
 
+#include "Renderer/Vulkan/RenderTypes.h"
+
 #include "Renderer/Vulkan/Context/GraphicsCommands.h"
 #include "Renderer/Vulkan/Context/LogicalDevice.h"
 #include "Renderer/Vulkan/Context/PhysicalDevice.h"
@@ -31,6 +33,8 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshMaterialResources.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshPipeline.h"
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
+
+#include "Renderer/Vulkan/Panel/PanelPipeline.h"
 
 #include "Renderer/Vulkan/Text/TextPipeline.h"
 #include "Renderer/Vulkan/Text/TextRenderSystem.h"
@@ -351,6 +355,8 @@ namespace Quiet::Renderer::Vulkan
         m_TextPipeline = std::make_unique<TextPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat(), *m_DefaultFontTexture);
         m_TextRenderSystem = std::make_unique<TextRenderSystem>();
 
+        m_PanelPipeline = std::make_unique<PanelPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat());
+
         QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
             defaultFontPath.string(),
             m_DefaultFontAtlas.PixelHeight,
@@ -384,10 +390,13 @@ namespace Quiet::Renderer::Vulkan
         m_ImGuiLayer.reset();
         m_DepthResources.reset();
         m_MeshLibrary.reset();
+
         m_TextureLibrary.reset();
+        m_PanelPipeline.reset();
         m_TextRenderSystem.reset();
         m_TextPipeline.reset();
         m_DefaultFontTexture.reset();
+
         m_Swapchain.reset();
         m_LogicalDevice.reset();
         m_PhysicalDevice.reset();
@@ -556,6 +565,7 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
+        m_PanelPipeline.reset();
         m_TextPipeline.reset();
 
         m_SelectionOutlineRenderSystem.reset();
@@ -619,6 +629,10 @@ namespace Quiet::Renderer::Vulkan
             *m_LogicalDevice,
             m_SceneViewportTarget->GetColorFormat(),
             *m_DefaultFontTexture);
+
+        m_PanelPipeline = std::make_unique<PanelPipeline>(
+            *m_LogicalDevice,
+            m_SceneViewportTarget->GetColorFormat());
 
         if (m_EditorMode)
         {
@@ -982,6 +996,66 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
+            if (m_PanelPipeline)
+            {
+                const VkExtent2D panelExtent = m_SceneViewportTarget->GetExtent();
+
+                if (panelExtent.width > 0 && panelExtent.height > 0)
+                {
+                    SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
+
+                    VkRenderingAttachmentInfo panelAttachment{};
+                    panelAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    panelAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
+                    panelAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    panelAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    panelAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+                    VkRenderingInfo panelRenderingInfo{};
+                    panelRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                    panelRenderingInfo.renderArea.extent = panelExtent;
+                    panelRenderingInfo.layerCount = 1;
+                    panelRenderingInfo.colorAttachmentCount = 1;
+                    panelRenderingInfo.pColorAttachments = &panelAttachment;
+
+                    vkCmdBeginRendering(commandBuffer, &panelRenderingInfo);
+                    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PanelPipeline->GetHandle());
+
+                    VkViewport panelViewport{};
+                    panelViewport.width = static_cast<float>(panelExtent.width);
+                    panelViewport.height = static_cast<float>(panelExtent.height);
+                    panelViewport.minDepth = 0.0f;
+                    panelViewport.maxDepth = 1.0f;
+
+                    vkCmdSetViewport(commandBuffer, 0, 1, &panelViewport);
+
+                    VkRect2D panelScissor{};
+                    panelScissor.extent = panelExtent;
+
+                    vkCmdSetScissor(commandBuffer, 0, 1, &panelScissor);
+
+                    PanelPushConstants panelPush{};
+                    panelPush.Rect = glm::vec4(24.0f, 24.0f, 344.0f, 144.0f);
+                    panelPush.Color = glm::vec4(0.03f, 0.12f, 0.25f, 0.8f);
+                    panelPush.Viewport = glm::vec4(
+                        static_cast<float>(panelExtent.width),
+                        static_cast<float>(panelExtent.height),
+                        0.0f,
+                        0.0f);
+
+                    vkCmdPushConstants(
+                        commandBuffer,
+                        m_PanelPipeline->GetLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(PanelPushConstants),
+                        &panelPush);
+
+                    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+                    vkCmdEndRendering(commandBuffer);
+                }
+            }
+
             if (m_TextPipeline && m_TextRenderSystem)
             {
                 SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
@@ -1015,8 +1089,22 @@ namespace Quiet::Renderer::Vulkan
 
                     if (const auto* uiRect = actor.TryGetComponent<Scene::UIRectComponent>())
                     {
-                        const glm::vec2 targetSize(static_cast<float>(targetExtent.width), static_cast<float>(targetExtent.height));
-                        origin = uiRect->Anchor * targetSize + uiRect->Offset - uiRect->Pivot * layout.Size;
+                        if (!std::isfinite(uiRect->Size.x) || !std::isfinite(uiRect->Size.y) ||
+                            uiRect->Size.x < 0.0f || uiRect->Size.y < 0.0f)
+                            continue;
+
+                        const glm::vec2 resolvedSize(
+                            uiRect->Size.x > 0.0f ? uiRect->Size.x : layout.Size.x,
+                            uiRect->Size.y > 0.0f ? uiRect->Size.y : layout.Size.y);
+
+                        const glm::vec2 targetSize(
+                            static_cast<float>(targetExtent.width),
+                            static_cast<float>(targetExtent.height));
+
+                        origin =
+                            uiRect->Anchor * targetSize +
+                            uiRect->Offset -
+                            uiRect->Pivot * resolvedSize;
                     }
 
                     if (!std::isfinite(origin.x) || !std::isfinite(origin.y)) continue;

@@ -100,6 +100,13 @@ namespace Quiet::Editor
         bool SetUIRectOffset(Scene::Scene& scene, Core::UUID actorID, const glm::vec2& offset);
 
         /**
+         * @brief Sets finite dimensions, clamped to nonnegative values.
+         * @note Zero uses the content's natural dimension on that axis.
+         * @note Requires an enclosing interaction boundary for history tracking.
+         */
+        bool SetUIRectSize(Scene::Scene& scene, Core::UUID actorID, const glm::vec2& size);
+
+        /**
          * @brief Sets finite anchor coordinates, clamped to [0, 1].
          * @note Requires an enclosing interaction boundary for history tracking.
          */

@@ -248,6 +248,7 @@ An Actor's optional ui_rect object stores screen-space placement data.
 | Field | Representation | Default |
 | --- | --- | --- |
 | offset | Two numbers | [24, 24] |
+| size | Two numbers | [0, 0] |
 | anchor | Two numbers | [0, 0] |
 | pivot | Two numbers | [0, 0] |
 
@@ -256,12 +257,16 @@ Example Actor member:
 ```json
 "ui_rect": {
     "offset": [24, 24],
+    "size": [0, 0],
     "anchor": [0, 0],
     "pivot": [0, 0]
 }
 ```
 
 Offset uses pixels, with positive X rightward and positive Y downward.
+Size uses pixels. Each positive axis overrides that dimension; zero uses
+the text's natural logical dimension on that axis. Missing size retains
+[0, 0], preserving placement in older Scene files.
 Anchor and pivot are intended normalized coordinates within [0, 1].
 The loader preserves supplied values without clamping.
 
@@ -273,12 +278,18 @@ preserve this data. The component is not automatically attached to
 text Actors.
 
 Text rendering resolves origin as anchor * target extent + offset -
-pivot * logical text size. It uses the actual Scene render target and
-logical line-box dimensions. Nonfinite resolved origins skip drawing.
+pivot * resolved size. Natural dimensions use logical line-box sizes,
+including trailing spaces and empty lines. It uses the actual Scene
+render target. Negative or nonfinite stored Size values and nonfinite
+resolved origins skip drawing. Explicit bounds do not scale, wrap,
+clip, or align the text; text starts at the rectangle's top-left.
 Inspector supports rectangle addition, removal, and coordinate editing.
 Editor commands reject nonfinite coordinates, preserve finite offsets,
-and clamp edited Anchor and Pivot values to [0, 1]. These authoring
-rules do not change the loader's unclamped behavior.
+clamp edited Size axes to nonnegative values, and clamp edited Anchor
+and Pivot values to [0, 1]. These authoring rules do not change the
+loader's unclamped behavior.
+
+The fixed panel preview is renderer-owned and has no Scene-file member.
 
 ## Text component
 

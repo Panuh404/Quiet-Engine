@@ -55,4 +55,27 @@ namespace Quiet::Renderer::Vulkan
     static_assert(offsetof(TextPushConstants, UVRect) == 16);
     static_assert(offsetof(TextPushConstants, Color) == 32);
     static_assert(offsetof(TextPushConstants, Viewport) == 48);
+
+    /**
+     * @brief Supplies one solid screen-space rectangle to the panel shader.
+     * @ingroup quiet_renderer
+     *
+     * Rect contains pixel-space minimum XY and maximum XY.
+     * Color contains straight-alpha linear RGBA.
+     * Viewport contains target width and height in XY; ZW are reserved.
+     *
+     * Requires positive viewport dimensions and a positive-height
+     * Vulkan viewport. This data does not use the Scene camera.
+     */
+    struct PanelPushConstants
+    {
+        alignas(16) glm::vec4 Rect{0.0f};
+        alignas(16) glm::vec4 Color{1.0f};
+        alignas(16) glm::vec4 Viewport{1.0f, 1.0f, 0.0f, 0.0f};
+    };
+
+    static_assert(sizeof(PanelPushConstants) == 48);
+    static_assert(offsetof(PanelPushConstants, Rect) == 0);
+    static_assert(offsetof(PanelPushConstants, Color) == 16);
+    static_assert(offsetof(PanelPushConstants, Viewport) == 32);
 }

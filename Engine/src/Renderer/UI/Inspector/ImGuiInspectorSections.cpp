@@ -940,6 +940,25 @@ namespace Quiet::Renderer::UI::Inspector
         }
         tracked.End();
 
+        glm::vec2 size = uiRect->Size;
+
+        BeginInspectorPropertyRow("Size");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+        const bool sizeChanged = ImGui::DragFloat2("##UIRectSize", &size.x, 0.5f);
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Dimensions in pixels. Zero uses the text's natural size on that axis. Does not wrap or clip text.");
+        }
+
+        tracked.Begin();
+        if (sizeChanged)
+        {
+            context.Commands.SetUIRectSize(context.Scene, actor.GetID(), size);
+        }
+        tracked.End();
+
         glm::vec2 anchor = uiRect->Anchor;
 
         BeginInspectorPropertyRow("Anchor");

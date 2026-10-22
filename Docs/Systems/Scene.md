@@ -135,8 +135,9 @@ kind of reference as a permanent handle.
 
 ## UI rectangle data foundation
 
-UIRectComponent owns pixel offset, normalized anchor, and normalized
-pivot independently of TextComponent and the Actor's 3D transform.
+UIRectComponent owns pixel offset and dimensions, normalized anchor,
+and normalized pivot independently of TextComponent and the Actor's
+3D transform. Size defaults to (0, 0).
 
 The component participates in Scene copying, Actor duplication,
 serialization, and Editor history. It contains no GPU resource,
@@ -144,16 +145,27 @@ resolved rectangle, parent relationship, or runtime cache.
 
 Text rendering resolves placement using:
 
-origin = anchor * target extent + offset - pivot * logical element size
+origin = anchor * target extent + offset - pivot * resolved size
 
-Target extent comes from the actual Scene render target. Logical element
-size comes from TextLayoutResult::Size. Resolution runs each frame, so
-viewport resizing and text-size changes affect placement immediately.
+Target extent comes from the actual Scene render target. Each positive
+Size axis overrides that dimension; a zero axis uses the corresponding
+TextLayoutResult::Size dimension. Natural dimensions include trailing
+spaces and empty lines. Resolution runs each frame, so viewport resizing
+and text-size changes affect placement immediately where natural sizing
+is used.
+
+Text begins at the resolved rectangle's top-left. Explicit dimensions
+do not scale, wrap, clip, or align content within that rectangle.
+Negative or nonfinite stored Size values skip that Actor's text;
+nonfinite resolved origins also skip drawing. Older Scene files without
+size retain the default natural-sizing behavior.
 
 A missing UIRectComponent retains the text origin (24, 24). The component
 is not automatically attached to text Actors. Inspector supports
-addition, removal, and editing Offset, Anchor, and Pivot. A rectangle
-without text draws nothing.
+addition, removal, and editing Offset, Size, Anchor, and Pivot. Size edits
+reject nonfinite input and clamp negative dimensions to zero. A rectangle
+without text draws nothing. The fixed renderer panel preview is separate
+from Scene data and does not consume this component.
 
 ## Authored text data
 

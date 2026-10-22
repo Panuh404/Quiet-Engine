@@ -145,6 +145,23 @@ namespace Quiet::Editor
         return true;
     }
 
+    bool EditorCommands::SetUIRectSize(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& size)
+    {
+        if (!CanEditScene() || !std::isfinite(size.x) || !std::isfinite(size.y)) return false;
+
+        Scene::Actor* actor = scene.FindActorByID(actorID);
+        if (!actor) return false;
+
+        auto* uiRect = actor->TryGetComponent<Scene::UIRectComponent>();
+        if (!uiRect) return false;
+
+        uiRect->Size = glm::vec2(
+            std::max(size.x, 0.0f),
+            std::max(size.y, 0.0f));
+
+        return true;
+    }
+
     bool EditorCommands::SetUIRectAnchor(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& anchor)
     {
         if (!CanEditScene() ||

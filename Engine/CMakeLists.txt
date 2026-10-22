@@ -202,6 +202,11 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
+
+        # Renderer - Vulkan - Panel
+        src/Renderer/Vulkan/Panel/PanelPipeline.cpp
+        src/Renderer/Vulkan/Panel/PanelPipeline.h
+
         # Renderer - Vulkan - Text
         src/Renderer/Vulkan/Text/TextPipeline.cpp
         src/Renderer/Vulkan/Text/TextPipeline.h

@@ -33,6 +33,8 @@ selection, and [Assets](Assets.md) for loading and library contracts.
 | Depth resources | `Engine/src/Renderer/Vulkan/Frame/DepthResources.h` |
 | Scene viewport target | `Engine/src/Renderer/Vulkan/Frame/SceneViewportTarget.h` |
 | Mesh rendering | `Engine/src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h` |
+| Solid panel pipeline | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h` |
+| Screen-space shader data | `Engine/src/Renderer/Vulkan/RenderTypes.h` |
 | Editor grid recording | `Engine/src/Renderer/Vulkan/Editor/EditorGridRenderSystem.cpp` |
 | Selection mask recording | `Engine/src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.cpp` |
 | Selection outline recording | `Engine/src/Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.cpp` |
@@ -77,6 +79,7 @@ It also stores the default runtime font's CPU atlas by value.
 | Asset libraries | MeshLibrary and TextureLibrary |
 | Runtime font | Default FontAtlasData and its Texture2D coverage texture |
 | Text rendering | TextPipeline and TextRenderSystem |
+| Panel preview | PanelPipeline |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -234,30 +237,35 @@ DrawFrame(). It processes Actors in Scene::GetActors() order, using the
 default font atlas and each component's content, pixel height, color,
 and visibility.
 
-The fixed preview has been removed. Text Actors with UIRectComponent
+The fixed text preview has been removed. Text Actors with UIRectComponent
 resolve their origin as:
 
-origin = anchor * target extent + offset - pivot * layout.Size
+origin = anchor * target extent + offset - pivot * resolved size
 
 Target extent is the actual Scene render target size, not the requested
-viewport size or swapchain size. Pivot uses logical line-box dimensions,
-including trailing spaces and empty lines, rather than tight ink bounds.
+viewport size or swapchain size. Each positive UIRectComponent::Size
+axis supplies an explicit dimension; each zero axis uses layout.Size on
+that axis. Natural dimensions include trailing spaces and empty lines,
+rather than tight ink bounds. Negative or nonfinite Size values skip
+that Actor's text. Text starts at the resolved rectangle's top-left;
+explicit bounds do not scale, wrap, clip, or align text within it.
 
 Text without UIRectComponent retains origin (24, 24). Default rectangle
-values produce the same origin. Placement is recalculated each frame,
-and nonfinite resolved origins skip that Actor's text.
+values, including Size (0, 0), produce the same origin. Placement is
+recalculated each frame, and nonfinite resolved origins skip that Actor's
+text.
 
 Actor world transforms and Editor hierarchy folders do not affect this
-screen-space placement. Inspector exposes Offset, Anchor, and Pivot
+screen-space placement. Inspector exposes Offset, Size, Anchor, and Pivot
 through the separate UI Rectangle component section.
 
 Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
 layouts and layouts without visible glyphs are skipped. Layout errors
 are not currently surfaced in the Inspector or logged per frame.
 
-The text pass runs after Scene and selection rendering, before the
-Scene image transitions to shader-read layout. It synchronizes preceding
-color writes and loads the existing color attachment for blending.
+The text pass runs after Scene, selection, and panel-preview rendering,
+before the Scene image transitions to shader-read layout. It synchronizes
+preceding color writes and loads the existing color attachment for blending.
 No depth attachment is used.
 
 Temporary layouts remain alive while TextRenderSystem records their
@@ -266,6 +274,73 @@ stores a font resource, GPU handle, or layout cache.
 
 This path is shared by Editor and Sandbox presentation. Editor runtime
 testing renders the disposable runtime Scene supplied by Application.
+
+## Solid panel preview
+
+The current panel is a fixed renderer preview, separate from Scene data.
+There is no panel component, serialization member, Inspector section,
+or panel Lua API. UIRectComponent does not control this preview.
+
+Implementation anchors are:
+
+- Engine/src/Renderer/Vulkan/RenderTypes.h: PanelPushConstants.
+- Engine/Resources/Shaders/Panel.vert and Panel.frag: pixel geometry and color.
+- Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h and PanelPipeline.cpp:
+  PanelPipeline ownership and graphics state.
+- Engine/src/Renderer/Vulkan/VulkanRenderer.cpp:
+  CreateRenderResources(), RecreateSwapchain(), DestroyRenderResources(),
+  and the m_PanelPipeline block in RecordFrameCommandBuffer().
+
+### Shader and pipeline contract
+
+PanelPushConstants contains Rect, Color, and Viewport at byte offsets
+0, 16, and 32, with total size 48 bytes. Rect stores pixel-space minimum
+and maximum XY; Color is straight-alpha linear RGBA; Viewport stores
+positive target dimensions in XY, with ZW reserved.
+
+Panel.vert generates two triangles from gl_VertexIndex using six vertices
+and firstVertex=0. Its pixel-to-device conversion uses a top-left origin
+and a positive-height viewport, without the Scene camera. Panel.frag
+outputs the interpolated color directly. Neither shader uses descriptors.
+
+PanelPipeline owns a pipeline layout and graphics pipeline and borrows
+the logical device. It uses color-only dynamic rendering, one sample,
+no vertex input, no face culling, no depth testing or writing, and dynamic
+viewport/scissor. Color blending uses source alpha and one minus source
+alpha; alpha blending uses one and one minus source alpha.
+
+The 48-byte push-constant range is vertex-stage only. Temporary
+ShaderModule objects are destroyed after pipeline creation. Constructor
+failures release partially created resources. Destruction releases the
+pipeline before its layout and requires completed GPU use.
+
+VulkanRenderer owns the pipeline in both Editor and Sandbox modes.
+Startup constructs it with the Scene target color format. Swapchain
+recreation waits for device idle, destroys it, and rebuilds it for the
+replacement target format. Shutdown waits for idle and destroys it before
+the logical device. Ordinary Scene target extent changes use dynamic
+viewport/scissor without rebuilding the pipeline.
+
+### Recording and visible behavior
+
+RecordFrameCommandBuffer() draws one rectangle from (24, 24) to
+(344, 144), giving a 320 by 120 pixel panel. Its color is linear RGBA
+(0.03, 0.12, 0.25, 0.8). It records whenever the Scene target is valid,
+the panel pipeline exists, and the target extent is nonzero.
+
+The pass runs after selection overlays and before text. It synchronizes
+preceding color writes, begins a color-only LOAD/STORE rendering scope,
+sets a positive-height viewport and full-target scissor, pushes the
+rectangle data, and records vkCmdDraw(6, 1, 0, 0). The existing text-pass
+barrier then synchronizes panel writes before blending text above it.
+The final Scene color transition to SHADER_READ_ONLY_OPTIMAL remains
+after both passes, before ImGui samples the Scene image.
+
+The preview is independent of Actors and appears during Edit, Play, and
+Simulate. Its pixel placement remains fixed when the viewport resizes;
+the full-target scissor clips portions outside smaller targets. It has
+no interaction, hit testing, parenting, or authored overlap ordering.
+Scene-owned panel authoring remains future work.
 
 ## Swapchain and Scene viewport
 
@@ -455,8 +530,9 @@ The implementation uses dynamic rendering scopes.
 | 2 | Same Scene attachments | Optionally render the Editor grid |
 | 3 | Selection mask and Scene depth | Clear the mask and record selected geometry |
 | 4 | Scene color | Optionally composite the selection outline |
-| 5 | Scene color | Blend visible Scene text |
-| 6 | Swapchain image | Clear and render ImGui |
+| 5 | Scene color | Blend the fixed panel preview |
+| 6 | Scene color | Blend visible Scene text |
+| 7 | Swapchain image | Clear and render ImGui |
 
 The Scene passes require an existing, valid SceneViewportTarget.
 When that condition is false, the Scene block is skipped, but swapchain
@@ -650,9 +726,10 @@ this wait result is checked; failure throws.
 
 ### Rebuilt resources
 
-Recreation clears the Scene texture registration and releases dependent
-Editor effects, the Scene target, UI layer, synchronization, graphics
-commands, mesh pipeline, material resources, camera resources, and depth.
+Recreation clears the Scene texture registration and releases text and
+panel pipelines, dependent Editor effects, the Scene target, UI layer,
+synchronization, graphics commands, mesh pipeline, material resources,
+camera resources, and depth.
 
 It moves the old swapchain into a local owning pointer and supplies its
 handle when constructing the replacement.
@@ -660,7 +737,8 @@ handle when constructing the replacement.
 The renderer rebuilds the dependent resources for the new swapchain.
 Editor grid and selection resources are recreated only in Editor mode.
 
-MeshLibrary and TextureLibrary are retained. Vulkan instance, surface,
+MeshLibrary, TextureLibrary, the default font atlas/texture, and the
+stateless TextRenderSystem are retained. Vulkan instance, surface,
 physical device, and logical device are also retained.
 
 After successful rebuilding, it:
@@ -716,7 +794,8 @@ result, then releases owned pointers in this order:
 8. SceneViewportTarget.
 9. ImGuiLayer.
 10. DepthResources.
-11. MeshLibrary, TextureLibrary, TextRenderSystem, TextPipeline, and the default runtime font texture.
+11. MeshLibrary, TextureLibrary, PanelPipeline, TextRenderSystem,
+    TextPipeline, and the default runtime font texture.
 12. Swapchain.
 13. LogicalDevice and PhysicalDevice.
 14. VulkanSurface and VulkanInstance.
