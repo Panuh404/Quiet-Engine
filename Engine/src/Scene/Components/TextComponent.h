@@ -6,11 +6,12 @@
 namespace Quiet::Scene
 {
     /**
-     * @brief Stores authored UTF-8 text and appearance.
+     * @brief Stores authored UTF-8 text and appearance on a Scene Actor.
      * @ingroup quiet_scene
      *
      * Contains no resolved font resources or layout cache.
-     * Positioning and font-asset selection are not defined here yet.
+     * Optional UIRectComponent data controls screen-space placement.
+     * Font selection currently belongs to the renderer.
      */
     struct TextComponent
     {

@@ -43,12 +43,12 @@ namespace Quiet::Renderer::Vulkan
      * Vulkan viewport. This data does not use the Scene camera.
      */
     struct TextPushConstants
-     {
-         alignas(16) glm::vec4 Rect{0.0f};
-         alignas(16) glm::vec4 UVRect{0.0f};
-         alignas(16) glm::vec4 Color{1.0f};
-         alignas(16) glm::vec4 Viewport{1.0f, 1.0f, 0.0f, 0.0f};
-     };
+    {
+        alignas(16) glm::vec4 Rect{0.0f};
+        alignas(16) glm::vec4 UVRect{0.0f};
+        alignas(16) glm::vec4 Color{1.0f};
+        alignas(16) glm::vec4 Viewport{1.0f, 1.0f, 0.0f, 0.0f};
+    };
 
     static_assert(sizeof(TextPushConstants) == 64);
     static_assert(offsetof(TextPushConstants, Rect) == 0);

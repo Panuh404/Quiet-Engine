@@ -20,6 +20,13 @@ namespace Quiet::Scene
     struct UIRectComponent
     {
         glm::vec2 Offset{24.0f, 24.0f};
+
+        /**
+         * @brief Stores explicit pixel dimensions for screen-space placement.
+         * @note Zero on an axis uses the text's natural logical dimension.
+         *       Positive values override that dimension.
+         *       Does not scale, wrap, clip, or align text within the bounds.
+         */
         glm::vec2 Size{0.0f};
         glm::vec2 Anchor{0.0f};
         glm::vec2 Pivot{0.0f};
