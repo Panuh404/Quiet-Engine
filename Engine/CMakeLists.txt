@@ -202,7 +202,6 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.cpp
         src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h
 
-
         # Renderer - Vulkan - Panel
         src/Renderer/Vulkan/Panel/PanelPipeline.cpp
         src/Renderer/Vulkan/Panel/PanelPipeline.h
@@ -328,6 +327,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorSceneWorkflow.h
         include/Quiet/Editor/EditorState.h
 
+        include/Quiet/UI/PaintCommands.h
         include/Quiet/Renderer/RenderConventions.h
         include/Quiet/Renderer/TextLayout.h
         include/Quiet/Platform/Window.h

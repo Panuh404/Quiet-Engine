@@ -35,6 +35,7 @@ selection, and [Assets](Assets.md) for loading and library contracts.
 | Mesh rendering | `Engine/src/Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h` |
 | Solid panel pipeline | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h` |
 | Screen-space shader data | `Engine/src/Renderer/Vulkan/RenderTypes.h` |
+| Backend-independent paint commands | `Engine/include/Quiet/UI/PaintCommands.h` |
 | Editor grid recording | `Engine/src/Renderer/Vulkan/Editor/EditorGridRenderSystem.cpp` |
 | Selection mask recording | `Engine/src/Renderer/Vulkan/Editor/SelectionMaskRenderSystem.cpp` |
 | Selection outline recording | `Engine/src/Renderer/Vulkan/Editor/SelectionOutlineRenderSystem.cpp` |
@@ -263,7 +264,7 @@ Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
 layouts and layouts without visible glyphs are skipped. Layout errors
 are not currently surfaced in the Inspector or logged per frame.
 
-The text pass runs after Scene, selection, and panel-preview rendering,
+The Actor text pass runs after Scene, selection, and ordered-preview rendering,
 before the Scene image transitions to shader-read layout. It synchronizes
 preceding color writes and loads the existing color attachment for blending.
 No depth attachment is used.
@@ -275,21 +276,75 @@ stores a font resource, GPU handle, or layout cache.
 This path is shared by Editor and Sandbox presentation. Editor runtime
 testing renders the disposable runtime Scene supplied by Application.
 
-## Solid panel preview
+## Ordered UI painting preview
 
-The current panel is a fixed renderer preview, separate from Scene data.
-There is no panel component, serialization member, Inspector section,
-or panel Lua API. UIRectComponent does not control this preview.
+Quiet::UI provides backend-independent rectangle and text command data.
+The current producer and Vulkan consumer both remain local to
+VulkanRenderer::RecordFrameCommandBuffer(). This establishes a painting
+data boundary, not a retained widget hierarchy or a general submission API.
+
+The preview is separate from Scene data. There is no panel component,
+serialization member, Inspector section, or panel Lua API.
+UIRectComponent does not control this preview.
 
 Implementation anchors are:
 
+- Engine/include/Quiet/UI/PaintCommands.h: SolidRectCommand, TextCommand,
+  PaintCommand, and PaintList in Quiet::UI.
 - Engine/src/Renderer/Vulkan/RenderTypes.h: PanelPushConstants.
 - Engine/Resources/Shaders/Panel.vert and Panel.frag: pixel geometry and color.
 - Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h and PanelPipeline.cpp:
   PanelPipeline ownership and graphics state.
 - Engine/src/Renderer/Vulkan/VulkanRenderer.cpp:
   CreateRenderResources(), RecreateSwapchain(), DestroyRenderResources(),
-  and the m_PanelPipeline block in RecordFrameCommandBuffer().
+  and the paintList producer/consumer in RecordFrameCommandBuffer().
+
+### Logical commands and ownership
+
+SolidRectCommand owns resolved surface-space Min/Max coordinates and
+straight-alpha linear RGBA Color. TextCommand owns UTF-8 Content,
+surface-space Origin, PixelHeight, and the same color representation.
+Surface coordinates currently use Scene-target pixels, with top-left
+origin, positive X rightward, and positive Y downward.
+
+PaintCommand is a std::variant of these two types. PaintList is an owning
+std::vector of commands. The header has no Vulkan or ImGui dependency.
+Its structures are logical values, not shader-memory layouts; the backend
+explicitly translates rectangles into PanelPushConstants and text into
+TextLayoutResult and TextRenderContext.
+
+Commands specify finite coordinates and finite color channels within
+[0, 1]. Rectangles require Max greater than Min on each axis; text requires
+finite positive PixelHeight. These are caller requirements, not a general
+validation service: the current rectangle consumer does not validate
+those values. Text layout rejects malformed UTF-8 and invalid heights,
+and the consumer skips failed or empty layouts.
+
+Text uses the renderer's default runtime font. Commands retain no font
+resources, texture references, GPU handles, or widget pointers. The local
+list owns its strings throughout recording. Each local TextLayoutResult
+owns its glyph geometry until TextRenderSystem::Record() returns; the
+render system retains none of it. Vulkan pipeline and font ownership
+remain with VulkanRenderer.
+
+The list is currently rebuilt each frame, reserves two elements, and
+performs text layout during consumption. The Actor compatibility path
+also copies content into an owned TextCommand. There is no persistent
+paint cache, glyph batching, or allocation-reuse policy yet.
+
+### Ordering contract
+
+The consumer visits commands in vector order without sorting by type.
+Later commands blend over earlier operations where their geometry
+overlaps; an opaque later rectangle can cover earlier text. Each command
+binds the appropriate graphics pipeline, so text/rectangle alternation
+preserves the submitted order.
+
+This guarantee applies within PaintList. Actor-authored text remains a
+separate compatibility pass afterward and therefore paints above the
+entire preview list. That path still resolves Actor UI rectangles and
+uses TextCommand values before recording through TextRenderContext.
+There is no global interleaving of Actors and preview commands.
 
 ### Shader and pipeline contract
 
@@ -323,24 +378,43 @@ viewport/scissor without rebuilding the pipeline.
 
 ### Recording and visible behavior
 
-RecordFrameCommandBuffer() draws one rectangle from (24, 24) to
-(344, 144), giving a 320 by 120 pixel panel. Its color is linear RGBA
-(0.03, 0.12, 0.25, 0.8). It records whenever the Scene target is valid,
-the panel pipeline exists, and the target extent is nonzero.
+The local PaintList contains, in order:
 
-The pass runs after selection overlays and before text. It synchronizes
-preceding color writes, begins a color-only LOAD/STORE rendering scope,
-sets a positive-height viewport and full-target scissor, pushes the
-rectangle data, and records vkCmdDraw(6, 1, 0, 0). The existing text-pass
-barrier then synchronizes panel writes before blending text above it.
+- A rectangle from (24, 24) to (344, 144), giving a 320 by 120 pixel panel,
+  with linear RGBA (0.03, 0.12, 0.25, 0.8).
+- White text "Paint order preview" at (40, 48), with PixelHeight 32,
+  using the renderer's default font.
+
+The preview block runs when the Scene target is valid, its extent is
+nonzero, and either the panel pipeline or the text pipeline/render system
+is available. Individual commands skip when their required rendering
+objects are unavailable.
+
+The pass runs after selection overlays and before Actor-authored text.
+It synchronizes preceding color writes, begins one color-only LOAD/STORE
+rendering scope, and sets a positive-height viewport and full-target
+scissor. Rectangle commands translate their values into push constants
+and record vkCmdDraw(6, 1, 0, 0). Text commands build layout and forward
+geometry to TextRenderSystem, which binds its pipeline and font descriptor
+and records glyph draws. It also sets the same viewport/scissor extent.
+
+The existing Actor text-pass barrier synchronizes preview writes before
+that pass blends its text above the preview.
 The final Scene color transition to SHADER_READ_ONLY_OPTIMAL remains
 after both passes, before ImGui samples the Scene image.
 
 The preview is independent of Actors and appears during Edit, Play, and
 Simulate. Its pixel placement remains fixed when the viewport resizes;
 the full-target scissor clips portions outside smaller targets. It has
-no interaction, hit testing, parenting, or authored overlap ordering.
-Scene-owned panel authoring remains future work.
+no interaction, hit testing, parenting, per-command clipping, or authored
+overlap controls. The list supports ordering, but the preview's producer
+currently hardcodes that order. Retained widget producers remain future
+work and do not replace the Editor's Dear ImGui tooling.
+
+To verify ordering during development, temporarily submit the text before
+the rectangle and make the rectangle opaque. Expected result: the
+rectangle covers the preview text. Restore rectangle-first ordering and
+alpha 0.8 afterward. Actor-authored text still renders above both.
 
 ## Swapchain and Scene viewport
 
@@ -530,8 +604,8 @@ The implementation uses dynamic rendering scopes.
 | 2 | Same Scene attachments | Optionally render the Editor grid |
 | 3 | Selection mask and Scene depth | Clear the mask and record selected geometry |
 | 4 | Scene color | Optionally composite the selection outline |
-| 5 | Scene color | Blend the fixed panel preview |
-| 6 | Scene color | Blend visible Scene text |
+| 5 | Scene color | Execute the preview PaintList in submission order |
+| 6 | Scene color | Blend visible Actor-authored text |
 | 7 | Swapchain image | Clear and render ImGui |
 
 The Scene passes require an existing, valid SceneViewportTarget.

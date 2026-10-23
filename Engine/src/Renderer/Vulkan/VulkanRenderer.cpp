@@ -12,6 +12,7 @@
 #include "Quiet/Assets/FontImporter.h"
 #include "Quiet/Assets/TextureImporter.h"
 #include "Quiet/Renderer/TextLayout.h"
+#include "Quiet/UI/PaintCommands.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
 
@@ -996,64 +997,105 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
-            // Fixed panel preview used to validate screen-space rendering.
-            // This is renderer-owned and independent of Scene components.
-            if (m_PanelPipeline)
+            // Ordered paint preview, independent of Scene components.
+            // Producers remain local until retained widgets are introduced.
+            if (m_PanelPipeline || (m_TextPipeline && m_TextRenderSystem))
             {
-                const VkExtent2D panelExtent = m_SceneViewportTarget->GetExtent();
-
-                if (panelExtent.width > 0 && panelExtent.height > 0)
+                const VkExtent2D paintExtent = m_SceneViewportTarget->GetExtent();
+                if (paintExtent.width > 0 && paintExtent.height > 0)
                 {
+                    Quiet::UI::PaintList paintList;
+                    paintList.reserve(2);
+                    paintList.emplace_back(Quiet::UI::SolidRectCommand
+                    {
+                        glm::vec2(24.0f, 24.0f),
+                        glm::vec2(344.0f, 144.0f),
+                        glm::vec4(0.03f, 0.12f, 0.25f, 0.8f)
+                    });
+                    paintList.emplace_back(Quiet::UI::TextCommand
+                    {
+                        "Paint order preview",
+                        glm::vec2(40.0f, 48.0f),
+                        32.0f,
+                        glm::vec4(1.0f)
+                    });
+
                     SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
 
-                    VkRenderingAttachmentInfo panelAttachment{};
-                    panelAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                    panelAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
-                    panelAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                    panelAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-                    panelAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                    VkRenderingAttachmentInfo paintAttachment{};
+                    paintAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    paintAttachment.imageView = m_SceneViewportTarget->GetColorImageView();
+                    paintAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    paintAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    paintAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-                    VkRenderingInfo panelRenderingInfo{};
-                    panelRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-                    panelRenderingInfo.renderArea.extent = panelExtent;
-                    panelRenderingInfo.layerCount = 1;
-                    panelRenderingInfo.colorAttachmentCount = 1;
-                    panelRenderingInfo.pColorAttachments = &panelAttachment;
+                    VkRenderingInfo paintRenderingInfo{};
+                    paintRenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                    paintRenderingInfo.renderArea.extent = paintExtent;
+                    paintRenderingInfo.layerCount = 1;
+                    paintRenderingInfo.colorAttachmentCount = 1;
+                    paintRenderingInfo.pColorAttachments = &paintAttachment;
 
-                    vkCmdBeginRendering(commandBuffer, &panelRenderingInfo);
-                    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PanelPipeline->GetHandle());
+                    vkCmdBeginRendering(commandBuffer, &paintRenderingInfo);
 
-                    VkViewport panelViewport{};
-                    panelViewport.width = static_cast<float>(panelExtent.width);
-                    panelViewport.height = static_cast<float>(panelExtent.height);
-                    panelViewport.minDepth = 0.0f;
-                    panelViewport.maxDepth = 1.0f;
+                    VkViewport paintViewport{};
+                    paintViewport.width = static_cast<float>(paintExtent.width);
+                    paintViewport.height = static_cast<float>(paintExtent.height);
+                    paintViewport.minDepth = 0.0f;
+                    paintViewport.maxDepth = 1.0f;
 
-                    vkCmdSetViewport(commandBuffer, 0, 1, &panelViewport);
+                    vkCmdSetViewport(commandBuffer, 0, 1, &paintViewport);
 
-                    VkRect2D panelScissor{};
-                    panelScissor.extent = panelExtent;
+                    VkRect2D paintScissor{};
+                    paintScissor.extent = paintExtent;
 
-                    vkCmdSetScissor(commandBuffer, 0, 1, &panelScissor);
+                    vkCmdSetScissor(commandBuffer, 0, 1, &paintScissor);
 
-                    PanelPushConstants panelPush{};
-                    panelPush.Rect = glm::vec4(24.0f, 24.0f, 344.0f, 144.0f);
-                    panelPush.Color = glm::vec4(0.03f, 0.12f, 0.25f, 0.8f);
-                    panelPush.Viewport = glm::vec4(
-                        static_cast<float>(panelExtent.width),
-                        static_cast<float>(panelExtent.height),
-                        0.0f,
-                        0.0f);
+                    for (const Quiet::UI::PaintCommand& command : paintList)
+                    {
+                        if (const auto* rectangle = std::get_if<Quiet::UI::SolidRectCommand>(&command))
+                        {
+                            if (!m_PanelPipeline) continue;
 
-                    vkCmdPushConstants(
-                        commandBuffer,
-                        m_PanelPipeline->GetLayout(),
-                        VK_SHADER_STAGE_VERTEX_BIT,
-                        0,
-                        sizeof(PanelPushConstants),
-                        &panelPush);
+                            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PanelPipeline->GetHandle());
 
-                    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+                            PanelPushConstants push{};
+                            push.Rect = glm::vec4(rectangle->Min.x, rectangle->Min.y, rectangle->Max.x, rectangle->Max.y);
+                            push.Color = rectangle->Color;
+                            push.Viewport = glm::vec4(
+                                static_cast<float>(paintExtent.width),
+                                static_cast<float>(paintExtent.height),
+                                0.0f,
+                                0.0f);
+
+                            vkCmdPushConstants(
+                                commandBuffer,
+                                m_PanelPipeline->GetLayout(),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                0,
+                                sizeof(PanelPushConstants),
+                                &push);
+
+                            vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+                        }
+                        else if (const auto* text = std::get_if<Quiet::UI::TextCommand>(&command))
+                        {
+                            if (!m_TextPipeline || !m_TextRenderSystem) continue;
+
+                            const TextLayoutResult layout = TextLayout::BuildUTF8(m_DefaultFontAtlas, text->Content, text->PixelHeight);
+                            if (!layout.Succeeded() || layout.Quads.empty()) continue;
+
+                            TextRenderContext context{};
+                            context.CommandBuffer = commandBuffer;
+                            context.Pipeline = m_TextPipeline.get();
+                            context.Extent = paintExtent;
+                            context.Quads = std::span(layout.Quads);
+                            context.Offset = text->Origin;
+                            context.Color = text->Color;
+
+                            m_TextRenderSystem->Record(context);
+                        }
+                    }
                     vkCmdEndRendering(commandBuffer);
                 }
             }
@@ -1085,11 +1127,19 @@ namespace Quiet::Renderer::Vulkan
                     const auto* text = actor.TryGetComponent<Scene::TextComponent>();
                     if (!text || !text->Visible || text->Content.empty()) continue;
 
-                    const TextLayoutResult layout = TextLayout::BuildUTF8(m_DefaultFontAtlas, text->Content, text->PixelHeight);
+                    Quiet::UI::TextCommand textCommand
+                    {
+                        text->Content,
+                        glm::vec2(24.0f, 24.0f),
+                        text->PixelHeight,
+                        text->Color
+                    };
+
+                    const TextLayoutResult layout = TextLayout::BuildUTF8(m_DefaultFontAtlas, textCommand.Content, textCommand.PixelHeight);
                     if (!layout.Succeeded() || layout.Quads.empty()) continue;
 
                     const VkExtent2D targetExtent = m_SceneViewportTarget->GetExtent();
-                    glm::vec2 origin(24.0f, 24.0f);
+                    glm::vec2 origin = textCommand.Origin;
 
                     if (const auto* uiRect = actor.TryGetComponent<Scene::UIRectComponent>())
                     {
@@ -1112,14 +1162,15 @@ namespace Quiet::Renderer::Vulkan
                     }
 
                     if (!std::isfinite(origin.x) || !std::isfinite(origin.y)) continue;
+                    textCommand.Origin = origin;
 
                     TextRenderContext textContext{};
                     textContext.CommandBuffer = commandBuffer;
                     textContext.Pipeline = m_TextPipeline.get();
                     textContext.Extent = targetExtent;
                     textContext.Quads = std::span(layout.Quads);
-                    textContext.Offset = origin;
-                    textContext.Color = text->Color;
+                    textContext.Offset = textCommand.Origin;
+                    textContext.Color = textCommand.Color;
 
                     m_TextRenderSystem->Record(textContext);
                 }

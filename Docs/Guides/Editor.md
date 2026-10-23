@@ -118,17 +118,25 @@ Scene undo/redo. Save the Scene to persist the rectangle.
 Removing UI Rectangle preserves Text and restores its (24, 24) fallback.
 The rectangle does not create visible content by itself.
 
-### Fixed panel preview
+### Ordered painting preview
 
 The renderer currently draws a translucent dark-blue panel measuring
 320 by 120 pixels at offset (24, 24) from the Scene viewport's top-left.
 It appears in Edit, Play, and Simulate independently of Actor components.
-Scene text renders afterward, above the panel.
+White text "Paint order preview" appears at (40, 48), above the panel,
+using the default font at pixel height 32. Existing Actor-authored text
+renders afterward, above both preview operations.
 
-This is a fixed rendering preview. It has no Scene component or Inspector
-controls, and editing UI Rectangle does not move or resize it. Scene-owned
-panels remain future work. See [Renderer](../Systems/Renderer.md) for its
-rendering and resource contracts.
+This is a fixed renderer demonstration of ordered rectangle/text paint
+commands. It is not a retained widget tree and has no Scene component or
+Inspector controls. Editing an Actor's Text or UI Rectangle does not
+change the preview. Its placement remains fixed while resizing, and the
+Scene target edges clip any portions outside the viewport.
+
+After building, confirm the white preview label appears over the panel,
+existing Actor text still works, and resizing preserves placement without
+Vulkan validation errors. See [Renderer](../Systems/Renderer.md) for the
+command ordering, ownership, and resource contracts.
 
 ## Navigate the Viewport
 
