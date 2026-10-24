@@ -4,6 +4,7 @@
 #include "Quiet/Scene/SceneDocument.h"
 #include "Quiet/UI/Label.h"
 #include "Quiet/UI/Panel.h"
+#include "Quiet/UI/Button.h"
 
 #include <span>
 #include <stdexcept>
@@ -328,14 +329,24 @@ namespace Quiet::Core
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
 
         auto panel = std::make_unique<UI::Panel>();
-        panel->SetBounds( {{24.0f, 24.0f}, {320.0f, 120.0f}});
+        panel->SetBounds({{24.0f, 24.0f}, {320.0f, 120.0f}});
 
         auto label = std::make_unique<UI::Label>();
-        label->SetBounds( {{16.0f, 24.0f}, {288.0f, 72.0f}});
+        label->SetBounds({{16.0f, 24.0f}, {288.0f, 72.0f}});
         label->SetContent("Retained UI label");
 
         panel->AddChild(std::move(label));
         m_RuntimeUIRoot.AddChild(std::move(panel));
+
+        auto button = std::make_unique<UI::Button>();
+        button->SetBounds({{24.0f, 168.0f}, {320.0f, 64.0f}});
+
+        auto buttonLabel = std::make_unique<UI::Label>();
+        buttonLabel->SetBounds({{16.0f, 16.0f}, {288.0f, 32.0f}});
+        buttonLabel->SetContent("Hover me");
+
+        button->AddChild(std::move(buttonLabel));
+        m_RuntimeUIRoot.AddChild(std::move(button));
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -962,6 +973,7 @@ namespace Quiet::Core
             selectedActorID = editorState.Selection.SelectedActorID;
         }
 
+        UpdateRuntimeUIPointer(uiLayer);
         BuildRuntimeUIPaintList();
 
         return m_Renderer->DrawFrame(
@@ -992,6 +1004,43 @@ namespace Quiet::Core
         m_RuntimeUIPaintList.clear();
         m_RuntimeUIRoot.Paint(m_RuntimeUIPaintList);
         m_RuntimeUIRoot.ClearInvalidation(UI::InvalidationReason::Paint);
+    }
+
+    UI::Widget* Application::HitTestRuntimeUI(const Renderer::UI::ImGuiLayer& uiLayer)
+    {
+        if (m_MouseCaptureEnabled) return nullptr;
+
+        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+        if (!pointerState || !pointerState->PositionValid || !pointerState->ImageHovered) return nullptr;
+
+        const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
+        const glm::vec2 surfaceSize(static_cast<float>(extent.width), static_cast<float>(extent.height));
+
+        const auto surfacePosition = UI::MapPointToSurface(pointerState->DisplayPosition, pointerState->DisplayBounds, surfaceSize);
+        if (!surfacePosition) return nullptr;
+
+        if (surfacePosition->x < 0.0f ||
+            surfacePosition->y < 0.0f ||
+            surfacePosition->x >= surfaceSize.x ||
+            surfacePosition->y >= surfaceSize.y)
+            return nullptr;
+
+        return m_RuntimeUIRoot.HitTest(*surfacePosition);
+    }
+
+    void Application::UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer &uiLayer)
+    {
+        UI::Widget* hoveredWidget = HitTestRuntimeUI(uiLayer);
+        m_RuntimeUIRoot.UpdatePointerHover(hoveredWidget);
+
+        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+        if (m_MouseCaptureEnabled || !pointerState || !pointerState->PositionValid)
+        {
+            m_RuntimeUIRoot.UpdatePointerPress(nullptr, false, false);
+            return;
+        }
+
+        m_RuntimeUIRoot.UpdatePointerPress(hoveredWidget, pointerState->PrimaryPressed, pointerState->PrimaryDown);
     }
 
     bool Application::RunEditorBootstrapFrame(const FrameContext &frame)
@@ -1258,6 +1307,7 @@ namespace Quiet::Core
 
         const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
 
+        UpdateRuntimeUIPointer(uiLayer);
         BuildRuntimeUIPaintList();
 
         return m_Renderer->DrawFrame(

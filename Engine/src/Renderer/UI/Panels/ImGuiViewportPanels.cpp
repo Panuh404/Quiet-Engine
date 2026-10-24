@@ -38,18 +38,17 @@ namespace
     constexpr float kMinimumScaleSnap = 0.001f;
     constexpr float kMaximumScaleSnap = 10.0f;
 
-
     constexpr std::array kViewportCameraSpeedPresets =
-        {
-            0.5f,
-            1.0f,
-            2.5f,
-            5.0f,
-            10.0f,
-            25.0f,
-            50.0f,
-            100.0f
-        };
+    {
+        0.5f,
+        1.0f,
+        2.5f,
+        5.0f,
+        10.0f,
+        25.0f,
+        50.0f,
+        100.0f
+    };
 
     struct ViewportNavigationGuideItem
     {
@@ -1007,13 +1006,24 @@ namespace Quiet::Renderer::UI
 
         if (sceneViewportTexture && outViewportWidth > 0 && outViewportHeight > 0)
         {
-            ImGui::Image(
-                sceneViewportTexture,
-                ImVec2(
-                    static_cast<float>(outViewportWidth),
-                    static_cast<float>(outViewportHeight)
-                )
-            );
+            ImGui::Image(sceneViewportTexture, ImVec2(static_cast<float>(outViewportWidth), static_cast<float>(outViewportHeight)));
+
+            if (ImGui::IsItemVisible())
+            {
+                const ImVec2 itemMin = ImGui::GetItemRectMin();
+                const ImVec2 itemSize = ImGui::GetItemRectSize();
+                const ImVec2 mousePosition = ImGui::GetMousePos();
+
+                SceneViewportPointerState pointerState{};
+                pointerState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
+                pointerState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
+                pointerState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
+                pointerState.ImageHovered = ImGui::IsItemHovered();
+                pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+                pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+                m_SceneViewportPointerState = pointerState;
+            }
         }
         else
         {
@@ -1239,6 +1249,24 @@ namespace Quiet::Renderer::UI
 
                 ImGui::Image(sceneViewportTexture, imageSize);
                 editorState.Viewport.ImageHovered = ImGui::IsItemHovered();
+
+                if (ImGui::IsItemVisible())
+                {
+                    const ImVec2 itemMin = ImGui::GetItemRectMin();
+                    const ImVec2 itemSize = ImGui::GetItemRectSize();
+                    const ImVec2 mousePosition = ImGui::GetMousePos();
+
+                    SceneViewportPointerState pointerState{};
+                    pointerState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
+                    pointerState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
+                    pointerState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
+                    pointerState.ImageHovered = ImGui::IsItemHovered();
+                    pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+                    pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+                    m_SceneViewportPointerState = pointerState;
+                }
+
                 if (editorState.Viewport.ImageHovered)
                 {
                     const bool altDown = ImGui::GetIO().KeyAlt;

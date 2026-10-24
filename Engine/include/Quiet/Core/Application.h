@@ -169,6 +169,21 @@ namespace Quiet::Core
          * @note Uses the actual Scene target extent; preserves the widget tree.
          */
         void BuildRuntimeUIPaintList();
+
+        /**
+         * @brief Finds the participating runtime widget beneath the current pointer.
+         * @return Borrowed pointer, or null when UI pointer interaction is unavailable.
+         * @note Uses the current presentation snapshot and actual Scene target extent.
+         *       Does not retain the result or dispatch events.
+         */
+        [[nodiscard]] UI::Widget* HitTestRuntimeUI(const Renderer::UI::ImGuiLayer& uiLayer);
+
+        /**
+         * @brief Applies the current pointer hit to retained hover state.
+         * @note Runs before rebuilding painting commands and retains no hit pointer.
+         */
+        void UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer& uiLayer);
+
         bool RunEditorBootstrapFrame(const FrameContext& frame);
         void AdvanceEditorBootstrap();
         void BuildEditorBootstrapUI(Renderer::UI::ImGuiLayer& uiLayer);

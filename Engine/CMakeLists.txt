@@ -1,7 +1,5 @@
 # ENGINE
-add_library(Quiet_Engine STATIC
-        src/Renderer/Vulkan/Image/ImageResources.h
-        src/Renderer/Vulkan/Image/ImageResources.cpp)
+add_library(Quiet_Engine STATIC)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -190,7 +188,7 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiSceneSettingsPanel.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
-        # Renderer - Vulkan - Panel
+        # Renderer - Vulkan - Image
         src/Renderer/Vulkan/Image/ImagePipeline.h
         src/Renderer/Vulkan/Image/ImagePipeline.cpp
         src/Renderer/Vulkan/Image/ImageResources.h
@@ -279,6 +277,7 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanRenderer.h
 
         # Runtime UI
+        src/UI/Button.cpp
         src/UI/Image.cpp
         src/UI/Label.cpp
         src/UI/Panel.cpp
@@ -341,6 +340,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorSceneWorkflow.h
         include/Quiet/Editor/EditorState.h
 
+        include/Quiet/UI/Button.h
         include/Quiet/UI/Geometry.h
         include/Quiet/UI/Image.h
         include/Quiet/UI/Label.h

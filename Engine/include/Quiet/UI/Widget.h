@@ -10,6 +10,17 @@
 namespace Quiet::UI
 {
     /**
+     * @brief Controls participation in pointer hit testing.
+     * @ingroup quiet_renderer
+     */
+    enum class HitTestMode
+    {
+        SelfAndChildren,
+        ChildrenOnly,
+        None
+    };
+
+    /**
      * @brief Identifies work invalidated by a widget mutation.
      * @ingroup quiet_renderer
      */
@@ -86,6 +97,52 @@ namespace Quiet::UI
         [[nodiscard]] Rect GetSurfaceBounds() const noexcept;
 
         /**
+         * @brief Sets participation in hit testing without changing painting.
+         * @note ChildrenOnly skips this widget but still searches descendants.
+         *       None skips the entire subtree.
+         */
+        void SetHitTestMode(HitTestMode mode) noexcept;
+        [[nodiscard]] HitTestMode GetHitTestMode() const noexcept { return m_HitTestMode; }
+
+        /**
+         * @brief Finds the topmost participating widget at a surface-space point.
+         * @return Borrowed widget pointer, or null when nothing is hit.
+         * @note Searches children in reverse painting order before this widget.
+         *       Parent bounds do not clip descendants.
+         *       Minimum edges are included; maximum edges are excluded.
+         *       Nonfinite points produce no hit.
+         * @pre The hierarchy must remain unchanged during the query.
+         * @pre Resolved bounds and their maximum coordinates must remain finite.
+         */
+        [[nodiscard]] Widget* HitTest(const glm::vec2& surfacePosition) noexcept;
+
+        /**
+         * @brief Updates direct hover state throughout this subtree.
+         * @param hoveredWidget Current hit-test result, or null to clear hover.
+         * @note Call on the input root with a result from that root.
+         *       Only the directly hit widget is hovered, not its ancestors.
+         *       Stores no pointer and invalidates paint only when state changes.
+         * @pre The hierarchy must remain unchanged during this call.
+         */
+        void UpdatePointerHover(const Widget* hoveredWidget) noexcept;
+        [[nodiscard]] bool IsPointerHovered() const noexcept { return m_PointerHovered; }
+
+        /**
+         * @brief Updates primary-button press ownership throughout this subtree.
+         * @param hoveredWidget Current hit-test result, or null.
+         * @param primaryPressed True on the primary-button down transition.
+         * @param primaryDown True while the primary button remains held.
+         * @note A press starts only on the directly hit widget.
+         *       Ownership persists outside its bounds until release or cancellation.
+         *       Pass false for both button values to cancel.
+         *       None excludes and cancels the entire subtree.
+         *       Does not dispatch events or activation callbacks.
+         * @pre Call on the input root without modifying the hierarchy during traversal.
+         */
+        void UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown) noexcept;
+        [[nodiscard]] bool IsPointerPressed() const noexcept { return m_PointerPressed; }
+
+        /**
          * @brief Transfers an exclusively owned subtree into this widget.
          * @param child Detached subtree to attach; must not be null.
          * @return Borrowed reference to the attached child.
@@ -138,6 +195,9 @@ namespace Quiet::UI
     private:
         Widget* m_Parent = nullptr;
         Rect m_LocalBounds{};
+        HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
+        bool m_PointerHovered = false;
+        bool m_PointerPressed = false;
         InvalidationState m_Invalidation{};
         std::vector<std::unique_ptr<Widget>> m_Children;
     };

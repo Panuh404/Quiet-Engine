@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -52,6 +53,85 @@ namespace Quiet::UI
         return bounds;
     }
 
+    void Widget::SetHitTestMode(const HitTestMode mode) noexcept
+    {
+        if (m_HitTestMode == mode) return;
+
+        m_HitTestMode = mode;
+        Invalidate(InvalidationReason::Interaction);
+    }
+
+    Widget* Widget::HitTest(const glm::vec2& surfacePosition) noexcept
+    {
+        if (!std::isfinite(surfacePosition.x) ||
+            !std::isfinite(surfacePosition.y) ||
+            m_HitTestMode == HitTestMode::None)
+        {
+            return nullptr;
+        }
+
+        for (auto & child : std::views::reverse(m_Children))
+        {
+            if (Widget* hit = child->HitTest(surfacePosition)) return hit;
+        }
+
+        if (m_HitTestMode != HitTestMode::SelfAndChildren) return nullptr;
+
+        const Rect bounds = GetSurfaceBounds();
+        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f) return nullptr;
+
+        const glm::vec2 maximum = bounds.Position + bounds.Size;
+        if (surfacePosition.x >= bounds.Position.x &&
+            surfacePosition.y >= bounds.Position.y &&
+            surfacePosition.x < maximum.x &&
+            surfacePosition.y < maximum.y)
+        {
+            return this;
+        }
+
+        return nullptr;
+    }
+
+    void Widget::UpdatePointerHover(const Widget* hoveredWidget) noexcept
+    {
+        const bool hovered = hoveredWidget == this;
+        if (m_PointerHovered != hovered)
+        {
+            m_PointerHovered = hovered;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        for (const auto& child : m_Children)
+        {
+            child->UpdatePointerHover(hoveredWidget);
+        }
+    }
+
+    void Widget::UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown) noexcept
+    {
+        if (m_HitTestMode == HitTestMode::None)
+        {
+            primaryPressed = false;
+            primaryDown = false;
+        }
+
+        const bool pressed =
+            m_HitTestMode == HitTestMode::SelfAndChildren &&
+            primaryDown &&
+            (primaryPressed ? hoveredWidget == this : m_PointerPressed);
+
+        if (m_PointerPressed != pressed)
+        {
+            m_PointerPressed = pressed;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        for (const auto& child : m_Children)
+        {
+            child->UpdatePointerPress(hoveredWidget, primaryPressed, primaryDown);
+        }
+    }
+
     Widget& Widget::AddChild(std::unique_ptr<Widget>&& child)
     {
         if (!child)
@@ -71,6 +151,8 @@ namespace Quiet::UI
 
         m_Children.push_back(std::move(child));
         attachedChild.m_Parent = this;
+        attachedChild.UpdatePointerHover(nullptr);
+        attachedChild.UpdatePointerPress(nullptr, false, false);
         attachedChild.Invalidate(InvalidationReason::Layout);
         return attachedChild;
     }
@@ -93,6 +175,8 @@ namespace Quiet::UI
         std::unique_ptr<Widget> detachedChild = std::move(*iterator);
         m_Children.erase(iterator);
         detachedChild->m_Parent = nullptr;
+        detachedChild->UpdatePointerHover(nullptr);
+        detachedChild->UpdatePointerPress(nullptr, false, false);
         detachedChild->Invalidate(InvalidationReason::Layout);
         Invalidate(InvalidationReason::Layout);
         return detachedChild;

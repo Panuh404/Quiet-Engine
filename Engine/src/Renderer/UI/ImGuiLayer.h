@@ -2,11 +2,14 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+
 #include <vulkan/vulkan.h>
 
 #include "imgui.h"
 #include "glm/vec3.hpp"
 
+#include "Quiet/UI/Geometry.h"
 #include "ImGuiFonts.h"
 
 struct GLFWwindow;
@@ -61,6 +64,23 @@ namespace Quiet::Renderer::UI
         glm::vec3 CameraPosition = glm::vec3(0.0f);
     };
 
+    /**
+     * @brief Copies pointer and image geometry from one presentation frame.
+     * @ingroup quiet_renderer
+     *
+     * DisplayBounds and DisplayPosition use the same ImGui coordinate space.
+     * No ImGui objects, widgets, or GPU resources are retained.
+     */
+    struct SceneViewportPointerState
+    {
+        Quiet::UI::Rect DisplayBounds{};
+        glm::vec2 DisplayPosition{0.0f};
+        bool PositionValid = false;
+        bool ImageHovered = false;
+        bool PrimaryDown = false;
+        bool PrimaryPressed = false;
+    };
+
     class ImGuiLayer
     {
     public:
@@ -105,6 +125,14 @@ namespace Quiet::Renderer::UI
 
         [[nodiscard]] bool WantsMouseCapture() const;
         [[nodiscard]] bool WantsKeyboardCapture() const;
+
+        /**
+         * @brief Returns the current frame's visible Scene-image pointer snapshot.
+         * @return Owned copy, or null when no visible Scene image was recorded.
+         * @note Read after building the presentation UI.
+         *       Hover eligibility is separate from pointer-position validity.
+         */
+        [[nodiscard]] std::optional<SceneViewportPointerState> GetSceneViewportPointerState() const noexcept { return m_SceneViewportPointerState; }
 
         [[nodiscard]] float GetUIScale() const { return m_UIScale; }
         [[nodiscard]] float Scale(float value) const { return value * m_UIScale; }
@@ -187,6 +215,8 @@ namespace Quiet::Renderer::UI
         VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
         VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
         VkDescriptorSet m_SceneViewportDescriptorSet = VK_NULL_HANDLE;
+
+        std::optional<SceneViewportPointerState> m_SceneViewportPointerState;
         bool m_DefaultLayoutApplied = false;
         bool m_RequestResetLayout = false;
         float m_UIScale = 1.0f;
