@@ -464,11 +464,13 @@ namespace Quiet::Renderer::Vulkan
         }
     }
 
-    bool VulkanRenderer::DrawFrame(Scene::Scene& scene,
-                                   const CameraUniformData& cameraData,
-                                   UI::ImGuiLayer& imguiLayer,
-                                   const bool drawEditorGrid,
-                                   std::optional<Core::UUID> selectedActorID)
+    bool VulkanRenderer::DrawFrame(
+        Scene::Scene& scene,
+        const CameraUniformData& cameraData,
+        UI::ImGuiLayer& imguiLayer,
+        const bool drawEditorGrid,
+        std::optional<Core::UUID> selectedActorID,
+        std::span<const Quiet::UI::PaintCommand> paintCommands)
     {
         if (m_Window->WasFramebufferResized())
         {
@@ -504,7 +506,7 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to acquire swapchain image.");
 
         m_CameraResources->Update(imageIndex, cameraData);
-        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer, drawEditorGrid, selectedActorID);
+        RecordFrameCommandBuffer(imageIndex, scene, imguiLayer, drawEditorGrid, selectedActorID, paintCommands);
 
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         const VkSemaphore waitSemaphores[] = { m_FrameSync->GetImageAvailableSemaphore() };
@@ -777,11 +779,13 @@ namespace Quiet::Renderer::Vulkan
         m_SceneViewportReady = false;
     }
 
-    void VulkanRenderer::RecordFrameCommandBuffer(std::uint32_t imageIndex,
-                                                  Scene::Scene& scene,
-                                                  UI::ImGuiLayer& imguiLayer,
-                                                  const bool drawEditorGrid,
-                                                  const std::optional<Core::UUID>& selectedActorID)
+    void VulkanRenderer::RecordFrameCommandBuffer(
+        std::uint32_t imageIndex,
+        Scene::Scene& scene,
+        UI::ImGuiLayer& imguiLayer,
+        const bool drawEditorGrid,
+        const std::optional<Core::UUID>& selectedActorID,
+        std::span<const Quiet::UI::PaintCommand> paintCommands)
     {
         VkCommandBuffer commandBuffer = m_GraphicsCommands->GetCommandBuffer(imageIndex);
         vkResetCommandBuffer(commandBuffer, 0);
@@ -997,29 +1001,12 @@ namespace Quiet::Renderer::Vulkan
                 }
             }
 
-            // Ordered paint preview, independent of Scene components.
-            // Producers remain local until retained widgets are introduced.
-            if (m_PanelPipeline || (m_TextPipeline && m_TextRenderSystem))
+            // Consume caller-supplied UI commands in submission order.
+            if (!paintCommands.empty() && (m_PanelPipeline || (m_TextPipeline && m_TextRenderSystem)))
             {
                 const VkExtent2D paintExtent = m_SceneViewportTarget->GetExtent();
                 if (paintExtent.width > 0 && paintExtent.height > 0)
                 {
-                    Quiet::UI::PaintList paintList;
-                    paintList.reserve(2);
-                    paintList.emplace_back(Quiet::UI::SolidRectCommand
-                    {
-                        glm::vec2(24.0f, 24.0f),
-                        glm::vec2(344.0f, 144.0f),
-                        glm::vec4(0.03f, 0.12f, 0.25f, 0.8f)
-                    });
-                    paintList.emplace_back(Quiet::UI::TextCommand
-                    {
-                        "Paint order preview",
-                        glm::vec2(40.0f, 48.0f),
-                        32.0f,
-                        glm::vec4(1.0f)
-                    });
-
                     SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());
 
                     VkRenderingAttachmentInfo paintAttachment{};
@@ -1051,7 +1038,7 @@ namespace Quiet::Renderer::Vulkan
 
                     vkCmdSetScissor(commandBuffer, 0, 1, &paintScissor);
 
-                    for (const Quiet::UI::PaintCommand& command : paintList)
+                    for (const Quiet::UI::PaintCommand& command : paintCommands)
                     {
                         if (const auto* rectangle = std::get_if<Quiet::UI::SolidRectCommand>(&command))
                         {

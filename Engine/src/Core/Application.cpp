@@ -2,7 +2,10 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
 #include "Quiet/Scene/SceneDocument.h"
+#include "Quiet/UI/Label.h"
+#include "Quiet/UI/Panel.h"
 
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <filesystem>
@@ -323,6 +326,16 @@ namespace Quiet::Core
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
+
+        auto panel = std::make_unique<UI::Panel>();
+        panel->SetBounds( {{24.0f, 24.0f}, {320.0f, 120.0f}});
+
+        auto label = std::make_unique<UI::Label>();
+        label->SetBounds( {{16.0f, 24.0f}, {288.0f, 72.0f}});
+        label->SetContent("Retained UI label");
+
+        panel->AddChild(std::move(label));
+        m_RuntimeUIRoot.AddChild(std::move(panel));
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -949,7 +962,36 @@ namespace Quiet::Core
             selectedActorID = editorState.Selection.SelectedActorID;
         }
 
-        return m_Renderer->DrawFrame(renderScene, activeCameraData, uiLayer, drawEditorGrid, selectedActorID);
+        BuildRuntimeUIPaintList();
+
+        return m_Renderer->DrawFrame(
+            renderScene,
+            activeCameraData,
+            uiLayer,
+            drawEditorGrid,
+            selectedActorID,
+            std::span<const UI::PaintCommand>(m_RuntimeUIPaintList));
+    }
+
+    void Application::BuildRuntimeUIPaintList()
+    {
+        const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
+        m_RuntimeUIRoot.SetBounds(
+            {
+                {0.0f, 0.0f},
+                { static_cast<float>(extent.width), static_cast<float>(extent.height) }
+            });
+
+        if (extent.width == 0 || extent.height == 0)
+        {
+            m_RuntimeUIPaintList.clear();
+            return;
+        }
+
+        if (!m_RuntimeUIRoot.GetInvalidationState().Paint) return;
+        m_RuntimeUIPaintList.clear();
+        m_RuntimeUIRoot.Paint(m_RuntimeUIPaintList);
+        m_RuntimeUIRoot.ClearInvalidation(UI::InvalidationReason::Paint);
     }
 
     bool Application::RunEditorBootstrapFrame(const FrameContext &frame)
@@ -1215,7 +1257,16 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
-        return m_Renderer->DrawFrame(activeScene, activeCameraData, uiLayer, false, std::nullopt);
+
+        BuildRuntimeUIPaintList();
+
+        return m_Renderer->DrawFrame(
+            activeScene,
+            activeCameraData,
+            uiLayer,
+            false,
+            std::nullopt,
+            std::span<const UI::PaintCommand>(m_RuntimeUIPaintList));
     }
 
     void Application::FinalizePlatformWindows(const bool frameCompleted) const

@@ -10,6 +10,8 @@
 #include "glm/vec3.hpp"
 #include "Quiet/Project/ProjectContext.h"
 #include "Quiet/Project/ProjectRegistry.h"
+#include "Quiet/UI/PaintCommands.h"
+#include "Quiet/UI/Widget.h"
 
 #pragma region Forward declarations
 
@@ -162,6 +164,11 @@ namespace Quiet::Core
 
         [[nodiscard]] FrameContext BeginFrame(double& previousTime);
         bool RunEditorFrame(const FrameContext& frame);
+        /**
+         * @brief Updates root extent and rebuilds commands from retained widgets.
+         * @note Uses the actual Scene target extent; preserves the widget tree.
+         */
+        void BuildRuntimeUIPaintList();
         bool RunEditorBootstrapFrame(const FrameContext& frame);
         void AdvanceEditorBootstrap();
         void BuildEditorBootstrapUI(Renderer::UI::ImGuiLayer& uiLayer);
@@ -204,5 +211,8 @@ namespace Quiet::Core
         std::unique_ptr<Scene::Scene> m_Scene;
         std::unique_ptr<Scene::Scene> m_RuntimeScene;
         std::unique_ptr<Renderer::Vulkan::VulkanRenderer> m_Renderer;
+
+        UI::Widget m_RuntimeUIRoot;
+        UI::PaintList m_RuntimeUIPaintList;
     };
 }

@@ -57,10 +57,34 @@ namespace Quiet::UI
     };
 
     /**
+     * @brief Describes a textured rectangle independently of the backend.
+     * @ingroup quiet_renderer
+     *
+     * Min and Max are resolved surface-space pixel coordinates.
+     * TextureID identifies an entry in the renderer's texture library.
+     * Project textures use their existing asset IDs.
+     *
+     * Draws the complete texture stretched over the rectangle.
+     * Tint uses straight-alpha linear RGBA.
+     *
+     * Coordinates must be finite, with Max greater than Min on both axes.
+     * Tint channels must be finite and within [0, 1].
+     *
+     * Owns its ID and values; does not own or keep a texture loaded.
+     */
+    struct ImageCommand
+    {
+        glm::vec2 Min{0.0f};
+        glm::vec2 Max{0.0f};
+        std::string TextureID;
+        glm::vec4 Tint{1.0f};
+    };
+
+    /**
      * @brief Stores one backend-independent painting operation.
      * @ingroup quiet_renderer
      */
-    using PaintCommand = std::variant<SolidRectCommand, TextCommand>;
+    using PaintCommand = std::variant<SolidRectCommand, TextCommand, ImageCommand>;
 
     /**
      * @brief Owns painting operations in back-to-front submission order.
@@ -68,7 +92,8 @@ namespace Quiet::UI
      *
      * Consumers execute commands in vector order without sorting by type.
      * Later commands paint over earlier commands where their geometry overlaps.
-     * Text commands own their strings; the list contains no GPU resources.
+     * Text and image commands own their strings.
+     * The list contains no GPU resources.
      */
     using PaintList = std::vector<PaintCommand>;
 }

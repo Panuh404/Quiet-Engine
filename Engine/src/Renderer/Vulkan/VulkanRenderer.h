@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 
 #include <vulkan/vulkan.h>
 #include "imgui.h"
@@ -9,6 +10,8 @@
 #include "Quiet/Assets/FontAtlasData.h"
 #include "Quiet/Core/UUID.h"
 #include "Quiet/Platform/Window.h"
+#include "Quiet/UI/PaintCommands.h"
+
 
 namespace Quiet::Platform
 {
@@ -88,17 +91,21 @@ namespace Quiet::Renderer::Vulkan
          * @param imguiLayer UI layer whose frame has been built by the caller.
          * @param drawEditorGrid Requests Editor grid rendering.
          * @param selectedActorID Optional Actor identity for selection feedback.
+         * @param paintCommands Ordered UI operations borrowed during this call.
+         * @note Command storage is not retained after this call returns.
          * @return True on the normal successful path; false after resize-driven
          *         or out-of-date/suboptimal presentation recreation.
          * @note True does not establish GPU completion.
          * @note False can occur after graphics submission and does not undo updates.
          * @note Exceptions propagate; retry synchronization is not restored.
          */
-        bool DrawFrame(Scene::Scene& scene,
-                       const CameraUniformData& cameraData,
-                       UI::ImGuiLayer& imguiLayer,
-                       bool drawEditorGrid,
-                       std::optional<Core::UUID> selectedActorID);
+        bool DrawFrame(
+            Scene::Scene& scene,
+            const CameraUniformData& cameraData,
+            UI::ImGuiLayer& imguiLayer,
+            bool drawEditorGrid,
+            std::optional<Core::UUID> selectedActorID,
+            std::span<const Quiet::UI::PaintCommand> paintCommands = {});
 
         /**
          * @brief Requests device idle when the logical device exists.
@@ -167,11 +174,13 @@ namespace Quiet::Renderer::Vulkan
         void LoadEditorTextures();
 
         void EnsureSceneViewportSize();
-        void RecordFrameCommandBuffer(std::uint32_t imageIndex,
-                                      Scene::Scene& scene,
-                                      UI::ImGuiLayer& imguiLayer,
-                                      bool drawEditorGrid,
-                                      const std::optional<Core::UUID>& selectedActorID);
+        void RecordFrameCommandBuffer(
+            std::uint32_t imageIndex,
+            Scene::Scene& scene,
+            UI::ImGuiLayer& imguiLayer,
+            bool drawEditorGrid,
+            const std::optional<Core::UUID>& selectedActorID,
+            std::span<const Quiet::UI::PaintCommand> paintCommands);
     private:
         Platform::Window* m_Window = nullptr;
 

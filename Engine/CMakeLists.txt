@@ -1,5 +1,7 @@
 # ENGINE
-add_library(Quiet_Engine STATIC)
+add_library(Quiet_Engine STATIC
+        src/Renderer/Vulkan/Image/ImageResources.h
+        src/Renderer/Vulkan/Image/ImageResources.cpp)
 
 target_sources(Quiet_Engine
     PRIVATE
@@ -188,6 +190,12 @@ target_sources(Quiet_Engine
         src/Renderer/UI/Panels/ImGuiSceneSettingsPanel.cpp
         src/Renderer/UI/Panels/ImGuiViewportPanels.cpp
 
+        # Renderer - Vulkan - Panel
+        src/Renderer/Vulkan/Image/ImagePipeline.h
+        src/Renderer/Vulkan/Image/ImagePipeline.cpp
+        src/Renderer/Vulkan/Image/ImageResources.h
+        src/Renderer/Vulkan/Image/ImageResources.cpp
+
         # Renderer - Vulkan - Mesh
         src/Renderer/Vulkan/Mesh/MeshLibrary.cpp
         src/Renderer/Vulkan/Mesh/MeshLibrary.h
@@ -270,6 +278,12 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanRenderer.cpp
         src/Renderer/Vulkan/VulkanRenderer.h
 
+        # Runtime UI
+        src/UI/Image.cpp
+        src/UI/Label.cpp
+        src/UI/Panel.cpp
+        src/UI/Widget.cpp
+
         # ImGui
         ${imgui_SOURCE_DIR}/imgui.cpp
         ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -327,7 +341,13 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorSceneWorkflow.h
         include/Quiet/Editor/EditorState.h
 
+        include/Quiet/UI/Geometry.h
+        include/Quiet/UI/Image.h
+        include/Quiet/UI/Label.h
         include/Quiet/UI/PaintCommands.h
+        include/Quiet/UI/Panel.h
+        include/Quiet/UI/Widget.h
+
         include/Quiet/Renderer/RenderConventions.h
         include/Quiet/Renderer/TextLayout.h
         include/Quiet/Platform/Window.h

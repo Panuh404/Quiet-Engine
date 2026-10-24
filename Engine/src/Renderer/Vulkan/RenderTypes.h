@@ -78,4 +78,28 @@ namespace Quiet::Renderer::Vulkan
     static_assert(offsetof(PanelPushConstants, Rect) == 0);
     static_assert(offsetof(PanelPushConstants, Color) == 16);
     static_assert(offsetof(PanelPushConstants, Viewport) == 32);
+
+    /**
+     * @brief Supplies one textured screen-space rectangle to the image shader.
+     * @ingroup quiet_renderer
+     *
+     * Rect contains pixel-space minimum XY and maximum XY.
+     * Tint contains straight-alpha linear RGBA.
+     * Viewport contains target width and height in XY; ZW are reserved.
+     *
+     * Samples the complete texture using UV coordinates from zero to one.
+     * Requires positive target dimensions and a positive-height viewport.
+     * This data does not use the Scene camera.
+     */
+    struct ImagePushConstants
+    {
+        alignas(16) glm::vec4 Rect{0.0f};
+        alignas(16) glm::vec4 Tint{1.0f};
+        alignas(16) glm::vec4 Viewport{1.0f, 1.0f, 0.0f, 0.0f};
+    };
+
+    static_assert(sizeof(ImagePushConstants) == 48);
+    static_assert(offsetof(ImagePushConstants, Rect) == 0);
+    static_assert(offsetof(ImagePushConstants, Tint) == 16);
+    static_assert(offsetof(ImagePushConstants, Viewport) == 32);
 }
