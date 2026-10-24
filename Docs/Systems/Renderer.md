@@ -80,7 +80,8 @@ It also stores the default runtime font's CPU atlas by value.
 | Asset libraries | MeshLibrary and TextureLibrary |
 | Runtime font | Default FontAtlasData and its Texture2D coverage texture |
 | Text rendering | TextPipeline and TextRenderSystem |
-| Panel preview | PanelPipeline |
+| Panel rendering | PanelPipeline |
+| Image rendering | ImagePipeline and ImageResources |
 | Mesh rendering | StaticMeshPipeline, StaticMeshRenderSystem, StaticMeshMaterialResources |
 | Editor grid | EditorGridPipeline and EditorGridRenderSystem |
 | Selection feedback | SelectionMask and SelectionOutline pipelines and render systems |
@@ -142,8 +143,9 @@ and before Swapchain and LogicalDevice. Member declaration order also
 keeps the logical device alive while the font texture is released during
 construction failure unwinding.
 
-This resource is independent of ImGui's font atlas. It does not yet
-submit text draws or provide project font-asset lookup.
+This resource is independent of ImGui's font atlas. It supplies glyph
+coverage for Actor-authored text and retained Label commands, but does
+not provide project font-asset lookup.
 
 ### UI layer
 
@@ -264,7 +266,7 @@ Layout is rebuilt each frame for visible, nonempty text. Unsuccessful
 layouts and layouts without visible glyphs are skipped. Layout errors
 are not currently surfaced in the Inspector or logged per frame.
 
-The Actor text pass runs after Scene, selection, and ordered-preview rendering,
+The Actor text pass runs after Scene, selection, and ordered UI rendering,
 before the Scene image transitions to shader-read layout. It synchronizes
 preceding color writes and loads the existing color attachment for blending.
 No depth attachment is used.
@@ -276,145 +278,213 @@ stores a font resource, GPU handle, or layout cache.
 This path is shared by Editor and Sandbox presentation. Editor runtime
 testing renders the disposable runtime Scene supplied by Application.
 
-## Ordered UI painting preview
+## Retained UI and ordered painting
 
-Quiet::UI provides backend-independent rectangle and text command data.
-The current producer and Vulkan consumer both remain local to
-VulkanRenderer::RecordFrameCommandBuffer(). This establishes a painting
-data boundary, not a retained widget hierarchy or a general submission API.
+Quiet::UI provides a retained widget hierarchy and backend-independent
+painting commands. Application owns the hierarchy and cached command list.
+VulkanRenderer borrows that list during DrawFrame() and records the
+corresponding Vulkan operations.
 
-The preview is separate from Scene data. There is no panel component,
-serialization member, Inspector section, or panel Lua API.
-UIRectComponent does not control this preview.
+This path is separate from Actor-authored TextComponent and UIRectComponent
+data. Widgets have no Scene serialization, Inspector controls, or Lua API.
+They do not replace the Editor's Dear ImGui tooling.
 
-Implementation anchors are:
+### Implementation map
 
-- Engine/include/Quiet/UI/PaintCommands.h: SolidRectCommand, TextCommand,
-  PaintCommand, and PaintList in Quiet::UI.
-- Engine/src/Renderer/Vulkan/RenderTypes.h: PanelPushConstants.
-- Engine/Resources/Shaders/Panel.vert and Panel.frag: pixel geometry and color.
-- Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h and PanelPipeline.cpp:
-  PanelPipeline ownership and graphics state.
-- Engine/src/Renderer/Vulkan/VulkanRenderer.cpp:
-  CreateRenderResources(), RecreateSwapchain(), DestroyRenderResources(),
-  and the paintList producer/consumer in RecordFrameCommandBuffer().
+| Responsibility | Source and principal symbols |
+| --- | --- |
+| Pixel-space geometry | `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::Rect |
+| Hierarchy, bounds, invalidation, and traversal | `Engine/include/Quiet/UI/Widget.h` and `Engine/src/UI/Widget.cpp`: Quiet::UI::Widget |
+| Solid background widget | `Engine/include/Quiet/UI/Panel.h` and `Engine/src/UI/Panel.cpp`: Quiet::UI::Panel |
+| Text widget | `Engine/include/Quiet/UI/Label.h` and `Engine/src/UI/Label.cpp`: Quiet::UI::Label |
+| Image widget | `Engine/include/Quiet/UI/Image.h` and `Engine/src/UI/Image.cpp`: Quiet::UI::Image |
+| Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
+| Tree ownership and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup() and BuildRuntimeUIPaintList() |
+| GPU command translation | `Engine/src/Renderer/Vulkan/VulkanRenderer.cpp`: DrawFrame() and RecordFrameCommandBuffer() |
+| Rectangle graphics state | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h`: PanelPipeline |
+| Image graphics state | `Engine/src/Renderer/Vulkan/Image/ImagePipeline.h`: ImagePipeline |
+| Image descriptors and texture retention | `Engine/src/Renderer/Vulkan/Image/ImageResources.h`: ImageResources |
+| Shader data | `Engine/src/Renderer/Vulkan/RenderTypes.h`: PanelPushConstants and ImagePushConstants |
+| Image shaders | `Engine/Resources/Shaders/Image.vert` and `Image.frag` |
+
+### Hierarchy and geometry
+
+Widget owns its children through unique pointers and stores a borrowed
+parent pointer. Widgets cannot be copied or moved. AddChild() transfers
+ownership, rejects null children and cycles, and returns the attached
+widget. DetachChild() transfers ownership of a direct child back to the
+caller, clears its parent pointer, and returns null when it is not found.
+
+GetChild() uses bounds-checked access. References identify separately
+allocated widget objects, so growing the child vector does not move those
+objects. References remain usable only while the widget remains alive.
+
+Rect uses pixels with positive X rightward and positive Y downward.
+Widget bounds contain a parent-relative position and explicit nonnegative
+size. Zero size means empty, not automatic sizing.
+
+SetBounds() rejects nonfinite values and negative dimensions without
+changing the previous bounds. GetSurfaceBounds() sums ancestor positions
+and preserves the widget's own size. Accumulated positions and rectangle
+maximum coordinates must remain representable as finite floats.
+
+Paint() calls the widget's OnPaint() first, then visits children in
+insertion order. The hierarchy and paint-affecting state must remain
+unchanged during traversal. An empty parent's own bounds do not prevent
+its children from painting. Parent bounds do not clip children.
+
+### Widgets and invalidation
+
+Panel emits a SolidRectCommand for positive bounds. Label emits a
+TextCommand when its content is nonempty and both bounds dimensions are
+positive. Its text starts at the surface-space top-left; bounds do not
+wrap, scale, align, or clip the text.
+
+Image emits an ImageCommand when its texture ID is nonempty and both
+dimensions are positive. It stretches the complete texture over its
+bounds without preserving aspect ratio or inferring natural dimensions.
+Setting the ID neither loads nor validates a texture.
+
+Panel color, Label color, and Image tint reject nonfinite input and clamp
+finite channels to [0, 1]. Label pixel height must be finite and positive.
+Content remains owned by Label; UTF-8 validation occurs during text layout.
+
+Each widget initially has Layout, Paint, and Interaction invalidation
+flags set. Invalidate() marks the widget and its ancestors:
+
+| Reason | Flags set |
+| --- | --- |
+| Layout | Layout, Paint, Interaction |
+| Paint | Paint |
+| Interaction | Interaction |
+
+Bounds changes, attachment, detachment, Label content changes, and Label
+height changes invalidate layout. Color, tint, and image-ID changes
+invalidate paint. Setters avoid invalidation when the effective value
+is unchanged.
+
+ClearInvalidation() clears only the requested flag on the widget and its
+descendants; it does not clear ancestor flags. Application currently
+consumes only Paint invalidation. Layout and Interaction flags are
+foundations for future consumers, not evidence of an implemented layout
+or input system.
 
 ### Logical commands and ownership
 
-SolidRectCommand owns resolved surface-space Min/Max coordinates and
-straight-alpha linear RGBA Color. TextCommand owns UTF-8 Content,
-surface-space Origin, PixelHeight, and the same color representation.
-Surface coordinates currently use Scene-target pixels, with top-left
-origin, positive X rightward, and positive Y downward.
+PaintCommand is a variant of SolidRectCommand, TextCommand, and
+ImageCommand. PaintList owns its commands and strings. Neither type
+depends on Vulkan or ImGui.
 
-PaintCommand is a std::variant of these two types. PaintList is an owning
-std::vector of commands. The header has no Vulkan or ImGui dependency.
-Its structures are logical values, not shader-memory layouts; the backend
-explicitly translates rectangles into PanelPushConstants and text into
-TextLayoutResult and TextRenderContext.
+SolidRectCommand owns surface-space Min/Max coordinates and straight-alpha
+linear RGBA Color. TextCommand owns UTF-8 Content, surface-space Origin,
+positive PixelHeight, and Color. It uses the renderer's default runtime
+font. ImageCommand owns Min/Max, a texture-library TextureID, and Tint.
+Project textures use their existing asset IDs.
 
-Commands specify finite coordinates and finite color channels within
-[0, 1]. Rectangles require Max greater than Min on each axis; text requires
-finite positive PixelHeight. These are caller requirements, not a general
-validation service: the current rectangle consumer does not validate
-those values. Text layout rejects malformed UTF-8 and invalid heights,
-and the consumer skips failed or empty layouts.
+Coordinates must be finite; rectangles require Max greater than Min on
+both axes. Color and tint channels must be finite and within [0, 1].
+These are producer requirements, not general validation performed by the
+Vulkan consumer. Text layout rejects malformed UTF-8 and invalid heights;
+failed or empty layouts produce no glyph draws.
 
-Text uses the renderer's default runtime font. Commands retain no font
-resources, texture references, GPU handles, or widget pointers. The local
-list owns its strings throughout recording. Each local TextLayoutResult
-owns its glyph geometry until TextRenderSystem::Record() returns; the
-render system retains none of it. Vulkan pipeline and font ownership
-remain with VulkanRenderer.
+Commands retain no widgets, textures, fonts, descriptors, or GPU handles.
+DrawFrame() borrows their storage only for the duration of the call.
+Each temporary text-layout result owns its glyph geometry until recording
+returns. GPU resource lifetime is handled separately.
 
-The list is currently rebuilt each frame, reserves two elements, and
-performs text layout during consumption. The Actor compatibility path
-also copies content into an owned TextCommand. There is no persistent
-paint cache, glyph batching, or allocation-reuse policy yet.
+Application reuses its cached PaintList until Paint invalidation requests
+a rebuild. This caches logical commands, not Vulkan command buffers or
+glyph geometry: text layout and Vulkan recording still happen each frame.
 
-### Ordering contract
+### Ordering and rendering
 
-The consumer visits commands in vector order without sorting by type.
-Later commands blend over earlier operations where their geometry
-overlaps; an opaque later rectangle can cover earlier text. Each command
-binds the appropriate graphics pipeline, so text/rectangle alternation
-preserves the submitted order.
+The consumer executes commands in vector order without sorting by type.
+Later operations blend above earlier operations where geometry overlaps.
+Each operation binds its required pipeline and descriptors.
 
-This guarantee applies within PaintList. Actor-authored text remains a
-separate compatibility pass afterward and therefore paints above the
-entire preview list. That path still resolves Actor UI rectangles and
-uses TextCommand values before recording through TextRenderContext.
-There is no global interleaving of Actors and preview commands.
+The ordered pass runs after Scene and selection rendering. It synchronizes
+preceding color writes and uses one color-only LOAD/STORE rendering scope,
+a positive-height viewport, and a full-target scissor.
 
-### Shader and pipeline contract
+Rectangle and image commands each draw six generated vertices. Text
+commands pass layout geometry to TextRenderSystem. Missing image texture
+IDs skip drawing without loading a resource. IDs are resolved during frame
+recording, so later frames can use replacement library resources without
+rebuilding the cached PaintList.
+
+Actor-authored text remains a separate compatibility pass afterward and
+therefore paints above the entire retained list. There is no global
+interleaving of Actor text and widget commands.
+
+The final Scene color transition to SHADER_READ_ONLY_OPTIMAL remains
+after both UI passes, before ImGui samples the Scene image.
+
+### Image descriptors and GPU lifetime
+
+ImagePipeline owns its descriptor-set layout, pipeline layout, and
+graphics pipeline. It borrows the logical device.
+
+ImageResources borrows the device and descriptor-set layout. It owns a
+reusable descriptor pool and shared texture references for the current
+submission. Each image draw receives a distinct descriptor set; sets are
+not repeatedly overwritten for different draws.
+
+After waiting for the previous frame fence, DrawFrame() counts image
+commands and calls BeginFrame() before resetting the fence. That count
+provides an upper bound on descriptor capacity, including commands whose
+texture IDs may be unavailable.
+
+BeginFrame() grows the pool when required or resets the existing pool.
+It retires old descriptor sets before releasing retained textures.
+CreateBinding() writes a sampled-texture descriptor and retains its
+texture until the next BeginFrame() or destruction.
+
+This lifetime model depends on the renderer's current single in-flight
+submission. Multiple frames in flight would require revisiting descriptor
+and texture-retention ownership.
+
+### Shader and pipeline contracts
 
 PanelPushConstants contains Rect, Color, and Viewport at byte offsets
-0, 16, and 32, with total size 48 bytes. Rect stores pixel-space minimum
-and maximum XY; Color is straight-alpha linear RGBA; Viewport stores
-positive target dimensions in XY, with ZW reserved.
+0, 16, and 32. ImagePushConstants uses Rect, Tint, and Viewport at the same
+offsets. Both structures occupy 48 bytes and use vertex-stage push ranges.
 
-Panel.vert generates two triangles from gl_VertexIndex using six vertices
-and firstVertex=0. Its pixel-to-device conversion uses a top-left origin
-and a positive-height viewport, without the Scene camera. Panel.frag
-outputs the interpolated color directly. Neither shader uses descriptors.
+Rect stores pixel-space minimum and maximum XY. Viewport stores positive
+target dimensions in XY, with ZW reserved. Vertex shaders generate two
+triangles using gl_VertexIndex and firstVertex=0, independently of the
+Scene camera.
 
-PanelPipeline owns a pipeline layout and graphics pipeline and borrows
-the logical device. It uses color-only dynamic rendering, one sample,
-no vertex input, no face culling, no depth testing or writing, and dynamic
-viewport/scissor. Color blending uses source alpha and one minus source
-alpha; alpha blending uses one and one minus source alpha.
+Panel.frag outputs color directly. Image.frag samples a combined image
+sampler at set 0, binding 0, using full-texture UV coordinates, and
+multiplies the sample by Tint.
 
-The 48-byte push-constant range is vertex-stage only. Temporary
-ShaderModule objects are destroyed after pipeline creation. Constructor
-failures release partially created resources. Destruction releases the
-pipeline before its layout and requires completed GPU use.
+Both pipelines use color-only dynamic rendering, one sample, no vertex
+input, no face culling, no depth testing or writing, and dynamic viewport
+and scissor. RGB blending uses source alpha and one minus source alpha;
+alpha blending uses one and one minus source alpha.
 
-VulkanRenderer owns the pipeline in both Editor and Sandbox modes.
-Startup constructs it with the Scene target color format. Swapchain
-recreation waits for device idle, destroys it, and rebuilds it for the
-replacement target format. Shutdown waits for idle and destroys it before
-the logical device. Ordinary Scene target extent changes use dynamic
-viewport/scissor without rebuilding the pipeline.
+Pipeline construction releases partially created resources on failure.
+Destruction requires completed GPU use and a valid logical device.
 
-### Recording and visible behavior
+Image resources are released before ImagePipeline during shutdown and
+swapchain recreation. Recreation waits for device idle and rebuilds both
+for the replacement pipeline layout and target format. Ordinary viewport
+extent changes use dynamic viewport/scissor without rebuilding pipelines.
 
-The local PaintList contains, in order:
+### Current demonstration and limitations
 
-- A rectangle from (24, 24) to (344, 144), giving a 320 by 120 pixel panel,
-  with linear RGBA (0.03, 0.12, 0.25, 0.8).
-- White text "Paint order preview" at (40, 48), with PixelHeight 32,
-  using the renderer's default font.
+Application creates a Panel at (24, 24), sized 320 by 120 pixels, and a
+child Label at local position (16, 24), sized 288 by 72 pixels. The label
+contains "Retained UI label", so its surface position is (40, 48).
 
-The preview block runs when the Scene target is valid, its extent is
-nonzero, and either the panel pipeline or the text pipeline/render system
-is available. Individual commands skip when their required rendering
-objects are unavailable.
+This Application-owned tree appears in ready Editor frames and Sandbox.
+It survives Editor Play and Stop because it is not owned by either Scene.
+The temporary image preview has been removed; Image remains available as
+a C++ widget.
 
-The pass runs after selection overlays and before Actor-authored text.
-It synchronizes preceding color writes, begins one color-only LOAD/STORE
-rendering scope, and sets a positive-height viewport and full-target
-scissor. Rectangle commands translate their values into push constants
-and record vkCmdDraw(6, 1, 0, 0). Text commands build layout and forward
-geometry to TextRenderSystem, which binds its pipeline and font descriptor
-and records glyph draws. It also sets the same viewport/scissor extent.
-
-The existing Actor text-pass barrier synchronizes preview writes before
-that pass blends its text above the preview.
-The final Scene color transition to SHADER_READ_ONLY_OPTIMAL remains
-after both passes, before ImGui samples the Scene image.
-
-The preview is independent of Actors and appears during Edit, Play, and
-Simulate. Its pixel placement remains fixed when the viewport resizes;
-the full-target scissor clips portions outside smaller targets. It has
-no interaction, hit testing, parenting, per-command clipping, or authored
-overlap controls. The list supports ordering, but the preview's producer
-currently hardcodes that order. Retained widget producers remain future
-work and do not replace the Editor's Dear ImGui tooling.
-
-To verify ordering during development, temporarily submit the text before
-the rectangle and make the rectangle opaque. Expected result: the
-rectangle covers the preview text. Restore rectangle-first ordering and
-alpha 0.8 afterward. Actor-authored text still renders above both.
+There is no automatic layout, per-widget clipping, hit testing, pointer
+routing, focus, style resolution, widget serialization, or UI designer.
+The full-target scissor clips drawing at the Scene viewport edges.
 
 ## Swapchain and Scene viewport
 
@@ -481,13 +551,14 @@ DrawFrame() performs these operations in order:
 
 1. Checks the Window's framebuffer resize flag.
 2. Waits for the in-flight fence.
-3. Resets the fence.
-4. Acquires a swapchain image.
-5. Updates camera resources for that image.
-6. Records its command buffer.
-7. Submits graphics work with the in-flight fence.
-8. Requests presentation.
-9. Returns true when the normal path succeeds.
+3. Prepares image descriptor capacity and retires previous image bindings.
+4. Resets the fence.
+5. Acquires a swapchain image.
+6. Updates camera resources for that image.
+7. Records its command buffer.
+8. Submits graphics work with the in-flight fence.
+9. Requests presentation.
+10. Returns true when the normal path succeeds.
 
 A framebuffer resize detected at entry calls RecreateSwapchain() and
 returns false before fence waiting or submission.
@@ -604,7 +675,7 @@ The implementation uses dynamic rendering scopes.
 | 2 | Same Scene attachments | Optionally render the Editor grid |
 | 3 | Selection mask and Scene depth | Clear the mask and record selected geometry |
 | 4 | Scene color | Optionally composite the selection outline |
-| 5 | Scene color | Execute the preview PaintList in submission order |
+| 5 | Scene color | Execute caller-supplied UI commands in submission order |
 | 6 | Scene color | Blend visible Actor-authored text |
 | 7 | Swapchain image | Clear and render ImGui |
 
@@ -800,10 +871,11 @@ this wait result is checked; failure throws.
 
 ### Rebuilt resources
 
-Recreation clears the Scene texture registration and releases text and
-panel pipelines, dependent Editor effects, the Scene target, UI layer,
-synchronization, graphics commands, mesh pipeline, material resources,
-camera resources, and depth.
+Recreation clears the Scene texture registration and releases image
+resources before the image pipeline, followed by panel and text pipelines,
+dependent Editor effects, the Scene target, UI layer, synchronization,
+graphics commands, mesh pipeline, material resources, camera resources,
+and depth.
 
 It moves the old swapchain into a local owning pointer and supplies its
 handle when constructing the replacement.
@@ -858,21 +930,22 @@ It does not check or report the Vulkan result.
 DestroyRenderResources() also requests device idle without checking the
 result, then releases owned pointers in this order:
 
-1. FrameSync and StaticMeshRenderSystem.
-2. Selection outline render system and pipeline.
-3. Selection mask render system and pipeline.
-4. Editor grid render system and pipeline.
-5. GraphicsCommands.
-6. StaticMeshPipeline and StaticMeshMaterialResources.
-7. CameraResources.
-8. SceneViewportTarget.
-9. ImGuiLayer.
-10. DepthResources.
-11. MeshLibrary, TextureLibrary, PanelPipeline, TextRenderSystem,
+1. ImageResources and ImagePipeline, in that order.
+2. FrameSync and StaticMeshRenderSystem.
+3. Selection outline render system and pipeline.
+4. Selection mask render system and pipeline.
+5. Editor grid render system and pipeline.
+6. GraphicsCommands.
+7. StaticMeshPipeline and StaticMeshMaterialResources.
+8. CameraResources.
+9. SceneViewportTarget.
+10. ImGuiLayer.
+11. DepthResources.
+12. MeshLibrary, TextureLibrary, PanelPipeline, TextRenderSystem,
     TextPipeline, and the default runtime font texture.
-12. Swapchain.
-13. LogicalDevice and PhysicalDevice.
-14. VulkanSurface and VulkanInstance.
+13. Swapchain.
+14. LogicalDevice and PhysicalDevice.
+15. VulkanSurface and VulkanInstance.
 
 This is the explicit teardown path for a fully constructed renderer.
 Member unwinding after failed construction follows C++ destruction rules

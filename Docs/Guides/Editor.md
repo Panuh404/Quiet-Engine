@@ -118,25 +118,27 @@ Scene undo/redo. Save the Scene to persist the rectangle.
 Removing UI Rectangle preserves Text and restores its (24, 24) fallback.
 The rectangle does not create visible content by itself.
 
-### Ordered painting preview
+### Retained UI demonstration
 
-The renderer currently draws a translucent dark-blue panel measuring
-320 by 120 pixels at offset (24, 24) from the Scene viewport's top-left.
-It appears in Edit, Play, and Simulate independently of Actor components.
-White text "Paint order preview" appears at (40, 48), above the panel,
-using the default font at pixel height 32. Existing Actor-authored text
-renders afterward, above both preview operations.
+Application currently creates a retained Panel and child Label independently
+of Actor components. The translucent dark-blue panel measures 320 by 120
+pixels at Scene viewport position (24, 24). White text "Retained UI label"
+appears at (40, 48), using the default runtime font at pixel height 32.
 
-This is a fixed renderer demonstration of ordered rectangle/text paint
-commands. It is not a retained widget tree and has no Scene component or
-Inspector controls. Editing an Actor's Text or UI Rectangle does not
-change the preview. Its placement remains fixed while resizing, and the
-Scene target edges clip any portions outside the viewport.
+The demonstration appears in Edit, Play, and Simulate. Its hierarchy belongs
+to Application and survives Play and Stop. Editing an Actor's Text or UI
+Rectangle does not change these widgets.
 
-After building, confirm the white preview label appears over the panel,
-existing Actor text still works, and resizing preserves placement without
-Vulkan validation errors. See [Renderer](../Systems/Renderer.md) for the
-command ordering, ownership, and resource contracts.
+Placement uses fixed pixels. Resizing preserves their offsets, while the
+Scene target edges clip drawing outside the viewport. Parent bounds do not
+clip child content. Actor-authored text renders after retained widgets.
+
+There are no widget Inspector controls, automatic layout, or widget
+interaction yet. The temporary logo preview is removed; the Image widget
+and its renderer remain available through C++.
+
+See [Application](../Systems/Application.md) for ownership and paint-list
+caching, and [Renderer](../Systems/Renderer.md) for widget and GPU contracts.
 
 ## Navigate the Viewport
 

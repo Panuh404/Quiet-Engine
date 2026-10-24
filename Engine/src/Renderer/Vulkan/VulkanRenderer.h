@@ -55,6 +55,8 @@ namespace Quiet::Renderer::Vulkan
     class TextRenderSystem;
     class TextPipeline;
     class PanelPipeline;
+    class ImagePipeline;
+    class ImageResources;
     class TextureLibrary;
     class CameraResources;
     class StaticMeshPipeline;
@@ -200,6 +202,8 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<TextRenderSystem> m_TextRenderSystem;
         std::unique_ptr<TextPipeline> m_TextPipeline;
         std::unique_ptr<PanelPipeline> m_PanelPipeline;
+        std::unique_ptr<ImagePipeline> m_ImagePipeline;
+        std::unique_ptr<ImageResources> m_ImageResources;
         std::unique_ptr<CameraResources> m_CameraResources;
         std::unique_ptr<StaticMeshPipeline> m_StaticMeshPipeline;
         std::unique_ptr<FrameSync> m_FrameSync;

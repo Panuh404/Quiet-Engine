@@ -104,9 +104,10 @@ Common startup performs these operations in order:
 3. Creates Input and requests mouse capture for Sandbox mode.
 4. Creates the physics subsystem, audio subsystem, free camera, and main Scene.
 5. Creates the Vulkan renderer.
-6. Creates ProjectAssetLoader using the existing libraries and renderer resources.
-7. Creates ProjectWorkflow using the existing project state, loader, and Scene.
-8. Initializes the project registry for Editor mode, or the last-opened
+6. Creates the retained demonstration Panel and Label.
+7. Creates ProjectAssetLoader using the existing libraries and renderer resources.
+8. Creates ProjectWorkflow using the existing project state, loader, and Scene.
+9. Initializes the project registry for Editor mode, or the last-opened
    or default project for Sandbox without a package path.
 
 Sandbox with a package path skips that final editable-project initialization.
@@ -357,7 +358,8 @@ Once Ready, the frame performs these operations:
 5. Builds and processes Editor UI, viewport asset drops, and resize requests.
 6. Ends the UI frame.
 7. Resolves the active Scene again.
-8. Builds render camera data and submits the Scene to the renderer.
+8. Builds render camera data, updates the retained UI paint list, and
+   submits the Scene and commands to the renderer.
 
 The second Scene lookup is significant. UI processing can trigger a
 runtime transition, so the Scene selected for rendering may differ from
@@ -392,8 +394,52 @@ log and a false frame result.
 Sandbox uses the main Scene directly. It handles runtime input when active,
 updates the Scene, and processes viewport resizing.
 
-It then builds the runtime UI, selects render camera data, and submits
-the Scene without the Editor grid or selection feedback.
+It then builds the runtime presentation UI, selects render camera data,
+updates the retained UI paint list, and submits the Scene and commands
+without the Editor grid or selection feedback.
+
+## Retained runtime UI ownership and submission
+
+Application stores Quiet::UI::Widget m_RuntimeUIRoot and
+Quiet::UI::PaintList m_RuntimeUIPaintList directly.
+
+InitializeCommonStartup() creates the demonstration Panel and its child
+Label after constructing VulkanRenderer. Their explicit bounds and text
+are defined in that function.
+
+The hierarchy belongs to Application, independently of the editable Scene
+and disposable Editor runtime Scene. Starting or stopping Play does not
+clone, replace, or reset it. It currently has no Scene persistence,
+Inspector authoring, or Lua integration.
+
+BuildRuntimeUIPaintList() runs before rendering ready Editor and Sandbox
+frames. It performs these operations:
+
+1. Reads the actual Scene target extent from VulkanRenderer.
+2. Updates the root bounds to that extent at position (0, 0).
+3. Clears the command list and returns for a zero extent.
+4. Reuses the existing list when the root's Paint flag is clear.
+5. Otherwise clears the list, traverses the hierarchy through Paint(),
+   and clears Paint invalidation across the root subtree.
+
+An unchanged root extent does not invalidate the hierarchy. Bounds changes
+invalidate layout, which also marks paint and interaction dirty.
+
+Only Paint invalidation is acknowledged here. Layout and Interaction
+flags remain available for future systems; Application does not currently
+perform automatic layout or route widget input.
+
+RunEditorFrame() and RunSandboxFrame() pass a span over the cached list
+to DrawFrame(). The renderer borrows it during that call and retains no
+command references. Editor bootstrap frames use the default empty span.
+
+Widgets and commands own no GPU resources. Image commands retain texture
+IDs; the renderer resolves those IDs and manages submission texture
+lifetimes separately. The Application tree can therefore remain alive
+after ShutdownCommon() explicitly releases the renderer.
+
+See [Renderer](Renderer.md) for hierarchy contracts, invalidation,
+ordered painting, image descriptors, and current limitations.
 
 ## Active Scene and render camera
 

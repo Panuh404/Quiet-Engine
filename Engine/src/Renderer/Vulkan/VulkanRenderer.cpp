@@ -8,6 +8,9 @@
 #include <cmath>
 #include <filesystem>
 #include <stdexcept>
+#include <algorithm>
+#include <limits>
+
 #include "GLFW/glfw3.h"
 #include "Quiet/Assets/FontImporter.h"
 #include "Quiet/Assets/TextureImporter.h"
@@ -36,6 +39,8 @@
 #include "Renderer/Vulkan/Mesh/StaticMeshRenderSystem.h"
 
 #include "Renderer/Vulkan/Panel/PanelPipeline.h"
+#include "Renderer/Vulkan/Image/ImagePipeline.h"
+#include "Renderer/Vulkan/Image/ImageResources.h"
 
 #include "Renderer/Vulkan/Text/TextPipeline.h"
 #include "Renderer/Vulkan/Text/TextRenderSystem.h"
@@ -357,6 +362,8 @@ namespace Quiet::Renderer::Vulkan
         m_TextRenderSystem = std::make_unique<TextRenderSystem>();
 
         m_PanelPipeline = std::make_unique<PanelPipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat());
+        m_ImagePipeline = std::make_unique<ImagePipeline>(*m_LogicalDevice, m_SceneViewportTarget->GetColorFormat());
+        m_ImageResources = std::make_unique<ImageResources>(*m_LogicalDevice, m_ImagePipeline->GetDescriptorSetLayout());
 
         QUIET_CORE_INFO("Loaded default runtime font '{}'. pixelHeight={} atlas={}x{}",
             defaultFontPath.string(),
@@ -371,6 +378,8 @@ namespace Quiet::Renderer::Vulkan
         {
             vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
         }
+        m_ImageResources.reset();
+        m_ImagePipeline.reset();
 
         m_FrameSync.reset();
         m_StaticMeshRenderSystem.reset();
@@ -484,6 +493,24 @@ namespace Quiet::Renderer::Vulkan
         if (vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
             throw std::runtime_error("Failed to wait for in-flight fence.");
 
+        if (m_ImageResources)
+        {
+            const auto imageCommandCount = std::count_if(
+                paintCommands.begin(),
+                paintCommands.end(),
+                [](const Quiet::UI::PaintCommand& command)
+                {
+                    return std::holds_alternative<Quiet::UI::ImageCommand>(command);
+                });
+
+            if (imageCommandCount > std::numeric_limits<std::uint32_t>::max())
+            {
+                throw std::runtime_error("UI image command count exceeds descriptor capacity.");
+            }
+
+            m_ImageResources->BeginFrame(static_cast<std::uint32_t>(imageCommandCount));
+        }
+
         if (vkResetFences(device, 1, &inFlightFence) != VK_SUCCESS)
             throw std::runtime_error("Failed to reset in-flight fence.");
 
@@ -568,6 +595,9 @@ namespace Quiet::Renderer::Vulkan
             throw std::runtime_error("Failed to wait for device idle during swapchain recreation.");
 
         if (m_ImGuiLayer) m_ImGuiLayer->ClearSceneViewportTexture();
+
+        m_ImageResources.reset();
+        m_ImagePipeline.reset();
         m_PanelPipeline.reset();
         m_TextPipeline.reset();
 
@@ -636,6 +666,14 @@ namespace Quiet::Renderer::Vulkan
         m_PanelPipeline = std::make_unique<PanelPipeline>(
             *m_LogicalDevice,
             m_SceneViewportTarget->GetColorFormat());
+
+        m_ImagePipeline = std::make_unique<ImagePipeline>(
+            *m_LogicalDevice,
+            m_SceneViewportTarget->GetColorFormat());
+
+        m_ImageResources = std::make_unique<ImageResources>(
+            *m_LogicalDevice,
+            m_ImagePipeline->GetDescriptorSetLayout());
 
         if (m_EditorMode)
         {
@@ -1002,7 +1040,7 @@ namespace Quiet::Renderer::Vulkan
             }
 
             // Consume caller-supplied UI commands in submission order.
-            if (!paintCommands.empty() && (m_PanelPipeline || (m_TextPipeline && m_TextRenderSystem)))
+            if (!paintCommands.empty() && (m_PanelPipeline || (m_TextPipeline && m_TextRenderSystem) || (m_ImagePipeline && m_ImageResources && m_TextureLibrary)))
             {
                 const VkExtent2D paintExtent = m_SceneViewportTarget->GetExtent();
                 if (paintExtent.width > 0 && paintExtent.height > 0)
@@ -1081,6 +1119,41 @@ namespace Quiet::Renderer::Vulkan
                             context.Color = text->Color;
 
                             m_TextRenderSystem->Record(context);
+                        }
+                        else if (const auto* image = std::get_if<Quiet::UI::ImageCommand>(&command))
+                        {
+                            if (!m_ImagePipeline || !m_ImageResources || !m_TextureLibrary) continue;
+
+                            const auto texture = m_TextureLibrary->TryGet(image->TextureID);
+                            if (!texture) continue;
+
+                            const VkDescriptorSet descriptorSet = m_ImageResources->CreateBinding(texture);
+
+                            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ImagePipeline->GetHandle());
+                            vkCmdBindDescriptorSets(
+                                commandBuffer,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                m_ImagePipeline->GetLayout(),
+                                0,
+                                1,
+                                &descriptorSet,
+                                0,
+                                nullptr);
+
+                            ImagePushConstants push{};
+                            push.Rect = glm::vec4(image->Min.x, image->Min.y, image->Max.x, image->Max.y);
+                            push.Tint = image->Tint;
+                            push.Viewport = glm::vec4(static_cast<float>(paintExtent.width), static_cast<float>(paintExtent.height), 0.0f, 0.0f);
+
+                            vkCmdPushConstants(
+                                commandBuffer,
+                                m_ImagePipeline->GetLayout(),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                0,
+                                sizeof(ImagePushConstants),
+                                &push);
+
+                            vkCmdDraw(commandBuffer, 6, 1, 0, 0);
                         }
                     }
                     vkCmdEndRendering(commandBuffer);
