@@ -79,6 +79,7 @@ namespace Quiet::Renderer::UI
         bool ImageHovered = false;
         bool PrimaryDown = false;
         bool PrimaryPressed = false;
+        bool PrimaryReleased = false;
     };
 
     class ImGuiLayer

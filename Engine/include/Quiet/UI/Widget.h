@@ -128,19 +128,28 @@ namespace Quiet::UI
         [[nodiscard]] bool IsPointerHovered() const noexcept { return m_PointerHovered; }
 
         /**
-         * @brief Updates primary-button press ownership throughout this subtree.
+         * @brief Updates primary-button ownership and identifies release-inside activation.
          * @param hoveredWidget Current hit-test result, or null.
          * @param primaryPressed True on the primary-button down transition.
          * @param primaryDown True while the primary button remains held.
+         * @param primaryReleased True on the primary-button up transition.
+         * @return Borrowed activation target, or null.
          * @note A press starts only on the directly hit widget.
-         *       Ownership persists outside its bounds until release or cancellation.
-         *       Pass false for both button values to cancel.
+         *       Release activates only when that widget is still the hit target.
+         *       All false button values cancel without activation.
          *       None excludes and cancels the entire subtree.
-         *       Does not dispatch events or activation callbacks.
+         *       Does not invoke callbacks.
          * @pre Call on the input root without modifying the hierarchy during traversal.
          */
-        void UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown) noexcept;
+        Widget* UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased = false) noexcept;
         [[nodiscard]] bool IsPointerPressed() const noexcept { return m_PointerPressed; }
+
+        /**
+         * @brief Performs this widget's activation behavior.
+         * @note The base implementation does nothing.
+         *       Call after input traversal finishes; exceptions propagate.
+         */
+        virtual void Activate();
 
         /**
          * @brief Transfers an exclusively owned subtree into this widget.

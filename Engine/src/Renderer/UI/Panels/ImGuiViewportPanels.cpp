@@ -1021,6 +1021,7 @@ namespace Quiet::Renderer::UI
                 pointerState.ImageHovered = ImGui::IsItemHovered();
                 pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
                 pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+                pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
                 m_SceneViewportPointerState = pointerState;
             }
@@ -1263,6 +1264,7 @@ namespace Quiet::Renderer::UI
                     pointerState.ImageHovered = ImGui::IsItemHovered();
                     pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
                     pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+                    pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
                     m_SceneViewportPointerState = pointerState;
                 }

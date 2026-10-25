@@ -345,6 +345,11 @@ namespace Quiet::Core
         buttonLabel->SetBounds({{16.0f, 16.0f}, {288.0f, 32.0f}});
         buttonLabel->SetContent("Hover me");
 
+        button->SetOnClick([]()
+        {
+            QUIET_CORE_INFO("Retained UI button activated.");
+        });
+
         button->AddChild(std::move(buttonLabel));
         m_RuntimeUIRoot.AddChild(std::move(button));
 
@@ -954,8 +959,9 @@ namespace Quiet::Core
         auto& editorState = m_EditorController->GetState();
 
         ProcessEditorRequests(editorState);
+
         Scene::Scene& activeScene = GetActiveScene();
-        UpdateEditorSceneForFrame(activeScene, editorState, deltaTime);
+        UpdateEditorCameraForFrame(activeScene, editorState, deltaTime);
 
         uiLayer.BeginFrame();
         {
@@ -963,17 +969,21 @@ namespace Quiet::Core
         }
         uiLayer.EndFrame();
 
+        UpdateRuntimeUIPointer(uiLayer);
+
         Scene::Scene& renderScene = GetActiveScene();
+        UpdateRuntimeSceneForFrame(renderScene, deltaTime);
+
         const auto activeCameraData = BuildActiveRenderCameraData(renderScene);
         const bool drawEditorGrid = editorState.Viewport.ShowGrid && editorState.Scene.Mode != Editor::SceneMode::Play;
 
         std::optional<Core::UUID> selectedActorID;
-        if (editorState.Viewport.ShowSelectionFeedback && editorState.Scene.Mode != Editor::SceneMode::Play)
+        if (editorState.Viewport.ShowSelectionFeedback &&
+            editorState.Scene.Mode != Editor::SceneMode::Play)
         {
             selectedActorID = editorState.Selection.SelectedActorID;
         }
 
-        UpdateRuntimeUIPointer(uiLayer);
         BuildRuntimeUIPaintList();
 
         return m_Renderer->DrawFrame(
@@ -1028,8 +1038,12 @@ namespace Quiet::Core
         return m_RuntimeUIRoot.HitTest(*surfacePosition);
     }
 
-    void Application::UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer &uiLayer)
+    void Application::UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer& uiLayer)
     {
+        constexpr Input::MouseCode primaryButton = Input::MouseCode::ButtonLeft;
+
+        // Read before applying this frame's consumption mask.
+        const bool physicalPrimaryDown = m_Input->IsMouseButtonDown(primaryButton);
         UI::Widget* hoveredWidget = HitTestRuntimeUI(uiLayer);
         m_RuntimeUIRoot.UpdatePointerHover(hoveredWidget);
 
@@ -1037,10 +1051,41 @@ namespace Quiet::Core
         if (m_MouseCaptureEnabled || !pointerState || !pointerState->PositionValid)
         {
             m_RuntimeUIRoot.UpdatePointerPress(nullptr, false, false);
+            if (m_RuntimeUIOwnsPrimaryPress)
+            {
+                m_Input->ConsumeMouseButton(primaryButton);
+                if (!physicalPrimaryDown)
+                {
+                    m_RuntimeUIOwnsPrimaryPress = false;
+                }
+            }
             return;
         }
 
-        m_RuntimeUIRoot.UpdatePointerPress(hoveredWidget, pointerState->PrimaryPressed, pointerState->PrimaryDown);
+        if (pointerState->PrimaryPressed)
+        {
+            m_RuntimeUIOwnsPrimaryPress = hoveredWidget != nullptr;
+        }
+
+        if (m_RuntimeUIOwnsPrimaryPress)
+        {
+            m_Input->ConsumeMouseButton(primaryButton);
+            if (pointerState->PrimaryReleased || !pointerState->PrimaryDown)
+            {
+                m_RuntimeUIOwnsPrimaryPress = false;
+            }
+        }
+
+        UI::Widget* activatedWidget = m_RuntimeUIRoot.UpdatePointerPress(
+            hoveredWidget,
+            pointerState->PrimaryPressed,
+            pointerState->PrimaryDown,
+            pointerState->PrimaryReleased);
+
+        if (activatedWidget)
+        {
+            activatedWidget->Activate();
+        }
     }
 
     bool Application::RunEditorBootstrapFrame(const FrameContext &frame)
@@ -1295,9 +1340,8 @@ namespace Quiet::Core
 
         auto& uiLayer = *frame.UILayer;
         const float deltaTime = frame.DeltaTime;
-        Scene::Scene& activeScene = *m_Scene;
 
-        UpdateSandboxSceneForFrame(activeScene, deltaTime);
+        ProcessSandboxViewportResize();
 
         uiLayer.BeginFrame();
         {
@@ -1305,9 +1349,13 @@ namespace Quiet::Core
         }
         uiLayer.EndFrame();
 
+        UpdateRuntimeUIPointer(uiLayer);
+
+        Scene::Scene& activeScene = *m_Scene;
+        UpdateRuntimeSceneForFrame(activeScene, deltaTime);
+
         const auto activeCameraData = BuildActiveRenderCameraData(activeScene);
 
-        UpdateRuntimeUIPointer(uiLayer);
         BuildRuntimeUIPaintList();
 
         return m_Renderer->DrawFrame(
@@ -1333,11 +1381,35 @@ namespace Quiet::Core
         return [this]()
         {
             auto& overlayScene = GetActiveScene();
-            m_EditorController->UpdateHoveredActorFromViewport(overlayScene, *m_FreeCamera, *m_Renderer, m_MouseCaptureEnabled);
-            m_EditorController->TrySelectActorFromViewport(*m_Input, overlayScene, m_MouseCaptureEnabled);
-            m_EditorController->HandleShortcuts(*m_Input, m_MouseCaptureEnabled);
-            m_EditorController->DrawViewportDebugIcons(overlayScene, *m_FreeCamera, *m_Renderer);
-            m_EditorController->BuildSelectedActorGizmo(overlayScene, *m_FreeCamera, *m_Renderer, m_MouseCaptureEnabled);
+
+            m_EditorController->UpdateHoveredActorFromViewport(
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer,
+                m_MouseCaptureEnabled);
+
+            if (!HitTestRuntimeUI(m_Renderer->GetImGuiLayer()))
+            {
+                m_EditorController->TrySelectActorFromViewport(
+                    *m_Input,
+                    overlayScene,
+                    m_MouseCaptureEnabled);
+            }
+
+            m_EditorController->HandleShortcuts(
+                *m_Input,
+                m_MouseCaptureEnabled);
+
+            m_EditorController->DrawViewportDebugIcons(
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer);
+
+            m_EditorController->BuildSelectedActorGizmo(
+                overlayScene,
+                *m_FreeCamera,
+                *m_Renderer,
+                m_MouseCaptureEnabled);
         };
     }
 
@@ -1380,11 +1452,32 @@ namespace Quiet::Core
         return m_FreeCamera->GetPosition();
     }
 
-    void Application::UpdateEditorSceneForFrame(Scene::Scene &activeScene, Editor::EditorState &editorState, float deltaTime)
+    void Application::BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer &uiLayer, Scene::Scene &activeScene, Editor::EditorState &editorState, float deltaTime)
     {
-        const bool isEditMode = (editorState.Scene.Mode == Editor::SceneMode::Edit);
-        const bool isSimulateMode = (editorState.Scene.Mode == Editor::SceneMode::Simulate);
-        const bool isPlayMode = (editorState.Scene.Mode == Editor::SceneMode::Play);
+        const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
+        uiLayer.BuildEditorUI(
+            stats,
+            *m_Input,
+            activeScene,
+            *m_EditorController,
+            editorState,
+            m_ProjectContext,
+            m_ProjectRegistry,
+            m_Renderer->GetMeshLibrary(),
+            m_Renderer->GetTextureLibrary(),
+            *m_AudioSubsystem,
+            m_Renderer->GetSceneViewportTextureID(),
+            BuildEditorViewportOverlayCallback()
+        );
+
+        ProcessEditorViewportAssetDrop(activeScene, editorState);
+        ProcessEditorViewportResize(editorState);
+    }
+
+    void Application::UpdateEditorCameraForFrame(Scene::Scene& activeScene, Editor::EditorState& editorState, const float deltaTime)
+    {
+        const bool isEditMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
+        const bool isSimulateMode = editorState.Scene.Mode == Editor::SceneMode::Simulate;
 
         UpdateEditorViewportNavigationCapture(activeScene, editorState);
         m_FreeCamera->SetMoveSpeed(editorState.Viewport.CameraMoveSpeed);
@@ -1412,8 +1505,13 @@ namespace Quiet::Core
                     }
                     else
                     {
-                        Scene::CameraController::Pan(state, m_ViewportNavigationPivot, deltaX, deltaY,
-                            static_cast<float>(editorState.Viewport.Height), m_FreeCamera->GetFovDegrees());
+                        Scene::CameraController::Pan(
+                            state,
+                            m_ViewportNavigationPivot,
+                            deltaX,
+                            deltaY,
+                            static_cast<float>(editorState.Viewport.Height),
+                            m_FreeCamera->GetFovDegrees());
                     }
 
                     m_FreeCamera->ApplyPilotState(state);
@@ -1425,43 +1523,16 @@ namespace Quiet::Core
                     break;
             }
         }
+    }
 
-        if (isSimulateMode || isPlayMode)
+    void Application::UpdateRuntimeSceneForFrame(Scene::Scene& activeScene, const float deltaTime)
+    {
+        if (activeScene.IsRuntimeActive())
         {
             activeScene.HandleRuntimeInput(*m_Input, deltaTime);
         }
-        activeScene.Update(deltaTime);
-    }
-
-    void Application::BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer &uiLayer, Scene::Scene &activeScene, Editor::EditorState &editorState, float deltaTime)
-    {
-        const Renderer::UI::ImGuiStats stats = BuildEditorStats(deltaTime, activeScene);
-        uiLayer.BuildEditorUI(
-            stats,
-            *m_Input,
-            activeScene,
-            *m_EditorController,
-            editorState,
-            m_ProjectContext,
-            m_ProjectRegistry,
-            m_Renderer->GetMeshLibrary(),
-            m_Renderer->GetTextureLibrary(),
-            *m_AudioSubsystem,
-            m_Renderer->GetSceneViewportTextureID(),
-            BuildEditorViewportOverlayCallback()
-        );
-
-        ProcessEditorViewportAssetDrop(activeScene, editorState);
-        ProcessEditorViewportResize(editorState);
-    }
-
-    void Application::UpdateSandboxSceneForFrame(Scene::Scene &activeScene, float deltaTime)
-    {
-        if (activeScene.IsRuntimeActive())
-            activeScene.HandleRuntimeInput(*m_Input, deltaTime);
 
         activeScene.Update(deltaTime);
-        ProcessSandboxViewportResize();
     }
 
     void Application::BuildSandboxUI(Renderer::UI::ImGuiLayer &uiLayer)

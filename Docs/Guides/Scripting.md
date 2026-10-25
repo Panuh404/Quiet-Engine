@@ -311,6 +311,29 @@ return false.
 Use Play when testing gameplay input. Editor shortcuts and viewport
 navigation can also respond to input, so account for their context.
 
+### Runtime UI and mouse ownership
+
+Ready Editor and Sandbox frames route retained UI pointer input before
+runtime Scene input and OnUpdate. A left-button gesture starting on a
+participating UI widget is consumed: subsequent
+Input.Mouse.IsDown(MouseButton.Left) and
+Input.Mouse.IsPressed(MouseButton.Left) return false for that frame.
+Ownership persists while dragging outside and through release. Starting
+outside and moving into a widget does not transfer that gesture to the UI.
+
+Consumption preserves physical input history, so ending UI ownership does
+not synthesize another pressed edge. Cancelling UI interaction keeps the
+owned gesture hidden until release is observed. Keyboard queries, other
+mouse buttons, pointer movement delta, and earlier input reads are unchanged.
+
+This policy does not retroactively filter OnCreate, OnBegin, or other code
+that ran before current-frame UI routing. Use OnUpdate when verifying normal
+gameplay input isolation. Retained Button callbacks are currently C++ behavior;
+there is no Lua widget lookup or activation-binding API.
+
+See [Application](../Systems/Application.md) for routing and consumption,
+and [Renderer](../Systems/Renderer.md) for Button activation contracts.
+
 ## Physics API
 
 Actor.RigidBody provides:

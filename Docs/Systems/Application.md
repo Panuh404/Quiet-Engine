@@ -353,28 +353,36 @@ Once Ready, the frame performs these operations:
 
 1. Processes Editor requests.
 2. Resolves the active Scene.
-3. Updates Editor navigation and that Scene.
+3. Updates Editor camera navigation and piloting.
 4. Begins the UI frame.
 5. Builds and processes Editor UI, viewport asset drops, and resize requests.
 6. Ends the UI frame.
-7. Resolves the active Scene again.
-8. Builds render camera data, updates the retained UI paint list, and
+7. Routes retained UI pointer input, applies gameplay mouse consumption,
+   and invokes any activation callback after widget traversal.
+8. Resolves the active Scene again and advances runtime input and simulation.
+9. Builds render camera data, updates the retained UI paint list, and
    submits the Scene and commands to the renderer.
 
 The second Scene lookup is significant. UI processing can trigger a
-runtime transition, so the Scene selected for rendering may differ from
-the Scene updated earlier in the same frame.
+runtime transition or activation callback, so the Scene selected for
+simulation and rendering may differ from the earlier Scene reference.
 
 Do not assume that one cached active Scene reference remains appropriate
 across an Editor runtime transition.
 
 ### Scene updates by mode
 
-UpdateEditorSceneForFrame() first handles viewport navigation and the
-configured free-camera movement speed.
+UpdateEditorCameraForFrame() handles viewport navigation and the
+configured free-camera movement speed before building Editor UI.
 
 Edit mode can pilot a selected camera Actor. Otherwise, Edit and Simulate
 can use free-camera navigation.
+
+UpdateRuntimeSceneForFrame() is shared by Editor and Sandbox. After UI
+routing, it calls HandleRuntimeInput() when the selected Scene is runtime
+active, then calls Update(). Update() returns without simulation when the
+Scene is inactive. Runtime Inspector values are gathered before that
+frame's simulation; rendering uses the updated Scene.
 
 | Frame mode | Runtime input call | Scene update |
 | --- | --- | --- |
@@ -391,21 +399,20 @@ across runtime modes. The Scene's runtime contract determines what it does.
 RunSandboxFrame() requires a UI layer. A missing layer produces an error
 log and a false frame result.
 
-Sandbox uses the main Scene directly. It handles runtime input when active,
-updates the Scene, and processes viewport resizing.
-
-It then builds the runtime presentation UI, selects render camera data,
-updates the retained UI paint list, and submits the Scene and commands
-without the Editor grid or selection feedback.
+Sandbox first processes viewport resizing, then builds and ends the runtime
+presentation UI frame. It routes retained UI pointer input and consumption
+before obtaining the main Scene reference and calling
+UpdateRuntimeSceneForFrame(). It then builds camera data and retained paint
+commands and submits without the Editor grid or selection feedback.
 
 ## Retained runtime UI ownership and submission
 
 Application stores Quiet::UI::Widget m_RuntimeUIRoot and
 Quiet::UI::PaintList m_RuntimeUIPaintList directly.
 
-InitializeCommonStartup() creates the demonstration Panel and its child
-Label after constructing VulkanRenderer. Their explicit bounds and text
-are defined in that function.
+InitializeCommonStartup() creates a demonstration Panel and Button, each
+with a child Label, after constructing VulkanRenderer. Their explicit
+bounds, text, and Button callback are defined in that function.
 
 The hierarchy belongs to Application, independently of the editable Scene
 and disposable Editor runtime Scene. Starting or stopping Play does not
@@ -425,9 +432,9 @@ frames. It performs these operations:
 An unchanged root extent does not invalidate the hierarchy. Bounds changes
 invalidate layout, which also marks paint and interaction dirty.
 
-Only Paint invalidation is acknowledged here. Layout and Interaction
-flags remain available for future systems; Application does not currently
-perform automatic layout or route widget input.
+Only Paint invalidation is acknowledged here. Layout and Interaction flags
+are not cleared by the current pointer path. Hit testing is computed each
+frame without an interaction cache; automatic layout remains unimplemented.
 
 RunEditorFrame() and RunSandboxFrame() pass a span over the cached list
 to DrawFrame(). The renderer borrows it during that call and retains no
@@ -440,6 +447,82 @@ after ShutdownCommon() explicitly releases the renderer.
 
 See [Renderer](Renderer.md) for hierarchy contracts, invalidation,
 ordered painting, image descriptors, and current limitations.
+
+### Pointer presentation and mapping
+
+Implementation anchors are:
+
+- `Engine/src/Renderer/UI/ImGuiLayer.h`:
+  Quiet::Renderer::UI::SceneViewportPointerState and
+  ImGuiLayer::GetSceneViewportPointerState().
+- `Engine/src/Renderer/UI/ImGuiLayer.cpp`: ImGuiLayer::BeginFrame().
+- `Engine/src/Renderer/UI/Panels/ImGuiViewportPanels.cpp`:
+  ImGuiLayer::BuildViewport() and BuildRuntimeUI().
+- `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::MapPointToSurface().
+- `Engine/src/Core/Application.cpp`: HitTestRuntimeUI(),
+  UpdateRuntimeUIPointer(), and BuildEditorViewportOverlayCallback().
+- `Engine/include/Quiet/Input/Input.h` and `Engine/src/Input/Input.cpp`:
+  Quiet::Input::Input::ConsumeMouseButton() and mouse query implementations.
+
+BeginFrame() clears the optional presentation snapshot. Each presentation
+path records it immediately after a visible Scene-image item. The snapshot
+copies the image rectangle, mouse position, position-validity and image-hover
+flags, and primary-button down, pressed, and released values. The getter
+returns a copy; no reference into a replaceable ImGuiLayer is retained.
+
+The rectangle and mouse position come from the same ImGui coordinate space,
+including when Editor platform windows are enabled. Do not combine those
+bounds with Input::GetMousePosition(), which samples GLFW window coordinates.
+
+MapPointToSurface() computes:
+
+```text
+surfacePosition = ((displayPosition - displayBounds.Position)
+                   / displayBounds.Size) * actualSurfaceSize
+```
+
+It rejects nonfinite inputs or results and nonpositive display or surface
+dimensions. Outside positions remain outside; it does not clamp, flip Y,
+or add another DPI scale. The rendered target extent can differ from the
+displayed image size while resizing, so Application supplies the actual
+Scene target extent rather than the requested viewport dimensions.
+
+HitTestRuntimeUI() additionally requires mouse capture to be disabled, a
+valid pointer snapshot, and image hover. It rejects points outside the
+half-open surface rectangle and calls Widget::HitTest(). This surface check
+is distinct from widget parenting, which does not clip children.
+
+UpdateRuntimeUIPointer() applies hover and primary-button press state before
+painting. It invokes an activation target only after the entire press
+traversal returns. The earlier Editor viewport overlay callback uses hit
+testing to skip Actor click selection over participating widgets. This
+guard does not disable the existing gizmo or debug-icon paths.
+
+### Gameplay mouse consumption
+
+Input::Update() clears the per-frame consumed-button mask while preserving
+normal physical current/previous samples. ConsumeMouseButton() marks a
+supported button unavailable to subsequent IsMouseButtonDown() and
+IsMouseButtonPressed() queries until the next Update(). It does not alter
+physical history or produce a synthetic press when consumption ends.
+
+Application tracks m_RuntimeUIOwnsPrimaryPress as a boolean, independently
+of widget lifetime. A primary press over a participating widget starts UI
+ownership. Application consumes the left button before activation and Scene
+updates, including while dragging outside the widget and on release.
+A press originating outside does not transfer merely by entering a widget.
+
+Mouse capture or an unavailable pointer snapshot cancels widget press state.
+For a UI-owned gesture, Application keeps consuming until physical release
+is observed, preventing the held gesture from leaking into gameplay during
+cancellation. No pointer to a previous input owner is retained.
+
+The current policy consumes only left-button down/pressed queries. Keyboard,
+other buttons, pointer position, and movement delta are unchanged. Lua input
+bindings share this Input object and therefore observe the same filtered
+results after routing. Consumption does not retroactively affect earlier
+Editor reads or runtime startup callbacks. It is not a general input-action
+or event-dispatch system.
 
 ## Active Scene and render camera
 

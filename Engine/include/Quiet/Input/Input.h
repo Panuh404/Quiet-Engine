@@ -26,6 +26,13 @@ namespace Quiet::Input
         [[nodiscard]] bool IsMouseButtonDown(MouseCode button) const;
         [[nodiscard]] bool IsMouseButtonPressed(MouseCode button) const;
 
+        /**
+         * @brief Hides a mouse button from subsequent queries until Update().
+         * @note Preserves physical button history.
+         *       Affects IsMouseButtonDown() and IsMouseButtonPressed().
+         * @pre button must identify a supported mouse button.
+         */
+        void ConsumeMouseButton(MouseCode button) noexcept;
 
         [[nodiscard]] std::pair<double, double> GetMousePosition() const;
         [[nodiscard]] std::pair<double, double> GetMouseDelta() const;
@@ -47,6 +54,7 @@ namespace Quiet::Input
 
         std::array<bool, MouseButtonCount> m_CurrentMouseButtons{};
         std::array<bool, MouseButtonCount> m_PreviousMouseButtons{};
+        std::array<bool, MouseButtonCount> m_ConsumedMouseButtons{};
 
         bool m_FirstMouseSample = true;
 

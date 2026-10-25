@@ -133,9 +133,9 @@ namespace Quiet::Core
         [[nodiscard]] Renderer::Vulkan::CameraUniformData BuildActiveRenderCameraData(const Scene::Scene& scene) const;
         [[nodiscard]] glm::vec3 GetActiveRenderCameraPosition(const Scene::Scene& scene) const;
 
-        void UpdateEditorSceneForFrame(Scene::Scene& activeScene, Editor::EditorState& editorState, float deltaTime);
         void BuildAndProcessEditorUI(Renderer::UI::ImGuiLayer& uiLayer, Scene::Scene& activeScene, Editor::EditorState& editorState, float deltaTime);
-        void UpdateSandboxSceneForFrame(Scene::Scene& activeScene, float deltaTime);
+        void UpdateEditorCameraForFrame(Scene::Scene& activeScene, Editor::EditorState& editorState, float deltaTime);
+        void UpdateRuntimeSceneForFrame(Scene::Scene& activeScene, float deltaTime);
 
         void BuildSandboxUI(Renderer::UI::ImGuiLayer& uiLayer);
         bool UpdatePilotedEditorCamera(float deltaTime);
@@ -197,6 +197,7 @@ namespace Quiet::Core
         AppSpec m_Spec;
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
+        bool m_RuntimeUIOwnsPrimaryPress = false;
 
         EditorBootstrapStage m_EditorBootstrapStage = EditorBootstrapStage::Ready;
         std::filesystem::path m_EditorProjectFilePath;

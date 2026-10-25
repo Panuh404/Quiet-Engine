@@ -133,9 +133,31 @@ Placement uses fixed pixels. Resizing preserves their offsets, while the
 Scene target edges clip drawing outside the viewport. Parent bounds do not
 clip child content. Actor-authored text renders after retained widgets.
 
-There are no widget Inspector controls, automatic layout, or widget
-interaction yet. The temporary logo preview is removed; the Image widget
-and its renderer remain available through C++.
+A Button measuring 320 by 64 pixels appears at (24, 168), with the current
+label "Hover me". It becomes brighter while hovered and darker while
+pressed inside. Release over the same button logs
+"Retained UI button activated." once. The text is demonstration content;
+the button supports activation despite its current label.
+
+To exercise pointer ownership, start with mouse capture disabled. In Play,
+release capture using Shift+F1. Press inside, drag outside, and return:
+the normal background appears outside and the pressed background returns
+inside. Release outside cancels activation. A press originating outside
+does not activate by dragging in. Camera capture cancels a pending press.
+
+In Edit mode, clicking participating runtime UI skips Actor click selection,
+so an existing Actor selection is preserved. Normal selection outside the
+interactive widgets remains available. This guard does not disable gizmos.
+
+In Simulate or Play, UI-owned left-button gestures are hidden from gameplay
+mouse-button queries after routing. When testing with a script that logs
+left-button presses, expect an activation message for a UI click and a
+gameplay message for an outside click. Repeat after resizing or detaching
+the Viewport; visible and interactive bounds should remain aligned.
+
+There are no widget Inspector controls, automatic layout, or keyboard/gamepad
+focus yet. The temporary logo preview is removed; the Image widget and its
+renderer remain available through C++.
 
 See [Application](../Systems/Application.md) for ownership and paint-list
 caching, and [Renderer](../Systems/Renderer.md) for widget and GPU contracts.

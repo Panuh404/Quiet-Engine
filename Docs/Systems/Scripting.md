@@ -644,6 +644,24 @@ Input.Mouse.GetDelta() returns two Lua values for mouse movement.
 Bindings borrow the application's Input object. They do not maintain
 independent per-script input history.
 
+Application now routes retained UI input before normal runtime Scene input
+and Update() in ready Editor and Sandbox frames. Input::ConsumeMouseButton()
+masks subsequent down/pressed queries until Input::Update() clears the
+per-frame mask. Current routing consumes the left button for a gesture
+starting on a participating widget, including dragging outside and release.
+The bindings inherit this policy through the shared Input object; they do
+not implement a second consumption mechanism or modify physical history.
+
+Mouse capture or missing pointer data cancels widget press state while
+Application preserves consumption of a UI-owned held gesture until release
+is observed. Keyboard, other buttons, and movement delta are unaffected.
+Calls before routing, including runtime startup callbacks, cannot be
+retroactively filtered. The current contract does not provide Lua access
+to retained widgets or their C++ activation callbacks.
+
+See [Application](Application.md) for ownership and frame order and the
+[scripting guide](../Guides/Scripting.md) for gameplay-facing consequences.
+
 ## Physics and audio forwarding
 
 Actor.RigidBody.ApplyImpulse(x, y, z) and

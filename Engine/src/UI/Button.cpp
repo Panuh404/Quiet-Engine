@@ -1,5 +1,7 @@
 #include "Quiet/UI/Button.h"
 
+#include <utility>
+
 namespace Quiet::UI
 {
     Button::Button()
@@ -7,6 +9,26 @@ namespace Quiet::UI
         SetHitTestMode(HitTestMode::SelfAndChildren);
     }
 
+    void Button::SetOnClick(std::function<void()> callback)
+    {
+        if (callback)
+        {
+            m_OnClick = std::make_shared<std::function<void()>>(std::move(callback));
+        }
+        else
+        {
+            m_OnClick.reset();
+        }
+    }
+
+    void Button::Activate()
+    {
+        const auto callback = m_OnClick;
+        if (callback)
+        {
+            (*callback)();
+        }
+    }
     void Button::OnPaint(PaintList& commands) const
     {
         const Rect bounds = GetSurfaceBounds();

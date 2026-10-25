@@ -107,18 +107,31 @@ namespace Quiet::UI
         }
     }
 
-    void Widget::UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown) noexcept
+    Widget* Widget::UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased) noexcept
     {
         if (m_HitTestMode == HitTestMode::None)
         {
             primaryPressed = false;
             primaryDown = false;
+            primaryReleased = false;
         }
 
+        const bool acceptsPress = m_HitTestMode == HitTestMode::SelfAndChildren;
+        const bool ownsPress = primaryPressed ? hoveredWidget == this : m_PointerPressed;
+
+        Widget* activatedWidget =
+            acceptsPress &&
+            ownsPress &&
+            primaryReleased &&
+            hoveredWidget == this
+                ? this
+                : nullptr;
+
         const bool pressed =
-            m_HitTestMode == HitTestMode::SelfAndChildren &&
+            acceptsPress &&
+            ownsPress &&
             primaryDown &&
-            (primaryPressed ? hoveredWidget == this : m_PointerPressed);
+            !primaryReleased;
 
         if (m_PointerPressed != pressed)
         {
@@ -128,8 +141,17 @@ namespace Quiet::UI
 
         for (const auto& child : m_Children)
         {
-            child->UpdatePointerPress(hoveredWidget, primaryPressed, primaryDown);
+            if (Widget* activatedChild = child->UpdatePointerPress(hoveredWidget, primaryPressed, primaryDown, primaryReleased))
+            {
+                activatedWidget = activatedChild;
+            }
         }
+
+        return activatedWidget;
+    }
+
+    void Widget::Activate()
+    {
     }
 
     Widget& Widget::AddChild(std::unique_ptr<Widget>&& child)

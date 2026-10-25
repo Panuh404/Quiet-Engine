@@ -62,6 +62,23 @@ Develop distribution workflows around the existing Cooker and Sandbox.
 Executable packaging, runtime dependencies, and deployment validation
 remain separate work from producing a content package.
 
+## Pending Planning
+
+- Animation
+- Networking
+- LOD/Optimization
+- Advanced Runtime UI
+- UI Editor
+- Audio Event System
+- Audio Mixer Editor
+- Shader Editor
+- Audio Profiler
+- Transform parenting and reusable Scene content
+- Input actions and contexts
+- Scene transitions and runtime persistence
+- General profiling and regression validation
+- Content compatibility and reliability
+
 ## Development principles
 
 - Keep persistent authoring data separate from backend runtime objects.

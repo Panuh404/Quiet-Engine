@@ -298,6 +298,7 @@ They do not replace the Editor's Dear ImGui tooling.
 | Solid background widget | `Engine/include/Quiet/UI/Panel.h` and `Engine/src/UI/Panel.cpp`: Quiet::UI::Panel |
 | Text widget | `Engine/include/Quiet/UI/Label.h` and `Engine/src/UI/Label.cpp`: Quiet::UI::Label |
 | Image widget | `Engine/include/Quiet/UI/Image.h` and `Engine/src/UI/Image.cpp`: Quiet::UI::Image |
+| Button state painting and behavior | `Engine/include/Quiet/UI/Button.h` and `Engine/src/UI/Button.cpp`: Quiet::UI::Button |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
 | Tree ownership and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup() and BuildRuntimeUIPaintList() |
 | GPU command translation | `Engine/src/Renderer/Vulkan/VulkanRenderer.cpp`: DrawFrame() and RecordFrameCommandBuffer() |
@@ -365,9 +366,75 @@ is unchanged.
 
 ClearInvalidation() clears only the requested flag on the widget and its
 descendants; it does not clear ancestor flags. Application currently
-consumes only Paint invalidation. Layout and Interaction flags are
-foundations for future consumers, not evidence of an implemented layout
-or input system.
+acknowledges only Paint invalidation. Layout and Interaction flags are not
+acknowledged by pointer routing: hit tests and state updates are recomputed
+each frame. Automatic layout and an interaction cache remain future work.
+
+### Hit testing and pointer state
+
+Widget::HitTest() receives surface-space pixels and searches children in
+reverse insertion order before considering the widget itself. This reverses
+painting order so the topmost participating widget wins. Parent bounds do
+not clip descendants; zero parent size does not prevent child hits.
+
+HitTestMode controls participation without changing painting:
+
+| Mode | Behavior |
+| --- | --- |
+| SelfAndChildren | Search descendants, then this widget's bounds |
+| ChildrenOnly | Search descendants and skip this widget; the default |
+| None | Exclude the entire subtree |
+
+Self hits require positive dimensions, include minimum edges, and exclude
+maximum edges. Nonfinite points return null. Returned pointers are borrowed;
+queries do not extend lifetime. Bounds must satisfy the same finite resolved
+coordinate requirements as painting.
+
+UpdatePointerHover() marks only the directly hit widget, not its ancestors.
+UpdatePointerPress() starts primary-button ownership on the directly hit
+widget, preserves it while held outside, and identifies activation only on
+release over that same widget. It returns the borrowed activation target
+after updating the subtree; it does not invoke behavior during traversal.
+All false button values cancel without activation. None cancels the subtree.
+
+Hover and press transitions invalidate Paint only when the stored boolean
+changes. Attachment and detachment clear both states on the transferred
+subtree. No previous-widget pointer is retained between frames.
+
+Application supplies current-frame mapping, cancellation, and gameplay
+consumption. See [Application](Application.md) for presentation snapshots,
+coordinate spaces, execution order, and input-policy limits.
+
+### Button behavior and callback lifetime
+
+Button derives directly from Widget and selects SelfAndChildren in its
+constructor. Its child Label normally remains ChildrenOnly, so text does
+not block the Button. Children paint after its background using the existing
+rectangle and text commands; no additional Vulkan pipeline is needed.
+
+The current straight-alpha linear RGBA defaults are:
+
+| Visual condition | Background |
+| --- | --- |
+| Not hovered, including dragging an owned press outside | (0.03, 0.12, 0.25, 0.8) |
+| Hovered without a press | (0.08, 0.22, 0.42, 1.0) |
+| Hovered with an owned press | (0.02, 0.08, 0.18, 1.0) |
+
+SetOnClick() installs a std::function<void()> in a shared owning allocation;
+an empty function clears it. Activate() retains that allocation locally and
+invokes the same callable, preserving mutable capture state between calls.
+It does not copy the callable on each activation. Installation allocation
+and callback exceptions propagate.
+
+The local owner keeps an executing callback alive if it replaces itself or
+removes its Button. Activate() accesses no Button members after invocation.
+Captured references must still remain valid; retaining the callable does
+not extend the lifetime of objects referenced by those captures. Invoke
+behavior outside hierarchy traversal. Widget::Activate() defaults to no work.
+
+This is primary-button state and release-inside activation, not a general
+captured pointer-event dispatcher. Keyboard/gamepad focus, configurable
+styles, and additional pointer event types remain future work.
 
 ### Logical commands and ownership
 
@@ -477,13 +544,17 @@ Application creates a Panel at (24, 24), sized 320 by 120 pixels, and a
 child Label at local position (16, 24), sized 288 by 72 pixels. The label
 contains "Retained UI label", so its surface position is (40, 48).
 
+A Button at (24, 168), sized 320 by 64 pixels, owns a Label at local
+position (16, 16), sized 288 by 32 pixels. Its current text is "Hover me".
+Release-inside activation logs "Retained UI button activated.".
+
 This Application-owned tree appears in ready Editor frames and Sandbox.
 It survives Editor Play and Stop because it is not owned by either Scene.
 The temporary image preview has been removed; Image remains available as
 a C++ widget.
 
-There is no automatic layout, per-widget clipping, hit testing, pointer
-routing, focus, style resolution, widget serialization, or UI designer.
+There is no automatic layout, per-widget clipping, keyboard/gamepad focus,
+style resolution, widget serialization, or UI designer.
 The full-target scissor clips drawing at the Scene viewport edges.
 
 ## Swapchain and Scene viewport

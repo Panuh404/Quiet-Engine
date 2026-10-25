@@ -20,6 +20,7 @@ namespace Quiet::Input
     {
         auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());
 
+        m_ConsumedMouseButtons.fill(false);
         m_PreviousKeys = m_CurrentKeys;
         m_PreviousMouseButtons = m_CurrentMouseButtons;
 
@@ -65,13 +66,19 @@ namespace Quiet::Input
     bool Input::IsMouseButtonDown(MouseCode button) const
     {
         const std::size_t index = static_cast<std::size_t>(ToNative(button));
-        return m_CurrentMouseButtons[index];
+        return !m_ConsumedMouseButtons[index] && m_CurrentMouseButtons[index];
     }
 
     bool Input::IsMouseButtonPressed(MouseCode button) const
     {
         const std::size_t index = static_cast<std::size_t>(ToNative(button));
-        return m_CurrentMouseButtons[index] && !m_PreviousMouseButtons[index];
+        return !m_ConsumedMouseButtons[index] && m_CurrentMouseButtons[index] && !m_PreviousMouseButtons[index];
+    }
+
+    void Input::ConsumeMouseButton(MouseCode button) noexcept
+    {
+        const std::size_t index = static_cast<std::size_t>(ToNative(button));
+        m_ConsumedMouseButtons[index] = true;
     }
 
     std::pair<double, double> Input::GetMousePosition() const
