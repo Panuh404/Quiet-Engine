@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <glm/common.hpp>
+
 namespace Quiet::UI
 {
     Widget::~Widget() = default;
@@ -43,12 +45,76 @@ namespace Quiet::UI
         return true;
     }
 
+    bool Widget::SetArrangedBounds(const Rect& bounds)
+    {
+        if (!std::isfinite(bounds.Position.x) ||
+            !std::isfinite(bounds.Position.y) ||
+            !std::isfinite(bounds.Size.x) ||
+            !std::isfinite(bounds.Size.y) ||
+            bounds.Size.x < 0.0f ||
+            bounds.Size.y < 0.0f)
+        {
+            return false;
+        }
+
+        if (m_ArrangedBounds &&
+            m_ArrangedBounds->Position == bounds.Position &&
+            m_ArrangedBounds->Size == bounds.Size)
+        {
+            return true;
+        }
+
+        m_ArrangedBounds = bounds;
+        Invalidate(InvalidationReason::Paint);
+        Invalidate(InvalidationReason::Interaction);
+        return true;
+    }
+
+    void Widget::ClearArrangedBounds() noexcept
+    {
+        if (!m_ArrangedBounds) return;
+
+        m_ArrangedBounds.reset();
+        Invalidate(InvalidationReason::Paint);
+        Invalidate(InvalidationReason::Interaction);
+    }
+
+    bool Widget::SetAnchorAndPivot(const glm::vec2& anchor, const glm::vec2& pivot)
+    {
+        if (!std::isfinite(anchor.x) ||
+            !std::isfinite(anchor.y) ||
+            !std::isfinite(pivot.x) ||
+            !std::isfinite(pivot.y))
+        {
+            return false;
+        }
+
+        const glm::vec2 clampedAnchor = glm::clamp(anchor, glm::vec2(0.0f), glm::vec2(1.0f));
+        const glm::vec2 clampedPivot = glm::clamp(pivot, glm::vec2(0.0f), glm::vec2(1.0f));
+
+        if (m_Anchor == clampedAnchor && m_Pivot == clampedPivot)
+        {
+            return true;
+        }
+
+        m_Anchor = clampedAnchor;
+        m_Pivot = clampedPivot;
+        Invalidate(InvalidationReason::Layout);
+        return true;
+    }
+
     Rect Widget::GetSurfaceBounds() const noexcept
     {
-        Rect bounds = m_LocalBounds;
-        for (const Widget* ancestor = m_Parent; ancestor != nullptr; ancestor = ancestor->m_Parent)
+        Rect bounds = m_ArrangedBounds.value_or(m_LocalBounds);
+        if (m_Parent)
         {
-            bounds.Position += ancestor->m_LocalBounds.Position;
+            const Rect parentBounds = m_Parent->GetSurfaceBounds();
+            bounds.Position += parentBounds.Position;
+
+            if (!m_ArrangedBounds)
+            {
+                bounds.Position += m_Anchor * parentBounds.Size - m_Pivot * bounds.Size;
+            }
         }
         return bounds;
     }
@@ -173,6 +239,7 @@ namespace Quiet::UI
 
         m_Children.push_back(std::move(child));
         attachedChild.m_Parent = this;
+        attachedChild.ClearArrangedBounds();
         attachedChild.UpdatePointerHover(nullptr);
         attachedChild.UpdatePointerPress(nullptr, false, false);
         attachedChild.Invalidate(InvalidationReason::Layout);
@@ -197,6 +264,7 @@ namespace Quiet::UI
         std::unique_ptr<Widget> detachedChild = std::move(*iterator);
         m_Children.erase(iterator);
         detachedChild->m_Parent = nullptr;
+        detachedChild->ClearArrangedBounds();
         detachedChild->UpdatePointerHover(nullptr);
         detachedChild->UpdatePointerPress(nullptr, false, false);
         detachedChild->Invalidate(InvalidationReason::Layout);
@@ -250,6 +318,35 @@ namespace Quiet::UI
         }
     }
 
+    void Widget::Measure(const LayoutContext& context)
+    {
+        for (const auto& child : m_Children)
+        {
+            child->Measure(context);
+        }
+
+        const glm::vec2 desiredSize = OnMeasure(context);
+
+        if (!std::isfinite(desiredSize.x) ||
+            !std::isfinite(desiredSize.y) ||
+            desiredSize.x < 0.0f ||
+            desiredSize.y < 0.0f)
+        {
+            throw std::runtime_error("UI widget measurement produced invalid dimensions.");
+        }
+
+        m_DesiredSize = desiredSize;
+    }
+
+    void Widget::ArrangeChildren()
+    {
+        OnArrangeChildren();
+        for (const auto& child : m_Children)
+        {
+            child->ArrangeChildren();
+        }
+    }
+
     void Widget::Paint(PaintList &commands) const
     {
         OnPaint(commands);
@@ -259,7 +356,32 @@ namespace Quiet::UI
         }
     }
 
-    void Widget::OnPaint(PaintList &commands) const
+    glm::vec2 Widget::OnMeasure(const LayoutContext&) const
     {
+        return m_LocalBounds.Size;
     }
+
+    void Widget::OnArrangeChildren()
+    {
+        const glm::vec2 parentSize = GetSurfaceBounds().Size;
+
+        for (const auto& child : m_Children)
+        {
+            const Rect& authoredBounds = child->GetLocalBounds();
+            const glm::vec2& desiredSize = child->GetDesiredSize();
+
+            const glm::vec2 position =
+                authoredBounds.Position +
+                child->GetAnchor() * parentSize -
+                child->GetPivot() * desiredSize;
+
+            child->SetArrangedBounds(
+            {
+                position,
+                desiredSize
+            });
+        }
+    }
+
+    void Widget::OnPaint(PaintList &commands) const {}
 }

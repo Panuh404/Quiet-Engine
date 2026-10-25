@@ -5,6 +5,7 @@
 #include "Quiet/UI/Label.h"
 #include "Quiet/UI/Panel.h"
 #include "Quiet/UI/Button.h"
+#include "Quiet/UI/VerticalBox.h"
 
 #include <span>
 #include <stdexcept>
@@ -338,20 +339,37 @@ namespace Quiet::Core
         panel->AddChild(std::move(label));
         m_RuntimeUIRoot.AddChild(std::move(panel));
 
-        auto button = std::make_unique<UI::Button>();
-        button->SetBounds({{24.0f, 168.0f}, {320.0f, 64.0f}});
+        auto actions = std::make_unique<UI::VerticalBox>();
+        actions->SetBounds({{-24.0f, -24.0f}, {320.0f, 0.0f}});
+        actions->SetAnchorAndPivot({1.0f, 1.0f}, {1.0f, 1.0f});
+        actions->SetPadding({12.0f, 12.0f, 12.0f, 12.0f});
+        actions->SetSpacing(12.0f);
 
-        auto buttonLabel = std::make_unique<UI::Label>();
-        buttonLabel->SetBounds({{16.0f, 16.0f}, {288.0f, 32.0f}});
-        buttonLabel->SetContent("Hover me");
-
-        button->SetOnClick([]()
+        auto firstButton = std::make_unique<UI::Button>();
+        firstButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
+        firstButton->SetOnClick([]()
         {
-            QUIET_CORE_INFO("Retained UI button activated.");
+            QUIET_CORE_INFO("First retained action activated.");
         });
 
-        button->AddChild(std::move(buttonLabel));
-        m_RuntimeUIRoot.AddChild(std::move(button));
+        auto firstLabel = std::make_unique<UI::Label>();
+        firstLabel->SetContent("First action");
+        firstButton->AddChild(std::move(firstLabel));
+
+        auto secondButton = std::make_unique<UI::Button>();
+        secondButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
+        secondButton->SetOnClick([]()
+        {
+            QUIET_CORE_INFO("Second retained action activated.");
+        });
+
+        auto secondLabel = std::make_unique<UI::Label>();
+        secondLabel->SetContent("Second action\nMeasured text");
+        secondButton->AddChild(std::move(secondLabel));
+
+        actions->AddChild(std::move(firstButton));
+        actions->AddChild(std::move(secondButton));
+        m_RuntimeUIRoot.AddChild(std::move(actions));
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -995,22 +1013,47 @@ namespace Quiet::Core
             std::span<const UI::PaintCommand>(m_RuntimeUIPaintList));
     }
 
-    void Application::BuildRuntimeUIPaintList()
+    void Application::UpdateRuntimeUILayout()
     {
         const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
-        m_RuntimeUIRoot.SetBounds(
-            {
-                {0.0f, 0.0f},
-                { static_cast<float>(extent.width), static_cast<float>(extent.height) }
-            });
 
+        m_RuntimeUIRoot.SetBounds(
+        {
+            {0.0f, 0.0f},
+            {
+                static_cast<float>(extent.width),
+                static_cast<float>(extent.height)
+            }
+        });
+
+        if (!m_RuntimeUIRoot.GetInvalidationState().Layout) return;
+
+        const UI::LayoutContext context
+        {
+            &m_Renderer->GetDefaultFontAtlas()
+        };
+
+        m_RuntimeUIRoot.Measure(context);
+        m_RuntimeUIRoot.ArrangeChildren();
+        m_RuntimeUIRoot.ClearInvalidation(UI::InvalidationReason::Layout);
+    }
+
+    void Application::BuildRuntimeUIPaintList()
+    {
+        UpdateRuntimeUILayout();
+
+        const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
         if (extent.width == 0 || extent.height == 0)
         {
             m_RuntimeUIPaintList.clear();
             return;
         }
 
-        if (!m_RuntimeUIRoot.GetInvalidationState().Paint) return;
+        if (!m_RuntimeUIRoot.GetInvalidationState().Paint)
+        {
+            return;
+        }
+
         m_RuntimeUIPaintList.clear();
         m_RuntimeUIRoot.Paint(m_RuntimeUIPaintList);
         m_RuntimeUIRoot.ClearInvalidation(UI::InvalidationReason::Paint);
@@ -1025,6 +1068,8 @@ namespace Quiet::Core
 
         const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
         const glm::vec2 surfaceSize(static_cast<float>(extent.width), static_cast<float>(extent.height));
+
+        UpdateRuntimeUILayout();
 
         const auto surfacePosition = UI::MapPointToSurface(pointerState->DisplayPosition, pointerState->DisplayBounds, surfaceSize);
         if (!surfacePosition) return nullptr;

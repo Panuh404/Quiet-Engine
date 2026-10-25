@@ -164,6 +164,13 @@ namespace Quiet::Core
 
         [[nodiscard]] FrameContext BeginFrame(double& previousTime);
         bool RunEditorFrame(const FrameContext& frame);
+
+        /**
+         * @brief Synchronizes root extent and processes pending child arrangement.
+         * @note Acknowledges Layout only after the complete arrangement traversal.
+         */
+        void UpdateRuntimeUILayout();
+
         /**
          * @brief Updates root extent and rebuilds commands from retained widgets.
          * @note Uses the actual Scene target extent; preserves the widget tree.

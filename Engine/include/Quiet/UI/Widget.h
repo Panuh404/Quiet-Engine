@@ -1,10 +1,12 @@
 #pragma once
 
+#include <optional>
 #include <cstddef>
 #include <memory>
 #include <vector>
 
 #include "Geometry.h"
+#include "Quiet/UI/LayoutContext.h"
 #include "Quiet/UI/PaintCommands.h"
 
 namespace Quiet::UI
@@ -75,24 +77,55 @@ namespace Quiet::UI
         [[nodiscard]] const Widget& GetChild(std::size_t index) const;
 
         /**
-         * @brief Sets this widget's parent-relative pixel bounds.
+         * @brief Sets this widget's authored pixel offset and explicit size request.
          * @return False for nonfinite values or negative dimensions,
          *         leaving existing bounds unchanged; otherwise true.
-         * @note A parentless widget uses surface-relative position.
-         *       Does not resize or reposition children.
+         * @note Free widgets resolve this request through anchor and pivot.
+         *       Containers assign a separate rectangle during layout.
+         *       Does not overwrite an existing arrangement immediately.
          */
         bool SetBounds(const Rect& bounds);
 
         /**
-         * @brief Returns this widget's stored parent-relative bounds.
+         * @brief Returns authored pixel offset and size before anchor/pivot resolution.
          */
         [[nodiscard]] const Rect& GetLocalBounds() const noexcept { return m_LocalBounds; }
 
         /**
-         * @brief Resolves bounds into surface coordinates.
-         * @note Adds ancestor positions without scaling or rotation.
-         *       Computes on demand; retains no cache.
-         * @pre Accumulated positions must remain representable as floats.
+         * @brief Assigns a container-controlled parent-relative rectangle.
+         * @return False for nonfinite values or negative dimensions.
+         * @note Preserves authored bounds, anchor, and pivot.
+         *       Arranged bounds bypass anchor/pivot resolution.
+         *       Invalidates paint and interaction without requesting another layout.
+         * @pre Called by the parent during arrangement.
+         */
+        bool SetArrangedBounds(const Rect& bounds);
+
+        /**
+         * @brief Removes the container-assigned rectangle.
+         * @note Restores authored anchor/offset/pivot resolution.
+         * @pre Called during arrangement or hierarchy ownership changes.
+         */
+        void ClearArrangedBounds() noexcept;
+
+        /**
+         * @brief Sets normalized parent anchor and widget pivot coordinates.
+         * @return False for nonfinite input, preserving existing placement.
+         *         Finite values are clamped to [0, 1].
+         * @note Bounds position becomes the pixel offset from the anchor.
+         *       Size remains explicit. Parentless widgets ignore anchor and pivot.
+         *       Container-assigned bounds take precedence without modifying these values.
+         */
+        bool SetAnchorAndPivot(const glm::vec2& anchor, const glm::vec2& pivot);
+        [[nodiscard]] const glm::vec2& GetAnchor() const noexcept { return m_Anchor; }
+        [[nodiscard]] const glm::vec2& GetPivot() const noexcept { return m_Pivot; }
+
+        /**
+         * @brief Resolves container-assigned or authored geometry into surface bounds.
+         * @note Arranged bounds are already parent-relative and bypass anchor/pivot.
+         *       Otherwise resolves the authored offset, anchor, and pivot.
+         *       Computes on demand without scaling or rotation.
+         * @pre Intermediate and final resolved coordinates must remain finite.
          */
         [[nodiscard]] Rect GetSurfaceBounds() const noexcept;
 
@@ -186,6 +219,29 @@ namespace Quiet::UI
         void ClearInvalidation(InvalidationReason reason) noexcept;
 
         /**
+         * @brief Measures descendants before calculating this widget's preferred size.
+         * @param context CPU resources borrowed only during this call.
+         * @note Stores an unconstrained size without assigning geometry or clearing flags.
+         *       Allocation and measurement exceptions propagate.
+         * @pre The hierarchy and authored layout inputs must remain unchanged.
+         */
+        void Measure(const LayoutContext& context = {});
+
+        /**
+         * @brief Returns the preferred size from the last successful measurement.
+         * @pre Measure() must have completed after authored layout inputs changed.
+         */
+        [[nodiscard]] const glm::vec2& GetDesiredSize() const noexcept { return m_DesiredSize; }
+
+        /**
+         * @brief Arranges direct children, then recursively arranges their descendants.
+         * @note Does not change this widget's own bounds or clear invalidation flags.
+         * @pre The hierarchy must remain unchanged during traversal.
+         * @pre Measure() must have completed for this subtree after layout inputs changed.
+         */
+        void ArrangeChildren();
+
+        /**
          * @brief Appends painting commands for this widget and its descendants.
          * @param commands Caller-owned list; existing commands are preserved.
          * @note Paints this widget first, then children in insertion order.
@@ -194,6 +250,22 @@ namespace Quiet::UI
         void Paint(PaintList& commands) const;
 
     protected:
+        /**
+         * @brief Calculates this widget's unconstrained preferred size.
+         * @return Finite, nonnegative dimensions.
+         * @note Descendants have already been measured.
+         *       The base implementation returns the authored explicit size.
+         */
+        virtual glm::vec2 OnMeasure(const LayoutContext& context) const;
+
+        /**
+         * @brief Assigns geometry to direct children.
+         * @note The base implementation uses measured sizes and authored placement.
+         *       Containers override this to assign their own child rectangles.
+         *       Must not change the hierarchy or ancestor geometry.
+         */
+        virtual void OnArrangeChildren();
+
         /**
          * @brief Appends this widget's own visual commands.
          * @note The base implementation draws nothing.
@@ -204,6 +276,11 @@ namespace Quiet::UI
     private:
         Widget* m_Parent = nullptr;
         Rect m_LocalBounds{};
+        std::optional<Rect> m_ArrangedBounds;
+        glm::vec2 m_DesiredSize{0.0f};
+        glm::vec2 m_Anchor{0.0f};
+        glm::vec2 m_Pivot{0.0f};
+
         HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
         bool m_PointerHovered = false;
         bool m_PointerPressed = false;

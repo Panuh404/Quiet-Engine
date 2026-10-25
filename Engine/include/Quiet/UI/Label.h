@@ -9,14 +9,15 @@
 namespace Quiet::UI
 {
     /**
-     * @brief Paints owned UTF-8 content using the default runtime font.
+     * @brief Measures and paints UTF-8 content using the default runtime font.
      * @ingroup quiet_renderer
      *
-     * Text begins at the widget's surface-space top-left.
-     * Positive bounds permit painting but do not wrap, scale, or clip text.
-     * Empty content or a zero dimension emits no text command.
+     * Authored size supplies minimum preferred dimensions.
+     * Text begins at the arranged surface-space top-left.
+     * Measurement does not wrap text; arrangement does not scale or clip it.
+     * Empty content emits no text command.
      *
-     * Owns no font or GPU resources.
+     * Retains no font or GPU resources.
      */
     class Label final : public Widget
     {
@@ -45,6 +46,13 @@ namespace Quiet::UI
         [[nodiscard]] const glm::vec4& GetColor() const noexcept { return m_Color; }
 
     protected:
+        /**
+         * @brief Measures text using the borrowed default font and authored minimum size.
+         * @note Malformed text contributes no intrinsic size.
+         * @throws std::runtime_error When nonempty content has no default font context.
+         */
+        glm::vec2 OnMeasure(const LayoutContext& context) const override;
+
         void OnPaint(PaintList& commands) const override;
 
     private:

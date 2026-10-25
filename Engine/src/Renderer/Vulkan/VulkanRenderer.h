@@ -136,6 +136,12 @@ namespace Quiet::Renderer::Vulkan
         [[nodiscard]] TextureLibrary& GetTextureLibrary() { return *m_TextureLibrary; }
         [[nodiscard]] const TextureLibrary& GetTextureLibrary() const { return *m_TextureLibrary; }
 
+        /**
+         * @brief Borrows the CPU atlas used by default runtime text rendering.
+         * @note The renderer owns the atlas; do not retain beyond its lifetime.
+         */
+        [[nodiscard]] const Assets::FontAtlasData& GetDefaultFontAtlas() const noexcept { return m_DefaultFontAtlas; }
+
         [[nodiscard]] UI::ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
         [[nodiscard]] const UI::ImGuiLayer& GetImGuiLayer() const { return *m_ImGuiLayer; }
 

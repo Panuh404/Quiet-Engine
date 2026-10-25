@@ -2,6 +2,9 @@
 
 #include <cmath>
 #include <utility>
+#include <stdexcept>
+
+#include "Quiet/Renderer/TextLayout.h"
 
 #include <glm/common.hpp>
 
@@ -38,6 +41,28 @@ namespace Quiet::UI
 
         Invalidate(InvalidationReason::Paint);
         return true;
+    }
+
+    glm::vec2 Label::OnMeasure(const LayoutContext& context) const
+    {
+        const glm::vec2& requestedSize = GetLocalBounds().Size;
+        if (m_Content.empty())
+        {
+            return requestedSize;
+        }
+
+        if (!context.DefaultFontAtlas)
+        {
+            throw std::runtime_error("Label measurement requires a default font atlas.");
+        }
+
+        const Renderer::TextLayoutResult layout = Renderer::TextLayout::BuildUTF8(*context.DefaultFontAtlas, m_Content, m_PixelHeight);
+        if (!layout.Succeeded())
+        {
+            return requestedSize;
+        }
+
+        return glm::max(requestedSize, layout.Size);
     }
 
     void Label::OnPaint(PaintList& commands) const

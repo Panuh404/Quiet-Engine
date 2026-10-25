@@ -281,6 +281,7 @@ target_sources(Quiet_Engine
         src/UI/Image.cpp
         src/UI/Label.cpp
         src/UI/Panel.cpp
+        src/UI/VerticalBox.cpp
         src/UI/Widget.cpp
 
         # ImGui
@@ -344,8 +345,10 @@ target_sources(Quiet_Engine
         include/Quiet/UI/Geometry.h
         include/Quiet/UI/Image.h
         include/Quiet/UI/Label.h
+        include/Quiet/UI/LayoutContext.h
         include/Quiet/UI/PaintCommands.h
         include/Quiet/UI/Panel.h
+        include/Quiet/UI/VerticalBox.h
         include/Quiet/UI/Widget.h
 
         include/Quiet/Renderer/RenderConventions.h
