@@ -104,7 +104,7 @@ Common startup performs these operations in order:
 3. Creates Input and requests mouse capture for Sandbox mode.
 4. Creates the physics subsystem, audio subsystem, free camera, and main Scene.
 5. Creates the Vulkan renderer.
-6. Creates the retained demonstration Panel and Label.
+6. Creates the retained demonstration panels, labels, buttons, and containers.
 7. Creates ProjectAssetLoader using the existing libraries and renderer resources.
 8. Creates ProjectWorkflow using the existing project state, loader, and Scene.
 9. Initializes the project registry for Editor mode, or the last-opened
@@ -410,31 +410,44 @@ commands and submits without the Editor grid or selection feedback.
 Application stores Quiet::UI::Widget m_RuntimeUIRoot and
 Quiet::UI::PaintList m_RuntimeUIPaintList directly.
 
-InitializeCommonStartup() creates a demonstration Panel and Button, each
-with a child Label, after constructing VulkanRenderer. Their explicit
-bounds, text, and Button callback are defined in that function.
+InitializeCommonStartup() creates the retained demonstration after
+constructing VulkanRenderer: a Panel/Label, a bottom-right anchored
+VerticalBox containing a heading and HorizontalBox of Buttons, and a
+clipping Panel with an overflowing Button. Their authored inputs and
+callbacks are defined in that function. See [Renderer](Renderer.md) for
+the complete example and layout contracts.
 
 The hierarchy belongs to Application, independently of the editable Scene
 and disposable Editor runtime Scene. Starting or stopping Play does not
 clone, replace, or reset it. It currently has no Scene persistence,
 Inspector authoring, or Lua integration.
 
-BuildRuntimeUIPaintList() runs before rendering ready Editor and Sandbox
-frames. It performs these operations:
+UpdateRuntimeUILayout() synchronizes geometry with the actual Scene target:
 
 1. Reads the actual Scene target extent from VulkanRenderer.
 2. Updates the root bounds to that extent at position (0, 0).
-3. Clears the command list and returns for a zero extent.
-4. Reuses the existing list when the root's Paint flag is clear.
-5. Otherwise clears the list, traverses the hierarchy through Paint(),
-   and clears Paint invalidation across the root subtree.
+3. Returns if the root's Layout flag is clear.
+4. Borrows VulkanRenderer::GetDefaultFontAtlas() through UI::LayoutContext.
+5. Calls Measure() bottom-up, then ArrangeChildren() top-down.
+6. Clears Layout invalidation only after both traversals complete.
+
+The context and font pointer are not retained by widgets. The renderer owns
+the CPU atlas and uses it for default text rendering too. Layout errors and
+allocation exceptions propagate; this function does not clear Layout on a
+failed traversal or roll back already processed children.
+
+BuildRuntimeUIPaintList() calls UpdateRuntimeUILayout() before inspecting
+paint state, including for a zero target extent. It then clears the command
+list and returns for a zero extent, reuses the list when Paint is clear,
+or rebuilds through Paint() and clears Paint across the root subtree.
 
 An unchanged root extent does not invalidate the hierarchy. Bounds changes
 invalidate layout, which also marks paint and interaction dirty.
 
-Only Paint invalidation is acknowledged here. Layout and Interaction flags
-are not cleared by the current pointer path. Hit testing is computed each
-frame without an interaction cache; automatic layout remains unimplemented.
+Layout and Paint invalidation are acknowledged separately. Interaction
+remains uncleared by the current pointer path: hit testing is computed each
+frame without an interaction cache. Arranged geometry and clipping are
+shared by painting and hit testing, so input follows the current layout.
 
 RunEditorFrame() and RunSandboxFrame() pass a span over the cached list
 to DrawFrame(). The renderer borrows it during that call and retains no
@@ -445,8 +458,8 @@ IDs; the renderer resolves those IDs and manages submission texture
 lifetimes separately. The Application tree can therefore remain alive
 after ShutdownCommon() explicitly releases the renderer.
 
-See [Renderer](Renderer.md) for hierarchy contracts, invalidation,
-ordered painting, image descriptors, and current limitations.
+See [Renderer](Renderer.md) for hierarchy contracts, measurement, arrangement,
+alignment, clipping, ordered painting, image descriptors, and limitations.
 
 ### Pointer presentation and mapping
 
@@ -459,8 +472,9 @@ Implementation anchors are:
 - `Engine/src/Renderer/UI/Panels/ImGuiViewportPanels.cpp`:
   ImGuiLayer::BuildViewport() and BuildRuntimeUI().
 - `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::MapPointToSurface().
-- `Engine/src/Core/Application.cpp`: HitTestRuntimeUI(),
-  UpdateRuntimeUIPointer(), and BuildEditorViewportOverlayCallback().
+- `Engine/src/Core/Application.cpp`: UpdateRuntimeUILayout(),
+  HitTestRuntimeUI(), UpdateRuntimeUIPointer(), and
+  BuildEditorViewportOverlayCallback().
 - `Engine/include/Quiet/Input/Input.h` and `Engine/src/Input/Input.cpp`:
   Quiet::Input::Input::ConsumeMouseButton() and mouse query implementations.
 
@@ -488,9 +502,15 @@ displayed image size while resizing, so Application supplies the actual
 Scene target extent rather than the requested viewport dimensions.
 
 HitTestRuntimeUI() additionally requires mouse capture to be disabled, a
-valid pointer snapshot, and image hover. It rejects points outside the
-half-open surface rectangle and calls Widget::HitTest(). This surface check
-is distinct from widget parenting, which does not clip children.
+valid pointer snapshot, and image hover. After those guards, it calls
+UpdateRuntimeUILayout() before mapping and querying the pointer. It rejects
+points outside the half-open surface rectangle and calls Widget::HitTest().
+The surface check is separate from the optional ancestor clips resolved by
+Widget::GetSurfaceClip(). The earlier Editor selection guard also uses this
+hit-test path. BuildRuntimeUIPaintList() performs another layout check later,
+so layout changes made by activation callbacks or Scene updates can be
+processed before painting; those later changes are not retroactively routed
+through an earlier pointer sample.
 
 UpdateRuntimeUIPointer() applies hover and primary-button press state before
 painting. It invokes an activation target only after the entire press

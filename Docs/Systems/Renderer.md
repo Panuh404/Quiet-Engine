@@ -232,8 +232,9 @@ throws. Destruction requires outstanding GPU use to have finished.
 
 TextRenderSystem records one six-vertex draw per visible glyph using
 vertex-stage push constants. It binds the text pipeline and font
-descriptor, sets a positive-height viewport, and clips to the full target
-through a scissor rectangle. It retains no references between calls.
+descriptor, sets a positive-height viewport, and uses TextRenderContext::Scissor
+when supplied, otherwise the full target. The caller must provide a valid
+target-contained scissor. It retains no references between calls.
 
 VulkanRenderer reads TextComponent values from the Scene supplied to
 DrawFrame(). It processes Actors in Scene::GetActors() order, using the
@@ -295,12 +296,15 @@ They do not replace the Editor's Dear ImGui tooling.
 | --- | --- |
 | Pixel-space geometry | `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::Rect |
 | Hierarchy, bounds, invalidation, and traversal | `Engine/include/Quiet/UI/Widget.h` and `Engine/src/UI/Widget.cpp`: Quiet::UI::Widget |
+| Borrowed measurement resources | `Engine/include/Quiet/UI/LayoutContext.h`: Quiet::UI::LayoutContext |
+| Vertical container | `Engine/include/Quiet/UI/VerticalBox.h` and `Engine/src/UI/VerticalBox.cpp`: Quiet::UI::VerticalBox |
+| Horizontal container | `Engine/include/Quiet/UI/HorizontalBox.h` and `Engine/src/UI/HorizontalBox.cpp`: Quiet::UI::HorizontalBox |
 | Solid background widget | `Engine/include/Quiet/UI/Panel.h` and `Engine/src/UI/Panel.cpp`: Quiet::UI::Panel |
 | Text widget | `Engine/include/Quiet/UI/Label.h` and `Engine/src/UI/Label.cpp`: Quiet::UI::Label |
 | Image widget | `Engine/include/Quiet/UI/Image.h` and `Engine/src/UI/Image.cpp`: Quiet::UI::Image |
 | Button state painting and behavior | `Engine/include/Quiet/UI/Button.h` and `Engine/src/UI/Button.cpp`: Quiet::UI::Button |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
-| Tree ownership and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup() and BuildRuntimeUIPaintList() |
+| Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |
 | GPU command translation | `Engine/src/Renderer/Vulkan/VulkanRenderer.cpp`: DrawFrame() and RecordFrameCommandBuffer() |
 | Rectangle graphics state | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h`: PanelPipeline |
 | Image graphics state | `Engine/src/Renderer/Vulkan/Image/ImagePipeline.h`: ImagePipeline |
@@ -315,31 +319,125 @@ parent pointer. Widgets cannot be copied or moved. AddChild() transfers
 ownership, rejects null children and cycles, and returns the attached
 widget. DetachChild() transfers ownership of a direct child back to the
 caller, clears its parent pointer, and returns null when it is not found.
+Attachment and detachment clear the transferred root's previous arrangement
+and invalidate layout. Authored geometry and descendant ownership survive.
 
 GetChild() uses bounds-checked access. References identify separately
 allocated widget objects, so growing the child vector does not move those
 objects. References remain usable only while the widget remains alive.
 
 Rect uses pixels with positive X rightward and positive Y downward.
-Widget bounds contain a parent-relative position and explicit nonnegative
-size. Zero size means empty, not automatic sizing.
+Rect itself is geometry data: a zero dimension is empty. Widget
+separately stores authored bounds, measured desired size, and an optional
+parent-assigned arrangement. SetBounds() supplies an authored pixel offset
+and nonnegative size request. It rejects nonfinite values and negative
+dimensions without changing the previous request. GetLocalBounds() returns
+that authored request, even after a container arranges the widget.
 
-SetBounds() rejects nonfinite values and negative dimensions without
-changing the previous bounds. GetSurfaceBounds() sums ancestor positions
-and preserves the widget's own size. Accumulated positions and rectangle
-maximum coordinates must remain representable as finite floats.
+SetAnchorAndPivot() rejects nonfinite inputs and clamps finite coordinates
+to [0, 1]. With no parent-assigned arrangement, surface placement resolves as:
+
+```text
+position = parent.position + authored.offset
+           + anchor * parent.size - pivot * widget.size
+```
+
+A parentless widget ignores anchor and pivot. SetArrangedBounds() assigns a
+validated parent-relative rectangle without overwriting authored bounds,
+anchor, or pivot. An arrangement takes precedence and bypasses anchor/pivot
+resolution. GetSurfaceBounds() adds the parent's surface position to this
+rectangle. ClearArrangedBounds() restores authored placement until another
+arrangement is assigned. Changing authored inputs does not immediately
+remove an existing arrangement; callers must process pending layout before
+using geometry. Resolved positions and maximum coordinates must remain finite.
 
 Paint() calls the widget's OnPaint() first, then visits children in
 insertion order. The hierarchy and paint-affecting state must remain
-unchanged during traversal. An empty parent's own bounds do not prevent
-its children from painting. Parent bounds do not clip children.
+unchanged during traversal. Without an enabled clip, empty parent bounds do
+not prevent descendants from painting. Clipping is an explicit setting,
+described below.
+
+### Measurement, arrangement, and alignment
+
+Widget::Measure() recursively measures children before calling OnMeasure()
+and storing GetDesiredSize(). Results must be finite and nonnegative;
+invalid results throw std::runtime_error. Measurement exceptions propagate
+and the traversal does not roll back earlier child results. Measure() does
+not assign geometry or acknowledge invalidation. The base OnMeasure()
+returns authored size and does not infer a size from child extents.
+
+ArrangeChildren() calls OnArrangeChildren() before descending into children.
+Measure() must have completed after the latest layout-input change. The base
+arranger gives children their measured sizes and resolves authored offsets,
+anchors, and pivots against the allocated parent size. Containers override
+that placement policy; authored child geometry remains available for reuse.
+
+LayoutContext borrows CPU resources only during measurement. Application
+supplies VulkanRenderer::GetDefaultFontAtlas(), the same renderer-owned CPU
+atlas used by default text rendering. Widgets retain neither this pointer
+nor GPU font resources. Label::OnMeasure() calls TextLayout::BuildUTF8() at
+the Label's pixel height and takes the component-wise maximum of logical
+text size and authored size. Empty content uses authored size. Nonempty
+content without a font pointer throws; unsuccessful text layout falls back
+to authored size. The existing text layout generates temporary glyph quads
+as well as metrics; this is reused for consistency, not a separate metrics
+cache. No wrapping or per-line text alignment is performed.
+
+VerticalBox, HorizontalBox, and Button use authored size as minimum preferred
+dimensions. Their zero authored dimensions permit content-driven sizing;
+they are not a universal auto-size flag for every Widget subclass.
+
+| Container | Desired size from content | Arrangement |
+| --- | --- | --- |
+| VerticalBox | Maximum child width, sum of child heights, inter-child spacing, and padding | Top to bottom; retain desired heights; horizontal alignment within available width |
+| HorizontalBox | Sum of child widths, maximum child height, inter-child spacing, and padding | Left to right; retain desired widths; vertical alignment within available height |
+| Button | Component-wise maximum child size plus padding | Children share the padded content area, using both alignment axes |
+
+Padding uses left, top, right, bottom in XYZW. Padding and spacing setters
+reject nonfinite or negative values. Spacing occurs only between children.
+Button padding defaults to 16 pixels on every side; box padding and spacing
+default to zero. Padding subtraction clamps available dimensions to zero.
+
+Widget::SetAlignment() stores horizontal and vertical Alignment values,
+defaulting to Stretch. Start keeps desired size at the allocation's minimum;
+Center offsets by half the remaining space; End offsets by all remaining
+space; Stretch uses the available dimension. Boxes apply only the secondary
+axis shown in the table. Base Widget placement still uses anchors and pivots.
+Button applies alignment independently on both axes. Alignment does not
+change measurement, authored geometry, or allocate proportional space.
+Oversized non-stretched content keeps its desired size; Center or End may
+therefore produce negative local offsets. Clipping controls its visibility.
+
+Application processes layout before valid pointer hit tests and before
+painting. A dirty root triggers measurement and arrangement of the complete
+tree; there is no per-widget measurement cache that skips clean descendants.
+See [Application](Application.md) for the exact frame integration.
+
+### Widget clipping
+
+SetClipToBounds() defaults to false. When enabled, this widget and its
+descendants are restricted to its surface rectangle. GetSurfaceClip()
+intersects enabled clips on this widget and its ancestor chain. No value
+means no widget clip; a zero-area intersection means no visible region.
+This is evaluated from current geometry without storing an ancestor pointer
+or a clip cache. It changes neither measurement nor arrangement.
+
+Paint() suppresses an empty clipped branch. Otherwise it stamps the
+effective Clip value onto commands appended by this widget's OnPaint(),
+then visits children. OnPaint() must leave Clip unset and only append its
+own operations. HitTest() uses the same resolved intersection before
+searching children, including when queried directly on a subtree. Minimum
+edges are included and maximum edges excluded. Hidden overflow cannot
+acquire hover or receive release-inside activation; an existing press
+continues under the normal ownership and cancellation rules.
 
 ### Widgets and invalidation
 
 Panel emits a SolidRectCommand for positive bounds. Label emits a
 TextCommand when its content is nonempty and both bounds dimensions are
-positive. Its text starts at the surface-space top-left; bounds do not
-wrap, scale, align, or clip the text.
+positive. Its text starts at the arranged surface-space top-left. Aligning
+a Label moves its logical rectangle, not individual text lines. Bounds do
+not wrap or scale text; enabled widget clips restrict its visible output.
 
 Image emits an ImageCommand when its texture ID is nonempty and both
 dimensions are positive. It stretches the complete texture over its
@@ -360,22 +458,26 @@ flags set. Invalidate() marks the widget and its ancestors:
 | Interaction | Interaction |
 
 Bounds changes, attachment, detachment, Label content changes, and Label
-height changes invalidate layout. Color, tint, and image-ID changes
-invalidate paint. Setters avoid invalidation when the effective value
-is unchanged.
+height changes invalidate layout. Anchors, pivots, alignment, padding, and
+spacing changes also invalidate layout. Color, tint, and image-ID changes
+invalidate paint. Arrangement changes and clip toggles invalidate Paint and
+Interaction without requesting another layout. Setters avoid invalidation
+when the effective value is unchanged.
 
 ClearInvalidation() clears only the requested flag on the widget and its
-descendants; it does not clear ancestor flags. Application currently
-acknowledges only Paint invalidation. Layout and Interaction flags are not
-acknowledged by pointer routing: hit tests and state updates are recomputed
-each frame. Automatic layout and an interaction cache remain future work.
+descendants; it does not clear ancestor flags. Application acknowledges
+Layout after complete measurement and arrangement, and Paint after command
+generation. Interaction remains unacknowledged by the current pointer path:
+hit tests and state updates are recomputed each frame without an interaction
+cache.
 
 ### Hit testing and pointer state
 
 Widget::HitTest() receives surface-space pixels and searches children in
 reverse insertion order before considering the widget itself. This reverses
-painting order so the topmost participating widget wins. Parent bounds do
-not clip descendants; zero parent size does not prevent child hits.
+painting order so the topmost participating widget wins. Parent bounds
+restrict descendants only when clipping is enabled. A zero-area enabled
+clip excludes the branch; otherwise zero parent size does not prevent hits.
 
 HitTestMode controls participation without changing painting:
 
@@ -446,7 +548,10 @@ SolidRectCommand owns surface-space Min/Max coordinates and straight-alpha
 linear RGBA Color. TextCommand owns UTF-8 Content, surface-space Origin,
 positive PixelHeight, and Color. It uses the renderer's default runtime
 font. ImageCommand owns Min/Max, a texture-library TextureID, and Tint.
-Project textures use their existing asset IDs.
+Project textures use their existing asset IDs. Each operation also owns an
+optional surface-space Rect Clip. No clip permits the full target; an empty
+clip suppresses drawing. Clip geometry and its maximum coordinates must be
+finite, with nonnegative size.
 
 Coordinates must be finite; rectangles require Max greater than Min on
 both axes. Color and tint channels must be finite and within [0, 1].
@@ -471,7 +576,19 @@ Each operation binds its required pipeline and descriptors.
 
 The ordered pass runs after Scene and selection rendering. It synchronizes
 preceding color writes and uses one color-only LOAD/STORE rendering scope,
-a positive-height viewport, and a full-target scissor.
+a positive-height viewport, and a per-command scissor. Each command's clip
+is intersected with the target extent before conversion to VkRect2D. Empty
+intersections skip drawing; unclipped commands restore the full-target
+scissor. Minimum edges round down and maximum edges round up to integer
+pixels. Raster clipping can therefore include a boundary pixel outside the
+exact floating-point rectangle used for hit testing.
+
+Text commands pass this scissor through TextRenderContext::Scissor, so
+TextRenderSystem does not replace it with the full target. Actor-authored
+text omits that optional value and retains its full-target scissor. Image
+clipping preserves the original geometry and UVs: it crops the image rather
+than stretching the visible remainder. No pipeline or descriptor lifetime
+changes are required by clipping.
 
 Rectangle and image commands each draw six generated vertices. Text
 commands pass layout geometry to TextRenderSystem. Missing image texture
@@ -540,22 +657,43 @@ extent changes use dynamic viewport/scissor without rebuilding pipelines.
 
 ### Current demonstration and limitations
 
-Application creates a Panel at (24, 24), sized 320 by 120 pixels, and a
-child Label at local position (16, 24), sized 288 by 72 pixels. The label
-contains "Retained UI label", so its surface position is (40, 48).
+InitializeCommonStartup() in `Engine/src/Core/Application.cpp` creates a
+Panel at (24, 24), sized 320 by 120 pixels, and a child Label with authored
+offset (16, 24) and minimum size 288 by 72. Its text is "Retained UI label";
+its surface origin is (40, 48).
 
-A Button at (24, 168), sized 320 by 64 pixels, owns a Label at local
-position (16, 16), sized 288 by 32 pixels. Its current text is "Hover me".
-Release-inside activation logs "Retained UI button activated.".
+A VerticalBox has authored offset (-24, -24), minimum width 320, and anchor
+and pivot (1, 1). Its bottom-right corner therefore remains 24 pixels from
+the surface edges. It uses 12-pixel padding and spacing. A centered heading,
+"Retained actions" at pixel height 24, sits above a HorizontalBox with a
+12-pixel gap. Its Buttons contain "First action" and
+"Second action\nMeasured text". Label measurements and Button padding drive
+their sizes. The first Button centers vertically beside the taller second
+Button. Each child Label uses centered rectangle alignment.
+
+The first release-inside callback logs "First retained action activated.";
+the second logs "Second retained action activated.". Label changes invalidate
+layout upward, so the row, outer column, and anchored position can be
+recomputed without hardcoded button heights.
+
+A separate clipping Panel at (24, 180), sized 180 by 80, owns a Button at
+local offset (120, 20) with minimum size 160 by 64 and text "Clipped action".
+Only the part within the Panel is visible and interactive. Its callback
+logs "Clipped retained action activated.". This deliberate overflow is a
+clipping demonstration, not truncated content caused by a font failure.
 
 This Application-owned tree appears in ready Editor frames and Sandbox.
 It survives Editor Play and Stop because it is not owned by either Scene.
 The temporary image preview has been removed; Image remains available as
 a C++ widget.
 
-There is no automatic layout, per-widget clipping, keyboard/gamepad focus,
-style resolution, widget serialization, or UI designer.
-The full-target scissor clips drawing at the Scene viewport edges.
+Measurement is unconstrained. Minimum/maximum size policies, proportional
+space allocation, wrapping, scrolling, and automatic shrinking are not
+implemented. A small viewport can overflow the anchored group; clipping
+does not reflow it. Image has no intrinsic texture-size measurement.
+Keyboard/gamepad focus, style resolution, widget serialization, and a UI
+designer remain future work. The complete Text and runtime UI roadmap area
+is not finished by these layout foundations.
 
 ## Swapchain and Scene viewport
 

@@ -129,15 +129,28 @@ The demonstration appears in Edit, Play, and Simulate. Its hierarchy belongs
 to Application and survives Play and Stop. Editing an Actor's Text or UI
 Rectangle does not change these widgets.
 
-Placement uses fixed pixels. Resizing preserves their offsets, while the
-Scene target edges clip drawing outside the viewport. Parent bounds do not
-clip child content. Actor-authored text renders after retained widgets.
+The upper panel preserves its fixed pixel offset. A separate action group
+anchors its bottom-right corner 24 pixels from the Scene target edges. It
+contains a centered "Retained actions" heading above two side-by-side
+buttons. The first reads "First action"; the second reads "Second action"
+and "Measured text" on separate lines. Text measurement and padding determine
+button sizes. The shorter first button centers vertically beside the second.
 
-A Button measuring 320 by 64 pixels appears at (24, 168), with the current
-label "Hover me". It becomes brighter while hovered and darker while
-pressed inside. Release over the same button logs
-"Retained UI button activated." once. The text is demonstration content;
-the button supports activation despite its current label.
+Both buttons become brighter while hovered and darker while pressed inside.
+Release over the same button logs "First retained action activated." or
+"Second retained action activated." once, according to the selected button.
+The empty space above or below the shorter button is not part of its hit area.
+
+A clipping panel at (24, 180), sized 180 by 80 pixels, deliberately contains
+an overflowing button. Only a narrow part of its "Clipped action" label is
+visible. Its background and text stop at the panel boundary. Clicking its
+visible portion logs "Clipped retained action activated."; its hidden
+continuation must not activate. This truncation is intentional.
+
+Resizing updates layout before painting and hit testing. The action group
+preserves its bottom-right offset; it does not shrink or wrap to fit a small
+viewport. Parent bounds restrict child content only when clipping is enabled.
+Actor-authored text renders after retained widgets.
 
 To exercise pointer ownership, start with mouse capture disabled. In Play,
 release capture using Shift+F1. Press inside, drag outside, and return:
@@ -155,9 +168,21 @@ left-button presses, expect an activation message for a UI click and a
 gameplay message for an outside click. Repeat after resizing or detaching
 the Viewport; visible and interactive bounds should remain aligned.
 
-There are no widget Inspector controls, automatic layout, or keyboard/gamepad
-focus yet. The temporary logo preview is removed; the Image widget and its
-renderer remain available through C++.
+To check layout and clipping:
+
+1. Resize the Viewport and confirm the group remains anchored at bottom-right.
+2. Confirm the heading is centered and the first button remains shorter.
+3. Click each button and verify its matching activation message.
+4. Click the visible portion of the clipping button, then the area where its
+   hidden continuation would lie; only the visible portion should activate.
+5. Press the visible portion, drag outside the clip, and release; no activation
+   should occur. Returning inside before release permits normal activation.
+
+Rows, columns, alignment, and clipping are configured in C++ through
+Application::InitializeCommonStartup() in `Engine/src/Core/Application.cpp`.
+There are no widget Inspector controls, keyboard/gamepad focus, scrolling,
+or text wrapping yet. The temporary logo preview is removed; the Image
+widget and its renderer remain available through C++.
 
 See [Application](../Systems/Application.md) for ownership and paint-list
 caching, and [Renderer](../Systems/Renderer.md) for widget and GPU contracts.
