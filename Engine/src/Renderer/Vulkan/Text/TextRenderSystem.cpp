@@ -39,8 +39,15 @@ namespace Quiet::Renderer::Vulkan
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(context.CommandBuffer, 0, 1, &viewport);
 
-        VkRect2D scissor{};
-        scissor.extent = context.Extent;
+        VkRect2D fullScissor{};
+        fullScissor.extent = context.Extent;
+
+        const VkRect2D scissor = context.Scissor.value_or(fullScissor);
+        if (scissor.extent.width == 0 || scissor.extent.height == 0)
+        {
+            return;
+        }
+
         vkCmdSetScissor(context.CommandBuffer, 0, 1, &scissor);
 
         TextPushConstants push{};

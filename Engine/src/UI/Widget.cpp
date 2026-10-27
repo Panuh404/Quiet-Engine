@@ -103,6 +103,14 @@ namespace Quiet::UI
         return true;
     }
 
+    void Widget::SetAlignment(Alignment horizontal, Alignment vertical) noexcept
+    {
+        if (m_HorizontalAlignment == horizontal && m_VerticalAlignment == vertical) return;
+        m_HorizontalAlignment = horizontal;
+        m_VerticalAlignment = vertical;
+        Invalidate(InvalidationReason::Layout);
+    }
+
     Rect Widget::GetSurfaceBounds() const noexcept
     {
         Rect bounds = m_ArrangedBounds.value_or(m_LocalBounds);
@@ -119,6 +127,49 @@ namespace Quiet::UI
         return bounds;
     }
 
+    void Widget::SetClipToBounds(const bool enabled) noexcept
+    {
+        if (m_ClipToBounds == enabled) return;
+        m_ClipToBounds = enabled;
+
+        Invalidate(InvalidationReason::Paint);
+        Invalidate(InvalidationReason::Interaction);
+    }
+
+    std::optional<Rect> Widget::GetSurfaceClip() const noexcept
+    {
+        std::optional<Rect> clip;
+
+        for (const Widget* widget = this; widget != nullptr; widget = widget->m_Parent)
+        {
+            if (!widget->m_ClipToBounds) continue;
+            const Rect bounds = widget->GetSurfaceBounds();
+
+            if (!clip)
+            {
+                clip = bounds;
+            }
+            else
+            {
+                const glm::vec2 minimum = glm::max(clip->Position, bounds.Position);
+                const glm::vec2 maximum = glm::min(clip->Position + clip->Size, bounds.Position + bounds.Size);
+
+                clip = Rect
+                {
+                    minimum,
+                    glm::max(maximum - minimum, glm::vec2(0.0f))
+                };
+            }
+
+            if (clip->Size.x <= 0.0f || clip->Size.y <= 0.0f)
+            {
+                break;
+            }
+        }
+
+        return clip;
+    }
+
     void Widget::SetHitTestMode(const HitTestMode mode) noexcept
     {
         if (m_HitTestMode == mode) return;
@@ -129,11 +180,24 @@ namespace Quiet::UI
 
     Widget* Widget::HitTest(const glm::vec2& surfacePosition) noexcept
     {
-        if (!std::isfinite(surfacePosition.x) ||
-            !std::isfinite(surfacePosition.y) ||
-            m_HitTestMode == HitTestMode::None)
+        if (!std::isfinite(surfacePosition.x) || !std::isfinite(surfacePosition.y) || m_HitTestMode == HitTestMode::None)
         {
             return nullptr;
+        }
+
+        if (const auto clip = GetSurfaceClip())
+        {
+            const glm::vec2 maximum = clip->Position + clip->Size;
+
+            if (clip->Size.x <= 0.0f ||
+                clip->Size.y <= 0.0f ||
+                surfacePosition.x < clip->Position.x ||
+                surfacePosition.y < clip->Position.y ||
+                surfacePosition.x >= maximum.x ||
+                surfacePosition.y >= maximum.y)
+            {
+                return nullptr;
+            }
         }
 
         for (auto & child : std::views::reverse(m_Children))
@@ -347,15 +411,29 @@ namespace Quiet::UI
         }
     }
 
-    void Widget::Paint(PaintList &commands) const
+    void Widget::Paint(PaintList& commands) const
     {
+        const std::optional<Rect> clip = GetSurfaceClip();
+
+        if (clip && (clip->Size.x <= 0.0f || clip->Size.y <= 0.0f)) return;
+
+        const std::size_t firstCommand = commands.size();
         OnPaint(commands);
+
+        for (std::size_t index = firstCommand; index < commands.size(); ++index)
+        {
+            std::visit([&clip](auto& command)
+            {
+                command.Clip = clip;
+            },
+            commands[index]);
+        }
+
         for (const auto& child : m_Children)
         {
             child->Paint(commands);
         }
     }
-
     glm::vec2 Widget::OnMeasure(const LayoutContext&) const
     {
         return m_LocalBounds.Size;

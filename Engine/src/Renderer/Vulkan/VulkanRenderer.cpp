@@ -5,6 +5,7 @@
 #include "Quiet/Platform/Window.h"
 #include "Quiet/Assets/TexturePixelData.h"
 
+#include <cstdint>
 #include <cmath>
 #include <filesystem>
 #include <stdexcept>
@@ -1078,6 +1079,39 @@ namespace Quiet::Renderer::Vulkan
 
                     for (const Quiet::UI::PaintCommand& command : paintCommands)
                     {
+                        const auto& clip = std::visit([](const auto& operation) ->
+                            const std::optional<Quiet::UI::Rect>& { return operation.Clip; }, command);
+
+                        VkRect2D commandScissor{};
+                        commandScissor.extent = paintExtent;
+
+                        if (clip)
+                        {
+                            const double targetWidth = paintExtent.width;
+                            const double targetHeight = paintExtent.height;
+
+                            const double minimumX = std::clamp(static_cast<double>(clip->Position.x), 0.0, targetWidth);
+                            const double minimumY = std::clamp(static_cast<double>(clip->Position.y), 0.0, targetHeight);
+                            const double maximumX = std::clamp(static_cast<double>(clip->Position.x) + static_cast<double>(clip->Size.x), 0.0, targetWidth);
+                            const double maximumY = std::clamp( static_cast<double>(clip->Position.y) + static_cast<double>(clip->Size.y), 0.0, targetHeight);
+
+                            if (maximumX <= minimumX || maximumY <= minimumY) continue;
+
+                            const auto left = static_cast<std::int32_t>(std::floor(minimumX));
+                            const auto top = static_cast<std::int32_t>(std::floor(minimumY));
+                            const auto right = static_cast<std::int32_t>(std::ceil(maximumX));
+                            const auto bottom = static_cast<std::int32_t>(std::ceil(maximumY));
+
+                            commandScissor.offset = {left, top};
+                            commandScissor.extent =
+                            {
+                                static_cast<std::uint32_t>(right - left),
+                                static_cast<std::uint32_t>(bottom - top)
+                            };
+                        }
+
+                        vkCmdSetScissor(commandBuffer, 0, 1, &commandScissor);
+
                         if (const auto* rectangle = std::get_if<Quiet::UI::SolidRectCommand>(&command))
                         {
                             if (!m_PanelPipeline) continue;
@@ -1117,6 +1151,7 @@ namespace Quiet::Renderer::Vulkan
                             context.Quads = std::span(layout.Quads);
                             context.Offset = text->Origin;
                             context.Color = text->Color;
+                            context.Scissor = commandScissor;
 
                             m_TextRenderSystem->Record(context);
                         }

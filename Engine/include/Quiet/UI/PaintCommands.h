@@ -3,9 +3,12 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <optional>
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
+
+#include "Quiet/UI/Geometry.h"
 
 namespace Quiet::UI
 {
@@ -28,6 +31,13 @@ namespace Quiet::UI
         glm::vec2 Min{0.0f};
         glm::vec2 Max{0.0f};
         glm::vec4 Color{1.0f};
+
+        /**
+         * @brief Optional surface-space clip rectangle.
+         * @note An absent clip permits the complete target surface.
+         *       An empty clip suppresses drawing.
+         */
+        std::optional<Rect> Clip;
     };
 
     /**
@@ -54,6 +64,13 @@ namespace Quiet::UI
         glm::vec2 Origin{0.0f};
         float PixelHeight = 32.0f;
         glm::vec4 Color{1.0f};
+
+        /**
+         * @brief Optional surface-space clip rectangle.
+         * @note An absent clip permits the complete target surface.
+         *       An empty clip suppresses drawing.
+         */
+        std::optional<Rect> Clip;
     };
 
     /**
@@ -78,6 +95,13 @@ namespace Quiet::UI
         glm::vec2 Max{0.0f};
         std::string TextureID;
         glm::vec4 Tint{1.0f};
+
+        /**
+         * @brief Optional surface-space clip rectangle.
+         * @note An absent clip permits the complete target surface.
+         *       An empty clip suppresses drawing.
+         */
+        std::optional<Rect> Clip;
     };
 
     /**

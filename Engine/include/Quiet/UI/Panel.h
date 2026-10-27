@@ -10,8 +10,9 @@ namespace Quiet::UI
      * @brief Paints a solid background over its explicit widget bounds.
      * @ingroup quiet_renderer
      *
-     * Children paint afterward and can extend beyond these bounds.
-     * This widget performs no clipping or automatic child layout.
+     * Children paint afterward using the base Widget placement rules.
+     * Descendants can overflow unless clipping is enabled on this widget
+     * or an ancestor.
      */
     class Panel final : public Widget
     {

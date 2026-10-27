@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 
 #include <glm/vec2.hpp>
@@ -22,6 +23,12 @@ namespace Quiet::Renderer::Vulkan
 
         glm::vec2 Offset{0.0f};
         glm::vec4 Color{1.0f};
+
+        /**
+         * @brief Optional caller-resolved target scissor.
+         * @note Must lie within Extent and satisfy Vulkan scissor limits.
+         */
+        std::optional<VkRect2D> Scissor;
     };
 
     /**
@@ -36,7 +43,8 @@ namespace Quiet::Renderer::Vulkan
          * @param context Inputs borrowed only during this call.
          * @pre CommandBuffer is recording inside a color-only rendering scope
          *      compatible with the supplied pipeline.
-         * @note Sets a positive-height viewport and full-target scissor.
+         * @note Sets a positive-height viewport and the supplied scissor,
+         *       defaulting to the complete target.
          * @note Does not restore previously bound graphics state.
          * @note Missing pipeline, empty geometry, or zero extent skips drawing.
          */

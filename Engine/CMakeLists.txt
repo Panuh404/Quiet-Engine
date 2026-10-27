@@ -278,6 +278,7 @@ target_sources(Quiet_Engine
 
         # Runtime UI
         src/UI/Button.cpp
+        src/UI/HorizontalBox.cpp
         src/UI/Image.cpp
         src/UI/Label.cpp
         src/UI/Panel.cpp
@@ -343,6 +344,7 @@ target_sources(Quiet_Engine
 
         include/Quiet/UI/Button.h
         include/Quiet/UI/Geometry.h
+        include/Quiet/UI/HorizontalBox.h
         include/Quiet/UI/Image.h
         include/Quiet/UI/Label.h
         include/Quiet/UI/LayoutContext.h

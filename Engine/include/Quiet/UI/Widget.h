@@ -12,6 +12,18 @@
 namespace Quiet::UI
 {
     /**
+     * @brief Positions a child within space allocated by a container.
+     * @ingroup quiet_renderer
+     */
+    enum class Alignment
+    {
+        Start,
+        Center,
+        End,
+        Stretch
+    };
+
+    /**
      * @brief Controls participation in pointer hit testing.
      * @ingroup quiet_renderer
      */
@@ -121,6 +133,17 @@ namespace Quiet::UI
         [[nodiscard]] const glm::vec2& GetPivot() const noexcept { return m_Pivot; }
 
         /**
+         * @brief Sets alignment within container-allocated space.
+         * @note VerticalBox uses horizontal alignment, HorizontalBox uses
+         *       vertical alignment, and Button uses both.
+         *       Base Widget placement continues to use anchor and pivot.
+         *       Does not change the measured desired size.
+         */
+        void SetAlignment(Alignment horizontal, Alignment vertical) noexcept;
+        [[nodiscard]] Alignment GetHorizontalAlignment() const noexcept { return m_HorizontalAlignment; }
+        [[nodiscard]] Alignment GetVerticalAlignment() const noexcept { return m_VerticalAlignment; }
+
+        /**
          * @brief Resolves container-assigned or authored geometry into surface bounds.
          * @note Arranged bounds are already parent-relative and bypass anchor/pivot.
          *       Otherwise resolves the authored offset, anchor, and pivot.
@@ -128,6 +151,22 @@ namespace Quiet::UI
          * @pre Intermediate and final resolved coordinates must remain finite.
          */
         [[nodiscard]] Rect GetSurfaceBounds() const noexcept;
+
+        /**
+         * @brief Clips this widget and its descendants to this widget's bounds.
+         * @note Does not change measurement or arrangement.
+         *       Ancestor clips still apply when this setting is disabled.
+         */
+        void SetClipToBounds(bool enabled) noexcept;
+        [[nodiscard]] bool GetClipToBounds() const noexcept { return m_ClipToBounds; }
+
+        /**
+         * @brief Resolves the intersection of enabled clips on this ancestor chain.
+         * @return No value when no widget enables clipping; otherwise the
+         *         effective surface-space rectangle, which may be empty.
+         * @pre Resolved bounds and their maximum coordinates must remain finite.
+         */
+        [[nodiscard]] std::optional<Rect> GetSurfaceClip() const noexcept;
 
         /**
          * @brief Sets participation in hit testing without changing painting.
@@ -141,7 +180,7 @@ namespace Quiet::UI
          * @brief Finds the topmost participating widget at a surface-space point.
          * @return Borrowed widget pointer, or null when nothing is hit.
          * @note Searches children in reverse painting order before this widget.
-         *       Parent bounds do not clip descendants.
+         *       Enabled clips on this widget and its ancestors restrict hits.
          *       Minimum edges are included; maximum edges are excluded.
          *       Nonfinite points produce no hit.
          * @pre The hierarchy must remain unchanged during the query.
@@ -245,6 +284,8 @@ namespace Quiet::UI
          * @brief Appends painting commands for this widget and its descendants.
          * @param commands Caller-owned list; existing commands are preserved.
          * @note Paints this widget first, then children in insertion order.
+         * @note Applies the effective surface clip to commands appended by OnPaint().
+         *       OnPaint() must leave command Clip fields unset.
          * @pre The hierarchy and paint-affecting widget state must not be modified during painting.
          */
         void Paint(PaintList& commands) const;
@@ -280,7 +321,10 @@ namespace Quiet::UI
         glm::vec2 m_DesiredSize{0.0f};
         glm::vec2 m_Anchor{0.0f};
         glm::vec2 m_Pivot{0.0f};
+        Alignment m_HorizontalAlignment = Alignment::Stretch;
+        Alignment m_VerticalAlignment = Alignment::Stretch;
 
+        bool m_ClipToBounds = false;
         HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
         bool m_PointerHovered = false;
         bool m_PointerPressed = false;

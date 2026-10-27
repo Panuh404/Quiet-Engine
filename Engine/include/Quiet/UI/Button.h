@@ -15,7 +15,8 @@ namespace Quiet::UI
      * Participates in hit testing by default.
      * Owns its callback and child content, without GPU resources.
      * Measures child content with padding, using authored size as a minimum.
-     * Arranges children over the padded content rectangle without clipping.
+     * Arranges children within the padded content rectangle using alignment.
+     * Clipping follows the base Widget contract.
      * Configurable styling is not implemented yet.
      */
     class Button final : public Widget

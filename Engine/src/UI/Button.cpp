@@ -82,13 +82,44 @@ namespace Quiet::UI
     void Button::OnArrangeChildren()
     {
         const glm::vec2 allocatedSize = GetSurfaceBounds().Size;
+
         const glm::vec2 contentSize(
             std::max(0.0f, allocatedSize.x - m_Padding.x - m_Padding.z),
             std::max(0.0f, allocatedSize.y - m_Padding.y - m_Padding.w));
 
         for (std::size_t index = 0; index < GetChildCount(); ++index)
         {
-            GetChild(index).SetArrangedBounds({ {m_Padding.x, m_Padding.y}, contentSize });
+            Widget& child = GetChild(index);
+            const glm::vec2& desiredSize = child.GetDesiredSize();
+
+            glm::vec2 position(m_Padding.x, m_Padding.y);
+            glm::vec2 size = contentSize;
+
+            for (int axis = 0; axis < 2; ++axis)
+            {
+                const Alignment alignment = axis == 0
+                    ? child.GetHorizontalAlignment()
+                    : child.GetVerticalAlignment();
+
+                if (alignment == Alignment::Stretch)
+                {
+                    continue;
+                }
+
+                size[axis] = desiredSize[axis];
+                const float remaining = contentSize[axis] - size[axis];
+
+                if (alignment == Alignment::Center)
+                {
+                    position[axis] += remaining * 0.5f;
+                }
+                else if (alignment == Alignment::End)
+                {
+                    position[axis] += remaining;
+                }
+            }
+
+            child.SetArrangedBounds({position, size});
         }
     }
 

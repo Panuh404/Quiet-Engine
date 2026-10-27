@@ -65,21 +65,44 @@ namespace Quiet::UI
 
     void VerticalBox::OnArrangeChildren()
     {
-        const float width = std::max(0.0f, GetSurfaceBounds().Size.x - m_Padding.x - m_Padding.z);
+        const float availableWidth = std::max(0.0f, GetSurfaceBounds().Size.x - m_Padding.x - m_Padding.z);
         float nextY = m_Padding.y;
 
         for (std::size_t index = 0; index < GetChildCount(); ++index)
         {
             Widget& child = GetChild(index);
-            const float height = child.GetDesiredSize().y;
+            const glm::vec2& desiredSize = child.GetDesiredSize();
+
+            float x = m_Padding.x;
+            float width = availableWidth;
+
+            switch (child.GetHorizontalAlignment())
+            {
+                case Alignment::Start:
+                    width = desiredSize.x;
+                    break;
+
+                case Alignment::Center:
+                    width = desiredSize.x;
+                    x += (availableWidth - width) * 0.5f;
+                    break;
+
+                case Alignment::End:
+                    width = desiredSize.x;
+                    x += availableWidth - width;
+                    break;
+
+                case Alignment::Stretch:
+                    break;
+            }
 
             child.SetArrangedBounds(
             {
-                {m_Padding.x, nextY},
-                {width, height}
+                {x, nextY},
+                {width, desiredSize.y}
             });
 
-            nextY += height + m_Spacing;
+            nextY += desiredSize.y + m_Spacing;
         }
     }
 }

@@ -12,7 +12,8 @@ namespace Quiet::UI
      *
      * Preferred size includes child desired sizes, padding, and spacing.
      * Authored size supplies minimum preferred dimensions.
-     * Children fill the allocated width and retain their desired heights.
+     * Children retain desired heights and use horizontal alignment
+     * within the allocated width.
      *
      * Preserves authored child geometry. Performs no clipping or text measurement.
      */
