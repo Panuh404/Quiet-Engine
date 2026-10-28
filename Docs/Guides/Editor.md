@@ -121,27 +121,38 @@ The rectangle does not create visible content by itself.
 ### Retained UI demonstration
 
 Application currently creates a retained Panel and child Label independently
-of Actor components. The translucent dark-blue panel measures 320 by 120
-pixels at Scene viewport position (24, 24). White text "Retained UI label"
-appears at (40, 48), using the default runtime font at pixel height 32.
+of Actor components. Its authored dimensions use logical UI pixels, converted
+to rendered target pixels by runtime UI scale. The current demonstration
+selects scale 1.25. The dark-blue panel's logical position (24, 24) and size
+320 by 120 become target position (30, 30) and size 400 by 150. White text
+"Retained UI label" begins at target (50, 60), with rendered pixel height 40.
+Displayed sizes can differ when the viewport image is stretched.
 
 The demonstration appears in Edit, Play, and Simulate. Its hierarchy belongs
 to Application and survives Play and Stop. Editing an Actor's Text or UI
 Rectangle does not change these widgets.
 
-The upper panel preserves its fixed pixel offset. A separate action group
-anchors its bottom-right corner 24 pixels from the Scene target edges. It
-contains a centered "Retained actions" heading above two side-by-side
+The upper panel preserves its logical offset. A separate action group
+anchors its bottom-right corner 24 logical units, currently 30 target pixels,
+from the Scene target edges. It contains a centered "Retained actions"
+heading above two side-by-side
 buttons. The first reads "First action"; the second reads "Second action"
 and "Measured text" on separate lines. Text measurement and padding determine
 button sizes. The shorter first button centers vertically beside the second.
+The group uses purple button backgrounds and gold text at logical height 28;
+the pale heading uses height 24. At scale 1.25 those heights render as 35 and
+30 target pixels. Styles are copied per widget, independently of callbacks.
 
-Both buttons become brighter while hovered and darker while pressed inside.
-Release over the same button logs "First retained action activated." or
-"Second retained action activated." once, according to the selected button.
+The first button becomes brighter while hovered and darker while pressed
+inside. Release over it logs "First retained action activated." once.
+The second button starts disabled: it retains its gold text and layout but
+uses a gray background, has no hover/press feedback, and produces no callback.
+Its configured message, "Second retained action activated.", is available
+only after re-enabling it in C++. Disabled button geometry still blocks
+clicks from reaching overlapping widgets and subsequent gameplay queries.
 The empty space above or below the shorter button is not part of its hit area.
 
-A clipping panel at (24, 180), sized 180 by 80 pixels, deliberately contains
+A clipping panel at logical (24, 180), sized 180 by 80, deliberately contains
 an overflowing button. Only a narrow part of its "Clipped action" label is
 visible. Its background and text stop at the panel boundary. Clicking its
 visible portion logs "Clipped retained action activated."; its hidden
@@ -150,7 +161,8 @@ continuation must not activate. This truncation is intentional.
 Resizing updates layout before painting and hit testing. The action group
 preserves its bottom-right offset; it does not shrink or wrap to fit a small
 viewport. Parent bounds restrict child content only when clipping is enabled.
-Actor-authored text renders after retained widgets.
+Actor-authored text renders after retained widgets and is not affected by
+runtime UI scale. Editor ImGui controls also retain their existing sizing.
 
 To exercise pointer ownership, start with mouse capture disabled. In Play,
 release capture using Shift+F1. Press inside, drag outside, and return:
@@ -164,24 +176,37 @@ interactive widgets remains available. This guard does not disable gizmos.
 
 In Simulate or Play, UI-owned left-button gestures are hidden from gameplay
 mouse-button queries after routing. When testing with a script that logs
-left-button presses, expect an activation message for a UI click and a
-gameplay message for an outside click. Repeat after resizing or detaching
+left-button presses, expect an activation message for an enabled UI click,
+no activation or gameplay press for a disabled button click, and a gameplay
+message for an outside click. Repeat after resizing or detaching
 the Viewport; visible and interactive bounds should remain aligned.
 
 To check layout and clipping:
 
 1. Resize the Viewport and confirm the group remains anchored at bottom-right.
 2. Confirm the heading is centered and the first button remains shorter.
-3. Click each button and verify its matching activation message.
+3. Click the first button and verify its message; the disabled second button
+   must not activate or change its background on hover/press.
 4. Click the visible portion of the clipping button, then the area where its
    hidden continuation would lie; only the visible portion should activate.
 5. Press the visible portion, drag outside the clip, and release; no activation
    should occur. Returning inside before release permits normal activation.
+6. When checking alternate scales in C++, call SetRuntimeUIScale() with 1.0f,
+   1.25f, and 1.5f. Rebuild and confirm text, padding, gaps, clipping, and pointer
+   bounds scale together. Restore 1.25f for the current demonstration.
 
-Rows, columns, alignment, and clipping are configured in C++ through
-Application::InitializeCommonStartup() in `Engine/src/Core/Application.cpp`.
+For an inherited-state check, disable the actionRow container in
+InitializeCommonStartup(): both buttons must become disabled. Remove that
+temporary change afterward. Enabling a child cannot override a disabled
+ancestor. Re-enabling does not restore a cancelled press; start a fresh click.
+
+Rows, columns, styles, enabled state, alignment, and clipping are configured
+in C++ through Application::InitializeCommonStartup() in
+`Engine/src/Core/Application.cpp`.
 There are no widget Inspector controls, keyboard/gamepad focus, scrolling,
-or text wrapping yet. The temporary logo preview is removed; the Image
+or text wrapping yet. Scale is configured explicitly in C++, within [0.25, 4.0],
+and does not automatically follow display DPI or shrink content to fit.
+The temporary logo preview is removed; the Image
 widget and its renderer remain available through C++.
 
 See [Application](../Systems/Application.md) for ownership and paint-list

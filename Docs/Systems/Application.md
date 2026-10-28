@@ -416,6 +416,8 @@ VerticalBox containing a heading and HorizontalBox of Buttons, and a
 clipping Panel with an overflowing Button. Their authored inputs and
 callbacks are defined in that function. See [Renderer](Renderer.md) for
 the complete example and layout contracts.
+Startup explicitly selects runtime UI scale 1.25, applies ButtonStyle and
+TextStyle copies to the action group, and disables the second action Button.
 
 The hierarchy belongs to Application, independently of the editable Scene
 and disposable Editor runtime Scene. Starting or stopping Play does not
@@ -425,7 +427,8 @@ Inspector authoring, or Lua integration.
 UpdateRuntimeUILayout() synchronizes geometry with the actual Scene target:
 
 1. Reads the actual Scene target extent from VulkanRenderer.
-2. Updates the root bounds to that extent at position (0, 0).
+2. Divides the extent by m_RuntimeUIScale and assigns the logical root size
+   at position (0, 0).
 3. Returns if the root's Layout flag is clear.
 4. Borrows VulkanRenderer::GetDefaultFontAtlas() through UI::LayoutContext.
 5. Calls Measure() bottom-up, then ArrangeChildren() top-down.
@@ -439,7 +442,18 @@ failed traversal or roll back already processed children.
 BuildRuntimeUIPaintList() calls UpdateRuntimeUILayout() before inspecting
 paint state, including for a zero target extent. It then clears the command
 list and returns for a zero extent, reuses the list when Paint is clear,
-or rebuilds through Paint() and clears Paint across the root subtree.
+or rebuilds through Paint(), converts the new list through UI::ScalePaintList(),
+and clears Paint across the root subtree. Conversion scales geometry, text
+height, and clips exactly once per rebuild. The cached list contains target
+pixels; reusing it must not apply the scale again.
+
+SetRuntimeUIScale() accepts finite values from 0.25 through 4.0 inclusive.
+Invalid values return false without mutation; unchanged values return true
+without invalidation. A change invalidates root Layout, Paint, and Interaction.
+The member defaults to 1.0 before the demonstration chooses 1.25. Call between
+traversals on the application thread. This setting affects retained UI only,
+not Editor ImGui, Actor-authored text, or Scene camera/rendering. It has no
+project persistence or automatic DPI selection.
 
 An unchanged root extent does not invalidate the hierarchy. Bounds changes
 invalidate layout, which also marks paint and interaction dirty.
@@ -505,6 +519,9 @@ HitTestRuntimeUI() additionally requires mouse capture to be disabled, a
 valid pointer snapshot, and image hover. After those guards, it calls
 UpdateRuntimeUILayout() before mapping and querying the pointer. It rejects
 points outside the half-open surface rectangle and calls Widget::HitTest().
+Before that query, it divides the mapped target position by m_RuntimeUIScale
+to match logical widget bounds and clips. MapPointToSurface() itself remains
+the displayed-image-to-rendered-target conversion; it does not apply UI scale.
 The surface check is separate from the optional ancestor clips resolved by
 Widget::GetSurfaceClip(). The earlier Editor selection guard also uses this
 hit-test path. BuildRuntimeUIPaintList() performs another layout check later,
@@ -531,6 +548,17 @@ of widget lifetime. A primary press over a participating widget starts UI
 ownership. Application consumes the left button before activation and Scene
 updates, including while dragging outside the widget and on release.
 A press originating outside does not transfer merely by entering a widget.
+
+Disabled widgets retain their configured hit-test geometry. A disabled Button
+can therefore start Application's UI gesture ownership even though Widget
+rejects its hover/press state and Button::Activate() refuses its callback.
+This prevents that primary gesture from reaching subsequent gameplay queries
+or an overlapping widget. Disabling an already-pressed widget cancels its
+widget state immediately, while Application's ownership boolean continues
+consuming the gesture until release. It does not retain a widget pointer.
+This policy does not add hit participation to ChildrenOnly containers or
+override HitTestMode::None. The existing Editor Actor-click selection guard
+also sees disabled participating buttons; other gizmo paths remain unchanged.
 
 Mouse capture or an unavailable pointer snapshot cancels widget press state.
 For a UI-owned gesture, Application keeps consuming until physical release

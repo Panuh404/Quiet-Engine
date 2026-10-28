@@ -4,6 +4,7 @@
 
 #include <glm/vec4.hpp>
 
+#include "Quiet/UI/TextStyle.h"
 #include "Quiet/UI/Widget.h"
 
 namespace Quiet::UI
@@ -14,7 +15,9 @@ namespace Quiet::UI
      *
      * Authored size supplies minimum preferred dimensions.
      * Text begins at the arranged surface-space top-left.
-     * Measurement does not wrap text; arrangement does not scale or clip it.
+     * Owns text appearance independently of content.
+     * Measurement does not wrap text; arrangement does not scale it.
+     * Clipping follows the base Widget contract.
      * Empty content emits no text command.
      *
      * Retains no font or GPU resources.
@@ -22,6 +25,23 @@ namespace Quiet::UI
     class Label final : public Widget
     {
     public:
+        /**
+         * @brief Validates and copies text appearance.
+         * @return False for nonfinite/nonpositive height or nonfinite color,
+         *         preserving the current style.
+         * @note Finite color channels are clamped to [0, 1].
+         *       Height changes invalidate layout; color-only changes
+         *       invalidate paint. Unchanged effective values do neither.
+         */
+        bool SetStyle(TextStyle style);
+
+        /**
+         * @brief Returns this label's owned style.
+         * @note Borrowed for the Label's lifetime; style setters can
+         *       change its contents.
+         */
+        [[nodiscard]] const TextStyle& GetStyle() const noexcept { return m_Style; }
+
         /**
          * @brief Replaces the owned text content.
          * @note UTF-8 validation occurs during text layout.
@@ -35,7 +55,7 @@ namespace Quiet::UI
          *         the previous height; otherwise true.
          */
         bool SetPixelHeight(float pixelHeight);
-        [[nodiscard]] float GetPixelHeight() const noexcept { return m_PixelHeight; }
+        [[nodiscard]] float GetPixelHeight() const noexcept { return m_Style.PixelHeight; }
 
         /**
          * @brief Sets straight-alpha linear RGBA.
@@ -43,7 +63,7 @@ namespace Quiet::UI
          *         Finite channels are clamped to [0, 1].
          */
         bool SetColor(const glm::vec4& color);
-        [[nodiscard]] const glm::vec4& GetColor() const noexcept { return m_Color; }
+        [[nodiscard]] const glm::vec4& GetColor() const noexcept { return m_Style.Color; }
 
     protected:
         /**
@@ -57,7 +77,6 @@ namespace Quiet::UI
 
     private:
         std::string m_Content;
-        float m_PixelHeight = 32.0f;
-        glm::vec4 m_Color{1.0f};
+        TextStyle m_Style{};
     };
 }

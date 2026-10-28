@@ -110,6 +110,16 @@ namespace Quiet::Core
          */
         int Run();
 
+        /**
+         * @brief Sets uniform scaling for retained runtime UI.
+         * @return False outside the finite range [0.25, 4.0].
+         * @note Invalidates layout and dependent work when changed.
+         *       Does not scale Editor ImGui or Actor-authored text.
+         *       Call between traversals on the application thread.
+         */
+        bool SetRuntimeUIScale(float scale);
+        [[nodiscard]] float GetRuntimeUIScale() const noexcept { return m_RuntimeUIScale; }
+
     private:
         void ToggleMouseCapture();
         void SetMouseCaptureEnabled(bool enabled);
@@ -235,6 +245,7 @@ namespace Quiet::Core
         std::unique_ptr<Scene::Scene> m_RuntimeScene;
         std::unique_ptr<Renderer::Vulkan::VulkanRenderer> m_Renderer;
 
+        float m_RuntimeUIScale = 1.0f;
         UI::Widget m_RuntimeUIRoot;
         UI::PaintList m_RuntimeUIPaintList;
     };

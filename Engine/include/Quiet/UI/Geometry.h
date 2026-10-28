@@ -11,7 +11,9 @@ namespace Quiet::UI
      * @brief Describes an axis-aligned UI rectangle.
      * @ingroup quiet_renderer
      *
-     * Position and Size use pixels with positive X rightward and Y downward.
+     * Position and Size use pixel units with positive X rightward and Y downward.
+     * Retained widget geometry uses logical UI pixels. Rendering commands are
+     * converted to target pixels at the Application submission boundary.
      * Position's coordinate space is defined by the containing API.
      * Size is nonnegative; zero means empty, not automatic sizing.
      *

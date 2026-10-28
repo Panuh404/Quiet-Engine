@@ -10,6 +10,29 @@
 
 namespace Quiet::UI
 {
+    bool Label::SetStyle(TextStyle style)
+    {
+        if (!std::isfinite(style.PixelHeight) ||
+            style.PixelHeight <= 0.0f ||
+            !std::isfinite(style.Color.r) ||
+            !std::isfinite(style.Color.g) ||
+            !std::isfinite(style.Color.b) ||
+            !std::isfinite(style.Color.a))
+        {
+            return false;
+        }
+
+        style.Color = glm::clamp(style.Color, glm::vec4(0.0f), glm::vec4(1.0f));
+
+        const bool layoutChanged = m_Style.PixelHeight != style.PixelHeight;
+        const bool colorChanged = m_Style.Color != style.Color;
+        if (!layoutChanged && !colorChanged) return true;
+
+        m_Style = style;
+        Invalidate(layoutChanged ? InvalidationReason::Layout : InvalidationReason::Paint);
+        return true;
+    }
+
     void Label::SetContent(std::string content)
     {
         if (m_Content == content) return;
@@ -19,28 +42,16 @@ namespace Quiet::UI
     }
     bool Label::SetPixelHeight(const float pixelHeight)
     {
-        if (!std::isfinite(pixelHeight) || pixelHeight <= 0.0f) return false;
-        if (m_PixelHeight == pixelHeight) return true;
-
-        m_PixelHeight = pixelHeight;
-        Invalidate(InvalidationReason::Layout);
-        return true;
+        TextStyle style = m_Style;
+        style.PixelHeight = pixelHeight;
+        return SetStyle(style);
     }
 
     bool Label::SetColor(const glm::vec4& color)
     {
-        if (!std::isfinite(color.r) ||
-            !std::isfinite(color.g) ||
-            !std::isfinite(color.b) ||
-            !std::isfinite(color.a))
-            return false;
-
-        const glm::vec4 clampedColor = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
-        if (m_Color == clampedColor) return true;
-        m_Color = clampedColor;
-
-        Invalidate(InvalidationReason::Paint);
-        return true;
+        TextStyle style = m_Style;
+        style.Color = color;
+        return SetStyle(style);
     }
 
     glm::vec2 Label::OnMeasure(const LayoutContext& context) const
@@ -56,7 +67,7 @@ namespace Quiet::UI
             throw std::runtime_error("Label measurement requires a default font atlas.");
         }
 
-        const Renderer::TextLayoutResult layout = Renderer::TextLayout::BuildUTF8(*context.DefaultFontAtlas, m_Content, m_PixelHeight);
+        const Renderer::TextLayoutResult layout = Renderer::TextLayout::BuildUTF8(*context.DefaultFontAtlas, m_Content, m_Style.PixelHeight);
         if (!layout.Succeeded())
         {
             return requestedSize;
@@ -76,8 +87,8 @@ namespace Quiet::UI
         {
             m_Content,
             bounds.Position,
-            m_PixelHeight,
-            m_Color
+            m_Style.PixelHeight,
+            m_Style.Color
         });
     }
 }

@@ -211,6 +211,16 @@ namespace Quiet::Core
         return 0;
     }
 
+    bool Application::SetRuntimeUIScale(float scale)
+    {
+        if (!std::isfinite(scale) || scale < 0.25f || scale > 4.0f) return false;
+        if (m_RuntimeUIScale == scale) return true;
+
+        m_RuntimeUIScale = scale;
+        m_RuntimeUIRoot.Invalidate(UI::InvalidationReason::Layout);
+        return true;
+    }
+
     void Application::ToggleMouseCapture()
     {
         SetMouseCaptureEnabled(!m_MouseCaptureEnabled);
@@ -329,6 +339,7 @@ namespace Quiet::Core
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
+        SetRuntimeUIScale(1.25f);
 
         auto panel = std::make_unique<UI::Panel>();
         panel->SetBounds({{24.0f, 24.0f}, {320.0f, 120.0f}});
@@ -348,8 +359,22 @@ namespace Quiet::Core
 
         auto actionRow = std::make_unique<UI::HorizontalBox>();
         actionRow->SetSpacing(12.0f);
+        UI::ButtonStyle actionStyle{};
+        actionStyle.NormalColor = {0.12f, 0.06f, 0.24f, 0.9f};
+        actionStyle.HoveredColor = {0.24f, 0.12f, 0.42f, 1.0f};
+        actionStyle.PressedColor = {0.07f, 0.03f, 0.14f, 1.0f};
+        actionStyle.Padding = {24.0f, 16.0f, 24.0f, 16.0f};
+
+        UI::TextStyle actionTextStyle{};
+        actionTextStyle.PixelHeight = 28.0f;
+        actionTextStyle.Color = {1.0f, 0.85f, 0.45f, 1.0f};
+
+        UI::TextStyle headingTextStyle = actionTextStyle;
+        headingTextStyle.PixelHeight = 24.0f;
+        headingTextStyle.Color = {0.85f, 0.9f, 1.0f, 1.0f};
 
         auto firstButton = std::make_unique<UI::Button>();
+        firstButton->SetStyle(actionStyle);
         firstButton->SetAlignment(UI::Alignment::Stretch, UI::Alignment::Center);
         firstButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
         firstButton->SetOnClick([]()
@@ -359,10 +384,13 @@ namespace Quiet::Core
 
         auto firstLabel = std::make_unique<UI::Label>();
         firstLabel->SetContent("First action");
+        firstLabel->SetStyle(actionTextStyle);
         firstLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
         firstButton->AddChild(std::move(firstLabel));
 
         auto secondButton = std::make_unique<UI::Button>();
+        secondButton->SetStyle(actionStyle);
+        secondButton->SetEnabled(false);
         secondButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
         secondButton->SetOnClick([]()
         {
@@ -371,6 +399,7 @@ namespace Quiet::Core
 
         auto secondLabel = std::make_unique<UI::Label>();
         secondLabel->SetContent("Second action\nMeasured text");
+        secondLabel->SetStyle(actionTextStyle);
         secondLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
         secondButton->AddChild(std::move(secondLabel));
 
@@ -379,7 +408,7 @@ namespace Quiet::Core
 
         auto heading = std::make_unique<UI::Label>();
         heading->SetContent("Retained actions");
-        heading->SetPixelHeight(24.0f);
+        heading->SetStyle(headingTextStyle);
         heading->SetAlignment(UI::Alignment::Center, UI::Alignment::Stretch);
 
         actions->AddChild(std::move(heading));
@@ -1058,15 +1087,11 @@ namespace Quiet::Core
     {
         const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
 
-        m_RuntimeUIRoot.SetBounds(
-        {
-            {0.0f, 0.0f},
-            {
-                static_cast<float>(extent.width),
-                static_cast<float>(extent.height)
-            }
-        });
+        const glm::vec2 logicalSize(
+            static_cast<float>(extent.width) / m_RuntimeUIScale,
+            static_cast<float>(extent.height) / m_RuntimeUIScale);
 
+        m_RuntimeUIRoot.SetBounds({ {0.0f, 0.0f}, logicalSize });
         if (!m_RuntimeUIRoot.GetInvalidationState().Layout) return;
 
         const UI::LayoutContext context
@@ -1097,6 +1122,7 @@ namespace Quiet::Core
 
         m_RuntimeUIPaintList.clear();
         m_RuntimeUIRoot.Paint(m_RuntimeUIPaintList);
+        UI::ScalePaintList(m_RuntimeUIPaintList, m_RuntimeUIScale);
         m_RuntimeUIRoot.ClearInvalidation(UI::InvalidationReason::Paint);
     }
 
@@ -1121,7 +1147,8 @@ namespace Quiet::Core
             surfacePosition->y >= surfaceSize.y)
             return nullptr;
 
-        return m_RuntimeUIRoot.HitTest(*surfacePosition);
+        const glm::vec2 logicalPosition = *surfacePosition / m_RuntimeUIScale;
+        return m_RuntimeUIRoot.HitTest(logicalPosition);
     }
 
     void Application::UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer& uiLayer)

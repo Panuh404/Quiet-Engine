@@ -170,6 +170,30 @@ namespace Quiet::UI
         return clip;
     }
 
+    void Widget::SetEnabled(const bool enabled) noexcept
+    {
+        if (m_Enabled == enabled) return;
+        m_Enabled = enabled;
+
+        if (!enabled)
+        {
+            UpdatePointerHover(nullptr);
+            UpdatePointerPress(nullptr, false, false);
+        }
+
+        Invalidate(InvalidationReason::Paint);
+        Invalidate(InvalidationReason::Interaction);
+    }
+
+    bool Widget::IsEffectivelyEnabled() const noexcept
+    {
+        for (const Widget* widget = this; widget != nullptr; widget = widget->m_Parent)
+        {
+            if (!widget->m_Enabled) return false;
+        }
+
+        return true;
+    }
     void Widget::SetHitTestMode(const HitTestMode mode) noexcept
     {
         if (m_HitTestMode == mode) return;
@@ -224,7 +248,7 @@ namespace Quiet::UI
 
     void Widget::UpdatePointerHover(const Widget* hoveredWidget) noexcept
     {
-        const bool hovered = hoveredWidget == this;
+        const bool hovered = hoveredWidget == this && IsEffectivelyEnabled();
         if (m_PointerHovered != hovered)
         {
             m_PointerHovered = hovered;
@@ -239,14 +263,15 @@ namespace Quiet::UI
 
     Widget* Widget::UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased) noexcept
     {
-        if (m_HitTestMode == HitTestMode::None)
+        const bool enabled = IsEffectivelyEnabled();
+        if (!enabled || m_HitTestMode == HitTestMode::None)
         {
             primaryPressed = false;
             primaryDown = false;
             primaryReleased = false;
         }
 
-        const bool acceptsPress = m_HitTestMode == HitTestMode::SelfAndChildren;
+        const bool acceptsPress = enabled && m_HitTestMode == HitTestMode::SelfAndChildren;
         const bool ownsPress = primaryPressed ? hoveredWidget == this : m_PointerPressed;
 
         Widget* activatedWidget =

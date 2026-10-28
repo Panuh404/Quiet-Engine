@@ -3,12 +3,54 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <array>
+
+#include <glm/common.hpp>
 
 namespace Quiet::UI
 {
     Button::Button()
     {
         SetHitTestMode(HitTestMode::SelfAndChildren);
+    }
+
+    bool Button::SetStyle(ButtonStyle style)
+    {
+        for (int component = 0; component < 4; ++component)
+        {
+            if (!std::isfinite(style.Padding[component]) || style.Padding[component] < 0.0f) return false;
+        }
+
+        const std::array colors
+        {
+            &style.NormalColor,
+            &style.HoveredColor,
+            &style.PressedColor,
+            &style.DisabledColor
+        };
+
+        for (glm::vec4* color : colors)
+        {
+            for (int component = 0; component < 4; ++component)
+            {
+                if (!std::isfinite((*color)[component])) return false;
+            }
+
+            *color = glm::clamp(*color, glm::vec4(0.0f), glm::vec4(1.0f));
+        }
+
+        const bool layoutChanged = m_Style.Padding != style.Padding;
+        const bool colorsChanged =
+            m_Style.NormalColor != style.NormalColor ||
+            m_Style.HoveredColor != style.HoveredColor ||
+            m_Style.PressedColor != style.PressedColor ||
+            m_Style.DisabledColor != style.DisabledColor;
+
+        if (!layoutChanged && !colorsChanged) return true;
+
+        m_Style = style;
+        Invalidate(layoutChanged ? InvalidationReason::Layout : InvalidationReason::Paint);
+        return true;
     }
 
     void Button::SetOnClick(std::function<void()> callback)
@@ -25,6 +67,8 @@ namespace Quiet::UI
 
     void Button::Activate()
     {
+        if (!IsEffectivelyEnabled()) return;
+
         const auto callback = m_OnClick;
         if (callback)
         {
@@ -34,26 +78,9 @@ namespace Quiet::UI
 
     bool Button::SetPadding(const glm::vec4& padding)
     {
-        if (!std::isfinite(padding.x) ||
-            !std::isfinite(padding.y) ||
-            !std::isfinite(padding.z) ||
-            !std::isfinite(padding.w) ||
-            padding.x < 0.0f ||
-            padding.y < 0.0f ||
-            padding.z < 0.0f ||
-            padding.w < 0.0f)
-        {
-            return false;
-        }
-
-        if (m_Padding == padding)
-        {
-            return true;
-        }
-
-        m_Padding = padding;
-        Invalidate(InvalidationReason::Layout);
-        return true;
+        ButtonStyle style = m_Style;
+        style.Padding = padding;
+        return SetStyle(style);
     }
 
     glm::vec2 Button::OnMeasure(const LayoutContext&) const
@@ -69,8 +96,8 @@ namespace Quiet::UI
         }
 
         contentSize += glm::vec2(
-            m_Padding.x + m_Padding.z,
-            m_Padding.y + m_Padding.w);
+            m_Style.Padding.x + m_Style.Padding.z,
+            m_Style.Padding.y + m_Style.Padding.w);
 
         const glm::vec2& requestedSize = GetLocalBounds().Size;
 
@@ -84,15 +111,15 @@ namespace Quiet::UI
         const glm::vec2 allocatedSize = GetSurfaceBounds().Size;
 
         const glm::vec2 contentSize(
-            std::max(0.0f, allocatedSize.x - m_Padding.x - m_Padding.z),
-            std::max(0.0f, allocatedSize.y - m_Padding.y - m_Padding.w));
+            std::max(0.0f, allocatedSize.x - m_Style.Padding.x - m_Style.Padding.z),
+            std::max(0.0f, allocatedSize.y - m_Style.Padding.y - m_Style.Padding.w));
 
         for (std::size_t index = 0; index < GetChildCount(); ++index)
         {
             Widget& child = GetChild(index);
             const glm::vec2& desiredSize = child.GetDesiredSize();
 
-            glm::vec2 position(m_Padding.x, m_Padding.y);
+            glm::vec2 position(m_Style.Padding.x, m_Style.Padding.y);
             glm::vec2 size = contentSize;
 
             for (int axis = 0; axis < 2; ++axis)
@@ -126,18 +153,19 @@ namespace Quiet::UI
     void Button::OnPaint(PaintList& commands) const
     {
         const Rect bounds = GetSurfaceBounds();
-        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f)
+        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f) return;
+
+        glm::vec4 color = m_Style.NormalColor;
+
+        if (!IsEffectivelyEnabled())
         {
-            return;
+            color = m_Style.DisabledColor;
         }
-
-        glm::vec4 color(0.03f, 0.12f, 0.25f, 0.8f);
-
-        if (IsPointerHovered())
+        else if (IsPointerHovered())
         {
             color = IsPointerPressed()
-                ? glm::vec4(0.02f, 0.08f, 0.18f, 1.0f)
-                : glm::vec4(0.08f, 0.22f, 0.42f, 1.0f);
+                ? m_Style.PressedColor
+                : m_Style.HoveredColor;
         }
 
         commands.emplace_back(SolidRectCommand

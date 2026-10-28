@@ -281,6 +281,7 @@ target_sources(Quiet_Engine
         src/UI/HorizontalBox.cpp
         src/UI/Image.cpp
         src/UI/Label.cpp
+        src/UI/PaintCommands.cpp
         src/UI/Panel.cpp
         src/UI/VerticalBox.cpp
         src/UI/Widget.cpp
@@ -343,6 +344,7 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorState.h
 
         include/Quiet/UI/Button.h
+        include/Quiet/UI/ButtonStyle.h
         include/Quiet/UI/Geometry.h
         include/Quiet/UI/HorizontalBox.h
         include/Quiet/UI/Image.h
@@ -350,6 +352,7 @@ target_sources(Quiet_Engine
         include/Quiet/UI/LayoutContext.h
         include/Quiet/UI/PaintCommands.h
         include/Quiet/UI/Panel.h
+        include/Quiet/UI/TextStyle.h
         include/Quiet/UI/VerticalBox.h
         include/Quiet/UI/Widget.h
 

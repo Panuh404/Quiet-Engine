@@ -303,7 +303,10 @@ They do not replace the Editor's Dear ImGui tooling.
 | Text widget | `Engine/include/Quiet/UI/Label.h` and `Engine/src/UI/Label.cpp`: Quiet::UI::Label |
 | Image widget | `Engine/include/Quiet/UI/Image.h` and `Engine/src/UI/Image.cpp`: Quiet::UI::Image |
 | Button state painting and behavior | `Engine/include/Quiet/UI/Button.h` and `Engine/src/UI/Button.cpp`: Quiet::UI::Button |
+| Button appearance values | `Engine/include/Quiet/UI/ButtonStyle.h`: Quiet::UI::ButtonStyle |
+| Text appearance values | `Engine/include/Quiet/UI/TextStyle.h`: Quiet::UI::TextStyle |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
+| Logical-to-target conversion | `Engine/src/UI/PaintCommands.cpp`: Quiet::UI::ScalePaintList() |
 | Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |
 | GPU command translation | `Engine/src/Renderer/Vulkan/VulkanRenderer.cpp`: DrawFrame() and RecordFrameCommandBuffer() |
 | Rectangle graphics state | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h`: PanelPipeline |
@@ -326,7 +329,11 @@ GetChild() uses bounds-checked access. References identify separately
 allocated widget objects, so growing the child vector does not move those
 objects. References remain usable only while the widget remains alive.
 
-Rect uses pixels with positive X rightward and positive Y downward.
+Rect uses pixel units with positive X rightward and positive Y downward.
+Retained widget bounds, desired sizes, clips, and hit-test queries use
+logical UI pixels. Application scales painting output into rendered target
+pixels before submission. Actor-authored text keeps its existing target-pixel
+path. The uniform conversion is described below.
 Rect itself is geometry data: a zero dimension is empty. Widget
 separately stores authored bounds, measured desired size, and an optional
 parent-assigned arrangement. SetBounds() supplies an authored pixel offset
@@ -376,7 +383,7 @@ LayoutContext borrows CPU resources only during measurement. Application
 supplies VulkanRenderer::GetDefaultFontAtlas(), the same renderer-owned CPU
 atlas used by default text rendering. Widgets retain neither this pointer
 nor GPU font resources. Label::OnMeasure() calls TextLayout::BuildUTF8() at
-the Label's pixel height and takes the component-wise maximum of logical
+the Label's logical pixel height and takes the component-wise maximum of logical
 text size and authored size. Empty content uses authored size. Nonempty
 content without a font pointer throws; unsuccessful text layout falls back
 to authored size. The existing text layout generates temporary glyph quads
@@ -395,7 +402,7 @@ they are not a universal auto-size flag for every Widget subclass.
 
 Padding uses left, top, right, bottom in XYZW. Padding and spacing setters
 reject nonfinite or negative values. Spacing occurs only between children.
-Button padding defaults to 16 pixels on every side; box padding and spacing
+Button padding defaults to 16 logical pixels on every side; box padding and spacing
 default to zero. Padding subtraction clamps available dimensions to zero.
 
 Widget::SetAlignment() stores horizontal and vertical Alignment values,
@@ -437,7 +444,8 @@ Panel emits a SolidRectCommand for positive bounds. Label emits a
 TextCommand when its content is nonempty and both bounds dimensions are
 positive. Its text starts at the arranged surface-space top-left. Aligning
 a Label moves its logical rectangle, not individual text lines. Bounds do
-not wrap or scale text; enabled widget clips restrict its visible output.
+not wrap text or scale it to fit; uniform Application scaling applies to the
+complete output. Enabled widget clips restrict its visible output.
 
 Image emits an ImageCommand when its texture ID is nonempty and both
 dimensions are positive. It stretches the complete texture over its
@@ -447,6 +455,36 @@ Setting the ID neither loads nor validates a texture.
 Panel color, Label color, and Image tint reject nonfinite input and clamp
 finite channels to [0, 1]. Label pixel height must be finite and positive.
 Content remains owned by Label; UTF-8 validation occurs during text layout.
+
+### Style values and ownership
+
+Button owns a ButtonStyle containing NormalColor, HoveredColor, PressedColor,
+DisabledColor, and Padding. Label owns a TextStyle containing PixelHeight
+and Color. Both are value types with no font, widget, callback, or GPU
+ownership. SetStyle() validates a local copy before changing the widget.
+GetStyle() returns a borrowed const reference valid while the widget lives;
+subsequent setters may change the referenced contents.
+
+One source style can be applied to several widgets. Each receives an
+independent copy; changing the source value does not update existing widgets.
+There is no shared mutable theme, selector matching, or automatic style
+inheritance. Button styling does not find or restyle child Labels: text
+appearance is applied explicitly to each Label, preserving arbitrary content
+composition and keeping callback behavior separate.
+
+Button::SetStyle() rejects nonfinite colors and nonfinite or negative padding.
+Label::SetStyle() rejects nonfinite colors and nonfinite or nonpositive
+PixelHeight. Finite color channels clamp to [0, 1]. Rejected styles leave
+all stored fields and invalidation unchanged. Equal effective values,
+including equality after color clamping, do not invalidate the widget.
+
+Button padding changes and Label height changes invalidate Layout and its
+dependent work. Color-only changes, including an unused state color, invalidate
+Paint only. Button::SetPadding(), Label::SetPixelHeight(), and Label::SetColor()
+copy the current style, replace the requested field, and delegate to SetStyle().
+Existing single-property setters therefore preserve unrelated appearance.
+Content remains separate from TextStyle, and SetContent() still invalidates
+layout. TextStyle does not select a font or add text wrapping.
 
 Each widget initially has Layout, Paint, and Interaction invalidation
 flags set. Invalidate() marks the widget and its ancestors:
@@ -463,6 +501,8 @@ spacing changes also invalidate layout. Color, tint, and image-ID changes
 invalidate paint. Arrangement changes and clip toggles invalidate Paint and
 Interaction without requesting another layout. Setters avoid invalidation
 when the effective value is unchanged.
+Enabled-state changes also invalidate Paint and Interaction without changing
+layout; uniform scale changes invalidate Layout at the root.
 
 ClearInvalidation() clears only the requested flag on the widget and its
 descendants; it does not clear ancestor flags. Application acknowledges
@@ -473,7 +513,7 @@ cache.
 
 ### Hit testing and pointer state
 
-Widget::HitTest() receives surface-space pixels and searches children in
+Widget::HitTest() receives logical surface-space pixels and searches children in
 reverse insertion order before considering the widget itself. This reverses
 painting order so the topmost participating widget wins. Parent bounds
 restrict descendants only when clipping is enabled. A zero-area enabled
@@ -503,6 +543,27 @@ Hover and press transitions invalidate Paint only when the stored boolean
 changes. Attachment and detachment clear both states on the transferred
 subtree. No previous-widget pointer is retained between frames.
 
+### Enabled state and input blocking
+
+Widget::SetEnabled() defaults to true and stores a local setting.
+IsEffectivelyEnabled() checks that setting and every ancestor. Disabling
+immediately clears hover and pending presses throughout the subtree, without
+callbacks. It preserves child local settings, layout, visibility, and styles.
+Re-enabling does not restore a cancelled press; activation needs a fresh
+press. Hover and press updates reject effectively disabled controls, and
+Button::Activate() independently checks effective enabled state before
+retaining or invoking its callback.
+
+Disabling does not change HitTestMode. A disabled SelfAndChildren button
+remains the hit target over an overlapping widget, but receives neither
+hover/press visuals nor activation. Application uses the hit target to own
+and consume a UI-originated primary gesture even when the control is disabled.
+HitTestMode::None remains an explicit way to exclude the subtree; ChildrenOnly
+containers do not acquire a new background hit area merely by being disabled.
+This preserves input blocking only where the existing geometry and hit-test
+policy already participate. See [Application](Application.md) for the scope
+of gameplay consumption and Editor selection guards.
+
 Application supplies current-frame mapping, cancellation, and gameplay
 consumption. See [Application](Application.md) for presentation snapshots,
 coordinate spaces, execution order, and input-policy limits.
@@ -521,10 +582,16 @@ The current straight-alpha linear RGBA defaults are:
 | Not hovered, including dragging an owned press outside | (0.03, 0.12, 0.25, 0.8) |
 | Hovered without a press | (0.08, 0.22, 0.42, 1.0) |
 | Hovered with an owned press | (0.02, 0.08, 0.18, 1.0) |
+| Effectively disabled, regardless of pointer position | (0.08, 0.08, 0.1, 0.8) |
+
+These defaults come from ButtonStyle and can be replaced per button.
+Disabled appearance takes precedence over hover and press. Child Labels
+retain their explicit TextStyle; there is no inherited disabled text tint.
 
 SetOnClick() installs a std::function<void()> in a shared owning allocation;
-an empty function clears it. Activate() retains that allocation locally and
-invokes the same callable, preserving mutable capture state between calls.
+an empty function clears it. When effectively enabled, Activate() retains
+that allocation locally and invokes the same callable, preserving mutable
+capture state between calls.
 It does not copy the callable on each activation. Installation allocation
 and callback exceptions propagate.
 
@@ -535,8 +602,8 @@ not extend the lifetime of objects referenced by those captures. Invoke
 behavior outside hierarchy traversal. Widget::Activate() defaults to no work.
 
 This is primary-button state and release-inside activation, not a general
-captured pointer-event dispatcher. Keyboard/gamepad focus, configurable
-styles, and additional pointer event types remain future work.
+captured pointer-event dispatcher. Keyboard/gamepad focus, live theme/style
+resolution, and additional pointer event types remain future work.
 
 ### Logical commands and ownership
 
@@ -565,8 +632,51 @@ Each temporary text-layout result owns its glyph geometry until recording
 returns. GPU resource lifetime is handled separately.
 
 Application reuses its cached PaintList until Paint invalidation requests
-a rebuild. This caches logical commands, not Vulkan command buffers or
-glyph geometry: text layout and Vulkan recording still happen each frame.
+a rebuild. The cached commands have already been converted into target
+pixels. This caches backend-independent operations, not Vulkan command
+buffers or glyph geometry: text layout and Vulkan recording still happen
+each frame.
+
+### Uniform UI scaling
+
+Application::SetRuntimeUIScale() accepts finite values in [0.25, 4.0],
+rejecting other input without changing state. The member defaults to 1.0;
+the current demonstration explicitly selects 1.25. Changing the scale
+invalidates root Layout and dependent work; setting the same scale is a no-op.
+Call between traversals on the application thread. This setting is not
+persisted project configuration or automatic display-DPI detection.
+
+The conversion boundaries are:
+
+```text
+logical viewport size = rendered target size / UI scale
+rendered command coordinates = logical command coordinates * UI scale
+logical pointer position = rendered pointer position / UI scale
+```
+
+Widget measurement and arrangement remain logical. Root extent division is
+essential: anchoring against physical dimensions and then scaling the result
+would place bottom-right controls outside the target. Label measurement uses
+logical height with the default CPU font metrics. Text rendering later builds
+glyphs using the converted target-pixel height. This changes output size,
+not the default atlas or font resource lifetime.
+
+ScalePaintList() in `Engine/src/UI/PaintCommands.cpp` mutates an owned list
+in place. It scales rectangle/image Min and Max, text Origin and PixelHeight,
+and every present Clip position and size. Colors, strings, texture IDs, and
+operation order remain unchanged. It rejects nonfinite or nonpositive scale
+with std::invalid_argument before mutation; 1.0 returns without conversion.
+Unlike Application's setter, this utility has no [0.25, 4.0] range restriction.
+The caller must keep scaled coordinates and heights finite; conversion is
+not an overflow validator.
+
+Conversion is not idempotent. Application calls it exactly once after a fresh
+Paint() traversal, then reuses that converted list without scaling it again.
+Rebuilding starts from newly emitted logical values. Clips reach Vulkan in
+the same target space as geometry; input is divided back into logical space
+after the existing displayed-image-to-target mapping and surface check.
+Editor ImGui controls, Scene geometry, and Actor-authored text are unaffected.
+Scaling does not introduce reflow, wrapping, or proportional space allocation.
 
 ### Ordering and rendering
 
@@ -657,27 +767,37 @@ extent changes use dynamic viewport/scissor without rebuilding pipelines.
 
 ### Current demonstration and limitations
 
-InitializeCommonStartup() in `Engine/src/Core/Application.cpp` creates a
-Panel at (24, 24), sized 320 by 120 pixels, and a child Label with authored
-offset (16, 24) and minimum size 288 by 72. Its text is "Retained UI label";
-its surface origin is (40, 48).
+InitializeCommonStartup() in `Engine/src/Core/Application.cpp` selects scale
+1.25 and creates a Panel at logical (24, 24), sized 320 by 120, and a child
+Label with authored offset (16, 24) and minimum size 288 by 72. Its text is
+"Retained UI label";
+its logical surface origin is (40, 48). In target pixels, the panel starts
+at (30, 30), measures 400 by 150, and the Label begins at (50, 60) with
+rendered pixel height 40.
 
 A VerticalBox has authored offset (-24, -24), minimum width 320, and anchor
-and pivot (1, 1). Its bottom-right corner therefore remains 24 pixels from
-the surface edges. It uses 12-pixel padding and spacing. A centered heading,
+and pivot (1, 1). Its bottom-right corner therefore remains 24 logical units
+from the surface edges, or 30 target pixels at scale 1.25. It uses 12-unit
+padding and spacing. A centered heading,
 "Retained actions" at pixel height 24, sits above a HorizontalBox with a
 12-pixel gap. Its Buttons contain "First action" and
 "Second action\nMeasured text". Label measurements and Button padding drive
 their sizes. The first Button centers vertically beside the taller second
-Button. Each child Label uses centered rectangle alignment.
+Button. Each child Label uses centered rectangle alignment. Both Buttons
+receive copies of a purple ButtonStyle with padding (24, 16, 24, 16).
+Their Labels receive gold TextStyle values at logical height 28; the heading
+uses a pale TextStyle at height 24. At scale 1.25 these text heights render
+as 35 and 30 target pixels respectively.
 
 The first release-inside callback logs "First retained action activated.";
-the second logs "Second retained action activated.". Label changes invalidate
-layout upward, so the row, outer column, and anchored position can be
+the second is configured to log "Second retained action activated." but starts
+disabled, so that callback cannot run until re-enabled. Its background uses
+the default DisabledColor while its gold text remains unchanged. Label
+changes invalidate layout upward, so the row, outer column, and anchored position can be
 recomputed without hardcoded button heights.
 
-A separate clipping Panel at (24, 180), sized 180 by 80, owns a Button at
-local offset (120, 20) with minimum size 160 by 64 and text "Clipped action".
+A separate clipping Panel at logical (24, 180), sized 180 by 80, owns a Button
+at local offset (120, 20) with minimum size 160 by 64 and text "Clipped action".
 Only the part within the Panel is visible and interactive. Its callback
 logs "Clipped retained action activated.". This deliberate overflow is a
 clipping demonstration, not truncated content caused by a font failure.
@@ -691,8 +811,8 @@ Measurement is unconstrained. Minimum/maximum size policies, proportional
 space allocation, wrapping, scrolling, and automatic shrinking are not
 implemented. A small viewport can overflow the anchored group; clipping
 does not reflow it. Image has no intrinsic texture-size measurement.
-Keyboard/gamepad focus, style resolution, widget serialization, and a UI
-designer remain future work. The complete Text and runtime UI roadmap area
+Keyboard/gamepad focus, shared live themes/style resolution, widget
+serialization, and a UI designer remain future work. The complete Text and runtime UI roadmap area
 is not finished by these layout foundations.
 
 ## Swapchain and Scene viewport

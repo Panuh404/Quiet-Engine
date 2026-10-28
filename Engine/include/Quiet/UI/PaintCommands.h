@@ -120,4 +120,16 @@ namespace Quiet::UI
      * The list contains no GPU resources.
      */
     using PaintList = std::vector<PaintCommand>;
+
+    /**
+     * @brief Converts logical UI painting coordinates to target pixels.
+     * @param commands Owned commands to transform in place.
+     * @param scale Finite positive uniform scale.
+     * @note Scales geometry, text height, and clips, preserving colors,
+     *       texture IDs, content, and submission order.
+     *       Apply once after rebuilding the logical command list.
+     * @pre Scaled coordinates and text heights must remain finite.
+     * @throws std::invalid_argument For nonfinite or nonpositive scale.
+     */
+        void ScalePaintList(PaintList& commands, float scale);
 }

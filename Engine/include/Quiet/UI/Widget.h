@@ -63,6 +63,9 @@ namespace Quiet::UI
      * Parents exclusively own their children. Parent pointers and references
      * returned by this API are borrowed and do not extend widget lifetime.
      *
+     * Geometry, pointer queries, and OnPaint() output use logical UI pixels.
+     * Application converts painting output to rendered target pixels.
+     *
      * Widgets have stable addresses while owned, including when the parent's
      * child vector grows. Destruction recursively destroys owned children.
      */
@@ -169,6 +172,24 @@ namespace Quiet::UI
         [[nodiscard]] std::optional<Rect> GetSurfaceClip() const noexcept;
 
         /**
+         * @brief Enables or disables interaction for this subtree.
+         * @note Disabling immediately cancels hover and pending presses.
+         *       Preserves layout, visibility, and hit-test geometry.
+         *       Re-enabling does not restore a cancelled press.
+         */
+        void SetEnabled(bool enabled) noexcept;
+
+        /**
+         * @brief Returns this widget's local enabled setting.
+         */
+        [[nodiscard]] bool IsEnabled() const noexcept { return m_Enabled; }
+
+        /**
+         * @brief Returns true when this widget and all ancestors are enabled.
+         */
+        [[nodiscard]] bool IsEffectivelyEnabled() const noexcept;
+
+        /**
          * @brief Sets participation in hit testing without changing painting.
          * @note ChildrenOnly skips this widget but still searches descendants.
          *       None skips the entire subtree.
@@ -183,6 +204,8 @@ namespace Quiet::UI
          *       Enabled clips on this widget and its ancestors restrict hits.
          *       Minimum edges are included; maximum edges are excluded.
          *       Nonfinite points produce no hit.
+         * @note Disabled widgets retain their hit-test participation so
+         *       disabling a control does not make its geometry click-through.
          * @pre The hierarchy must remain unchanged during the query.
          * @pre Resolved bounds and their maximum coordinates must remain finite.
          */
@@ -286,6 +309,7 @@ namespace Quiet::UI
          * @note Paints this widget first, then children in insertion order.
          * @note Applies the effective surface clip to commands appended by OnPaint().
          *       OnPaint() must leave command Clip fields unset.
+         * @note Produces logical UI coordinates before Application scaling.
          * @pre The hierarchy and paint-affecting widget state must not be modified during painting.
          */
         void Paint(PaintList& commands) const;
@@ -324,6 +348,7 @@ namespace Quiet::UI
         Alignment m_HorizontalAlignment = Alignment::Stretch;
         Alignment m_VerticalAlignment = Alignment::Stretch;
 
+        bool m_Enabled = true;
         bool m_ClipToBounds = false;
         HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
         bool m_PointerHovered = false;
