@@ -20,6 +20,8 @@ namespace Quiet::Input
     {
         auto* handle = static_cast<GLFWwindow*>(m_Window->GetNativeHandle());
 
+        m_ConsumedKeys.fill(false);
+        m_ConsumedGamepadButtons.fill(false);
         m_ConsumedMouseButtons.fill(false);
         m_PreviousKeys = m_CurrentKeys;
         m_PreviousMouseButtons = m_CurrentMouseButtons;
@@ -32,6 +34,42 @@ namespace Quiet::Input
         for (std::size_t i = 0; i < MouseButtonCount; ++i)
         {
             m_CurrentMouseButtons[i] = (glfwGetMouseButton(handle, static_cast<int>(i)) == GLFW_PRESS);
+        }
+
+        static_assert(GamepadButtonCount == GLFW_GAMEPAD_BUTTON_LAST + 1);
+
+        const int previousJoystick = m_GamepadJoystick;
+        GLFWgamepadstate gamepadState{};
+
+        const bool existingSample = m_GamepadJoystick >= 0 && glfwGetGamepadState(m_GamepadJoystick, &gamepadState) == GLFW_TRUE;
+        if (!existingSample)
+        {
+            m_GamepadJoystick = -1;
+            for (int joystick = GLFW_JOYSTICK_1; joystick <= GLFW_JOYSTICK_LAST; ++joystick)
+            {
+                if (glfwGetGamepadState(joystick, &gamepadState) == GLFW_TRUE)
+                {
+                    m_GamepadJoystick = joystick;
+                    break;
+                }
+            }
+        }
+
+        m_PreviousGamepadButtons = m_CurrentGamepadButtons;
+        m_CurrentGamepadButtons.fill(false);
+
+        if (m_GamepadJoystick >= 0)
+        {
+            for (std::size_t index = 0; index < GamepadButtonCount; ++index)
+            {
+                m_CurrentGamepadButtons[index] = gamepadState.buttons[index] == GLFW_PRESS;
+            }
+        }
+
+        if (m_GamepadJoystick != previousJoystick)
+        {
+            ++m_GamepadGeneration;
+            m_PreviousGamepadButtons = m_CurrentGamepadButtons;
         }
 
         glfwGetCursorPos(handle, &m_MouseX, &m_MouseY);
@@ -54,13 +92,48 @@ namespace Quiet::Input
     bool Input::IsKeyDown(KeyCode key) const
     {
         const std::size_t index = static_cast<std::size_t>(ToNative(key));
-        return m_CurrentKeys[index];
+        return !m_ConsumedKeys[index] && m_CurrentKeys[index];
     }
 
     bool Input::IsKeyPressed(KeyCode key) const
     {
         const std::size_t index = static_cast<std::size_t>(ToNative(key));
-        return m_CurrentKeys[index] && !m_PreviousKeys[index];
+        return !m_ConsumedKeys[index] && m_CurrentKeys[index] && !m_PreviousKeys[index];
+    }
+
+    void Input::ConsumeKey(KeyCode key) noexcept
+    {
+        const std::size_t index = static_cast<std::size_t>(ToNative(key));
+        m_ConsumedKeys[index] = true;
+    }
+
+    bool Input::IsGamepadButtonDown(GamepadCode button) const
+    {
+        const auto index = static_cast<std::size_t>(button);
+        return !m_ConsumedGamepadButtons[index] &&
+               m_CurrentGamepadButtons[index];
+    }
+
+    bool Input::IsGamepadButtonPressed(GamepadCode button) const
+    {
+        const auto index = static_cast<std::size_t>(button);
+        return !m_ConsumedGamepadButtons[index] &&
+               m_CurrentGamepadButtons[index] &&
+               !m_PreviousGamepadButtons[index];
+    }
+
+    bool Input::IsGamepadButtonReleased(GamepadCode button) const
+    {
+        const auto index = static_cast<std::size_t>(button);
+        return !m_ConsumedGamepadButtons[index] &&
+               !m_CurrentGamepadButtons[index] &&
+               m_PreviousGamepadButtons[index];
+    }
+
+    void Input::ConsumeGamepadButton(GamepadCode button) noexcept
+    {
+        const auto index = static_cast<std::size_t>(button);
+        m_ConsumedGamepadButtons[index] = true;
     }
 
     bool Input::IsMouseButtonDown(MouseCode button) const

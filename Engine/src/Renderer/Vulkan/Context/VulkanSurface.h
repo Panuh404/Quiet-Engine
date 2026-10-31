@@ -12,7 +12,7 @@ namespace Quiet::Renderer::Vulkan
     class VulkanSurface
     {
     public:
-        VulkanSurface(VkInstance instance, const Quiet::Platform::Window& window);
+        VulkanSurface(VkInstance instance, const Platform::Window& window);
         ~VulkanSurface();
 
         VulkanSurface(const VulkanSurface&) = delete;

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+#include <optional>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -201,6 +204,23 @@ namespace Quiet::Core
          */
         void UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer& uiLayer);
 
+        /**
+         * @brief Routes keyboard navigation and activation.
+         * @param gamepadMovedFocus Whether gamepad navigation or focus
+         *        cancellation was accepted earlier in this frame.
+         * @note Consumes accepted key gestures until release.
+         *       Invokes activation only after widget traversal completes.
+         */
+        void UpdateRuntimeUIKeyboard(const Renderer::UI::ImGuiLayer& uiLayer, bool gamepadMovedFocus);
+
+        /**
+         * @brief Routes mapped gamepad focus navigation and cancellation.
+         * @return True when navigation or cancellation was accepted.
+         * @note Consumes accepted gestures until release.
+         *       Does not activate widgets.
+         */
+        bool UpdateRuntimeUIGamepadNavigation(const Renderer::UI::ImGuiLayer& uiLayer);
+
         bool RunEditorBootstrapFrame(const FrameContext& frame);
         void AdvanceEditorBootstrap();
         void BuildEditorBootstrapUI(Renderer::UI::ImGuiLayer& uiLayer);
@@ -215,6 +235,15 @@ namespace Quiet::Core
         bool m_Running = true;
         bool m_MouseCaptureEnabled = true;
         bool m_RuntimeUIOwnsPrimaryPress = false;
+        bool m_RuntimeUIOwnsTab = false;
+
+        std::array<bool, 3> m_RuntimeUIOwnsActivationKeys{};
+        std::optional<std::size_t> m_RuntimeUIActivationKey;
+        std::uint64_t m_RuntimeUIGamepadGeneration = 0;
+        std::array<bool, 2> m_RuntimeUIOwnsGamepadNavigation{};
+        bool m_RuntimeUIOwnsGamepadConfirm = false;
+        bool m_RuntimeUIOwnsGamepadCancel = false;
+        bool m_RuntimeUIGamepadConfirmActive = false;
 
         EditorBootstrapStage m_EditorBootstrapStage = EditorBootstrapStage::Ready;
         std::filesystem::path m_EditorProjectFilePath;

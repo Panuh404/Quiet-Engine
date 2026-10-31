@@ -357,8 +357,9 @@ Once Ready, the frame performs these operations:
 4. Begins the UI frame.
 5. Builds and processes Editor UI, viewport asset drops, and resize requests.
 6. Ends the UI frame.
-7. Routes retained UI pointer input, applies gameplay mouse consumption,
-   and invokes any activation callback after widget traversal.
+7. Routes retained UI pointer input, gamepad navigation/cancel, then keyboard
+   navigation and keyboard/gamepad activation. Applies consumption before
+   gameplay queries and invokes callbacks after the relevant widget traversal.
 8. Resolves the active Scene again and advances runtime input and simulation.
 9. Builds render camera data, updates the retained UI paint list, and
    submits the Scene and commands to the renderer.
@@ -400,8 +401,8 @@ RunSandboxFrame() requires a UI layer. A missing layer produces an error
 log and a false frame result.
 
 Sandbox first processes viewport resizing, then builds and ends the runtime
-presentation UI frame. It routes retained UI pointer input and consumption
-before obtaining the main Scene reference and calling
+presentation UI frame. It routes retained UI pointer, gamepad navigation, and
+keyboard/activation input before obtaining the main Scene reference and calling
 UpdateRuntimeSceneForFrame(). It then builds camera data and retained paint
 commands and submits without the Editor grid or selection feedback.
 
@@ -487,15 +488,17 @@ Implementation anchors are:
   ImGuiLayer::BuildViewport() and BuildRuntimeUI().
 - `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::MapPointToSurface().
 - `Engine/src/Core/Application.cpp`: UpdateRuntimeUILayout(),
-  HitTestRuntimeUI(), UpdateRuntimeUIPointer(), and
+  HitTestRuntimeUI(), UpdateRuntimeUIPointer(), UpdateRuntimeUIGamepadNavigation(),
+  UpdateRuntimeUIKeyboard(), and
   BuildEditorViewportOverlayCallback().
 - `Engine/include/Quiet/Input/Input.h` and `Engine/src/Input/Input.cpp`:
-  Quiet::Input::Input::ConsumeMouseButton() and mouse query implementations.
+  Quiet::Input::Input::ConsumeMouseButton(), ConsumeKey(), and mapped gamepad queries.
+- `Engine/include/Quiet/Input/GamepadCodes.h`: Quiet::Input::GamepadCode.
 
 BeginFrame() clears the optional presentation snapshot. Each presentation
 path records it immediately after a visible Scene-image item. The snapshot
 copies the image rectangle, mouse position, position-validity and image-hover
-flags, and primary-button down, pressed, and released values. The getter
+flags, primary-button states, and keyboard eligibility. The getter
 returns a copy; no reference into a replaceable ImGuiLayer is retained.
 
 The rectangle and mouse position come from the same ImGui coordinate space,
@@ -565,12 +568,59 @@ For a UI-owned gesture, Application keeps consuming until physical release
 is observed, preventing the held gesture from leaking into gameplay during
 cancellation. No pointer to a previous input owner is retained.
 
-The current policy consumes only left-button down/pressed queries. Keyboard,
-other buttons, pointer position, and movement delta are unchanged. Lua input
-bindings share this Input object and therefore observe the same filtered
-results after routing. Consumption does not retroactively affect earlier
-Editor reads or runtime startup callbacks. It is not a general input-action
-or event-dispatch system.
+### Focus, keyboard, and gamepad routing
+
+Each viewport-image snapshot records KeyboardAvailable when its ImGui window
+or child has focus, ImGui does not request keyboard capture or text input,
+and no ImGui item is active. Both Editor and Sandbox construct this snapshot.
+Mouse hover is not required for keyboard navigation. Missing presentation,
+unavailable keyboard eligibility, or camera capture clears runtime UI focus
+and cancels pending activation. Clicking empty viewport space clears focus;
+clicking an eligible widget selects it. A disabled/ineligible hit does not
+replace existing valid focus. See [Renderer](Renderer.md) for eligibility.
+
+UpdateRuntimeUIGamepadNavigation() runs after pointer routing and before
+UpdateRuntimeUIKeyboard(). With eligible viewport input, D-pad Down moves
+forward and Up backward through Widget::MoveFocus(); simultaneous opposing
+press transitions do not move. East, the mapped right face button, clears
+existing focus and pending activation; it is not the separate Back/Select
+button. East is accepted only when focus exists. Accepted cancel takes priority
+over simultaneous D-pad input. Accepted D-pad navigation cancels a pending
+activation. No repeat is generated while a direction remains held.
+
+Tab and Shift+Tab move forward/backward. Enter, keypad Enter, Space, and the
+mapped South face button start a press on the focused eligible widget and
+activate on release. They do not repeat while held. Only one activation
+gesture runs at a time. If keyboard and South presses begin together, the
+keyboard press is selected. A gamepad navigation/cancel accepted in the same
+frame has priority over Tab and new activation; a successful Tab move also
+cancels pending activation. Callbacks are invoked after traversal and key
+bookkeeping. Pointer routing and any pointer activation happen earlier in
+the frame; there is no general cross-device event queue or menu-back stack.
+
+Input::ConsumeKey() hides subsequent IsKeyDown()/IsKeyPressed() results;
+ConsumeGamepadButton() similarly masks down, pressed, and released queries.
+Update() clears masks each frame without modifying physical history. Application
+owns accepted Tab, activation keys, D-pad directions, South, or East until
+their release is observed, continuing consumption if routing becomes
+unavailable. Shift is not consumed. No eligible focus means activation and
+cancel are not claimed, except simultaneous activation presses suppressed
+after an accepted gamepad navigation/cancel are consumed for that gesture.
+
+Input samples one GLFW-mapped gamepad each update, retaining the selected
+joystick while sampling succeeds, otherwise selecting the first available
+mapped device. Detected selected-ID changes increment the gamepad generation
+and synchronize current/previous samples, preventing a held button from
+creating an initial press. Application clears controller ownership on a
+detected generation change and cancels an active South gesture. Selection is
+poll-based; a disconnect and replacement between samples using the same ID
+is not independently identified. There is no analog-stick routing, repeat,
+multiple-player assignment, or Lua gamepad binding in this implementation.
+
+Consumption affects only subsequent Input queries; it cannot retroactively
+filter earlier Editor/global reads or runtime startup callbacks. Other keys,
+mouse buttons, pointer position, and movement delta retain their existing
+behavior. This is not a general input-action or event-dispatch system.
 
 ## Active Scene and render camera
 

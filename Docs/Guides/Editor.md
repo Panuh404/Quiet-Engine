@@ -200,10 +200,36 @@ InitializeCommonStartup(): both buttons must become disabled. Remove that
 temporary change afterward. Enabling a child cannot override a disabled
 ancestor. Re-enabling does not restore a cancelled press; start a fresh click.
 
+To exercise focus and keyboard/gamepad input, release camera capture and
+click the viewport so its window owns keyboard input. ImGui text input,
+keyboard capture, active items, another focused window, and camera capture
+prevent runtime UI keyboard routing. Pointer hover over a button is not
+required for traversal.
+
+1. Press Tab to move forward and Shift+Tab to move backward. Focus wraps;
+   the disabled second action is skipped. The partially visible clipping
+   button is eligible while it has visible area.
+2. Hold Enter, keypad Enter, or Space on a focused button: its pressed color
+   appears. Release activates once. Holding does not repeat.
+3. On a GLFW-mapped controller, D-pad Down/Up traverses forward/backward.
+   Hold the South face button (commonly A/Cross) and release to activate.
+4. Press East (commonly B/Circle) to clear focus without activation. With
+   no focus, runtime UI does not claim East.
+5. While holding an activation key or South, navigate or press East; release
+   must not activate the old or new focus. Changing viewport ownership or
+   enabling camera capture also cancels the pending activation.
+6. Reconnect a controller while holding a navigation/confirm button; release
+   and press again before expecting a new gesture. Test accepted UI keys and
+   controller buttons against subsequent gameplay queries where applicable.
+
+Mouse click can also select focus. Move the pointer away to see the focused
+color, since pointer hover has its own appearance. The current controller
+uses sequential focus order, not spatial directional search or analog sticks.
+
 Rows, columns, styles, enabled state, alignment, and clipping are configured
 in C++ through Application::InitializeCommonStartup() in
 `Engine/src/Core/Application.cpp`.
-There are no widget Inspector controls, keyboard/gamepad focus, scrolling,
+There are no widget Inspector controls, scrolling,
 or text wrapping yet. Scale is configured explicitly in C++, within [0.25, 4.0],
 and does not automatically follow display DPI or shrink content to fit.
 The temporary logo preview is removed; the Image

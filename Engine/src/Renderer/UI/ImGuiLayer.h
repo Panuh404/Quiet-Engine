@@ -65,7 +65,8 @@ namespace Quiet::Renderer::UI
     };
 
     /**
-     * @brief Copies pointer and image geometry from one presentation frame.
+     * @brief Copies pointer, keyboard eligibility, and image geometry
+     *        from one presentation frame.
      * @ingroup quiet_renderer
      *
      * DisplayBounds and DisplayPosition use the same ImGui coordinate space.
@@ -80,6 +81,7 @@ namespace Quiet::Renderer::UI
         bool PrimaryDown = false;
         bool PrimaryPressed = false;
         bool PrimaryReleased = false;
+        bool KeyboardAvailable = false;
     };
 
     class ImGuiLayer

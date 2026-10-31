@@ -1196,7 +1196,8 @@ namespace Quiet::Renderer::Vulkan
             }
 
             // Existing Actor-authored text path, preserved while the
-            // retained runtime UI system is introduced incrementally.
+            // retained runtime UI system is introduced
+            // incrementally.
             if (m_TextPipeline && m_TextRenderSystem)
             {
                 SynchronizeColorAttachmentForOverlay(commandBuffer, m_SceneViewportTarget->GetColorImage());

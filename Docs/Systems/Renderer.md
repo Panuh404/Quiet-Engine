@@ -543,6 +543,36 @@ Hover and press transitions invalidate Paint only when the stored boolean
 changes. Attachment and detachment clear both states on the transferred
 subtree. No previous-widget pointer is retained between frames.
 
+### Focus and activation
+
+Widget::SetFocusable() controls local focus eligibility and defaults to
+false. Button enables it in its constructor. CanReceiveFocus() additionally
+requires effective enabled state, positive arranged bounds, and a positive
+intersection with the root bounds and effective ancestor clips. It does not
+test occlusion by siblings. HitTestMode controls pointer participation
+independently and does not by itself remove keyboard/gamepad eligibility.
+
+SetFocus() is called on a root with a live borrowed target, or null to clear.
+It rejects foreign and ineligible targets without replacing valid focus.
+MoveFocus() collects eligible widgets in depth-first insertion order, wraps
+forward or backward, and returns a borrowed selection; selection does not
+invoke behavior. The temporary candidate vector can allocate. Focus lives
+as a widget flag rather than an Application-owned widget pointer.
+
+ClearFocus() clears focus and keyboard-style press state throughout a
+subtree. Disabling a subtree, removing a widget's focusability, and
+attachment/detachment clear the affected focus. GetFocusedWidget() prunes a
+focused widget that is no longer eligible; Application calls it before paint
+cache reuse after updating layout. Neither a borrowed query result nor a
+callback capture extends widget lifetime.
+
+UpdateKeyboardPress() tracks a press on the focused eligible widget and
+returns a borrowed activation target on release. All-false input cancels;
+focus changes, disabling, detachment, or lost eligibility prevent retargeting
+a held gesture. Application also uses this state machine for gamepad South.
+Traversal does not invoke callbacks. Application invokes Activate() only
+after traversal and input ownership bookkeeping complete.
+
 ### Enabled state and input blocking
 
 Widget::SetEnabled() defaults to true and stores a local setting.
@@ -583,9 +613,11 @@ The current straight-alpha linear RGBA defaults are:
 | Hovered without a press | (0.08, 0.22, 0.42, 1.0) |
 | Hovered with an owned press | (0.02, 0.08, 0.18, 1.0) |
 | Effectively disabled, regardless of pointer position | (0.08, 0.08, 0.1, 0.8) |
+| Focused without hover or activation press | (0.12, 0.28, 0.48, 1.0) |
 
 These defaults come from ButtonStyle and can be replaced per button.
-Disabled appearance takes precedence over hover and press. Child Labels
+Disabled appearance takes precedence, followed by focused keyboard/gamepad
+press, pointer hover/press, focused, and normal. Child Labels
 retain their explicit TextStyle; there is no inherited disabled text tint.
 
 SetOnClick() installs a std::function<void()> in a shared owning allocation;
@@ -601,9 +633,10 @@ Captured references must still remain valid; retaining the callable does
 not extend the lifetime of objects referenced by those captures. Invoke
 behavior outside hierarchy traversal. Widget::Activate() defaults to no work.
 
-This is primary-button state and release-inside activation, not a general
-captured pointer-event dispatcher. Keyboard/gamepad focus, live theme/style
-resolution, and additional pointer event types remain future work.
+Pointer activation is primary-button release-inside, not a general captured
+pointer-event dispatcher. Keyboard/gamepad activation is release-based on
+the focused widget. Live theme/style resolution, analog navigation, and
+additional pointer event types remain future work.
 
 ### Logical commands and ownership
 
@@ -811,8 +844,8 @@ Measurement is unconstrained. Minimum/maximum size policies, proportional
 space allocation, wrapping, scrolling, and automatic shrinking are not
 implemented. A small viewport can overflow the anchored group; clipping
 does not reflow it. Image has no intrinsic texture-size measurement.
-Keyboard/gamepad focus, shared live themes/style resolution, widget
-serialization, and a UI designer remain future work. The complete Text and runtime UI roadmap area
+Shared live themes/style resolution, widget serialization, and a UI designer
+remain future work. The complete Text and runtime UI roadmap area
 is not finished by these layout foundations.
 
 ## Swapchain and Scene viewport

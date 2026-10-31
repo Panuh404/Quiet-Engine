@@ -311,7 +311,7 @@ return false.
 Use Play when testing gameplay input. Editor shortcuts and viewport
 navigation can also respond to input, so account for their context.
 
-### Runtime UI and mouse ownership
+### Runtime UI input ownership
 
 Ready Editor and Sandbox frames route retained UI pointer input before
 runtime Scene input and OnUpdate. A left-button gesture starting on a
@@ -323,8 +323,16 @@ outside and moving into a widget does not transfer that gesture to the UI.
 
 Consumption preserves physical input history, so ending UI ownership does
 not synthesize another pressed edge. Cancelling UI interaction keeps the
-owned gesture hidden until release is observed. Keyboard queries, other
-mouse buttons, pointer movement delta, and earlier input reads are unchanged.
+owned gesture hidden until release is observed. Accepted UI Tab navigation
+and Enter/keypad Enter/Space activation also hide those keys from subsequent
+Input.Keyboard.IsDown() and IsPressed() queries through release. Shift,
+other keys, other mouse buttons, pointer movement delta, and earlier input
+reads retain their existing behavior. Only gestures claimed by UI are masked;
+this is not general keyboard capture for all gameplay input.
+
+The C++ Input API also samples a mapped gamepad and masks accepted runtime UI
+D-pad, South-confirm, and East-cancel gestures. There are currently no Lua
+gamepad queries. Gamepad focus and callbacks do not create a Lua widget API.
 
 This policy does not retroactively filter OnCreate, OnBegin, or other code
 that ran before current-frame UI routing. Use OnUpdate when verifying normal

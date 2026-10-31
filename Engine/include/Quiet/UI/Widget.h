@@ -172,6 +172,56 @@ namespace Quiet::UI
         [[nodiscard]] std::optional<Rect> GetSurfaceClip() const noexcept;
 
         /**
+         * @brief Enables eligibility for keyboard/navigation focus.
+         * @note Defaults to false. Turning it off clears this widget's focus.
+         */
+        void SetFocusable(bool focusable) noexcept;
+        [[nodiscard]] bool IsFocusable() const noexcept { return m_Focusable; }
+
+        /**
+         * @brief Tests focus eligibility using current arranged geometry.
+         * @note Requires local focusability, effective enabled state, and
+         *       positive visible area within the root bounds and ancestor clips.
+         *       Does not test occlusion by overlapping siblings.
+         *       HitTestMode controls pointer input independently.
+         * @pre Layout must be current and resolved coordinates finite.
+         */
+        [[nodiscard]] bool CanReceiveFocus() const noexcept;
+        [[nodiscard]] bool IsFocused() const noexcept { return m_Focused && CanReceiveFocus(); }
+
+        /**
+         * @brief Selects one eligible widget in this root, or clears focus.
+         * @return False for a non-root receiver, foreign target, or
+         *         ineligible target; preserves existing valid focus.
+         * @note Pass null to clear. Does not activate the target.
+         * @pre target must be null or a live borrowed widget pointer.
+         */
+        bool SetFocus(Widget* target) noexcept;
+
+        /**
+         * @brief Clears focus throughout this subtree.
+         */
+        void ClearFocus() noexcept;
+
+        /**
+         * @brief Returns the focused descendant and clears obsolete focus.
+         * @return Borrowed pointer, or null.
+         * @pre Layout must be current.
+         */
+        [[nodiscard]] Widget* GetFocusedWidget() noexcept;
+
+        /**
+         * @brief Moves focus through eligible widgets in hierarchy order.
+         * @return Borrowed selected widget, or null when none are eligible.
+         * @note Call on the root. Forward traversal uses depth-first insertion
+         *       order; reverse traversal reverses that order. Both wrap.
+         *       With no current focus, selects the first or last candidate.
+         *       Allocation exceptions propagate before selection changes.
+         * @pre Layout must be current; hierarchy unchanged during traversal.
+         */
+        Widget* MoveFocus(bool reverse = false);
+
+        /**
          * @brief Enables or disables interaction for this subtree.
          * @note Disabling immediately cancels hover and pending presses.
          *       Preserves layout, visibility, and hit-test geometry.
@@ -238,6 +288,18 @@ namespace Quiet::UI
          */
         Widget* UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased = false) noexcept;
         [[nodiscard]] bool IsPointerPressed() const noexcept { return m_PointerPressed; }
+
+        /**
+         * @brief Updates a focused-widget activation gesture.
+         * @return Borrowed release-activation target, or null.
+         * @note Press starts only on the focused eligible widget.
+         *       All false values cancel. Focus changes cancel ownership.
+         *       Does not invoke callbacks.
+         * @pre Call on the input root after layout and focus are current.
+         *       Do not modify the hierarchy during traversal.
+         */
+        Widget* UpdateKeyboardPress(bool pressed, bool down, bool released = false) noexcept;
+        [[nodiscard]] bool IsKeyboardPressed() const noexcept { return m_KeyboardPressed; }
 
         /**
          * @brief Performs this widget's activation behavior.
@@ -348,11 +410,14 @@ namespace Quiet::UI
         Alignment m_HorizontalAlignment = Alignment::Stretch;
         Alignment m_VerticalAlignment = Alignment::Stretch;
 
+        bool m_Focusable = false;
+        bool m_Focused = false;
         bool m_Enabled = true;
         bool m_ClipToBounds = false;
         HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
         bool m_PointerHovered = false;
         bool m_PointerPressed = false;
+        bool m_KeyboardPressed = false;
         InvalidationState m_Invalidation{};
         std::vector<std::unique_ptr<Widget>> m_Children;
     };

@@ -331,6 +331,7 @@ target_sources(Quiet_Engine
         include/Quiet/Project/RuntimeManifest.h
 
         include/Quiet/Input/Input.h
+        include/Quiet/Input/GamepadCodes.h
         include/Quiet/Input/KeyCodes.h
         include/Quiet/Input/MouseCodes.h
 

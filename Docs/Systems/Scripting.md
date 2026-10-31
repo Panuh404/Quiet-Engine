@@ -654,7 +654,13 @@ not implement a second consumption mechanism or modify physical history.
 
 Mouse capture or missing pointer data cancels widget press state while
 Application preserves consumption of a UI-owned held gesture until release
-is observed. Keyboard, other buttons, and movement delta are unaffected.
+is observed. UI-owned Tab and Enter/keypad Enter/Space gestures similarly
+use Input::ConsumeKey(), masking subsequent keyboard down/pressed queries
+through release without changing physical history. Shift and other keys,
+other mouse buttons, and movement delta retain their existing behavior.
+This is gesture-specific rather than a general keyboard-capture filter.
+The C++ Input API includes mapped gamepad sampling and consumption, but
+these bindings do not expose gamepad queries.
 Calls before routing, including runtime startup callbacks, cannot be
 retroactively filtered. The current contract does not provide Lua access
 to retained widgets or their C++ activation callbacks.

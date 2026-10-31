@@ -77,9 +77,8 @@ namespace Quiet::UI
         void OnArrangeChildren() override;
 
         /**
-         * @brief Emits the normal, hovered, or pressed background rectangle.
+         * @brief Emits the disabled, pointer-state, focused, or normal background.
          * @pre Surface bounds and their maximum coordinates must remain finite.
-         * @brief Emits the normal, hovered, pressed, or disabled background.
          */
         void OnPaint(PaintList& commands) const override;
 

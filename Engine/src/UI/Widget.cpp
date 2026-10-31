@@ -170,6 +170,150 @@ namespace Quiet::UI
         return clip;
     }
 
+    void Widget::SetFocusable(const bool focusable) noexcept
+    {
+        if (m_Focusable == focusable) return;
+        m_Focusable = focusable;
+
+        if (!focusable && (m_Focused || m_KeyboardPressed))
+        {
+            m_Focused = false;
+            m_KeyboardPressed = false;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        Invalidate(InvalidationReason::Interaction);
+    }
+
+    bool Widget::CanReceiveFocus() const noexcept
+    {
+        if (!m_Focusable || !IsEffectivelyEnabled()) return false;
+
+        const Rect bounds = GetSurfaceBounds();
+        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f) return false;
+
+        const Widget* root = this;
+        while (root->m_Parent)
+        {
+            root = root->m_Parent;
+        }
+
+        const Rect rootBounds = root->GetSurfaceBounds();
+
+        glm::vec2 minimum = glm::max(bounds.Position, rootBounds.Position);
+        glm::vec2 maximum = glm::min(bounds.Position + bounds.Size, rootBounds.Position + rootBounds.Size);
+
+        if (const auto clip = GetSurfaceClip())
+        {
+            minimum = glm::max(minimum, clip->Position);
+            maximum = glm::min(maximum, clip->Position + clip->Size);
+        }
+
+        return maximum.x > minimum.x && maximum.y > minimum.y;
+    }
+
+    void Widget::ClearFocus() noexcept
+    {
+        if (m_Focused || m_KeyboardPressed)
+        {
+            m_Focused = false;
+            m_KeyboardPressed = false;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        for (const auto& child : m_Children)
+        {
+            child->ClearFocus();
+        }
+    }
+
+    Widget* Widget::GetFocusedWidget() noexcept
+    {
+        if (m_Focused)
+        {
+            if (CanReceiveFocus()) return this;
+            m_Focused = false;
+            m_KeyboardPressed = false;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        for (const auto& child : m_Children)
+        {
+            if (Widget* focused = child->GetFocusedWidget()) return focused;
+        }
+
+        return nullptr;
+    }
+
+    bool Widget::SetFocus(Widget* target) noexcept
+    {
+        if (m_Parent) return false;
+        if (target)
+        {
+            const Widget* targetRoot = target;
+            while (targetRoot->m_Parent)
+            {
+                targetRoot = targetRoot->m_Parent;
+            }
+            if (targetRoot != this || !target->CanReceiveFocus())
+            {
+                return false;
+            }
+        }
+
+        if (GetFocusedWidget() == target) return true;
+        ClearFocus();
+
+        if (target)
+        {
+            target->m_Focused = true;
+            target->Invalidate(InvalidationReason::Paint);
+        }
+
+        return true;
+    }
+
+    Widget* Widget::MoveFocus(const bool reverse)
+    {
+        if (m_Parent) return nullptr;
+
+        std::vector<Widget*> candidates;
+
+        const auto collect = [&candidates](const auto& visit, Widget& widget) -> void
+        {
+            if (!widget.IsEffectivelyEnabled()) return;
+            if (widget.CanReceiveFocus()) candidates.push_back(&widget);
+
+            for (const auto& child : widget.m_Children)
+            {
+                visit(visit, *child);
+            }
+        };
+
+        collect(collect, *this);
+        if (candidates.empty())
+        {
+            ClearFocus();
+            return nullptr;
+        }
+
+        Widget* current = GetFocusedWidget();
+        const auto found = std::find(candidates.begin(), candidates.end(), current);
+        std::size_t index = reverse ? candidates.size() - 1 : 0;
+
+        if (found != candidates.end())
+        {
+            const auto currentIndex = static_cast<std::size_t>(found - candidates.begin());
+            index = reverse
+                ? (currentIndex == 0 ? candidates.size() - 1 : currentIndex - 1)
+                : (currentIndex + 1) % candidates.size();
+        }
+
+        Widget* selected = candidates[index];
+        SetFocus(selected);
+        return selected;
+    }
+
     void Widget::SetEnabled(const bool enabled) noexcept
     {
         if (m_Enabled == enabled) return;
@@ -177,6 +321,7 @@ namespace Quiet::UI
 
         if (!enabled)
         {
+            ClearFocus();
             UpdatePointerHover(nullptr);
             UpdatePointerPress(nullptr, false, false);
         }
@@ -194,6 +339,7 @@ namespace Quiet::UI
 
         return true;
     }
+
     void Widget::SetHitTestMode(const HitTestMode mode) noexcept
     {
         if (m_HitTestMode == mode) return;
@@ -204,11 +350,7 @@ namespace Quiet::UI
 
     Widget* Widget::HitTest(const glm::vec2& surfacePosition) noexcept
     {
-        if (!std::isfinite(surfacePosition.x) || !std::isfinite(surfacePosition.y) || m_HitTestMode == HitTestMode::None)
-        {
-            return nullptr;
-        }
-
+        if (!std::isfinite(surfacePosition.x) || !std::isfinite(surfacePosition.y) || m_HitTestMode == HitTestMode::None) return nullptr;
         if (const auto clip = GetSurfaceClip())
         {
             const glm::vec2 maximum = clip->Position + clip->Size;
@@ -219,9 +361,7 @@ namespace Quiet::UI
                 surfacePosition.y < clip->Position.y ||
                 surfacePosition.x >= maximum.x ||
                 surfacePosition.y >= maximum.y)
-            {
                 return nullptr;
-            }
         }
 
         for (auto & child : std::views::reverse(m_Children))
@@ -239,9 +379,7 @@ namespace Quiet::UI
             surfacePosition.y >= bounds.Position.y &&
             surfacePosition.x < maximum.x &&
             surfacePosition.y < maximum.y)
-        {
             return this;
-        }
 
         return nullptr;
     }
@@ -305,6 +443,31 @@ namespace Quiet::UI
         return activatedWidget;
     }
 
+    Widget* Widget::UpdateKeyboardPress(const bool pressed, const bool down, const bool released) noexcept
+    {
+        const bool acceptsPress = m_Focused && CanReceiveFocus();
+        const bool ownsPress = pressed ? acceptsPress : m_KeyboardPressed;
+
+        Widget* activated = acceptsPress && ownsPress && released ? this : nullptr;
+
+        const bool keyboardPressed = acceptsPress && ownsPress && down && !released;
+        if (m_KeyboardPressed != keyboardPressed)
+        {
+            m_KeyboardPressed = keyboardPressed;
+            Invalidate(InvalidationReason::Paint);
+        }
+
+        for (const auto& child : m_Children)
+        {
+            if (Widget* candidate = child->UpdateKeyboardPress(pressed, down, released))
+            {
+                activated = candidate;
+            }
+        }
+
+        return activated;
+    }
+
     void Widget::Activate()
     {
     }
@@ -328,6 +491,7 @@ namespace Quiet::UI
 
         m_Children.push_back(std::move(child));
         attachedChild.m_Parent = this;
+        attachedChild.ClearFocus();
         attachedChild.ClearArrangedBounds();
         attachedChild.UpdatePointerHover(nullptr);
         attachedChild.UpdatePointerPress(nullptr, false, false);
@@ -353,6 +517,7 @@ namespace Quiet::UI
         std::unique_ptr<Widget> detachedChild = std::move(*iterator);
         m_Children.erase(iterator);
         detachedChild->m_Parent = nullptr;
+        detachedChild->ClearFocus();
         detachedChild->ClearArrangedBounds();
         detachedChild->UpdatePointerHover(nullptr);
         detachedChild->UpdatePointerPress(nullptr, false, false);

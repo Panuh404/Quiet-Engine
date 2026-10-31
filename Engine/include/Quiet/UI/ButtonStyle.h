@@ -20,6 +20,7 @@ namespace Quiet::UI
         glm::vec4 HoveredColor{0.08f, 0.22f, 0.42f, 1.0f};
         glm::vec4 PressedColor{0.02f, 0.08f, 0.18f, 1.0f};
         glm::vec4 DisabledColor{0.08f, 0.08f, 0.1f, 0.8f};
+        glm::vec4 FocusedColor{0.12f, 0.28f, 0.48f, 1.0f};
 
         glm::vec4 Padding{16.0f};
     };

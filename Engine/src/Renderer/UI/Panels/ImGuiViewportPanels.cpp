@@ -1022,6 +1022,11 @@ namespace Quiet::Renderer::UI
                 pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
                 pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
                 pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+                pointerState.KeyboardAvailable =
+                    ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+                    !ImGui::GetIO().WantCaptureKeyboard &&
+                    !ImGui::GetIO().WantTextInput &&
+                    !ImGui::IsAnyItemActive();
 
                 m_SceneViewportPointerState = pointerState;
             }
@@ -1265,6 +1270,11 @@ namespace Quiet::Renderer::UI
                     pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
                     pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
                     pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+                    pointerState.KeyboardAvailable =
+                        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+                        !ImGui::GetIO().WantCaptureKeyboard &&
+                        !ImGui::GetIO().WantTextInput &&
+                        !ImGui::IsAnyItemActive();
 
                     m_SceneViewportPointerState = pointerState;
                 }

@@ -12,6 +12,7 @@ namespace Quiet::UI
     Button::Button()
     {
         SetHitTestMode(HitTestMode::SelfAndChildren);
+        SetFocusable(true);
     }
 
     bool Button::SetStyle(ButtonStyle style)
@@ -26,7 +27,8 @@ namespace Quiet::UI
             &style.NormalColor,
             &style.HoveredColor,
             &style.PressedColor,
-            &style.DisabledColor
+            &style.DisabledColor,
+            &style.FocusedColor
         };
 
         for (glm::vec4* color : colors)
@@ -44,7 +46,8 @@ namespace Quiet::UI
             m_Style.NormalColor != style.NormalColor ||
             m_Style.HoveredColor != style.HoveredColor ||
             m_Style.PressedColor != style.PressedColor ||
-            m_Style.DisabledColor != style.DisabledColor;
+            m_Style.DisabledColor != style.DisabledColor ||
+            m_Style.FocusedColor != style.FocusedColor;
 
         if (!layoutChanged && !colorsChanged) return true;
 
@@ -161,11 +164,19 @@ namespace Quiet::UI
         {
             color = m_Style.DisabledColor;
         }
+        else if (IsKeyboardPressed() && IsFocused())
+        {
+            color = m_Style.PressedColor;
+        }
         else if (IsPointerHovered())
         {
             color = IsPointerPressed()
                 ? m_Style.PressedColor
                 : m_Style.HoveredColor;
+        }
+        else if (IsFocused())
+        {
+            color = m_Style.FocusedColor;
         }
 
         commands.emplace_back(SolidRectCommand

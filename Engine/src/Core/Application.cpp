@@ -363,6 +363,7 @@ namespace Quiet::Core
         actionStyle.NormalColor = {0.12f, 0.06f, 0.24f, 0.9f};
         actionStyle.HoveredColor = {0.24f, 0.12f, 0.42f, 1.0f};
         actionStyle.PressedColor = {0.07f, 0.03f, 0.14f, 1.0f};
+        actionStyle.FocusedColor = {0.32f, 0.18f, 0.5f, 1.0f};
         actionStyle.Padding = {24.0f, 16.0f, 24.0f, 16.0f};
 
         UI::TextStyle actionTextStyle{};
@@ -1058,6 +1059,8 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         UpdateRuntimeUIPointer(uiLayer);
+        const bool gamepadMovedFocus = UpdateRuntimeUIGamepadNavigation(uiLayer);
+        UpdateRuntimeUIKeyboard(uiLayer, gamepadMovedFocus);
 
         Scene::Scene& renderScene = GetActiveScene();
         UpdateRuntimeSceneForFrame(renderScene, deltaTime);
@@ -1107,6 +1110,9 @@ namespace Quiet::Core
     void Application::BuildRuntimeUIPaintList()
     {
         UpdateRuntimeUILayout();
+
+        // Prune focus invalidated by layout or clipping changes.
+        (void)m_RuntimeUIRoot.GetFocusedWidget();
 
         const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
         if (extent.width == 0 || extent.height == 0)
@@ -1178,6 +1184,15 @@ namespace Quiet::Core
         if (pointerState->PrimaryPressed)
         {
             m_RuntimeUIOwnsPrimaryPress = hoveredWidget != nullptr;
+
+            if (pointerState->ImageHovered)
+            {
+                m_RuntimeUIRoot.SetFocus(hoveredWidget);
+            }
+            else
+            {
+                m_RuntimeUIRoot.ClearFocus();
+            }
         }
 
         if (m_RuntimeUIOwnsPrimaryPress)
@@ -1199,6 +1214,282 @@ namespace Quiet::Core
         {
             activatedWidget->Activate();
         }
+    }
+
+    void Application::UpdateRuntimeUIKeyboard(const Renderer::UI::ImGuiLayer& uiLayer, const bool gamepadMovedFocus)
+    {
+        constexpr Input::KeyCode navigationKey = Input::KeyCode::Tab;
+
+        const std::array presentationKeys
+        {
+            ImGuiKey_Enter,
+            ImGuiKey_KeypadEnter,
+            ImGuiKey_Space
+        };
+
+        const std::array gameplayKeys
+        {
+            Input::KeyCode::Enter,
+            Input::KeyCode::KPEnter,
+            Input::KeyCode::Space
+        };
+
+        const bool tabDown = ImGui::IsKeyDown(ImGuiKey_Tab);
+        const bool tabPressed = ImGui::IsKeyPressed(ImGuiKey_Tab, false);
+        const bool reverse = ImGui::GetIO().KeyShift;
+
+        constexpr Input::GamepadCode confirmButton = Input::GamepadCode::South;
+
+        // Read before applying the gamepad consumption mask.
+        const bool confirmDown = m_Input->IsGamepadButtonDown(confirmButton);
+        const bool confirmPressed = m_Input->IsGamepadButtonPressed(confirmButton);
+        const bool confirmReleased = m_Input->IsGamepadButtonReleased(confirmButton);
+
+        if (m_RuntimeUIOwnsGamepadConfirm)
+        {
+            m_Input->ConsumeGamepadButton(confirmButton);
+            if (!confirmDown)
+            {
+                m_RuntimeUIOwnsGamepadConfirm = false;
+            }
+        }
+
+        std::array<bool, 3> down{};
+        std::array<bool, 3> pressed{};
+        std::array<bool, 3> released{};
+
+        for (std::size_t index = 0; index < presentationKeys.size(); ++index)
+        {
+            down[index] = ImGui::IsKeyDown(presentationKeys[index]);
+            pressed[index] = ImGui::IsKeyPressed(presentationKeys[index], false);
+            released[index] = ImGui::IsKeyReleased(presentationKeys[index]);
+
+            if (m_RuntimeUIOwnsActivationKeys[index])
+            {
+                m_Input->ConsumeKey(gameplayKeys[index]);
+                if (!down[index])
+                {
+                    m_RuntimeUIOwnsActivationKeys[index] = false;
+                }
+            }
+        }
+
+        if (m_RuntimeUIOwnsTab)
+        {
+            m_Input->ConsumeKey(navigationKey);
+            if (!tabDown)
+            {
+                m_RuntimeUIOwnsTab = false;
+            }
+        }
+
+        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+
+        if (m_MouseCaptureEnabled || !pointerState || !pointerState->KeyboardAvailable)
+        {
+            m_RuntimeUIRoot.ClearFocus();
+            m_RuntimeUIActivationKey.reset();
+            m_RuntimeUIGamepadConfirmActive = false;
+            return;
+        }
+
+        UpdateRuntimeUILayout();
+
+        bool focusMoved = gamepadMovedFocus;
+
+        if (tabPressed && gamepadMovedFocus)
+        {
+            // D-pad navigation already won this frame.
+            m_Input->ConsumeKey(navigationKey);
+            m_RuntimeUIOwnsTab = tabDown;
+        }
+        else if (tabPressed && m_RuntimeUIRoot.MoveFocus(reverse))
+        {
+            m_Input->ConsumeKey(navigationKey);
+            m_RuntimeUIOwnsTab = tabDown;
+
+            m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+            m_RuntimeUIActivationKey.reset();
+            m_RuntimeUIGamepadConfirmActive = false;
+            focusMoved = true;
+        }
+
+        UI::Widget* focused = m_RuntimeUIRoot.GetFocusedWidget();
+        bool beginsActivation = false;
+
+        for (std::size_t index = 0; index < presentationKeys.size(); ++index)
+        {
+            if ((!focused && !gamepadMovedFocus) || !pressed[index]) continue;
+
+            m_Input->ConsumeKey(gameplayKeys[index]);
+            m_RuntimeUIOwnsActivationKeys[index] = down[index];
+
+            if (!m_RuntimeUIActivationKey &&
+                !m_RuntimeUIGamepadConfirmActive &&
+                !focusMoved)
+            {
+                m_RuntimeUIActivationKey = index;
+                beginsActivation = true;
+            }
+        }
+
+        bool beginsGamepadActivation = false;
+
+        if ((focused || gamepadMovedFocus) && confirmPressed)
+        {
+            m_Input->ConsumeGamepadButton(confirmButton);
+            m_RuntimeUIOwnsGamepadConfirm = confirmDown;
+
+            if (!m_RuntimeUIActivationKey &&
+                !m_RuntimeUIGamepadConfirmActive &&
+                !focusMoved)
+            {
+                m_RuntimeUIGamepadConfirmActive = true;
+                beginsGamepadActivation = true;
+            }
+        }
+
+        UI::Widget* activated = nullptr;
+
+        if (m_RuntimeUIActivationKey)
+        {
+            const std::size_t index = *m_RuntimeUIActivationKey;
+
+            activated = m_RuntimeUIRoot.UpdateKeyboardPress(beginsActivation, down[index], released[index]);
+            if (released[index] || !down[index])
+            {
+                m_RuntimeUIActivationKey.reset();
+            }
+        }
+        else if (m_RuntimeUIGamepadConfirmActive)
+        {
+            activated = m_RuntimeUIRoot.UpdateKeyboardPress(beginsGamepadActivation, confirmDown, confirmReleased);
+            if (confirmReleased || !confirmDown)
+            {
+                m_RuntimeUIGamepadConfirmActive = false;
+            }
+        }
+        else
+        {
+            m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+        }
+
+        if (activated)
+        {
+            activated->Activate();
+        }
+    }
+
+    bool Application::UpdateRuntimeUIGamepadNavigation(const Renderer::UI::ImGuiLayer& uiLayer)
+    {
+        const std::array buttons
+        {
+            Input::GamepadCode::DpadUp,
+            Input::GamepadCode::DpadDown
+        };
+
+        constexpr Input::GamepadCode cancelButton = Input::GamepadCode::East;
+
+        const std::uint64_t generation = m_Input->GetGamepadGeneration();
+        if (generation != m_RuntimeUIGamepadGeneration)
+        {
+            m_RuntimeUIGamepadGeneration = generation;
+            m_RuntimeUIOwnsGamepadNavigation.fill(false);
+            m_RuntimeUIOwnsGamepadConfirm = false;
+            m_RuntimeUIOwnsGamepadCancel = false;
+
+            if (m_RuntimeUIGamepadConfirmActive)
+            {
+                m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+                m_RuntimeUIGamepadConfirmActive = false;
+            }
+        }
+
+        std::array<bool, 2> down{};
+        std::array<bool, 2> pressed{};
+
+        for (std::size_t index = 0; index < buttons.size(); ++index)
+        {
+            down[index] = m_Input->IsGamepadButtonDown(buttons[index]);
+            pressed[index] = m_Input->IsGamepadButtonPressed(buttons[index]);
+
+            if (m_RuntimeUIOwnsGamepadNavigation[index])
+            {
+                m_Input->ConsumeGamepadButton(buttons[index]);
+                if (!down[index])
+                {
+                    m_RuntimeUIOwnsGamepadNavigation[index] = false;
+                }
+            }
+        }
+
+        // Sample before applying this frame's consumption mask.
+        const bool cancelDown = m_Input->IsGamepadButtonDown(cancelButton);
+        const bool cancelPressed = m_Input->IsGamepadButtonPressed(cancelButton);
+
+        if (m_RuntimeUIOwnsGamepadCancel)
+        {
+            m_Input->ConsumeGamepadButton(cancelButton);
+            if (!cancelDown)
+            {
+                m_RuntimeUIOwnsGamepadCancel = false;
+            }
+        }
+
+        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+        if (m_MouseCaptureEnabled ||
+            !pointerState ||
+            !pointerState->KeyboardAvailable ||
+            !m_Input->IsGamepadConnected())
+            return false;
+
+        const bool directionPressed = pressed[0] != pressed[1];
+        if (!cancelPressed && !directionPressed) return false;
+
+        UpdateRuntimeUILayout();
+
+        if (cancelPressed && m_RuntimeUIRoot.GetFocusedWidget())
+        {
+            m_Input->ConsumeGamepadButton(cancelButton);
+            m_RuntimeUIOwnsGamepadCancel = cancelDown;
+
+            // Cancel wins over direction presses in the same sample.
+            for (std::size_t index = 0; index < buttons.size(); ++index)
+            {
+                if (pressed[index])
+                {
+                    m_Input->ConsumeGamepadButton(buttons[index]);
+                    m_RuntimeUIOwnsGamepadNavigation[index] = down[index];
+                }
+            }
+
+            m_RuntimeUIRoot.ClearFocus();
+            m_RuntimeUIActivationKey.reset();
+            m_RuntimeUIGamepadConfirmActive = false;
+            return true;
+        }
+
+        // No direction, or simultaneous opposing press transitions.
+        if (!directionPressed)
+        {
+            return false;
+        }
+
+        const std::size_t index = pressed[0] ? 0 : 1;
+        const bool reverse = index == 0;
+
+        if (!m_RuntimeUIRoot.MoveFocus(reverse))
+        {
+            return false;
+        }
+
+        m_Input->ConsumeGamepadButton(buttons[index]);
+        m_RuntimeUIOwnsGamepadNavigation[index] = down[index];
+
+        m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+        m_RuntimeUIActivationKey.reset();
+        m_RuntimeUIGamepadConfirmActive = false;
+        return true;
     }
 
     bool Application::RunEditorBootstrapFrame(const FrameContext &frame)
@@ -1463,6 +1754,8 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         UpdateRuntimeUIPointer(uiLayer);
+        const bool gamepadMovedFocus = UpdateRuntimeUIGamepadNavigation(uiLayer);
+        UpdateRuntimeUIKeyboard(uiLayer, gamepadMovedFocus);
 
         Scene::Scene& activeScene = *m_Scene;
         UpdateRuntimeSceneForFrame(activeScene, deltaTime);
