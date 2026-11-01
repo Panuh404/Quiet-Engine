@@ -1,4 +1,4 @@
-#include "Quiet/UI/Label.h"
+#include "Quiet/UI/Widgets/Label.h"
 
 #include <cmath>
 #include <utility>

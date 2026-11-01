@@ -277,13 +277,13 @@ target_sources(Quiet_Engine
         src/Renderer/Vulkan/VulkanRenderer.h
 
         # Runtime UI
-        src/UI/Button.cpp
-        src/UI/HorizontalBox.cpp
-        src/UI/Image.cpp
-        src/UI/Label.cpp
+        src/UI/Layout/HorizontalBox.cpp
+        src/UI/Layout/VerticalBox.cpp
+        src/UI/Widgets/Button.cpp
+        src/UI/Widgets/Image.cpp
+        src/UI/Widgets/Label.cpp
+        src/UI/Widgets/Panel.cpp
         src/UI/PaintCommands.cpp
-        src/UI/Panel.cpp
-        src/UI/VerticalBox.cpp
         src/UI/Widget.cpp
 
         # ImGui
@@ -344,17 +344,17 @@ target_sources(Quiet_Engine
         include/Quiet/Editor/EditorSceneWorkflow.h
         include/Quiet/Editor/EditorState.h
 
-        include/Quiet/UI/Button.h
-        include/Quiet/UI/ButtonStyle.h
+        include/Quiet/UI/Layout/HorizontalBox.h
+        include/Quiet/UI/Layout/LayoutContext.h
+        include/Quiet/UI/Layout/VerticalBox.h
+        include/Quiet/UI/Styling/ButtonStyle.h
+        include/Quiet/UI/Styling/TextStyle.h
+        include/Quiet/UI/Widgets/Button.h
+        include/Quiet/UI/Widgets/Image.h
+        include/Quiet/UI/Widgets/Label.h
+        include/Quiet/UI/Widgets/Panel.h
         include/Quiet/UI/Geometry.h
-        include/Quiet/UI/HorizontalBox.h
-        include/Quiet/UI/Image.h
-        include/Quiet/UI/Label.h
-        include/Quiet/UI/LayoutContext.h
         include/Quiet/UI/PaintCommands.h
-        include/Quiet/UI/Panel.h
-        include/Quiet/UI/TextStyle.h
-        include/Quiet/UI/VerticalBox.h
         include/Quiet/UI/Widget.h
 
         include/Quiet/Renderer/RenderConventions.h

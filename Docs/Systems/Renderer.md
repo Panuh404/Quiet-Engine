@@ -296,15 +296,15 @@ They do not replace the Editor's Dear ImGui tooling.
 | --- | --- |
 | Pixel-space geometry | `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::Rect |
 | Hierarchy, bounds, invalidation, and traversal | `Engine/include/Quiet/UI/Widget.h` and `Engine/src/UI/Widget.cpp`: Quiet::UI::Widget |
-| Borrowed measurement resources | `Engine/include/Quiet/UI/LayoutContext.h`: Quiet::UI::LayoutContext |
-| Vertical container | `Engine/include/Quiet/UI/VerticalBox.h` and `Engine/src/UI/VerticalBox.cpp`: Quiet::UI::VerticalBox |
-| Horizontal container | `Engine/include/Quiet/UI/HorizontalBox.h` and `Engine/src/UI/HorizontalBox.cpp`: Quiet::UI::HorizontalBox |
-| Solid background widget | `Engine/include/Quiet/UI/Panel.h` and `Engine/src/UI/Panel.cpp`: Quiet::UI::Panel |
-| Text widget | `Engine/include/Quiet/UI/Label.h` and `Engine/src/UI/Label.cpp`: Quiet::UI::Label |
-| Image widget | `Engine/include/Quiet/UI/Image.h` and `Engine/src/UI/Image.cpp`: Quiet::UI::Image |
-| Button state painting and behavior | `Engine/include/Quiet/UI/Button.h` and `Engine/src/UI/Button.cpp`: Quiet::UI::Button |
-| Button appearance values | `Engine/include/Quiet/UI/ButtonStyle.h`: Quiet::UI::ButtonStyle |
-| Text appearance values | `Engine/include/Quiet/UI/TextStyle.h`: Quiet::UI::TextStyle |
+| Borrowed measurement resources | `../../Engine/include/Quiet/UI/Layout/LayoutContext.h`: Quiet::UI::LayoutContext |
+| Vertical container | `../../Engine/include/Quiet/UI/Layout/VerticalBox.h` and `../../Engine/src/UI/Layout/VerticalBox.cpp`: Quiet::UI::VerticalBox |
+| Horizontal container | `../../Engine/include/Quiet/UI/Layout/HorizontalBox.h` and `../../Engine/src/UI/Layout/HorizontalBox.cpp`: Quiet::UI::HorizontalBox |
+| Solid background widget | `../../Engine/include/Quiet/UI/Widgets/Panel.h` and `../../Engine/src/UI/Widgets/Panel.cpp`: Quiet::UI::Panel |
+| Text widget | `../../Engine/include/Quiet/UI/Widgets/Label.h` and `../../Engine/src/UI/Widgets/Label.cpp`: Quiet::UI::Label |
+| Image widget | `../../Engine/include/Quiet/UI/Widgets/Image.h` and `../../Engine/src/UI/Widgets/Image.cpp`: Quiet::UI::Image |
+| Button state painting and behavior | `../../Engine/include/Quiet/UI/Widgets/Button.h` and `../../Engine/src/UI/Widgets/Button.cpp`: Quiet::UI::Button |
+| Button appearance values | `../../Engine/include/Quiet/UI/Styling/ButtonStyle.h`: Quiet::UI::ButtonStyle |
+| Text appearance values | `../../Engine/include/Quiet/UI/Styling/TextStyle.h`: Quiet::UI::TextStyle |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
 | Logical-to-target conversion | `Engine/src/UI/PaintCommands.cpp`: Quiet::UI::ScalePaintList() |
 | Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |

@@ -1,4 +1,4 @@
-#include "Quiet/UI/VerticalBox.h"
+#include "Quiet/UI/Layout/VerticalBox.h"
 
 #include <algorithm>
 #include <cmath>

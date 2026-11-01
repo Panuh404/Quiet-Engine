@@ -1,4 +1,4 @@
-#include "Quiet/UI/Image.h"
+#include "Quiet/UI/Widgets/Image.h"
 
 #include <cmath>
 #include <utility>

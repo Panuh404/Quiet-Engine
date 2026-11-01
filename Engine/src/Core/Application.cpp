@@ -2,11 +2,12 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Platform/Window.h"
 #include "Quiet/Scene/SceneDocument.h"
-#include "Quiet/UI/Label.h"
-#include "Quiet/UI/Panel.h"
-#include "Quiet/UI/Button.h"
-#include "Quiet/UI/VerticalBox.h"
-#include "Quiet/UI/HorizontalBox.h"
+
+#include "Quiet/UI/Widgets/Label.h"
+#include "Quiet/UI/Widgets/Panel.h"
+#include "Quiet/UI/Widgets/Button.h"
+#include "Quiet/UI/Layout/VerticalBox.h"
+#include "Quiet/UI/Layout/HorizontalBox.h"
 
 #include <span>
 #include <stdexcept>

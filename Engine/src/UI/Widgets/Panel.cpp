@@ -1,4 +1,4 @@
-#include "Quiet/UI/Panel.h"
+#include "Quiet/UI/Widgets/Panel.h"
 
 #include <cmath>
 

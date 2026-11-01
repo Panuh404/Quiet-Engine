@@ -4,7 +4,7 @@
 
 #include <glm/vec4.hpp>
 
-#include "Quiet/UI/TextStyle.h"
+#include "Quiet/UI/Styling/TextStyle.h"
 #include "Quiet/UI/Widget.h"
 
 namespace Quiet::UI

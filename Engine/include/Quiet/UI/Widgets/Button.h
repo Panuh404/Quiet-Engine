@@ -4,7 +4,7 @@
 #include <functional>
 
 #include <glm/vec4.hpp>
-#include "Quiet/UI/ButtonStyle.h"
+#include "Quiet/UI/Styling/ButtonStyle.h"
 #include "Quiet/UI/Widget.h"
 
 namespace Quiet::UI

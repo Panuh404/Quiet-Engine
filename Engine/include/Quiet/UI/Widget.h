@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "Geometry.h"
-#include "Quiet/UI/LayoutContext.h"
+#include "Layout/LayoutContext.h"
 #include "Quiet/UI/PaintCommands.h"
 
 namespace Quiet::UI
@@ -80,56 +80,71 @@ namespace Quiet::UI
         Widget(Widget&&) = delete;
         Widget& operator=(Widget&&) = delete;
 
+        #pragma region Hierarchy
+
         [[nodiscard]] Widget* GetParent() noexcept { return m_Parent; }
         [[nodiscard]] const Widget* GetParent() const noexcept { return m_Parent; }
         [[nodiscard]] std::size_t GetChildCount() const noexcept { return m_Children.size(); }
 
         /**
-         * @brief Returns a borrowed direct child by insertion order.
-         * @throws std::out_of_range When index is outside the child collection.
+         * @brief Returns a borrowed direct child in insertion order.
+         * @throws std::out_of_range If the index is outside the child collection.
          */
         [[nodiscard]] Widget& GetChild(std::size_t index);
         [[nodiscard]] const Widget& GetChild(std::size_t index) const;
 
         /**
-         * @brief Sets this widget's authored pixel offset and explicit size request.
-         * @return False for nonfinite values or negative dimensions,
-         *         leaving existing bounds unchanged; otherwise true.
-         * @note Free widgets resolve this request through anchor and pivot.
-         *       Containers assign a separate rectangle during layout.
-         *       Does not overwrite an existing arrangement immediately.
+         * @brief Transfers exclusive ownership of a detached subtree.
+         * @return Borrowed reference to the attached child.
+         * @throws std::invalid_argument If the child is null or creates a cycle.
+         * @note Validation occurs before moving the supplied owner. Allocation
+         *       exceptions propagate. Never create an owner from a borrowed pointer.
          */
-        bool SetBounds(const Rect& bounds);
+        Widget& AddChild(std::unique_ptr<Widget>&& child);
 
         /**
-         * @brief Returns authored pixel offset and size before anchor/pivot resolution.
+         * @brief Transfers ownership of a direct child to the caller.
+         * @return Detached subtree, or null if the widget is not a direct child.
+         * @note Descendants remain attached. Destroying the returned owner destroys
+         *       the subtree and invalidates borrowed references to its widgets.
          */
+        [[nodiscard]] std::unique_ptr<Widget> DetachChild(const Widget& child);
+
+        #pragma endregion
+
+        #pragma region Geometry and layout
+
+        /**
+         * @brief Sets the authored pixel offset and explicit size request.
+         * @return False for nonfinite values or negative dimensions; otherwise true.
+         * @note Invalid values leave existing bounds unchanged. Existing arranged
+         *       bounds are not overwritten immediately.
+         */
+        bool SetBounds(const Rect& bounds);
         [[nodiscard]] const Rect& GetLocalBounds() const noexcept { return m_LocalBounds; }
 
         /**
-         * @brief Assigns a container-controlled parent-relative rectangle.
+         * @brief Assigns a parent-relative rectangle during arrangement.
          * @return False for nonfinite values or negative dimensions.
-         * @note Preserves authored bounds, anchor, and pivot.
-         *       Arranged bounds bypass anchor/pivot resolution.
-         *       Invalidates paint and interaction without requesting another layout.
-         * @pre Called by the parent during arrangement.
+         * @note Preserves authored bounds, anchor, and pivot. The assigned rectangle
+         *       bypasses anchor/pivot resolution and invalidates paint and interaction
+         *       without requesting another layout.
          */
         bool SetArrangedBounds(const Rect& bounds);
 
         /**
          * @brief Removes the container-assigned rectangle.
          * @note Restores authored anchor/offset/pivot resolution.
-         * @pre Called during arrangement or hierarchy ownership changes.
+         * @pre Call during arrangement or hierarchy ownership changes.
          */
         void ClearArrangedBounds() noexcept;
 
         /**
-         * @brief Sets normalized parent anchor and widget pivot coordinates.
+         * @brief Sets the normalized parent anchor and widget pivot.
          * @return False for nonfinite input, preserving existing placement.
-         *         Finite values are clamped to [0, 1].
-         * @note Bounds position becomes the pixel offset from the anchor.
-         *       Size remains explicit. Parentless widgets ignore anchor and pivot.
-         *       Container-assigned bounds take precedence without modifying these values.
+         * @note Finite values are clamped to [0, 1]. Bounds position is the pixel
+         *       offset from the anchor. Parentless widgets ignore anchor and pivot;
+         *       container-assigned bounds take precedence.
          */
         bool SetAnchorAndPivot(const glm::vec2& anchor, const glm::vec2& pivot);
         [[nodiscard]] const glm::vec2& GetAnchor() const noexcept { return m_Anchor; }
@@ -137,70 +152,99 @@ namespace Quiet::UI
 
         /**
          * @brief Sets alignment within container-allocated space.
-         * @note VerticalBox uses horizontal alignment, HorizontalBox uses
-         *       vertical alignment, and Button uses both.
-         *       Base Widget placement continues to use anchor and pivot.
-         *       Does not change the measured desired size.
+         * @note VerticalBox uses horizontal alignment, HorizontalBox uses vertical
+         *       alignment, and Button uses both. This does not change desired size.
          */
         void SetAlignment(Alignment horizontal, Alignment vertical) noexcept;
         [[nodiscard]] Alignment GetHorizontalAlignment() const noexcept { return m_HorizontalAlignment; }
         [[nodiscard]] Alignment GetVerticalAlignment() const noexcept { return m_VerticalAlignment; }
 
         /**
-         * @brief Resolves container-assigned or authored geometry into surface bounds.
-         * @note Arranged bounds are already parent-relative and bypass anchor/pivot.
-         *       Otherwise resolves the authored offset, anchor, and pivot.
-         *       Computes on demand without scaling or rotation.
-         * @pre Intermediate and final resolved coordinates must remain finite.
+         * @brief Resolves authored or arranged geometry into logical surface bounds.
+         * @note Arranged bounds bypass anchor/pivot resolution. Resolution is on
+         *       demand and does not apply scaling or rotation.
+         * @pre Intermediate and final coordinates must remain finite.
          */
         [[nodiscard]] Rect GetSurfaceBounds() const noexcept;
 
         /**
+         * @brief Measures descendants, then this widget's preferred size.
+         * @param context CPU resources borrowed only during this call.
+         * @note Stores an unconstrained size without assigning geometry or clearing
+         *       flags. Allocation and measurement exceptions propagate.
+         * @pre The hierarchy and authored layout inputs must remain unchanged.
+         */
+        void Measure(const LayoutContext& context = {});
+
+        /**
+         * @brief Returns the size from the last successful measurement.
+         * @pre Measure() must have completed after layout inputs changed.
+         */
+        [[nodiscard]] const glm::vec2& GetDesiredSize() const noexcept { return m_DesiredSize; }
+
+        /**
+         * @brief Arranges direct children and then their descendants.
+         * @note Does not change this widget's bounds or clear invalidation flags.
+         * @pre The hierarchy must remain unchanged, and measurement must be current.
+         */
+        void ArrangeChildren();
+
+        #pragma endregion
+
+        #pragma region Clipping and painting
+
+        /**
          * @brief Clips this widget and its descendants to this widget's bounds.
-         * @note Does not change measurement or arrangement.
-         *       Ancestor clips still apply when this setting is disabled.
+         * @note Does not change layout. Enabled ancestor clips still apply.
          */
         void SetClipToBounds(bool enabled) noexcept;
         [[nodiscard]] bool GetClipToBounds() const noexcept { return m_ClipToBounds; }
 
         /**
-         * @brief Resolves the intersection of enabled clips on this ancestor chain.
-         * @return No value when no widget enables clipping; otherwise the
-         *         effective surface-space rectangle, which may be empty.
+         * @brief Resolves enabled clips on this widget's ancestor chain.
+         * @return No value if clipping is absent; otherwise the effective surface
+         *         rectangle, which may be empty.
          * @pre Resolved bounds and their maximum coordinates must remain finite.
          */
         [[nodiscard]] std::optional<Rect> GetSurfaceClip() const noexcept;
 
         /**
-         * @brief Enables eligibility for keyboard/navigation focus.
-         * @note Defaults to false. Turning it off clears this widget's focus.
+         * @brief Appends this subtree's painting commands to a caller-owned list.
+         * @note Paints this widget first, then children in insertion order. Commands
+         *       use logical UI coordinates; Application applies scaling.
+         *       Paint() applies the effective clip, so OnPaint() leaves Clip unset.
+         * @pre The hierarchy and paint-affecting state must remain unchanged.
+         */
+        void Paint(PaintList& commands) const;
+
+        #pragma endregion
+
+        #pragma region Focus and enabled state
+
+        /**
+         * @brief Sets whether this widget can receive focus.
+         * @note Defaults to false. Disabling focusability clears this widget's focus.
          */
         void SetFocusable(bool focusable) noexcept;
         [[nodiscard]] bool IsFocusable() const noexcept { return m_Focusable; }
 
         /**
          * @brief Tests focus eligibility using current arranged geometry.
-         * @note Requires local focusability, effective enabled state, and
-         *       positive visible area within the root bounds and ancestor clips.
-         *       Does not test occlusion by overlapping siblings.
-         *       HitTestMode controls pointer input independently.
+         * @note Requires focusability, effective enabled state, and positive visible
+         *       area within root bounds and ancestor clips. Does not test sibling
+         *       occlusion. HitTestMode controls pointer input independently.
          * @pre Layout must be current and resolved coordinates finite.
          */
         [[nodiscard]] bool CanReceiveFocus() const noexcept;
         [[nodiscard]] bool IsFocused() const noexcept { return m_Focused && CanReceiveFocus(); }
 
         /**
-         * @brief Selects one eligible widget in this root, or clears focus.
-         * @return False for a non-root receiver, foreign target, or
-         *         ineligible target; preserves existing valid focus.
-         * @note Pass null to clear. Does not activate the target.
+         * @brief Selects an eligible widget in this root, or clears focus.
+         * @return False for a non-root receiver, foreign target, or ineligible target.
+         * @note Invalid requests preserve existing valid focus; null clears it.
          * @pre target must be null or a live borrowed widget pointer.
          */
         bool SetFocus(Widget* target) noexcept;
-
-        /**
-         * @brief Clears focus throughout this subtree.
-         */
         void ClearFocus() noexcept;
 
         /**
@@ -212,79 +256,70 @@ namespace Quiet::UI
 
         /**
          * @brief Moves focus through eligible widgets in hierarchy order.
-         * @return Borrowed selected widget, or null when none are eligible.
-         * @note Call on the root. Forward traversal uses depth-first insertion
-         *       order; reverse traversal reverses that order. Both wrap.
-         *       With no current focus, selects the first or last candidate.
+         * @return Borrowed selected widget, or null if none are eligible.
+         * @note Traversal is depth-first in insertion order, or its reverse, and
+         *       wraps. With no focus, selects the first or last candidate.
          *       Allocation exceptions propagate before selection changes.
-         * @pre Layout must be current; hierarchy unchanged during traversal.
+         * @pre Call on the root with current layout and an unchanged hierarchy.
          */
         Widget* MoveFocus(bool reverse = false);
 
         /**
          * @brief Enables or disables interaction for this subtree.
-         * @note Disabling immediately cancels hover and pending presses.
-         *       Preserves layout, visibility, and hit-test geometry.
-         *       Re-enabling does not restore a cancelled press.
+         * @note Disabling cancels hover and pending presses while preserving layout,
+         *       visibility, and hit-test geometry. Re-enabling restores no press.
          */
         void SetEnabled(bool enabled) noexcept;
-
-        /**
-         * @brief Returns this widget's local enabled setting.
-         */
         [[nodiscard]] bool IsEnabled() const noexcept { return m_Enabled; }
 
         /**
-         * @brief Returns true when this widget and all ancestors are enabled.
+         * @brief Returns whether this widget and all its ancestors are enabled.
          */
         [[nodiscard]] bool IsEffectivelyEnabled() const noexcept;
 
+        #pragma endregion
+
+        #pragma region Pointer input and activation
+
         /**
-         * @brief Sets participation in hit testing without changing painting.
-         * @note ChildrenOnly skips this widget but still searches descendants.
-         *       None skips the entire subtree.
+         * @brief Sets pointer hit-test participation without changing painting.
+         * @note ChildrenOnly searches descendants but skips this widget; None skips
+         *       the entire subtree.
          */
         void SetHitTestMode(HitTestMode mode) noexcept;
         [[nodiscard]] HitTestMode GetHitTestMode() const noexcept { return m_HitTestMode; }
 
         /**
          * @brief Finds the topmost participating widget at a surface-space point.
-         * @return Borrowed widget pointer, or null when nothing is hit.
-         * @note Searches children in reverse painting order before this widget.
-         *       Enabled clips on this widget and its ancestors restrict hits.
-         *       Minimum edges are included; maximum edges are excluded.
-         *       Nonfinite points produce no hit.
-         * @note Disabled widgets retain their hit-test participation so
-         *       disabling a control does not make its geometry click-through.
-         * @pre The hierarchy must remain unchanged during the query.
-         * @pre Resolved bounds and their maximum coordinates must remain finite.
+         * @return Borrowed widget pointer, or null.
+         * @note Searches children in reverse painting order, applies ancestor clips,
+         *       includes minimum edges, and excludes maximum edges. Nonfinite points
+         *       produce no hit. Disabled widgets retain hit-test participation.
+         * @pre The hierarchy must remain unchanged and resolved coordinates finite.
          */
         [[nodiscard]] Widget* HitTest(const glm::vec2& surfacePosition) noexcept;
 
         /**
          * @brief Updates direct hover state throughout this subtree.
-         * @param hoveredWidget Current hit-test result, or null to clear hover.
-         * @note Call on the input root with a result from that root.
-         *       Only the directly hit widget is hovered, not its ancestors.
-         *       Stores no pointer and invalidates paint only when state changes.
-         * @pre The hierarchy must remain unchanged during this call.
+         * @param hoveredWidget A hit-test result from this root, or null.
+         * @note Stores no pointer; only the directly hit widget is hovered.
+         *       Paint is invalidated only when state changes.
+         * @pre The hierarchy must remain unchanged during traversal.
          */
         void UpdatePointerHover(const Widget* hoveredWidget) noexcept;
         [[nodiscard]] bool IsPointerHovered() const noexcept { return m_PointerHovered; }
 
         /**
-         * @brief Updates primary-button ownership and identifies release-inside activation.
+         * @brief Updates primary-button ownership and identifies release activation.
          * @param hoveredWidget Current hit-test result, or null.
          * @param primaryPressed True on the primary-button down transition.
          * @param primaryDown True while the primary button remains held.
          * @param primaryReleased True on the primary-button up transition.
          * @return Borrowed activation target, or null.
-         * @note A press starts only on the directly hit widget.
-         *       Release activates only when that widget is still the hit target.
-         *       All false button values cancel without activation.
-         *       None excludes and cancels the entire subtree.
-         *       Does not invoke callbacks.
-         * @pre Call on the input root without modifying the hierarchy during traversal.
+         * @note Press starts on the directly hit widget and activates on release
+         *       only if it remains the hit target. All-false input cancels.
+         *       None cancels and excludes the subtree. Does not invoke callbacks.
+         * @pre Call on the input root without modifying the hierarchy.
          */
         Widget* UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased = false) noexcept;
         [[nodiscard]] bool IsPointerPressed() const noexcept { return m_PointerPressed; }
@@ -292,41 +327,24 @@ namespace Quiet::UI
         /**
          * @brief Updates a focused-widget activation gesture.
          * @return Borrowed release-activation target, or null.
-         * @note Press starts only on the focused eligible widget.
-         *       All false values cancel. Focus changes cancel ownership.
-         *       Does not invoke callbacks.
-         * @pre Call on the input root after layout and focus are current.
-         *       Do not modify the hierarchy during traversal.
+         * @note Press starts on the focused eligible widget. All-false input and
+         *       focus changes cancel ownership. Does not invoke callbacks.
+         * @pre Call on the input root after layout and focus are current, without
+         *      modifying the hierarchy during traversal.
          */
         Widget* UpdateKeyboardPress(bool pressed, bool down, bool released = false) noexcept;
         [[nodiscard]] bool IsKeyboardPressed() const noexcept { return m_KeyboardPressed; }
 
         /**
          * @brief Performs this widget's activation behavior.
-         * @note The base implementation does nothing.
-         *       Call after input traversal finishes; exceptions propagate.
+         * @note The base implementation does nothing. Call after input traversal;
+         *       exceptions propagate.
          */
         virtual void Activate();
 
-        /**
-         * @brief Transfers an exclusively owned subtree into this widget.
-         * @param child Detached subtree to attach; must not be null.
-         * @return Borrowed reference to the attached child.
-         * @throws std::invalid_argument For null input or a hierarchy cycle.
-         * @note Validation occurs before moving from the supplied parameter.
-         *       Allocation exceptions propagate.
-         * @note Never construct an owning pointer from a borrowed widget pointer.
-         */
-        Widget& AddChild(std::unique_ptr<Widget>&& child);
+        #pragma endregion
 
-        /**
-         * @brief Transfers ownership of a direct child to the caller.
-         * @return Detached subtree, or null when child is not a direct child.
-         * @note Detachment clears the child's parent pointer and preserves
-         *       its descendants. Discarding the returned owner destroys
-         *       that subtree and invalidates its borrowed references.
-         */
-        [[nodiscard]] std::unique_ptr<Widget> DetachChild(const Widget& child);
+        #pragma region Invalidation
 
         /**
          * @brief Marks pending work on this widget and its ancestors.
@@ -337,66 +355,32 @@ namespace Quiet::UI
 
         /**
          * @brief Acknowledges one category on this widget and its descendants.
-         * @note The owner calls this only after processing that category.
-         *       Does not clear other categories or update ancestor flags.
+         * @note Call only after processing that category. Does not clear other
+         *       categories or update ancestor flags.
          */
         void ClearInvalidation(InvalidationReason reason) noexcept;
 
-        /**
-         * @brief Measures descendants before calculating this widget's preferred size.
-         * @param context CPU resources borrowed only during this call.
-         * @note Stores an unconstrained size without assigning geometry or clearing flags.
-         *       Allocation and measurement exceptions propagate.
-         * @pre The hierarchy and authored layout inputs must remain unchanged.
-         */
-        void Measure(const LayoutContext& context = {});
-
-        /**
-         * @brief Returns the preferred size from the last successful measurement.
-         * @pre Measure() must have completed after authored layout inputs changed.
-         */
-        [[nodiscard]] const glm::vec2& GetDesiredSize() const noexcept { return m_DesiredSize; }
-
-        /**
-         * @brief Arranges direct children, then recursively arranges their descendants.
-         * @note Does not change this widget's own bounds or clear invalidation flags.
-         * @pre The hierarchy must remain unchanged during traversal.
-         * @pre Measure() must have completed for this subtree after layout inputs changed.
-         */
-        void ArrangeChildren();
-
-        /**
-         * @brief Appends painting commands for this widget and its descendants.
-         * @param commands Caller-owned list; existing commands are preserved.
-         * @note Paints this widget first, then children in insertion order.
-         * @note Applies the effective surface clip to commands appended by OnPaint().
-         *       OnPaint() must leave command Clip fields unset.
-         * @note Produces logical UI coordinates before Application scaling.
-         * @pre The hierarchy and paint-affecting widget state must not be modified during painting.
-         */
-        void Paint(PaintList& commands) const;
+        #pragma endregion
 
     protected:
         /**
          * @brief Calculates this widget's unconstrained preferred size.
          * @return Finite, nonnegative dimensions.
-         * @note Descendants have already been measured.
-         *       The base implementation returns the authored explicit size.
+         * @note Descendants are already measured. The base implementation returns
+         *       the authored explicit size.
          */
         virtual glm::vec2 OnMeasure(const LayoutContext& context) const;
 
         /**
          * @brief Assigns geometry to direct children.
          * @note The base implementation uses measured sizes and authored placement.
-         *       Containers override this to assign their own child rectangles.
-         *       Must not change the hierarchy or ancestor geometry.
+         *       Overrides must not change the hierarchy or ancestor geometry.
          */
         virtual void OnArrangeChildren();
 
         /**
          * @brief Appends this widget's own visual commands.
-         * @note The base implementation draws nothing.
-         *       Child traversal is performed by Paint().
+         * @note The base implementation draws nothing; Paint() traverses children.
          */
         virtual void OnPaint(PaintList& commands) const;
 

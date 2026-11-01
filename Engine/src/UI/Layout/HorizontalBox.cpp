@@ -1,4 +1,4 @@
-#include "Quiet/UI/HorizontalBox.h"
+#include "Quiet/UI/Layout/HorizontalBox.h"
 
 #include <algorithm>
 #include <cmath>
