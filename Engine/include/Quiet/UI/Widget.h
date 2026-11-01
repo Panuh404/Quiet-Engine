@@ -332,8 +332,8 @@ namespace Quiet::UI
          * @pre Call on the input root after layout and focus are current, without
          *      modifying the hierarchy during traversal.
          */
-        Widget* UpdateKeyboardPress(bool pressed, bool down, bool released = false) noexcept;
-        [[nodiscard]] bool IsKeyboardPressed() const noexcept { return m_KeyboardPressed; }
+        Widget* UpdateFocusedPress(bool pressed, bool down, bool released = false) noexcept;
+        [[nodiscard]] bool IsFocusedPressed() const noexcept { return m_FocusedPressed; }
 
         /**
          * @brief Performs this widget's activation behavior.
@@ -401,7 +401,7 @@ namespace Quiet::UI
         HitTestMode m_HitTestMode = HitTestMode::ChildrenOnly;
         bool m_PointerHovered = false;
         bool m_PointerPressed = false;
-        bool m_KeyboardPressed = false;
+        bool m_FocusedPressed = false;
         InvalidationState m_Invalidation{};
         std::vector<std::unique_ptr<Widget>> m_Children;
     };

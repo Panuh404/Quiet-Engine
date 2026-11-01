@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <algorithm>
-#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -11,6 +10,8 @@
 namespace Quiet::UI
 {
     Widget::~Widget() = default;
+
+#pragma region Hierarchy
 
     Widget& Widget::GetChild(const std::size_t index)
     {
@@ -21,6 +22,64 @@ namespace Quiet::UI
     {
         return *m_Children.at(index);
     }
+
+    Widget& Widget::AddChild(std::unique_ptr<Widget>&& child)
+    {
+        if (!child)
+        {
+            throw std::invalid_argument("Cannot attach a null UI widget.");
+        }
+
+        for (const Widget* ancestor = this; ancestor != nullptr; ancestor = ancestor->m_Parent)
+        {
+            if (ancestor == child.get())
+            {
+                throw std::invalid_argument("Cannot create a cycle in the UI widget hierarchy.");
+            }
+        }
+
+        Widget& attachedChild = *child;
+
+        m_Children.push_back(std::move(child));
+        attachedChild.m_Parent = this;
+        attachedChild.ClearFocus();
+        attachedChild.ClearArrangedBounds();
+        attachedChild.UpdatePointerHover(nullptr);
+        attachedChild.UpdatePointerPress(nullptr, false, false);
+        attachedChild.Invalidate(InvalidationReason::Layout);
+        return attachedChild;
+    }
+
+    std::unique_ptr<Widget> Widget::DetachChild(const Widget& child)
+    {
+        const auto iterator = std::find_if(
+            m_Children.begin(),
+            m_Children.end(),
+            [&child](const std::unique_ptr<Widget>& candidate)
+            {
+                return candidate.get() == &child;
+            });
+
+        if (iterator == m_Children.end())
+        {
+            return nullptr;
+        }
+
+        std::unique_ptr<Widget> detachedChild = std::move(*iterator);
+        m_Children.erase(iterator);
+        detachedChild->m_Parent = nullptr;
+        detachedChild->ClearFocus();
+        detachedChild->ClearArrangedBounds();
+        detachedChild->UpdatePointerHover(nullptr);
+        detachedChild->UpdatePointerPress(nullptr, false, false);
+        detachedChild->Invalidate(InvalidationReason::Layout);
+        Invalidate(InvalidationReason::Layout);
+        return detachedChild;
+    }
+
+#pragma endregion
+
+#pragma region Geometry and layout
 
     bool Widget::SetBounds(const Rect &bounds)
     {
@@ -127,6 +186,39 @@ namespace Quiet::UI
         return bounds;
     }
 
+    void Widget::Measure(const LayoutContext& context)
+    {
+        for (const auto& child : m_Children)
+        {
+            child->Measure(context);
+        }
+
+        const glm::vec2 desiredSize = OnMeasure(context);
+
+        if (!std::isfinite(desiredSize.x) ||
+            !std::isfinite(desiredSize.y) ||
+            desiredSize.x < 0.0f ||
+            desiredSize.y < 0.0f)
+        {
+            throw std::runtime_error("UI widget measurement produced invalid dimensions.");
+        }
+
+        m_DesiredSize = desiredSize;
+    }
+
+    void Widget::ArrangeChildren()
+    {
+        OnArrangeChildren();
+        for (const auto& child : m_Children)
+        {
+            child->ArrangeChildren();
+        }
+    }
+
+#pragma endregion
+
+#pragma region Clipping and painting
+
     void Widget::SetClipToBounds(const bool enabled) noexcept
     {
         if (m_ClipToBounds == enabled) return;
@@ -170,361 +262,33 @@ namespace Quiet::UI
         return clip;
     }
 
-    void Widget::SetFocusable(const bool focusable) noexcept
+    void Widget::Paint(PaintList& commands) const
     {
-        if (m_Focusable == focusable) return;
-        m_Focusable = focusable;
+        const std::optional<Rect> clip = GetSurfaceClip();
 
-        if (!focusable && (m_Focused || m_KeyboardPressed))
+        if (clip && (clip->Size.x <= 0.0f || clip->Size.y <= 0.0f)) return;
+
+        const std::size_t firstCommand = commands.size();
+        OnPaint(commands);
+
+        for (std::size_t index = firstCommand; index < commands.size(); ++index)
         {
-            m_Focused = false;
-            m_KeyboardPressed = false;
-            Invalidate(InvalidationReason::Paint);
-        }
-
-        Invalidate(InvalidationReason::Interaction);
-    }
-
-    bool Widget::CanReceiveFocus() const noexcept
-    {
-        if (!m_Focusable || !IsEffectivelyEnabled()) return false;
-
-        const Rect bounds = GetSurfaceBounds();
-        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f) return false;
-
-        const Widget* root = this;
-        while (root->m_Parent)
-        {
-            root = root->m_Parent;
-        }
-
-        const Rect rootBounds = root->GetSurfaceBounds();
-
-        glm::vec2 minimum = glm::max(bounds.Position, rootBounds.Position);
-        glm::vec2 maximum = glm::min(bounds.Position + bounds.Size, rootBounds.Position + rootBounds.Size);
-
-        if (const auto clip = GetSurfaceClip())
-        {
-            minimum = glm::max(minimum, clip->Position);
-            maximum = glm::min(maximum, clip->Position + clip->Size);
-        }
-
-        return maximum.x > minimum.x && maximum.y > minimum.y;
-    }
-
-    void Widget::ClearFocus() noexcept
-    {
-        if (m_Focused || m_KeyboardPressed)
-        {
-            m_Focused = false;
-            m_KeyboardPressed = false;
-            Invalidate(InvalidationReason::Paint);
+            std::visit([&clip](auto& command)
+            {
+                command.Clip = clip;
+            },
+            commands[index]);
         }
 
         for (const auto& child : m_Children)
         {
-            child->ClearFocus();
+            child->Paint(commands);
         }
     }
 
-    Widget* Widget::GetFocusedWidget() noexcept
-    {
-        if (m_Focused)
-        {
-            if (CanReceiveFocus()) return this;
-            m_Focused = false;
-            m_KeyboardPressed = false;
-            Invalidate(InvalidationReason::Paint);
-        }
+#pragma endregion
 
-        for (const auto& child : m_Children)
-        {
-            if (Widget* focused = child->GetFocusedWidget()) return focused;
-        }
-
-        return nullptr;
-    }
-
-    bool Widget::SetFocus(Widget* target) noexcept
-    {
-        if (m_Parent) return false;
-        if (target)
-        {
-            const Widget* targetRoot = target;
-            while (targetRoot->m_Parent)
-            {
-                targetRoot = targetRoot->m_Parent;
-            }
-            if (targetRoot != this || !target->CanReceiveFocus())
-            {
-                return false;
-            }
-        }
-
-        if (GetFocusedWidget() == target) return true;
-        ClearFocus();
-
-        if (target)
-        {
-            target->m_Focused = true;
-            target->Invalidate(InvalidationReason::Paint);
-        }
-
-        return true;
-    }
-
-    Widget* Widget::MoveFocus(const bool reverse)
-    {
-        if (m_Parent) return nullptr;
-
-        std::vector<Widget*> candidates;
-
-        const auto collect = [&candidates](const auto& visit, Widget& widget) -> void
-        {
-            if (!widget.IsEffectivelyEnabled()) return;
-            if (widget.CanReceiveFocus()) candidates.push_back(&widget);
-
-            for (const auto& child : widget.m_Children)
-            {
-                visit(visit, *child);
-            }
-        };
-
-        collect(collect, *this);
-        if (candidates.empty())
-        {
-            ClearFocus();
-            return nullptr;
-        }
-
-        Widget* current = GetFocusedWidget();
-        const auto found = std::find(candidates.begin(), candidates.end(), current);
-        std::size_t index = reverse ? candidates.size() - 1 : 0;
-
-        if (found != candidates.end())
-        {
-            const auto currentIndex = static_cast<std::size_t>(found - candidates.begin());
-            index = reverse
-                ? (currentIndex == 0 ? candidates.size() - 1 : currentIndex - 1)
-                : (currentIndex + 1) % candidates.size();
-        }
-
-        Widget* selected = candidates[index];
-        SetFocus(selected);
-        return selected;
-    }
-
-    void Widget::SetEnabled(const bool enabled) noexcept
-    {
-        if (m_Enabled == enabled) return;
-        m_Enabled = enabled;
-
-        if (!enabled)
-        {
-            ClearFocus();
-            UpdatePointerHover(nullptr);
-            UpdatePointerPress(nullptr, false, false);
-        }
-
-        Invalidate(InvalidationReason::Paint);
-        Invalidate(InvalidationReason::Interaction);
-    }
-
-    bool Widget::IsEffectivelyEnabled() const noexcept
-    {
-        for (const Widget* widget = this; widget != nullptr; widget = widget->m_Parent)
-        {
-            if (!widget->m_Enabled) return false;
-        }
-
-        return true;
-    }
-
-    void Widget::SetHitTestMode(const HitTestMode mode) noexcept
-    {
-        if (m_HitTestMode == mode) return;
-
-        m_HitTestMode = mode;
-        Invalidate(InvalidationReason::Interaction);
-    }
-
-    Widget* Widget::HitTest(const glm::vec2& surfacePosition) noexcept
-    {
-        if (!std::isfinite(surfacePosition.x) || !std::isfinite(surfacePosition.y) || m_HitTestMode == HitTestMode::None) return nullptr;
-        if (const auto clip = GetSurfaceClip())
-        {
-            const glm::vec2 maximum = clip->Position + clip->Size;
-
-            if (clip->Size.x <= 0.0f ||
-                clip->Size.y <= 0.0f ||
-                surfacePosition.x < clip->Position.x ||
-                surfacePosition.y < clip->Position.y ||
-                surfacePosition.x >= maximum.x ||
-                surfacePosition.y >= maximum.y)
-                return nullptr;
-        }
-
-        for (auto & child : std::views::reverse(m_Children))
-        {
-            if (Widget* hit = child->HitTest(surfacePosition)) return hit;
-        }
-
-        if (m_HitTestMode != HitTestMode::SelfAndChildren) return nullptr;
-
-        const Rect bounds = GetSurfaceBounds();
-        if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f) return nullptr;
-
-        const glm::vec2 maximum = bounds.Position + bounds.Size;
-        if (surfacePosition.x >= bounds.Position.x &&
-            surfacePosition.y >= bounds.Position.y &&
-            surfacePosition.x < maximum.x &&
-            surfacePosition.y < maximum.y)
-            return this;
-
-        return nullptr;
-    }
-
-    void Widget::UpdatePointerHover(const Widget* hoveredWidget) noexcept
-    {
-        const bool hovered = hoveredWidget == this && IsEffectivelyEnabled();
-        if (m_PointerHovered != hovered)
-        {
-            m_PointerHovered = hovered;
-            Invalidate(InvalidationReason::Paint);
-        }
-
-        for (const auto& child : m_Children)
-        {
-            child->UpdatePointerHover(hoveredWidget);
-        }
-    }
-
-    Widget* Widget::UpdatePointerPress(const Widget* hoveredWidget, bool primaryPressed, bool primaryDown, bool primaryReleased) noexcept
-    {
-        const bool enabled = IsEffectivelyEnabled();
-        if (!enabled || m_HitTestMode == HitTestMode::None)
-        {
-            primaryPressed = false;
-            primaryDown = false;
-            primaryReleased = false;
-        }
-
-        const bool acceptsPress = enabled && m_HitTestMode == HitTestMode::SelfAndChildren;
-        const bool ownsPress = primaryPressed ? hoveredWidget == this : m_PointerPressed;
-
-        Widget* activatedWidget =
-            acceptsPress &&
-            ownsPress &&
-            primaryReleased &&
-            hoveredWidget == this
-                ? this
-                : nullptr;
-
-        const bool pressed =
-            acceptsPress &&
-            ownsPress &&
-            primaryDown &&
-            !primaryReleased;
-
-        if (m_PointerPressed != pressed)
-        {
-            m_PointerPressed = pressed;
-            Invalidate(InvalidationReason::Paint);
-        }
-
-        for (const auto& child : m_Children)
-        {
-            if (Widget* activatedChild = child->UpdatePointerPress(hoveredWidget, primaryPressed, primaryDown, primaryReleased))
-            {
-                activatedWidget = activatedChild;
-            }
-        }
-
-        return activatedWidget;
-    }
-
-    Widget* Widget::UpdateKeyboardPress(const bool pressed, const bool down, const bool released) noexcept
-    {
-        const bool acceptsPress = m_Focused && CanReceiveFocus();
-        const bool ownsPress = pressed ? acceptsPress : m_KeyboardPressed;
-
-        Widget* activated = acceptsPress && ownsPress && released ? this : nullptr;
-
-        const bool keyboardPressed = acceptsPress && ownsPress && down && !released;
-        if (m_KeyboardPressed != keyboardPressed)
-        {
-            m_KeyboardPressed = keyboardPressed;
-            Invalidate(InvalidationReason::Paint);
-        }
-
-        for (const auto& child : m_Children)
-        {
-            if (Widget* candidate = child->UpdateKeyboardPress(pressed, down, released))
-            {
-                activated = candidate;
-            }
-        }
-
-        return activated;
-    }
-
-    void Widget::Activate()
-    {
-    }
-
-    Widget& Widget::AddChild(std::unique_ptr<Widget>&& child)
-    {
-        if (!child)
-        {
-            throw std::invalid_argument("Cannot attach a null UI widget.");
-        }
-
-        for (const Widget* ancestor = this; ancestor != nullptr; ancestor = ancestor->m_Parent)
-        {
-            if (ancestor == child.get())
-            {
-                throw std::invalid_argument("Cannot create a cycle in the UI widget hierarchy.");
-            }
-        }
-
-        Widget& attachedChild = *child;
-
-        m_Children.push_back(std::move(child));
-        attachedChild.m_Parent = this;
-        attachedChild.ClearFocus();
-        attachedChild.ClearArrangedBounds();
-        attachedChild.UpdatePointerHover(nullptr);
-        attachedChild.UpdatePointerPress(nullptr, false, false);
-        attachedChild.Invalidate(InvalidationReason::Layout);
-        return attachedChild;
-    }
-
-    std::unique_ptr<Widget> Widget::DetachChild(const Widget& child)
-    {
-        const auto iterator = std::find_if(
-            m_Children.begin(),
-            m_Children.end(),
-            [&child](const std::unique_ptr<Widget>& candidate)
-            {
-                return candidate.get() == &child;
-            });
-
-        if (iterator == m_Children.end())
-        {
-            return nullptr;
-        }
-
-        std::unique_ptr<Widget> detachedChild = std::move(*iterator);
-        m_Children.erase(iterator);
-        detachedChild->m_Parent = nullptr;
-        detachedChild->ClearFocus();
-        detachedChild->ClearArrangedBounds();
-        detachedChild->UpdatePointerHover(nullptr);
-        detachedChild->UpdatePointerPress(nullptr, false, false);
-        detachedChild->Invalidate(InvalidationReason::Layout);
-        Invalidate(InvalidationReason::Layout);
-        return detachedChild;
-    }
+#pragma region Invalidation
 
     void Widget::Invalidate(InvalidationReason reason) noexcept
     {
@@ -572,58 +336,8 @@ namespace Quiet::UI
         }
     }
 
-    void Widget::Measure(const LayoutContext& context)
-    {
-        for (const auto& child : m_Children)
-        {
-            child->Measure(context);
-        }
+#pragma endregion
 
-        const glm::vec2 desiredSize = OnMeasure(context);
-
-        if (!std::isfinite(desiredSize.x) ||
-            !std::isfinite(desiredSize.y) ||
-            desiredSize.x < 0.0f ||
-            desiredSize.y < 0.0f)
-        {
-            throw std::runtime_error("UI widget measurement produced invalid dimensions.");
-        }
-
-        m_DesiredSize = desiredSize;
-    }
-
-    void Widget::ArrangeChildren()
-    {
-        OnArrangeChildren();
-        for (const auto& child : m_Children)
-        {
-            child->ArrangeChildren();
-        }
-    }
-
-    void Widget::Paint(PaintList& commands) const
-    {
-        const std::optional<Rect> clip = GetSurfaceClip();
-
-        if (clip && (clip->Size.x <= 0.0f || clip->Size.y <= 0.0f)) return;
-
-        const std::size_t firstCommand = commands.size();
-        OnPaint(commands);
-
-        for (std::size_t index = firstCommand; index < commands.size(); ++index)
-        {
-            std::visit([&clip](auto& command)
-            {
-                command.Clip = clip;
-            },
-            commands[index]);
-        }
-
-        for (const auto& child : m_Children)
-        {
-            child->Paint(commands);
-        }
-    }
     glm::vec2 Widget::OnMeasure(const LayoutContext&) const
     {
         return m_LocalBounds.Size;

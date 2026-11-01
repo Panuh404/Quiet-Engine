@@ -72,7 +72,7 @@ namespace Quiet::Renderer::UI
      * DisplayBounds and DisplayPosition use the same ImGui coordinate space.
      * No ImGui objects, widgets, or GPU resources are retained.
      */
-    struct SceneViewportPointerState
+    struct SceneViewportInputState
     {
         Quiet::UI::Rect DisplayBounds{};
         glm::vec2 DisplayPosition{0.0f};
@@ -130,13 +130,12 @@ namespace Quiet::Renderer::UI
         [[nodiscard]] bool WantsKeyboardCapture() const;
 
         /**
-         * @brief Returns the current frame's visible Scene-image pointer snapshot.
+         * @brief Returns the current frame's visible Scene-image input snapshot.
          * @return Owned copy, or null when no visible Scene image was recorded.
          * @note Read after building the presentation UI.
          *       Hover eligibility is separate from pointer-position validity.
          */
-        [[nodiscard]] std::optional<SceneViewportPointerState> GetSceneViewportPointerState() const noexcept { return m_SceneViewportPointerState; }
-
+        [[nodiscard]] std::optional<SceneViewportInputState> GetSceneViewportInputState() const noexcept { return m_SceneViewportInputState; }
         [[nodiscard]] float GetUIScale() const { return m_UIScale; }
         [[nodiscard]] float Scale(float value) const { return value * m_UIScale; }
         [[nodiscard]] ImVec2 Scale(const ImVec2& value) const
@@ -219,7 +218,7 @@ namespace Quiet::Renderer::UI
         VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
         VkDescriptorSet m_SceneViewportDescriptorSet = VK_NULL_HANDLE;
 
-        std::optional<SceneViewportPointerState> m_SceneViewportPointerState;
+        std::optional<SceneViewportInputState> m_SceneViewportInputState;
         bool m_DefaultLayoutApplied = false;
         bool m_RequestResetLayout = false;
         float m_UIScale = 1.0f;

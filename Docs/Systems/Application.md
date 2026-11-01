@@ -481,15 +481,15 @@ alignment, clipping, ordered painting, image descriptors, and limitations.
 Implementation anchors are:
 
 - `Engine/src/Renderer/UI/ImGuiLayer.h`:
-  Quiet::Renderer::UI::SceneViewportPointerState and
-  ImGuiLayer::GetSceneViewportPointerState().
+  Quiet::Renderer::UI::SceneViewportInputState and
+  ImGuiLayer::GetSceneViewportInputState().
 - `Engine/src/Renderer/UI/ImGuiLayer.cpp`: ImGuiLayer::BeginFrame().
 - `Engine/src/Renderer/UI/Panels/ImGuiViewportPanels.cpp`:
   ImGuiLayer::BuildViewport() and BuildRuntimeUI().
 - `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::MapPointToSurface().
 - `Engine/src/Core/Application.cpp`: UpdateRuntimeUILayout(),
   HitTestRuntimeUI(), UpdateRuntimeUIPointer(), UpdateRuntimeUIGamepadNavigation(),
-  UpdateRuntimeUIKeyboard(), and
+  UpdateRuntimeUIFocusInput(), and
   BuildEditorViewportOverlayCallback().
 - `Engine/include/Quiet/Input/Input.h` and `Engine/src/Input/Input.cpp`:
   Quiet::Input::Input::ConsumeMouseButton(), ConsumeKey(), and mapped gamepad queries.
@@ -580,7 +580,7 @@ clicking an eligible widget selects it. A disabled/ineligible hit does not
 replace existing valid focus. See [Renderer](Renderer.md) for eligibility.
 
 UpdateRuntimeUIGamepadNavigation() runs after pointer routing and before
-UpdateRuntimeUIKeyboard(). With eligible viewport input, D-pad Down moves
+UpdateRuntimeUIFocusInput(). With eligible viewport input, D-pad Down moves
 forward and Up backward through Widget::MoveFocus(); simultaneous opposing
 press transitions do not move. East, the mapped right face button, clears
 existing focus and pending activation; it is not the separate Back/Select

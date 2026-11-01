@@ -131,7 +131,7 @@ namespace Quiet::Renderer::UI
 
     void ImGuiLayer::BeginFrame()
     {
-        m_SceneViewportPointerState.reset();
+        m_SceneViewportInputState.reset();
 
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();

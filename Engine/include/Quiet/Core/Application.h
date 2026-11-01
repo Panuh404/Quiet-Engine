@@ -205,13 +205,13 @@ namespace Quiet::Core
         void UpdateRuntimeUIPointer(const Renderer::UI::ImGuiLayer& uiLayer);
 
         /**
-         * @brief Routes keyboard navigation and activation.
-         * @param gamepadMovedFocus Whether gamepad navigation or focus
+        * @brief Routes keyboard navigation and focused-widget activation.
+         * @param gamepadFocusHandled Whether gamepad navigation or focus
          *        cancellation was accepted earlier in this frame.
          * @note Consumes accepted key gestures until release.
          *       Invokes activation only after widget traversal completes.
          */
-        void UpdateRuntimeUIKeyboard(const Renderer::UI::ImGuiLayer& uiLayer, bool gamepadMovedFocus);
+        void UpdateRuntimeUIFocusInput(const Renderer::UI::ImGuiLayer& uiLayer, bool gamepadFocusHandled);
 
         /**
          * @brief Routes mapped gamepad focus navigation and cancellation.

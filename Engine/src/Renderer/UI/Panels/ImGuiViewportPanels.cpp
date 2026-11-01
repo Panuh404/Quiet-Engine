@@ -1014,21 +1014,21 @@ namespace Quiet::Renderer::UI
                 const ImVec2 itemSize = ImGui::GetItemRectSize();
                 const ImVec2 mousePosition = ImGui::GetMousePos();
 
-                SceneViewportPointerState pointerState{};
-                pointerState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
-                pointerState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
-                pointerState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
-                pointerState.ImageHovered = ImGui::IsItemHovered();
-                pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-                pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-                pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-                pointerState.KeyboardAvailable =
+                SceneViewportInputState inputState{};
+                inputState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
+                inputState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
+                inputState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
+                inputState.ImageHovered = ImGui::IsItemHovered();
+                inputState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+                inputState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+                inputState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+                inputState.KeyboardAvailable =
                     ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
                     !ImGui::GetIO().WantCaptureKeyboard &&
                     !ImGui::GetIO().WantTextInput &&
                     !ImGui::IsAnyItemActive();
 
-                m_SceneViewportPointerState = pointerState;
+                m_SceneViewportInputState = inputState;
             }
         }
         else
@@ -1262,21 +1262,21 @@ namespace Quiet::Renderer::UI
                     const ImVec2 itemSize = ImGui::GetItemRectSize();
                     const ImVec2 mousePosition = ImGui::GetMousePos();
 
-                    SceneViewportPointerState pointerState{};
-                    pointerState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
-                    pointerState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
-                    pointerState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
-                    pointerState.ImageHovered = ImGui::IsItemHovered();
-                    pointerState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-                    pointerState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-                    pointerState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-                    pointerState.KeyboardAvailable =
+                    SceneViewportInputState inputState{};
+                    inputState.DisplayBounds = {{itemMin.x, itemMin.y}, {itemSize.x, itemSize.y}};
+                    inputState.DisplayPosition = glm::vec2(mousePosition.x, mousePosition.y);
+                    inputState.PositionValid = ImGui::IsMousePosValid(&mousePosition);
+                    inputState.ImageHovered = ImGui::IsItemHovered();
+                    inputState.PrimaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+                    inputState.PrimaryPressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+                    inputState.PrimaryReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+                    inputState.KeyboardAvailable =
                         ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
                         !ImGui::GetIO().WantCaptureKeyboard &&
                         !ImGui::GetIO().WantTextInput &&
                         !ImGui::IsAnyItemActive();
 
-                    m_SceneViewportPointerState = pointerState;
+                    m_SceneViewportInputState = inputState;
                 }
 
                 if (editorState.Viewport.ImageHovered)

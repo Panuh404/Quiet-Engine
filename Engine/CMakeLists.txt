@@ -285,6 +285,7 @@ target_sources(Quiet_Engine
         src/UI/Widgets/Panel.cpp
         src/UI/PaintCommands.cpp
         src/UI/Widget.cpp
+        src/UI/WidgetInput.cpp
 
         # ImGui
         ${imgui_SOURCE_DIR}/imgui.cpp

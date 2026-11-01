@@ -296,15 +296,16 @@ They do not replace the Editor's Dear ImGui tooling.
 | --- | --- |
 | Pixel-space geometry | `Engine/include/Quiet/UI/Geometry.h`: Quiet::UI::Rect |
 | Hierarchy, bounds, invalidation, and traversal | `Engine/include/Quiet/UI/Widget.h` and `Engine/src/UI/Widget.cpp`: Quiet::UI::Widget |
-| Borrowed measurement resources | `../../Engine/include/Quiet/UI/Layout/LayoutContext.h`: Quiet::UI::LayoutContext |
-| Vertical container | `../../Engine/include/Quiet/UI/Layout/VerticalBox.h` and `../../Engine/src/UI/Layout/VerticalBox.cpp`: Quiet::UI::VerticalBox |
-| Horizontal container | `../../Engine/include/Quiet/UI/Layout/HorizontalBox.h` and `../../Engine/src/UI/Layout/HorizontalBox.cpp`: Quiet::UI::HorizontalBox |
-| Solid background widget | `../../Engine/include/Quiet/UI/Widgets/Panel.h` and `../../Engine/src/UI/Widgets/Panel.cpp`: Quiet::UI::Panel |
-| Text widget | `../../Engine/include/Quiet/UI/Widgets/Label.h` and `../../Engine/src/UI/Widgets/Label.cpp`: Quiet::UI::Label |
-| Image widget | `../../Engine/include/Quiet/UI/Widgets/Image.h` and `../../Engine/src/UI/Widgets/Image.cpp`: Quiet::UI::Image |
-| Button state painting and behavior | `../../Engine/include/Quiet/UI/Widgets/Button.h` and `../../Engine/src/UI/Widgets/Button.cpp`: Quiet::UI::Button |
-| Button appearance values | `../../Engine/include/Quiet/UI/Styling/ButtonStyle.h`: Quiet::UI::ButtonStyle |
-| Text appearance values | `../../Engine/include/Quiet/UI/Styling/TextStyle.h`: Quiet::UI::TextStyle |
+| Focus, hit testing, and widget input | `Engine/src/UI/WidgetInput.cpp`: Quiet::UI::Widget |
+| Borrowed measurement resources | `Engine/include/Quiet/UI/Layout/LayoutContext.h`: Quiet::UI::LayoutContext |
+| Vertical container | `Engine/include/Quiet/UI/Layout/VerticalBox.h` and `Engine/src/UI/Layout/VerticalBox.cpp`: Quiet::UI::VerticalBox |
+| Horizontal container | `Engine/include/Quiet/UI/Layout/HorizontalBox.h` and `Engine/src/UI/Layout/HorizontalBox.cpp`: Quiet::UI::HorizontalBox |
+| Solid background widget | `Engine/include/Quiet/UI/Widgets/Panel.h` and `Engine/src/UI/Widgets/Panel.cpp`: Quiet::UI::Panel |
+| Text widget | `Engine/include/Quiet/UI/Widgets/Label.h` and `Engine/src/UI/Widgets/Label.cpp`: Quiet::UI::Label |
+| Image widget | `Engine/include/Quiet/UI/Widgets/Image.h` and `Engine/src/UI/Widgets/Image.cpp`: Quiet::UI::Image |
+| Button state painting and behavior | `Engine/include/Quiet/UI/Widgets/Button.h` and `Engine/src/UI/Widgets/Button.cpp`: Quiet::UI::Button |
+| Button appearance values | `Engine/include/Quiet/UI/Styling/ButtonStyle.h`: Quiet::UI::ButtonStyle |
+| Text appearance values | `Engine/include/Quiet/UI/Styling/TextStyle.h`: Quiet::UI::TextStyle |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
 | Logical-to-target conversion | `Engine/src/UI/PaintCommands.cpp`: Quiet::UI::ScalePaintList() |
 | Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |
@@ -566,7 +567,7 @@ focused widget that is no longer eligible; Application calls it before paint
 cache reuse after updating layout. Neither a borrowed query result nor a
 callback capture extends widget lifetime.
 
-UpdateKeyboardPress() tracks a press on the focused eligible widget and
+UpdateFocusedPress() tracks a press on the focused eligible widget and
 returns a borrowed activation target on release. All-false input cancels;
 focus changes, disabling, detachment, or lost eligibility prevent retargeting
 a held gesture. Application also uses this state machine for gamepad South.

@@ -164,7 +164,7 @@ namespace Quiet::UI
         {
             color = m_Style.DisabledColor;
         }
-        else if (IsKeyboardPressed() && IsFocused())
+        else if (IsFocusedPressed() && IsFocused())
         {
             color = m_Style.PressedColor;
         }

@@ -1060,8 +1060,8 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         UpdateRuntimeUIPointer(uiLayer);
-        const bool gamepadMovedFocus = UpdateRuntimeUIGamepadNavigation(uiLayer);
-        UpdateRuntimeUIKeyboard(uiLayer, gamepadMovedFocus);
+        const bool gamepadFocusHandled = UpdateRuntimeUIGamepadNavigation(uiLayer);
+        UpdateRuntimeUIFocusInput(uiLayer, gamepadFocusHandled);
 
         Scene::Scene& renderScene = GetActiveScene();
         UpdateRuntimeSceneForFrame(renderScene, deltaTime);
@@ -1069,7 +1069,7 @@ namespace Quiet::Core
         const auto activeCameraData = BuildActiveRenderCameraData(renderScene);
         const bool drawEditorGrid = editorState.Viewport.ShowGrid && editorState.Scene.Mode != Editor::SceneMode::Play;
 
-        std::optional<Core::UUID> selectedActorID;
+        std::optional<UUID> selectedActorID;
         if (editorState.Viewport.ShowSelectionFeedback &&
             editorState.Scene.Mode != Editor::SceneMode::Play)
         {
@@ -1137,15 +1137,15 @@ namespace Quiet::Core
     {
         if (m_MouseCaptureEnabled) return nullptr;
 
-        const auto pointerState = uiLayer.GetSceneViewportPointerState();
-        if (!pointerState || !pointerState->PositionValid || !pointerState->ImageHovered) return nullptr;
+        const auto inputState = uiLayer.GetSceneViewportInputState();
+        if (!inputState || !inputState->PositionValid || !inputState->ImageHovered) return nullptr;
 
         const VkExtent2D extent = m_Renderer->GetSceneViewportExtent();
         const glm::vec2 surfaceSize(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
         UpdateRuntimeUILayout();
 
-        const auto surfacePosition = UI::MapPointToSurface(pointerState->DisplayPosition, pointerState->DisplayBounds, surfaceSize);
+        const auto surfacePosition = UI::MapPointToSurface(inputState->DisplayPosition, inputState->DisplayBounds, surfaceSize);
         if (!surfacePosition) return nullptr;
 
         if (surfacePosition->x < 0.0f ||
@@ -1167,8 +1167,8 @@ namespace Quiet::Core
         UI::Widget* hoveredWidget = HitTestRuntimeUI(uiLayer);
         m_RuntimeUIRoot.UpdatePointerHover(hoveredWidget);
 
-        const auto pointerState = uiLayer.GetSceneViewportPointerState();
-        if (m_MouseCaptureEnabled || !pointerState || !pointerState->PositionValid)
+        const auto inputState = uiLayer.GetSceneViewportInputState();
+        if (m_MouseCaptureEnabled || !inputState || !inputState->PositionValid)
         {
             m_RuntimeUIRoot.UpdatePointerPress(nullptr, false, false);
             if (m_RuntimeUIOwnsPrimaryPress)
@@ -1182,11 +1182,11 @@ namespace Quiet::Core
             return;
         }
 
-        if (pointerState->PrimaryPressed)
+        if (inputState->PrimaryPressed)
         {
             m_RuntimeUIOwnsPrimaryPress = hoveredWidget != nullptr;
 
-            if (pointerState->ImageHovered)
+            if (inputState->ImageHovered)
             {
                 m_RuntimeUIRoot.SetFocus(hoveredWidget);
             }
@@ -1199,7 +1199,7 @@ namespace Quiet::Core
         if (m_RuntimeUIOwnsPrimaryPress)
         {
             m_Input->ConsumeMouseButton(primaryButton);
-            if (pointerState->PrimaryReleased || !pointerState->PrimaryDown)
+            if (inputState->PrimaryReleased || !inputState->PrimaryDown)
             {
                 m_RuntimeUIOwnsPrimaryPress = false;
             }
@@ -1207,9 +1207,9 @@ namespace Quiet::Core
 
         UI::Widget* activatedWidget = m_RuntimeUIRoot.UpdatePointerPress(
             hoveredWidget,
-            pointerState->PrimaryPressed,
-            pointerState->PrimaryDown,
-            pointerState->PrimaryReleased);
+            inputState->PrimaryPressed,
+            inputState->PrimaryDown,
+            inputState->PrimaryReleased);
 
         if (activatedWidget)
         {
@@ -1217,7 +1217,7 @@ namespace Quiet::Core
         }
     }
 
-    void Application::UpdateRuntimeUIKeyboard(const Renderer::UI::ImGuiLayer& uiLayer, const bool gamepadMovedFocus)
+    void Application::UpdateRuntimeUIFocusInput(const Renderer::UI::ImGuiLayer& uiLayer, const bool gamepadFocusHandled)
     {
         constexpr Input::KeyCode navigationKey = Input::KeyCode::Tab;
 
@@ -1284,9 +1284,9 @@ namespace Quiet::Core
             }
         }
 
-        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+        const auto inputState = uiLayer.GetSceneViewportInputState();
 
-        if (m_MouseCaptureEnabled || !pointerState || !pointerState->KeyboardAvailable)
+        if (m_MouseCaptureEnabled || !inputState || !inputState->KeyboardAvailable)
         {
             m_RuntimeUIRoot.ClearFocus();
             m_RuntimeUIActivationKey.reset();
@@ -1296,11 +1296,11 @@ namespace Quiet::Core
 
         UpdateRuntimeUILayout();
 
-        bool focusMoved = gamepadMovedFocus;
+        bool focusHandled = gamepadFocusHandled;
 
-        if (tabPressed && gamepadMovedFocus)
+        if (tabPressed && gamepadFocusHandled)
         {
-            // D-pad navigation already won this frame.
+            // A gamepad focus action already won this frame.
             m_Input->ConsumeKey(navigationKey);
             m_RuntimeUIOwnsTab = tabDown;
         }
@@ -1309,10 +1309,10 @@ namespace Quiet::Core
             m_Input->ConsumeKey(navigationKey);
             m_RuntimeUIOwnsTab = tabDown;
 
-            m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+            m_RuntimeUIRoot.UpdateFocusedPress(false, false);
             m_RuntimeUIActivationKey.reset();
             m_RuntimeUIGamepadConfirmActive = false;
-            focusMoved = true;
+            focusHandled = true;
         }
 
         UI::Widget* focused = m_RuntimeUIRoot.GetFocusedWidget();
@@ -1320,14 +1320,14 @@ namespace Quiet::Core
 
         for (std::size_t index = 0; index < presentationKeys.size(); ++index)
         {
-            if ((!focused && !gamepadMovedFocus) || !pressed[index]) continue;
+            if ((!focused && !gamepadFocusHandled) || !pressed[index]) continue;
 
             m_Input->ConsumeKey(gameplayKeys[index]);
             m_RuntimeUIOwnsActivationKeys[index] = down[index];
 
             if (!m_RuntimeUIActivationKey &&
                 !m_RuntimeUIGamepadConfirmActive &&
-                !focusMoved)
+                !focusHandled)
             {
                 m_RuntimeUIActivationKey = index;
                 beginsActivation = true;
@@ -1336,14 +1336,14 @@ namespace Quiet::Core
 
         bool beginsGamepadActivation = false;
 
-        if ((focused || gamepadMovedFocus) && confirmPressed)
+        if ((focused || gamepadFocusHandled) && confirmPressed)
         {
             m_Input->ConsumeGamepadButton(confirmButton);
             m_RuntimeUIOwnsGamepadConfirm = confirmDown;
 
             if (!m_RuntimeUIActivationKey &&
                 !m_RuntimeUIGamepadConfirmActive &&
-                !focusMoved)
+                !focusHandled)
             {
                 m_RuntimeUIGamepadConfirmActive = true;
                 beginsGamepadActivation = true;
@@ -1356,7 +1356,7 @@ namespace Quiet::Core
         {
             const std::size_t index = *m_RuntimeUIActivationKey;
 
-            activated = m_RuntimeUIRoot.UpdateKeyboardPress(beginsActivation, down[index], released[index]);
+            activated = m_RuntimeUIRoot.UpdateFocusedPress(beginsActivation, down[index], released[index]);
             if (released[index] || !down[index])
             {
                 m_RuntimeUIActivationKey.reset();
@@ -1364,7 +1364,7 @@ namespace Quiet::Core
         }
         else if (m_RuntimeUIGamepadConfirmActive)
         {
-            activated = m_RuntimeUIRoot.UpdateKeyboardPress(beginsGamepadActivation, confirmDown, confirmReleased);
+            activated = m_RuntimeUIRoot.UpdateFocusedPress(beginsGamepadActivation, confirmDown, confirmReleased);
             if (confirmReleased || !confirmDown)
             {
                 m_RuntimeUIGamepadConfirmActive = false;
@@ -1372,7 +1372,7 @@ namespace Quiet::Core
         }
         else
         {
-            m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+            m_RuntimeUIRoot.UpdateFocusedPress(false, false);
         }
 
         if (activated)
@@ -1401,7 +1401,7 @@ namespace Quiet::Core
 
             if (m_RuntimeUIGamepadConfirmActive)
             {
-                m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+                m_RuntimeUIRoot.UpdateFocusedPress(false, false);
                 m_RuntimeUIGamepadConfirmActive = false;
             }
         }
@@ -1437,10 +1437,10 @@ namespace Quiet::Core
             }
         }
 
-        const auto pointerState = uiLayer.GetSceneViewportPointerState();
+        const auto inputState = uiLayer.GetSceneViewportInputState();
         if (m_MouseCaptureEnabled ||
-            !pointerState ||
-            !pointerState->KeyboardAvailable ||
+            !inputState ||
+            !inputState->KeyboardAvailable ||
             !m_Input->IsGamepadConnected())
             return false;
 
@@ -1487,7 +1487,7 @@ namespace Quiet::Core
         m_Input->ConsumeGamepadButton(buttons[index]);
         m_RuntimeUIOwnsGamepadNavigation[index] = down[index];
 
-        m_RuntimeUIRoot.UpdateKeyboardPress(false, false);
+        m_RuntimeUIRoot.UpdateFocusedPress(false, false);
         m_RuntimeUIActivationKey.reset();
         m_RuntimeUIGamepadConfirmActive = false;
         return true;
@@ -1755,8 +1755,8 @@ namespace Quiet::Core
         uiLayer.EndFrame();
 
         UpdateRuntimeUIPointer(uiLayer);
-        const bool gamepadMovedFocus = UpdateRuntimeUIGamepadNavigation(uiLayer);
-        UpdateRuntimeUIKeyboard(uiLayer, gamepadMovedFocus);
+        const bool gamepadFocusHandled = UpdateRuntimeUIGamepadNavigation(uiLayer);
+        UpdateRuntimeUIFocusInput(uiLayer, gamepadFocusHandled);
 
         Scene::Scene& activeScene = *m_Scene;
         UpdateRuntimeSceneForFrame(activeScene, deltaTime);
