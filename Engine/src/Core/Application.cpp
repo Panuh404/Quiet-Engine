@@ -340,108 +340,8 @@ namespace Quiet::Core
         m_FreeCamera = std::make_unique<Scene::FreeCamera>();
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
-        SetRuntimeUIScale(1.25f);
 
-        auto panel = std::make_unique<UI::Panel>();
-        panel->SetBounds({{24.0f, 24.0f}, {320.0f, 120.0f}});
-
-        auto label = std::make_unique<UI::Label>();
-        label->SetBounds({{16.0f, 24.0f}, {288.0f, 72.0f}});
-        label->SetContent("Retained UI label");
-
-        panel->AddChild(std::move(label));
-        m_RuntimeUIRoot.AddChild(std::move(panel));
-
-        auto actions = std::make_unique<UI::VerticalBox>();
-        actions->SetBounds({{-24.0f, -24.0f}, {320.0f, 0.0f}});
-        actions->SetAnchorAndPivot({1.0f, 1.0f}, {1.0f, 1.0f});
-        actions->SetPadding({12.0f, 12.0f, 12.0f, 12.0f});
-        actions->SetSpacing(12.0f);
-
-        auto actionRow = std::make_unique<UI::HorizontalBox>();
-        actionRow->SetSpacing(12.0f);
-        UI::ButtonStyle actionStyle{};
-        actionStyle.NormalColor = {0.12f, 0.06f, 0.24f, 0.9f};
-        actionStyle.HoveredColor = {0.24f, 0.12f, 0.42f, 1.0f};
-        actionStyle.PressedColor = {0.07f, 0.03f, 0.14f, 1.0f};
-        actionStyle.FocusedColor = {0.32f, 0.18f, 0.5f, 1.0f};
-        actionStyle.Padding = {24.0f, 16.0f, 24.0f, 16.0f};
-
-        UI::TextStyle actionTextStyle{};
-        actionTextStyle.PixelHeight = 28.0f;
-        actionTextStyle.Color = {1.0f, 0.85f, 0.45f, 1.0f};
-
-        UI::TextStyle headingTextStyle = actionTextStyle;
-        headingTextStyle.PixelHeight = 24.0f;
-        headingTextStyle.Color = {0.85f, 0.9f, 1.0f, 1.0f};
-
-        auto firstButton = std::make_unique<UI::Button>();
-        firstButton->SetStyle(actionStyle);
-        firstButton->SetAlignment(UI::Alignment::Stretch, UI::Alignment::Center);
-        firstButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
-        firstButton->SetOnClick([]()
-        {
-            QUIET_CORE_INFO("First retained action activated.");
-        });
-
-        auto firstLabel = std::make_unique<UI::Label>();
-        firstLabel->SetContent("First action");
-        firstLabel->SetStyle(actionTextStyle);
-        firstLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
-        firstButton->AddChild(std::move(firstLabel));
-
-        auto secondButton = std::make_unique<UI::Button>();
-        secondButton->SetStyle(actionStyle);
-        secondButton->SetEnabled(false);
-        secondButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
-        secondButton->SetOnClick([]()
-        {
-            QUIET_CORE_INFO("Second retained action activated.");
-        });
-
-        auto secondLabel = std::make_unique<UI::Label>();
-        secondLabel->SetContent("Second action\nMeasured text");
-        secondLabel->SetStyle(actionTextStyle);
-        secondLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
-        secondButton->AddChild(std::move(secondLabel));
-
-        actionRow->AddChild(std::move(firstButton));
-        actionRow->AddChild(std::move(secondButton));
-
-        auto heading = std::make_unique<UI::Label>();
-        heading->SetContent("Retained actions");
-        heading->SetStyle(headingTextStyle);
-        heading->SetAlignment(UI::Alignment::Center, UI::Alignment::Stretch);
-
-        actions->AddChild(std::move(heading));
-        actions->AddChild(std::move(actionRow));
-        m_RuntimeUIRoot.AddChild(std::move(actions));
-
-        auto clippingPanel = std::make_unique<UI::Panel>();
-        clippingPanel->SetBounds(
-        {
-            {24.0f, 180.0f},
-            {180.0f, 80.0f}
-        });
-        clippingPanel->SetClipToBounds(true);
-
-        auto clippedButton = std::make_unique<UI::Button>();
-        clippedButton->SetBounds(
-        {
-            {120.0f, 20.0f},
-            {160.0f, 64.0f}
-        });
-        clippedButton->SetOnClick([]()
-        {
-            QUIET_CORE_INFO("Clipped retained action activated.");
-        });
-
-        auto clippedLabel = std::make_unique<UI::Label>();
-        clippedLabel->SetContent("Clipped action");
-
-        clippedButton->AddChild(std::move(clippedLabel));
-        clippingPanel->AddChild(std::move(clippedButton));
-        m_RuntimeUIRoot.AddChild(std::move(clippingPanel));
+        InitializeRuntimeUIDemo();
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -611,6 +511,112 @@ namespace Quiet::Core
             *m_Input);
 
         QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
+    }
+
+    void Application::InitializeRuntimeUIDemo()
+    {
+        SetRuntimeUIScale(1.25f);
+
+        auto panel = std::make_unique<UI::Panel>();
+        panel->SetBounds({{24.0f, 24.0f}, {320.0f, 120.0f}});
+
+        auto label = std::make_unique<UI::Label>();
+        label->SetBounds({{16.0f, 24.0f}, {288.0f, 72.0f}});
+        label->SetContent("Retained UI label");
+
+        panel->AddChild(std::move(label));
+        m_RuntimeUIRoot.AddChild(std::move(panel));
+
+        auto actions = std::make_unique<UI::VerticalBox>();
+        actions->SetBounds({{-24.0f, -24.0f}, {320.0f, 0.0f}});
+        actions->SetAnchorAndPivot({1.0f, 1.0f}, {1.0f, 1.0f});
+        actions->SetPadding({12.0f, 12.0f, 12.0f, 12.0f});
+        actions->SetSpacing(12.0f);
+
+        auto actionRow = std::make_unique<UI::HorizontalBox>();
+        actionRow->SetSpacing(12.0f);
+        UI::ButtonStyle actionStyle{};
+        actionStyle.NormalColor = {0.12f, 0.06f, 0.24f, 0.9f};
+        actionStyle.HoveredColor = {0.24f, 0.12f, 0.42f, 1.0f};
+        actionStyle.PressedColor = {0.07f, 0.03f, 0.14f, 1.0f};
+        actionStyle.FocusedColor = {0.32f, 0.18f, 0.5f, 1.0f};
+        actionStyle.Padding = {24.0f, 16.0f, 24.0f, 16.0f};
+
+        UI::TextStyle actionTextStyle{};
+        actionTextStyle.PixelHeight = 28.0f;
+        actionTextStyle.Color = {1.0f, 0.85f, 0.45f, 1.0f};
+
+        UI::TextStyle headingTextStyle = actionTextStyle;
+        headingTextStyle.PixelHeight = 24.0f;
+        headingTextStyle.Color = {0.85f, 0.9f, 1.0f, 1.0f};
+
+        auto firstButton = std::make_unique<UI::Button>();
+        firstButton->SetStyle(actionStyle);
+        firstButton->SetAlignment(UI::Alignment::Stretch, UI::Alignment::Center);
+        firstButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
+        firstButton->SetOnClick([]()
+        {
+            QUIET_CORE_INFO("First retained action activated.");
+        });
+
+        auto firstLabel = std::make_unique<UI::Label>();
+        firstLabel->SetContent("First action");
+        firstLabel->SetStyle(actionTextStyle);
+        firstLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
+        firstButton->AddChild(std::move(firstLabel));
+
+        auto secondButton = std::make_unique<UI::Button>();
+        secondButton->SetStyle(actionStyle);
+        secondButton->SetEnabled(false);
+        secondButton->SetBounds({{0.0f, 0.0f}, {0.0f, 0.0f}});
+        secondButton->SetOnClick([]()
+        {
+            QUIET_CORE_INFO("Second retained action activated.");
+        });
+
+        auto secondLabel = std::make_unique<UI::Label>();
+        secondLabel->SetContent("Second action\nMeasured text");
+        secondLabel->SetStyle(actionTextStyle);
+        secondLabel->SetAlignment(UI::Alignment::Center, UI::Alignment::Center);
+        secondButton->AddChild(std::move(secondLabel));
+
+        actionRow->AddChild(std::move(firstButton));
+        actionRow->AddChild(std::move(secondButton));
+
+        auto heading = std::make_unique<UI::Label>();
+        heading->SetContent("Retained actions");
+        heading->SetStyle(headingTextStyle);
+        heading->SetAlignment(UI::Alignment::Center, UI::Alignment::Stretch);
+
+        actions->AddChild(std::move(heading));
+        actions->AddChild(std::move(actionRow));
+        m_RuntimeUIRoot.AddChild(std::move(actions));
+
+        auto clippingPanel = std::make_unique<UI::Panel>();
+        clippingPanel->SetBounds(
+        {
+            {24.0f, 180.0f},
+            {180.0f, 80.0f}
+        });
+        clippingPanel->SetClipToBounds(true);
+
+        auto clippedButton = std::make_unique<UI::Button>();
+        clippedButton->SetBounds(
+        {
+            {120.0f, 20.0f},
+            {160.0f, 64.0f}
+        });
+        clippedButton->SetOnClick([]()
+        {
+            QUIET_CORE_INFO("Clipped retained action activated.");
+        });
+
+        auto clippedLabel = std::make_unique<UI::Label>();
+        clippedLabel->SetContent("Clipped action");
+
+        clippedButton->AddChild(std::move(clippedLabel));
+        clippingPanel->AddChild(std::move(clippedButton));
+        m_RuntimeUIRoot.AddChild(std::move(clippingPanel));
     }
 
     void Application::ShutdownCommon()

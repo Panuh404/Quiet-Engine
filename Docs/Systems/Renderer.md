@@ -801,8 +801,9 @@ extent changes use dynamic viewport/scissor without rebuilding pipelines.
 
 ### Current demonstration and limitations
 
-InitializeCommonStartup() in `Engine/src/Core/Application.cpp` selects scale
-1.25 and creates a Panel at logical (24, 24), sized 320 by 120, and a child
+InitializeCommonStartup() calls InitializeRuntimeUIDemo() in
+`Engine/src/Core/Application.cpp` to select scale 1.25 and create a Panel at
+logical (24, 24), sized 320 by 120, and a child
 Label with authored offset (16, 24) and minimum size 288 by 72. Its text is
 "Retained UI label";
 its logical surface origin is (40, 48). In target pixels, the panel starts

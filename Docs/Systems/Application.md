@@ -411,9 +411,9 @@ commands and submits without the Editor grid or selection feedback.
 Application stores Quiet::UI::Widget m_RuntimeUIRoot and
 Quiet::UI::PaintList m_RuntimeUIPaintList directly.
 
-InitializeCommonStartup() creates the retained demonstration after
-constructing VulkanRenderer: a Panel/Label, a bottom-right anchored
-VerticalBox containing a heading and HorizontalBox of Buttons, and a
+After constructing VulkanRenderer, InitializeCommonStartup() calls
+InitializeRuntimeUIDemo() to create the retained demonstration: a Panel/Label,
+a bottom-right anchored VerticalBox containing a heading and HorizontalBox of Buttons, and a
 clipping Panel with an overflowing Button. Their authored inputs and
 callbacks are defined in that function. See [Renderer](Renderer.md) for
 the complete example and layout contracts.

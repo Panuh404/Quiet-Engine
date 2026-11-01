@@ -134,6 +134,7 @@ namespace Quiet::Core
         void InitializeCommonStartup();
         void InitializeEditorStartup();
         void InitializeSandboxStartup();
+        void InitializeRuntimeUIDemo();
         void ShutdownCommon();
 
         void ProcessGlobalShortcuts();
