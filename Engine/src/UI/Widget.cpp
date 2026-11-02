@@ -23,6 +23,19 @@ namespace Quiet::UI
         return *m_Children.at(index);
     }
 
+    Widget * Widget::FindByID(Core::UUID id) noexcept
+    {
+        if (!id.IsValid()) return nullptr;
+        if (m_ID == id) return this;
+
+        for (const auto& child : m_Children)
+        {
+            if (Widget* match = child->FindByID(id)) return match;
+        }
+
+        return nullptr;
+    }
+
     Widget& Widget::AddChild(std::unique_ptr<Widget>&& child)
     {
         if (!child)

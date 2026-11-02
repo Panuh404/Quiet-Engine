@@ -7,6 +7,7 @@
 
 #include "Geometry.h"
 #include "Layout/LayoutContext.h"
+#include "Quiet/Core/UUID.h"
 #include "Quiet/UI/PaintCommands.h"
 
 namespace Quiet::UI
@@ -92,6 +93,26 @@ namespace Quiet::UI
          */
         [[nodiscard]] Widget& GetChild(std::size_t index);
         [[nodiscard]] const Widget& GetChild(std::size_t index) const;
+
+        /**
+         * @brief Sets this widget's optional identity.
+         * @note An invalid UUID means unidentified. This does not enforce uniqueness.
+         */
+        void SetID(Core::UUID id) noexcept { m_ID = id; }
+
+        /**
+         * @brief Returns this widget's identity.
+         */
+        [[nodiscard]] Core::UUID GetID() const noexcept { return m_ID; }
+
+        /**
+         * @brief Finds the first widget with the supplied UUID in this subtree.
+         * @return Borrowed pointer, or null for an invalid UUID or no match.
+         * @note Searches this widget first, then descendants in insertion order.
+         *       If runtime IDs are duplicated, the first match wins.
+         * @pre The hierarchy must remain unchanged during the search.
+         */
+        [[nodiscard]] Widget* FindByID(Core::UUID id) noexcept;
 
         /**
          * @brief Transfers exclusive ownership of a detached subtree.
@@ -386,6 +407,7 @@ namespace Quiet::UI
 
     private:
         Widget* m_Parent = nullptr;
+        Core::UUID m_ID{};
         Rect m_LocalBounds{};
         std::optional<Rect> m_ArrangedBounds;
         glm::vec2 m_DesiredSize{0.0f};

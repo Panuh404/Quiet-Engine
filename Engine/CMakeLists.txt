@@ -284,6 +284,7 @@ target_sources(Quiet_Engine
         src/UI/Widgets/Label.cpp
         src/UI/Widgets/Panel.cpp
         src/UI/PaintCommands.cpp
+        src/UI/UIDocument.cpp
         src/UI/Widget.cpp
         src/UI/WidgetInput.cpp
 
@@ -356,6 +357,7 @@ target_sources(Quiet_Engine
         include/Quiet/UI/Widgets/Panel.h
         include/Quiet/UI/Geometry.h
         include/Quiet/UI/PaintCommands.h
+        include/Quiet/UI/UIDocument.h
         include/Quiet/UI/Widget.h
 
         include/Quiet/Renderer/RenderConventions.h
