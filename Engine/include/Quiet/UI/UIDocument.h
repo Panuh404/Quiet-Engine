@@ -5,11 +5,13 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <filesystem>
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include "Quiet/Core/UUID.h"
+#include "Quiet/UI/Styling/UIStyleSheet.h"
 #include "Quiet/UI/Geometry.h"
 #include "Quiet/UI/Widget.h"
 
@@ -71,6 +73,7 @@ namespace Quiet::UI
     {
         Core::UUID ID{};
         std::string Name;
+        std::optional<Core::UUID> StyleID;
 
         Rect Bounds{};
         glm::vec2 Anchor{0.0f};
@@ -100,6 +103,8 @@ namespace Quiet::UI
         std::vector<UIDocumentNode> Roots;
     };
 
+    #pragma region Validations
+
     /**
      * @brief Checks that every node has a valid, document-local unique UUID.
      * @return True if all IDs are valid; otherwise false with an error message.
@@ -117,14 +122,70 @@ namespace Quiet::UI
      */
     [[nodiscard]] bool ValidateUIDocumentProperties(const UIDocument& document, std::string& outError);
 
+    #pragma endregion
+
+    #pragma region Serialization/Deserialization
+
     /**
-     * @brief Builds an independently owned runtime widget tree.
-     * @return An owning root, or null when document validation fails.
-     * @note Validates IDs and checked properties before constructing widgets.
-     *       The returned root owns the document roots in their authored order.
-     *       Button callbacks are empty and widget appearance uses runtime defaults.
-     *       Allocation and widget-construction exceptions propagate.
+     * @brief Serializes a validated UI document to versioned JSON text.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outJSON is unchanged.
+     *       Style references are recorded but not resolved.
+     *       Allocation exceptions may propagate.
+     * @pre outJSON and outError must be distinct and must not refer to strings
+     *      owned by document.
+     */
+    [[nodiscard]] bool SerializeUIDocument(const UIDocument& document, std::string& outJSON, std::string& outError);
+
+    /**
+     * @brief Reads a versioned UI document from JSON text.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outDocument is unchanged.
+     *       Style references are read but not resolved.
+     *       Allocation exceptions may propagate.
+     * @pre outError must not refer to jsonText or to a string owned by outDocument.
+     */
+    [[nodiscard]] bool DeserializeUIDocument(const std::string& jsonText, UIDocument& outDocument, std::string& outError);
+
+    /**
+     * @brief Saves a UI document as JSON.
+     * @return True on success; otherwise false with an error message.
+     * @note Validation and serialization happen before the file is opened.
+     *       Does not create parent directories or provide atomic replacement.
+     *       A write failure can leave an incomplete file.
+     * @pre outError must not refer to a string owned by document.
+     */
+    [[nodiscard]] bool SaveUIDocumentToFile(const std::filesystem::path& path, const UIDocument& document, std::string& outError);
+
+    /**
+     * @brief Loads a UI document from a JSON file.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outDocument is unchanged.
+     * @pre outError must not refer to a string owned by outDocument.
+     */
+    [[nodiscard]] bool LoadUIDocumentFromFile(const std::filesystem::path& path, UIDocument& outDocument, std::string& outError);
+
+    #pragma endregion
+
+    #pragma region Build
+
+    /**
+     * @brief Builds an independently owned runtime widget tree without styles.
+     * @return An owning root, or null when validation fails.
+     * @note A document with a style reference requires the overload taking a sheet.
      * @pre outError must not refer to a string owned by document.
      */
     [[nodiscard]] std::unique_ptr<Widget> BuildUIDocument(const UIDocument& document, std::string& outError);
+
+    /**
+     * @brief Builds an independently owned runtime widget tree with styles.
+     * @return An owning root, or null when validation fails.
+     * @note Validates the document, sheet, and style references before construction.
+     *       The sheet is borrowed only for this call. Widgets receive style copies.
+     *       Button callbacks remain empty. Exceptions propagate.
+     * @pre outError must not refer to a string owned by document or sheet.
+     */
+    [[nodiscard]] std::unique_ptr<Widget> BuildUIDocument(const UIDocument& document, const UIStyleSheet& sheet, std::string& outError);
+
+    #pragma endregion
 }

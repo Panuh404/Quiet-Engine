@@ -279,6 +279,7 @@ target_sources(Quiet_Engine
         # Runtime UI
         src/UI/Layout/HorizontalBox.cpp
         src/UI/Layout/VerticalBox.cpp
+        src/UI/Styling/UIStyleSheet.cpp
         src/UI/Widgets/Button.cpp
         src/UI/Widgets/Image.cpp
         src/UI/Widgets/Label.cpp
@@ -349,6 +350,7 @@ target_sources(Quiet_Engine
         include/Quiet/UI/Layout/HorizontalBox.h
         include/Quiet/UI/Layout/LayoutContext.h
         include/Quiet/UI/Layout/VerticalBox.h
+        include/Quiet/UI/Styling/UIStyleSheet.h
         include/Quiet/UI/Styling/ButtonStyle.h
         include/Quiet/UI/Styling/TextStyle.h
         include/Quiet/UI/Widgets/Button.h

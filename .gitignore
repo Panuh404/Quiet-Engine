@@ -61,3 +61,8 @@ Temp/
 # Python cache
 __pycache__/
 *.pyc
+
+# AI stuff
+graphify-out/
+.codex/
+AGENTS.md

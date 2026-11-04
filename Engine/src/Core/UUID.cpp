@@ -63,7 +63,8 @@ namespace Quiet::Core
             16
         );
 
-        if (highResult.ec != std::errc{} || lowResult.ec != std::errc{})
+        if (highResult.ec != std::errc{} || highResult.ptr != highPart.data() + highPart.size() ||
+            lowResult.ec != std::errc{} || lowResult.ptr != lowPart.data() + lowPart.size())
             return false;
 
         outId.High = high;
