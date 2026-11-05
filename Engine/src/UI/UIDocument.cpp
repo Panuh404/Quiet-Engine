@@ -20,6 +20,8 @@
 
 namespace Quiet::UI
 {
+#pragma region Validations
+
     bool ValidateUIDocumentNodeIDs(const UIDocument& document, std::string& outError)
     {
         outError.clear();
@@ -173,6 +175,10 @@ namespace Quiet::UI
         }
         return true;
     }
+
+#pragma endregion
+
+#pragma region Serialization/Deserialization
 
     bool SerializeUIDocument(const UIDocument& document, std::string& outJSON, std::string& outError)
     {
@@ -607,6 +613,10 @@ namespace Quiet::UI
         return DeserializeUIDocument(jsonText, outDocument, outError);
     }
 
+#pragma endregion
+
+#pragma region Build
+
     std::unique_ptr<Widget> BuildUIDocument(const UIDocument& document, std::string& outError)
     {
         return BuildUIDocument(document, UIStyleSheet{}, outError);
@@ -763,4 +773,6 @@ namespace Quiet::UI
 
         return root;
     }
+
+#pragma endregion
 }

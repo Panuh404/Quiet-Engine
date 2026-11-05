@@ -3,6 +3,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <filesystem>
 
 #include "Quiet/Core/UUID.h"
 #include "Quiet/UI/Styling/ButtonStyle.h"
@@ -46,4 +47,41 @@ namespace Quiet::UI
      * @pre outError must not refer to a string owned by sheet.
      */
     [[nodiscard]] bool ValidateUIStyleSheet(const UIStyleSheet& sheet, std::string& outError);
+
+    /**
+     * @brief Serializes a validated UI style sheet to versioned JSON text.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outJSON is unchanged.
+     *       Allocation exceptions may propagate.
+     * @pre outJSON and outError must be distinct and must not refer to strings
+     *      owned by sheet.
+     */
+    [[nodiscard]] bool SerializeUIStyleSheet(const UIStyleSheet& sheet, std::string& outJSON, std::string& outError);
+
+    /**
+     * @brief Reads a versioned UI style sheet from JSON text.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outSheet is unchanged.
+     *       Allocation exceptions may propagate.
+     * @pre outError must not refer to jsonText or to a string owned by outSheet.
+     */
+    [[nodiscard]] bool DeserializeUIStyleSheet(const std::string& jsonText, UIStyleSheet& outSheet, std::string& outError);
+
+    /**
+     * @brief Saves a UI style sheet as JSON.
+     * @return True on success; otherwise false with an error message.
+     * @note Validation and serialization happen before opening the file.
+     *       Does not create parent directories or provide atomic replacement.
+     *       A write failure can leave an incomplete file.
+     * @pre outError must not refer to a string owned by sheet.
+     */
+    [[nodiscard]] bool SaveUIStyleSheetToFile(const std::filesystem::path& path, const UIStyleSheet& sheet, std::string& outError);
+
+    /**
+     * @brief Loads a UI style sheet from a JSON file.
+     * @return True on success; otherwise false with an error message.
+     * @note On reported failure, outSheet is unchanged.
+     * @pre outError must not refer to a string owned by outSheet.
+     */
+    [[nodiscard]] bool LoadUIStyleSheetFromFile(const std::filesystem::path& path, UIStyleSheet& outSheet, std::string& outError);
 }

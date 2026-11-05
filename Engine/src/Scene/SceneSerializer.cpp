@@ -401,7 +401,7 @@ namespace Quiet::Scene
                 };
             }
 
-            if (const auto* staticMesh = actor.TryGetComponent<StaticMeshComponent>(); staticMesh && staticMesh->IsValid())
+            if (const auto* staticMesh = actor.TryGetComponent<StaticMeshComponent>())
             {
                 json staticMeshJson =
                 {
@@ -728,25 +728,27 @@ namespace Quiet::Scene
                 const auto& staticMeshJson = actorJson["static_mesh"];
                 const std::string resourceId = staticMeshJson.at("resource_id").get<std::string>();
 
-                if (auto mesh = meshLibrary.TryGet(resourceId))
-                {
-                    auto& staticMesh = actor.AddComponent<StaticMeshComponent>();
-                    staticMesh.MeshResourceID = resourceId;
-                    staticMesh.Mesh = mesh;
-                    staticMesh.Visible = staticMeshJson.value("visible", true);
+                auto& staticMesh = actor.AddComponent<StaticMeshComponent>();
+                staticMesh.MeshResourceID = resourceId;
+                staticMesh.Visible = staticMeshJson.value("visible", true);
 
-                    if (staticMeshJson.contains("material_slots") && staticMeshJson["material_slots"].is_array())
+                if (staticMeshJson.contains("material_slots") &&
+                    staticMeshJson["material_slots"].is_array())
+                {
+                    for (const auto& materialSlotJson : staticMeshJson["material_slots"])
                     {
-                        staticMesh.MaterialSlots.clear();
-                        for (const auto& materialSlotJson : staticMeshJson["material_slots"])
-                        {
-                            staticMesh.MaterialSlots.push_back(DeserializeMaterial(materialSlotJson));
-                        }
+                        staticMesh.MaterialSlots.push_back(DeserializeMaterial(materialSlotJson));
                     }
                 }
-                else
+
+                staticMesh.Mesh = meshLibrary.TryGet(resourceId);
+
+                if (!staticMesh.Mesh)
                 {
-                    QUIET_CORE_WARN("Scene references missing mesh resource '{}'.", resourceId);
+                    QUIET_CORE_WARN(
+                        "Scene references missing mesh resource '{}'.",
+                        resourceId
+                    );
                 }
             }
 
