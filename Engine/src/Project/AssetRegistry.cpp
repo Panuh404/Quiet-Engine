@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <utility>
+#include <unordered_set>
 
 #include <nlohmann/json.hpp>
 
@@ -54,31 +55,61 @@ namespace Quiet::Project
         return registry;
     }
 
-    bool AssetRegistryIO::LoadFromFile(const std::filesystem::path &path, AssetRegistry &outRegistry)
+    bool AssetRegistryIO::LoadFromFile(const std::filesystem::path& path, AssetRegistry& outRegistry)
     {
         std::ifstream input(path);
         if (!input.is_open()) return false;
 
-        json root;
         try
         {
+            json root;
             input >> root;
-        }
-        catch (...)
-        {
-            return false;
-        }
 
-        if (!root.is_object()) return false;
+            if (!root.is_object()) return false;
 
-        AssetRegistry registry{};
-        registry.Version = root.value("Version", registry.Version);
-
-        if (root.contains("Assets") && root["Assets"].is_array())
-        {
-            for (const auto& value : root["Assets"])
+            // Saving a registry currently writes only these root fields.
+            // Reject unknown fields so opening cannot silently discard them.
+            for (auto it = root.begin(); it != root.end(); ++it)
             {
-                if (!value.is_object()) continue;
+                if (it.key() != "Version" && it.key() != "Assets")
+                {
+                    return false;
+                }
+            }
+
+            AssetRegistry registry{};
+
+            if (root.contains("Version"))
+            {
+                if (!root.at("Version").is_number_integer()) return false;
+
+                registry.Version = root.at("Version").get<int>();
+                if (registry.Version != 1) return false;
+            }
+
+            if (!root.contains("Assets") || !root.at("Assets").is_array())
+            {
+                return false;
+            }
+
+            std::unordered_set<std::string> seenIDs;
+            const auto builtInIDs = Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs();
+
+            for (const auto& value : root.at("Assets"))
+            {
+                if (!value.is_object()) return false;
+
+                // These are the fields SaveToFile knows how to preserve.
+                for (auto it = value.begin(); it != value.end(); ++it)
+                {
+                    if (it.key() != "ID" &&
+                        it.key() != "Type" &&
+                        it.key() != "Path" &&
+                        it.key() != "BuiltIn")
+                    {
+                        return false;
+                    }
+                }
 
                 AssetRecord record{};
                 record.ID = value.value("ID", "");
@@ -88,19 +119,37 @@ namespace Quiet::Project
                 AssetType type = AssetType::Unknown;
                 if (!AssetTypeFromString(value.value("Type", "Unknown"), type))
                 {
-                    type = AssetType::Unknown;
+                    return false;
                 }
 
                 record.Type = type;
-                if (!record.IsValid()) continue;
+
+                if (!record.IsValid()) return false;
+                if (!seenIDs.insert(record.ID).second) return false;
+
+                const bool isBuiltInID = std::find(builtInIDs.begin(), builtInIDs.end(), record.ID) != builtInIDs.end();
+
+                if (isBuiltInID &&
+                    (record.Type != AssetType::Mesh ||
+                     !record.BuiltIn ||
+                     !record.Path.empty()))
+                {
+                    return false;
+                }
+
                 registry.Records.push_back(std::move(record));
             }
-        }
-        EnsureBuiltInAssets(registry);
-        SortRecords(registry);
 
-        outRegistry = std::move(registry);
-        return true;
+            EnsureBuiltInAssets(registry);
+            SortRecords(registry);
+
+            outRegistry = std::move(registry);
+            return true;
+        }
+        catch (const json::exception&)
+        {
+            return false;
+        }
     }
 
     bool AssetRegistryIO::SaveToFile(const std::filesystem::path &path, const AssetRegistry &registry)
