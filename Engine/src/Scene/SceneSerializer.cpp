@@ -3,6 +3,22 @@
 #include <fstream>
 #include <optional>
 #include <utility>
+#include <algorithm>
+#include <limits>
+
+#include "Quiet/Core/UUID.h"
+
+#if defined(_WIN32)
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #include <windows.h>
+#endif
 
 #include <nlohmann/json.hpp>
 #include "glm/vec4.hpp"
@@ -602,15 +618,160 @@ namespace Quiet::Scene
             root["actors"].push_back(std::move(actorJson));
         }
 
-        std::ofstream out(path);
-        if (!out.is_open())
-        {
-            QUIET_CORE_ERROR("Failed to open scene file for writing: {}", path.string());
-            return false;
-        }
+        const std::string serialized = root.dump(4);
 
-        out << root.dump(4);
-        QUIET_CORE_INFO("Saved scene to '{}'.", path.string());
+        #if defined(_WIN32)
+            // The temporary file is beside the destination, so replacement does
+            // not require copying the file between volumes.
+            std::filesystem::path temporaryPath = path;
+            temporaryPath += ".quiet-tmp-" + Core::UUIDToString(Core::UUIDGenerator::New());
+
+            std::filesystem::path backupPath = path;
+            backupPath += ".quiet-backup-" + Core::UUIDToString(Core::UUIDGenerator::New());
+
+            // CREATE_NEW refuses to overwrite an existing temporary file.
+            HANDLE temporaryFile = CreateFileW(
+                temporaryPath.c_str(),
+                GENERIC_WRITE,
+                0,
+                nullptr,
+                CREATE_NEW,
+                FILE_ATTRIBUTE_NORMAL,
+                nullptr
+            );
+
+            if (temporaryFile == INVALID_HANDLE_VALUE)
+            {
+                const DWORD error = GetLastError();
+                QUIET_CORE_ERROR("Failed to create temporary scene file '{}'. Windows error: {}", temporaryPath.string(), error);
+                return false;
+            }
+
+            bool writeSucceeded = true;
+            DWORD writeError = ERROR_SUCCESS;
+            std::size_t offset = 0;
+
+            while (offset < serialized.size())
+            {
+                const std::size_t remaining = serialized.size() - offset;
+                const DWORD bytesRequested = std::min(remaining, static_cast<std::size_t>((std::numeric_limits<DWORD>::max)()));
+                DWORD bytesWritten = 0;
+
+                if (!WriteFile(temporaryFile, serialized.data() + offset, bytesRequested, &bytesWritten, nullptr))
+                {
+                    writeError = GetLastError();
+                    writeSucceeded = false;
+                    break;
+                }
+
+                if (bytesWritten == 0)
+                {
+                    writeSucceeded = false;
+                    break;
+                }
+
+                offset += bytesWritten;
+            }
+
+            if (!CloseHandle(temporaryFile))
+            {
+                if (writeSucceeded)
+                {
+                    writeError = GetLastError();
+                }
+                writeSucceeded = false;
+            }
+
+            if (!writeSucceeded)
+            {
+                // Keep the temporary file for inspection or manual cleanup.
+                QUIET_CORE_ERROR(
+                    "Failed to write temporary scene file '{}'. Windows error: {}",
+                    temporaryPath.string(), writeError);
+                return false;
+            }
+
+            const DWORD destinationAttributes = GetFileAttributesW(path.c_str());
+            if (destinationAttributes == INVALID_FILE_ATTRIBUTES)
+            {
+                const DWORD destinationError = GetLastError();
+
+                if (destinationError != ERROR_FILE_NOT_FOUND)
+                {
+                    QUIET_CORE_ERROR(
+                        "Failed to inspect scene destination '{}'. Windows error: {}. Temporary file retained at '{}'.",
+                        path.string(), destinationError, temporaryPath.string());
+                    return false;
+                }
+
+                // MoveFileW fails if a destination appears before this call.
+                if (!MoveFileW(temporaryPath.c_str(), path.c_str()))
+                {
+                    const DWORD error = GetLastError();
+                    QUIET_CORE_ERROR(
+                        "Failed to create scene file '{}'. Windows error: {}. Temporary file retained at '{}'.",
+                        path.string(), error, temporaryPath.string());
+                    return false;
+                }
+            }
+            else
+            {
+                if ((destinationAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+                {
+                    QUIET_CORE_ERROR(
+                        "Scene destination is a directory: '{}'. Temporary file retained at '{}'.",
+                        path.string(), temporaryPath.string());
+                    return false;
+                }
+
+                // Keep the backup if replacement fails: Windows can leave the
+                // original under the backup name for certain failure cases.
+                if (!ReplaceFileW(
+                        path.c_str(),
+                        temporaryPath.c_str(),
+                        backupPath.c_str(),
+                        0,
+                        nullptr,
+                        nullptr))
+                {
+                    const DWORD error = GetLastError();
+                    QUIET_CORE_ERROR(
+                        "Failed to replace scene file '{}'. Windows error: {}. Check temporary file '{}' and possible backup '{}'.",
+                        path.string(), error, temporaryPath.string(), backupPath.string());
+                    return false;
+                }
+
+                // Replacement succeeded. Failure to delete the backup does not
+                // undo the saved scene; report its location for manual cleanup.
+                if (!DeleteFileW(backupPath.c_str()))
+                {
+                    const DWORD error = GetLastError();
+                    QUIET_CORE_WARN(
+                        "Scene saved, but backup '{}' could not be removed. Windows error: {}",
+                        backupPath.string(), error);
+                }
+            }
+        #else
+            std::ofstream out(path);
+            if (!out.is_open())
+            {
+                QUIET_CORE_ERROR(
+                    "Failed to open scene file for writing: {}",
+                    path.string()
+                );
+                return false;
+            }
+
+            out << serialized;
+            out.close();
+
+            if (!out)
+            {
+                QUIET_CORE_ERROR("Failed to write scene file: {}", path.string());
+                return false;
+            }
+        #endif
+
         return true;
     }
 
@@ -987,7 +1148,6 @@ namespace Quiet::Scene
             scene.ResetHierarchyFromActors();
         }
 
-        QUIET_CORE_INFO("Loaded scene from '{}'.", path.string());
         return true;
     }
 
