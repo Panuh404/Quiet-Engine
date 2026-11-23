@@ -4,10 +4,18 @@
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
 
+int RunAssetIDDiagnostics(int argc, char** argv);
+
 int main(const int argc, char** argv)
 {
     try
     {
+        const int diagnosticResult = RunAssetIDDiagnostics(argc, argv);
+        if (diagnosticResult >= 0)
+        {
+            return diagnosticResult;
+        }
+
         Quiet::Core::AppSpec spec{};
         spec.Name = "Quiet Sandbox";
         spec.Width = 1200;

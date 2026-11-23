@@ -2,8 +2,11 @@
 
 #include <filesystem>
 #include <vector>
+#include <string>
+#include <unordered_map>
 
 #include "AssetRecord.h"
+#include "Quiet/Core/UUID.h"
 
 namespace Quiet::Project
 {
@@ -31,6 +34,16 @@ namespace Quiet::Project
          * @brief Creates a registry containing built-in mesh records.
          */
         [[nodiscard]] static AssetRegistry MakeDefault();
+
+        /**
+         * @brief Builds an in-memory legacy asset ID to UUID mapping.
+         * @return False if the registry contains invalid or duplicate IDs,
+         *         or an invalid built-in record.
+         * @note The output is unchanged on a reported validation failure.
+         *       Generated UUIDs differ between calls. This function does not
+         *       persist the mapping or modify the registry.
+         */
+        [[nodiscard]] static bool CreateLegacyUUIDMap(const AssetRegistry& registry, std::unordered_map<std::string, Core::UUID>& outMapping);
 
         /**
          * @brief Loads accepted records, restores built-ins, and replaces the output.

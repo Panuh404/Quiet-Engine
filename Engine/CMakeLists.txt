@@ -325,6 +325,7 @@ target_sources(Quiet_Engine
         include/Quiet/Project/AssetRegistry.h
         include/Quiet/Project/AssetRecord.h
         include/Quiet/Project/AssetType.h
+        include/Quiet/Project/BuiltInAssetIDs.h
         include/Quiet/Project/ProjectAssetLoader.h
         include/Quiet/Project/ProjectContext.h
         include/Quiet/Project/ProjectDescriptor.h

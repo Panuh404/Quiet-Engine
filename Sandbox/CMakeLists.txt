@@ -4,6 +4,7 @@ add_executable(Quiet_Sandbox)
 target_sources(Quiet_Sandbox
     PRIVATE
         src/main.cpp
+        src/AssetIDDiagnostics.cpp
 )
 
 target_link_libraries(Quiet_Sandbox

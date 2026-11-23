@@ -3,11 +3,27 @@
 #include <algorithm>
 #include <fstream>
 #include <utility>
+#include <limits>
 #include <unordered_set>
 
 #include <nlohmann/json.hpp>
 
 #include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
+#include "Quiet/Core/Log.h"
+#include "Quiet/Core/UUID.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
+
+#if defined(_WIN32)
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #include <windows.h>
+#endif
 
 namespace Quiet::Project
 {
@@ -53,6 +69,50 @@ namespace Quiet::Project
         AssetRegistry registry{};
         EnsureBuiltInAssets(registry);
         return registry;
+    }
+
+    bool AssetRegistryIO::CreateLegacyUUIDMap(const AssetRegistry& registry, std::unordered_map<std::string, Core::UUID>& outMapping)
+    {
+        using namespace BuiltInAssetIDs;
+
+        std::unordered_map<std::string, Core::UUID> mapping;
+        mapping.reserve(registry.Records.size());
+
+        // Reserve every built-in UUID, even if a legacy registry happens
+        // not to contain all built-in records.
+        std::unordered_set usedIDs{ Triangle, Quad, Plane, Cube, Pyramid, Sphere, Cylinder };
+
+        for (const AssetRecord& record : registry.Records)
+        {
+            if (!record.IsValid()) return false;
+
+            const auto builtInID = FromLegacyMeshID(record.ID);
+            if (builtInID)
+            {
+                if (!record.BuiltIn || record.Type != AssetType::Mesh || !record.Path.empty()) return false;
+                if (!mapping.emplace(record.ID, *builtInID).second) return false;
+
+                continue;
+            }
+
+            // The current engine recognizes only the seven built-in meshes.
+            if (record.BuiltIn) return false;
+
+            // Check for duplicates before generating a new UUID.
+            if (mapping.contains(record.ID)) return false;
+
+            Core::UUID generatedID{};
+            do
+            {
+                generatedID = Core::UUIDGenerator::New();
+            }
+            while (!generatedID.IsValid() || !usedIDs.insert(generatedID).second);
+
+            mapping.emplace(record.ID, generatedID);
+        }
+
+        outMapping = std::move(mapping);
+        return true;
     }
 
     bool AssetRegistryIO::LoadFromFile(const std::filesystem::path& path, AssetRegistry& outRegistry)
@@ -152,13 +212,22 @@ namespace Quiet::Project
         }
     }
 
-    bool AssetRegistryIO::SaveToFile(const std::filesystem::path &path, const AssetRegistry &registry)
+    bool AssetRegistryIO::SaveToFile(const std::filesystem::path& path, const AssetRegistry& registry)
     {
-        std::error_code ec;
-        std::filesystem::create_directories(path.parent_path(), ec);
+        std::error_code directoryError;
+        const std::filesystem::path parentPath = path.parent_path();
 
-        std::ofstream output(path);
-        if (!output.is_open()) return false;
+        if (!parentPath.empty())
+        {
+            std::filesystem::create_directories(parentPath, directoryError);
+            if (directoryError)
+            {
+                QUIET_CORE_ERROR(
+                    "Failed to create asset registry directory '{}': {}",
+                    parentPath.string(), directoryError.message());
+                return false;
+            }
+        }
 
         json root;
         root["Version"] = registry.Version;
@@ -177,8 +246,153 @@ namespace Quiet::Project
                 }
             );
         }
-        output << root.dump(4);
-        return output.good();
+
+        const std::string serialized = root.dump(4);
+
+        #if defined(_WIN32)
+
+        std::filesystem::path temporaryPath = path;
+        temporaryPath += ".quiet-tmp-" + Core::UUIDToString(Core::UUIDGenerator::New());
+
+        std::filesystem::path backupPath = path;
+        backupPath += ".quiet-backup-" + Core::UUIDToString(Core::UUIDGenerator::New());
+
+        HANDLE temporaryFile = CreateFileW(
+            temporaryPath.c_str(),
+            GENERIC_WRITE,
+            0,
+            nullptr,
+            CREATE_NEW,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+
+        if (temporaryFile == INVALID_HANDLE_VALUE)
+        {
+            const DWORD error = GetLastError();
+            QUIET_CORE_ERROR(
+                "Failed to create temporary asset registry '{}'. Windows error: {}",
+                temporaryPath.string(), error);
+            return false;
+        }
+
+        bool writeSucceeded = true;
+        DWORD writeError = ERROR_SUCCESS;
+        std::size_t offset = 0;
+
+        while (offset < serialized.size())
+        {
+            const std::size_t remaining = serialized.size() - offset;
+            const DWORD bytesRequested = std::min(remaining, static_cast<std::size_t>((std::numeric_limits<DWORD>::max)()));
+            DWORD bytesWritten = 0;
+
+            if (!WriteFile(temporaryFile, serialized.data() + offset, bytesRequested, &bytesWritten, nullptr))
+            {
+                writeError = GetLastError();
+                writeSucceeded = false;
+                break;
+            }
+
+            if (bytesWritten == 0)
+            {
+                writeSucceeded = false;
+                break;
+            }
+
+            offset += bytesWritten;
+        }
+
+        if (!CloseHandle(temporaryFile))
+        {
+            if (writeSucceeded)
+            {
+                writeError = GetLastError();
+            }
+            writeSucceeded = false;
+        }
+
+        if (!writeSucceeded)
+        {
+            QUIET_CORE_ERROR(
+                "Failed to write temporary asset registry '{}'. Windows error: {}",
+                temporaryPath.string(), writeError);
+            return false;
+        }
+
+        const DWORD destinationAttributes = GetFileAttributesW(path.c_str());
+
+        if (destinationAttributes == INVALID_FILE_ATTRIBUTES)
+        {
+            const DWORD destinationError = GetLastError();
+
+            if (destinationError != ERROR_FILE_NOT_FOUND)
+            {
+                QUIET_CORE_ERROR(
+                    "Failed to inspect asset registry destination '{}'. Windows error: {}. Temporary file retained at '{}'.",
+                    path.string(), destinationError, temporaryPath.string());
+                return false;
+            }
+
+            if (!MoveFileW(temporaryPath.c_str(), path.c_str()))
+            {
+                const DWORD error = GetLastError();
+                QUIET_CORE_ERROR(
+                    "Failed to create asset registry '{}'. Windows error: {}. Temporary file retained at '{}'.",
+                    path.string(), error, temporaryPath.string());
+                return false;
+            }
+        }
+        else
+        {
+            if ((destinationAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+            {
+                QUIET_CORE_ERROR(
+                    "Asset registry destination is a directory: '{}'. Temporary file retained at '{}'.",
+                    path.string(), temporaryPath.string());
+                return false;
+            }
+
+            if (!ReplaceFileW(
+                    path.c_str(),
+                    temporaryPath.c_str(),
+                    backupPath.c_str(),
+                    0,
+                    nullptr,
+                    nullptr))
+            {
+                const DWORD error = GetLastError();
+                QUIET_CORE_ERROR(
+                    "Failed to replace asset registry '{}'. Windows error: {}. Check temporary file '{}' and possible backup '{}'.",
+                    path.string(), error, temporaryPath.string(), backupPath.string());
+                return false;
+            }
+
+            if (!DeleteFileW(backupPath.c_str()))
+            {
+                const DWORD error = GetLastError();
+                QUIET_CORE_WARN(
+                    "Asset registry saved, but backup '{}' could not be removed. Windows error: {}",
+                    backupPath.string(), error);
+            }
+        }
+
+        #else
+
+        std::ofstream output(path);
+        if (!output.is_open())
+        {
+            return false;
+        }
+
+        output << serialized;
+        output.close();
+
+        if (!output)
+        {
+            return false;
+        }
+        #endif
+
+        return true;
     }
 
     void AssetRegistryIO::EnsureBuiltInAssets(AssetRegistry &registry)
