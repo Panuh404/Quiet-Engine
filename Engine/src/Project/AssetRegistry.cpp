@@ -1,5 +1,6 @@
 #include "Quiet/Project/AssetRegistry.h"
 
+#include <array>
 #include <algorithm>
 #include <fstream>
 #include <utility>
@@ -31,8 +32,31 @@ namespace Quiet::Project
     {
         using json = nlohmann::json;
 
+        bool IsValidRegistryRecord(const AssetRecord& record, const std::vector<Core::UUID>& builtInIDs)
+        {
+            if (!record.IsValid() || record.ID == BuiltInAssetIDs::EditorTopbarLogo) return false;
+
+            const bool isBuiltInID = std::find(builtInIDs.begin(), builtInIDs.end(), record.ID) != builtInIDs.end();
+            if (record.BuiltIn != isBuiltInID) return false;
+
+            if (!record.MeshTextureBindings.empty() && (record.BuiltIn || record.Type != AssetType::Mesh))
+                return false;
+
+            for (const auto& [source, textureID] : record.MeshTextureBindings)
+            {
+                if (source.empty() || !textureID.IsValid() || textureID == BuiltInAssetIDs::EditorTopbarLogo ||
+                    std::find(builtInIDs.begin(), builtInIDs.end(), textureID) != builtInIDs.end())
+                {
+                    return false;
+                }
+            }
+
+            return !isBuiltInID || (record.Type == AssetType::Mesh && record.Path.empty());
+        }
+
         void UpsertRecord(AssetRegistry& registry, AssetRecord record)
         {
+
             auto it = std::find_if(
                 registry.Records.begin(),
                 registry.Records.end(),
@@ -71,50 +95,6 @@ namespace Quiet::Project
         return registry;
     }
 
-    bool AssetRegistryIO::CreateLegacyUUIDMap(const AssetRegistry& registry, std::unordered_map<std::string, Core::UUID>& outMapping)
-    {
-        using namespace BuiltInAssetIDs;
-
-        std::unordered_map<std::string, Core::UUID> mapping;
-        mapping.reserve(registry.Records.size());
-
-        // Reserve every built-in UUID, even if a legacy registry happens
-        // not to contain all built-in records.
-        std::unordered_set usedIDs{ Triangle, Quad, Plane, Cube, Pyramid, Sphere, Cylinder };
-
-        for (const AssetRecord& record : registry.Records)
-        {
-            if (!record.IsValid()) return false;
-
-            const auto builtInID = FromLegacyMeshID(record.ID);
-            if (builtInID)
-            {
-                if (!record.BuiltIn || record.Type != AssetType::Mesh || !record.Path.empty()) return false;
-                if (!mapping.emplace(record.ID, *builtInID).second) return false;
-
-                continue;
-            }
-
-            // The current engine recognizes only the seven built-in meshes.
-            if (record.BuiltIn) return false;
-
-            // Check for duplicates before generating a new UUID.
-            if (mapping.contains(record.ID)) return false;
-
-            Core::UUID generatedID{};
-            do
-            {
-                generatedID = Core::UUIDGenerator::New();
-            }
-            while (!generatedID.IsValid() || !usedIDs.insert(generatedID).second);
-
-            mapping.emplace(record.ID, generatedID);
-        }
-
-        outMapping = std::move(mapping);
-        return true;
-    }
-
     bool AssetRegistryIO::LoadFromFile(const std::filesystem::path& path, AssetRegistry& outRegistry)
     {
         std::ifstream input(path);
@@ -139,20 +119,21 @@ namespace Quiet::Project
 
             AssetRegistry registry{};
 
-            if (root.contains("Version"))
+            if (!root.contains("Version") ||
+                !root.at("Version").is_number_integer() ||
+                root.at("Version") != CurrentAssetRegistryVersion)
             {
-                if (!root.at("Version").is_number_integer()) return false;
-
-                registry.Version = root.at("Version").get<int>();
-                if (registry.Version != 1) return false;
+                return false;
             }
+
+            registry.Version = CurrentAssetRegistryVersion;
 
             if (!root.contains("Assets") || !root.at("Assets").is_array())
             {
                 return false;
             }
 
-            std::unordered_set<std::string> seenIDs;
+            std::unordered_set<Core::UUID> seenIDs;
             const auto builtInIDs = Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs();
 
             for (const auto& value : root.at("Assets"))
@@ -163,16 +144,24 @@ namespace Quiet::Project
                 for (auto it = value.begin(); it != value.end(); ++it)
                 {
                     if (it.key() != "ID" &&
+                        it.key() != "Name" &&
                         it.key() != "Type" &&
                         it.key() != "Path" &&
-                        it.key() != "BuiltIn")
+                        it.key() != "BuiltIn" &&
+                        it.key() != "MeshTextureBindings")
                     {
                         return false;
                     }
                 }
 
                 AssetRecord record{};
-                record.ID = value.value("ID", "");
+                const std::string idText = value.at("ID").get<std::string>();
+                if (!Core::UUIDFromString(idText, record.ID) || Core::UUIDToString(record.ID) != idText)
+                {
+                    return false;
+                }
+
+                record.Name = value.at("Name").get<std::string>();
                 record.Path = value.value("Path", "");
                 record.BuiltIn = value.value("BuiltIn", false);
 
@@ -184,15 +173,24 @@ namespace Quiet::Project
 
                 record.Type = type;
 
-                if (!record.IsValid()) return false;
-                if (!seenIDs.insert(record.ID).second) return false;
+                if (value.contains("MeshTextureBindings"))
+                {
+                    const auto& bindings = value.at("MeshTextureBindings");
+                    if (!bindings.is_object() || record.BuiltIn || record.Type != AssetType::Mesh) return false;
 
-                const bool isBuiltInID = std::find(builtInIDs.begin(), builtInIDs.end(), record.ID) != builtInIDs.end();
+                    for (auto it = bindings.begin(); it != bindings.end(); ++it)
+                    {
+                        const std::string textureIDText = it.value().get<std::string>();
+                        Core::UUID textureID{};
+                        if (!Core::UUIDFromString(textureIDText, textureID) || Core::UUIDToString(textureID) != textureIDText)
+                        {
+                            return false;
+                        }
+                        record.MeshTextureBindings.emplace(it.key(), textureID);
+                    }
+                }
 
-                if (isBuiltInID &&
-                    (record.Type != AssetType::Mesh ||
-                     !record.BuiltIn ||
-                     !record.Path.empty()))
+                if (!IsValidRegistryRecord(record, builtInIDs) || !seenIDs.insert(record.ID).second)
                 {
                     return false;
                 }
@@ -214,6 +212,24 @@ namespace Quiet::Project
 
     bool AssetRegistryIO::SaveToFile(const std::filesystem::path& path, const AssetRegistry& registry)
     {
+        const auto builtInIDs = Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs();
+        if (registry.Version != CurrentAssetRegistryVersion)
+        {
+            QUIET_CORE_ERROR("Cannot save asset registry: unsupported version {}.", registry.Version);
+            return false;
+        }
+
+        std::unordered_set<Core::UUID> seenIDs;
+
+        for (const AssetRecord& record : registry.Records)
+        {
+            if (!IsValidRegistryRecord(record, builtInIDs) || !seenIDs.insert(record.ID).second)
+            {
+                QUIET_CORE_ERROR("Cannot save asset registry: invalid record or duplicate UUID '{}'.", Core::UUIDToString(record.ID));
+                return false;
+            }
+        }
+
         std::error_code directoryError;
         const std::filesystem::path parentPath = path.parent_path();
 
@@ -235,16 +251,22 @@ namespace Quiet::Project
 
         for (const auto& record : registry.Records)
         {
-            if (!record.IsValid()) continue;
+            json value = {
+                { "ID", Core::UUIDToString(record.ID) },
+                { "Name", record.Name },
+                { "Type", std::string(ToString(record.Type)) },
+                { "Path", record.Path },
+                { "BuiltIn", record.BuiltIn }
+            };
 
-            root["Assets"].push_back(
-                {
-                    { "ID", record.ID },
-                    { "Type", std::string(ToString(record.Type)) },
-                    { "Path", record.Path },
-                    { "BuiltIn", record.BuiltIn }
-                }
-            );
+            if (!record.MeshTextureBindings.empty())
+            {
+                auto& bindings = value["MeshTextureBindings"] = json::object();
+                for (const auto& [source, textureID] : record.MeshTextureBindings)
+                    bindings[source] = Core::UUIDToString(textureID);
+            }
+
+            root["Assets"].push_back(std::move(value));
         }
 
         const std::string serialized = root.dump(4);
@@ -312,9 +334,7 @@ namespace Quiet::Project
 
         if (!writeSucceeded)
         {
-            QUIET_CORE_ERROR(
-                "Failed to write temporary asset registry '{}'. Windows error: {}",
-                temporaryPath.string(), writeError);
+            QUIET_CORE_ERROR("Failed to write temporary asset registry '{}'. Windows error: {}", temporaryPath.string(), writeError);
             return false;
         }
 
@@ -395,32 +415,39 @@ namespace Quiet::Project
         return true;
     }
 
-    void AssetRegistryIO::EnsureBuiltInAssets(AssetRegistry &registry)
+    void AssetRegistryIO::EnsureBuiltInAssets(AssetRegistry& registry)
     {
-        for (const std::string& primitiveID : Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+        using namespace BuiltInAssetIDs;
+
+        const std::array builtIns{
+            std::pair{Triangle, "Triangle"},
+            std::pair{Quad, "Quad"},
+            std::pair{Plane, "Plane"},
+            std::pair{Cube, "Cube"},
+            std::pair{Pyramid, "Pyramid"},
+            std::pair{Sphere, "Sphere"},
+            std::pair{Cylinder, "Cylinder"}
+        };
+
+        for (const auto& [id, name] : builtIns)
         {
-            UpsertRecord(
-                registry,
-                AssetRecord{
-                    primitiveID,
-                    AssetType::Mesh,
-                    "",
-                    true
-                }
-            );
+            UpsertRecord(registry, AssetRecord{ id, name, AssetType::Mesh, "", true });
         }
+
         SortRecords(registry);
     }
 
-    bool AssetRegistryIO::AddOrUpdate(AssetRegistry &registry, AssetRecord record)
+    bool AssetRegistryIO::AddOrUpdate(AssetRegistry& registry, AssetRecord record)
     {
-        if (!record.IsValid()) return false;
+        const auto builtInIDs = Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs();
+        if (record.BuiltIn || !IsValidRegistryRecord(record, builtInIDs)) return false;
+
         UpsertRecord(registry, std::move(record));
         SortRecords(registry);
         return true;
     }
 
-    bool AssetRegistryIO::RemoveByID(AssetRegistry &registry, std::string_view id)
+    bool AssetRegistryIO::RemoveByID(AssetRegistry &registry, Core::UUID id)
     {
         const auto it = std::remove_if(
             registry.Records.begin(),
@@ -436,7 +463,7 @@ namespace Quiet::Project
         return true;
     }
 
-    const AssetRecord * AssetRegistryIO::FindByID(const AssetRegistry &registry, std::string_view id)
+    const AssetRecord * AssetRegistryIO::FindByID(const AssetRegistry &registry, Core::UUID id)
     {
         const auto it = std::find_if(
                     registry.Records.begin(),
@@ -464,9 +491,9 @@ namespace Quiet::Project
         return result;
     }
 
-    std::vector<std::string> AssetRegistryIO::GetAssetIDsByType(const AssetRegistry &registry, AssetType type)
+    std::vector<Core::UUID> AssetRegistryIO::GetAssetIDsByType(const AssetRegistry &registry, AssetType type)
     {
-        std::vector<std::string> result;
+        std::vector<Core::UUID> result;
         result.reserve(registry.Records.size());
 
         for (const auto& record : registry.Records)

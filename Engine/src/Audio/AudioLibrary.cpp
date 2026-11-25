@@ -31,21 +31,22 @@ namespace
 
 namespace Quiet::Audio
 {
-    bool AudioLibrary::LoadFromFile(const std::string& assetID, const std::filesystem::path& filePath, const bool replaceExisting)
+    bool AudioLibrary::LoadFromFile(Core::UUID assetID, const std::filesystem::path& filePath, const bool replaceExisting)
     {
-        if (assetID.empty() || filePath.empty()) return false;
+        if (!assetID.IsValid()) throw std::invalid_argument("Texture asset UUID is invalid.");
+        if (filePath.empty()) return false;
         if (Has(assetID) && !replaceExisting) return true;
 
         std::error_code error;
         if (!std::filesystem::exists(filePath, error) || error)
         {
-            QUIET_CORE_WARN("Audio asset '{}' points to missing file '{}'.", assetID, filePath.string());
+            QUIET_CORE_WARN("Audio asset '{}' points to missing file '{}'.", Core::UUIDToString(assetID), filePath.string());
             return false;
         }
 
         if (!std::filesystem::is_regular_file(filePath, error) || error)
         {
-            QUIET_CORE_WARN("Audio asset '{}' does not point to a regular file.", assetID);
+            QUIET_CORE_WARN("Audio asset '{}' does not point to a regular file.", Core::UUIDToString(assetID));
             return false;
         }
 
@@ -55,7 +56,7 @@ namespace Quiet::Audio
         const ma_result initializeResult = ma_decoder_init_file(path.c_str(), nullptr, &decoder);
         if (initializeResult != MA_SUCCESS)
         {
-            QUIET_CORE_WARN("Failed to inspect audio asset '{}' from '{}': {}", assetID, path, ma_result_description(initializeResult));
+            QUIET_CORE_WARN("Failed to inspect audio asset '{}' from '{}': {}", Core::UUIDToString(assetID), path, ma_result_description(initializeResult));
             return false;
         }
 
@@ -67,7 +68,7 @@ namespace Quiet::Audio
         if (formatResult != MA_SUCCESS || channels == 0 || sampleRate == 0)
         {
             ma_decoder_uninit(&decoder);
-            QUIET_CORE_WARN("Failed to read audio metadata for '{}'.", assetID);
+            QUIET_CORE_WARN("Failed to read audio metadata for '{}'.", Core::UUIDToString(assetID));
             return false;
         }
 
@@ -101,51 +102,51 @@ namespace Quiet::Audio
 
         ma_decoder_uninit(&decoder);
         if (!asset.IsValid()) return false;
-        m_Assets[assetID] = asset;
+        m_Audios[assetID] = asset;
 
         if (asset.DurationValid)
         {
             QUIET_CORE_INFO("Loaded audio asset '{}'. format={} channels={} sampleRate={}Hz duration={:.2f}s bytes={}",
-                assetID, asset.Encoding, asset.Channels, asset.SampleRate, asset.DurationSeconds, asset.FileSizeBytes);
+                Core::UUIDToString(assetID), asset.Encoding, asset.Channels, asset.SampleRate, asset.DurationSeconds, asset.FileSizeBytes);
         }
         else
         {
             QUIET_CORE_INFO("Loaded audio asset '{}'. format={} channels={} sampleRate={}Hz duration=unknown bytes={}",
-                assetID, asset.Encoding, asset.Channels, asset.SampleRate, asset.FileSizeBytes);
+                Core::UUIDToString(assetID), asset.Encoding, asset.Channels, asset.SampleRate, asset.FileSizeBytes);
         }
 
         return true;
     }
 
-    std::optional<AudioAsset> AudioLibrary::Get(const std::string_view assetID) const
+    std::optional<AudioAsset> AudioLibrary::Get(Core::UUID assetID) const
     {
-        const auto iterator = m_Assets.find(std::string(assetID));
-        if (iterator == m_Assets.end()) return std::nullopt;
+        const auto iterator = m_Audios.find(assetID);
+        if (iterator == m_Audios.end()) return std::nullopt;
         return iterator->second;
     }
 
-    bool AudioLibrary::Has(const std::string_view assetID) const
+    bool AudioLibrary::Has(Core::UUID assetID) const
     {
-        return m_Assets.contains(std::string(assetID));
+        return m_Audios.contains(assetID);
     }
 
-    std::vector<std::string> AudioLibrary::GetNames() const
+    std::vector<Core::UUID> AudioLibrary::GetAssetIDs() const
     {
-        std::vector<std::string> names;
-        names.reserve(m_Assets.size());
+        std::vector<Core::UUID> assetIDs;
+        assetIDs.reserve(m_Audios.size());
 
-        for (const auto& [name, asset] : m_Assets)
+        for (const auto& [assetID, mesh] : m_Audios)
         {
-            (void)asset;
-            names.push_back(name);
+            (void)mesh;
+            assetIDs.push_back(assetID);
         }
 
-        std::sort(names.begin(), names.end());
-        return names;
+        std::sort(assetIDs.begin(), assetIDs.end());
+        return assetIDs;
     }
 
     void AudioLibrary::Clear()
     {
-        m_Assets.clear();
+        m_Audios.clear();
     }
 }

@@ -153,7 +153,7 @@ namespace Quiet::Scripting::Bindings
             exposeTable.set_function(functionName, [&lua, &projectContext, findProperty, propertyType, assetType](const std::string& name) -> sol::object
             {
                 const auto* property =findProperty(name, propertyType);
-                if (!property || property->AssetValue.empty())
+                if (!property || !property->AssetValue.IsValid())
                 {
                     return sol::make_object(lua, sol::nil);
                 }
@@ -163,7 +163,7 @@ namespace Quiet::Scripting::Bindings
                 {
                     return sol::make_object(lua, sol::nil);
                 }
-                return sol::make_object(lua, property->AssetValue);
+                return sol::make_object(lua, Core::UUIDToString(property->AssetValue));
             });
         };
 

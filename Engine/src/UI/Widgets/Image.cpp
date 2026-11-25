@@ -7,7 +7,7 @@
 
 namespace Quiet::UI
 {
-    void Image::SetTextureID(std::string textureID)
+    void Image::SetTextureID(Core::UUID textureID)
     {
         if (m_TextureID == textureID) return;
 
@@ -38,7 +38,7 @@ namespace Quiet::UI
 
     void Image::OnPaint(PaintList& commands) const
     {
-        if (m_TextureID.empty()) return;
+        if (!m_TextureID.IsValid()) return;
         const Rect bounds = GetSurfaceBounds();
 
         if (bounds.Size.x <= 0.0f || bounds.Size.y <= 0.0f)

@@ -84,6 +84,6 @@ namespace Quiet::Editor
         EditorSceneHistory m_History{};
         bool m_WasUsingGizmo = false;
 
-        std::unordered_map<std::string, std::filesystem::file_time_type> m_ScriptSourceWriteTimes{};
+        std::unordered_map<Core::UUID, std::filesystem::file_time_type> m_ScriptSourceWriteTimes{};
     };
 }

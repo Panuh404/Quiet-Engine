@@ -43,7 +43,7 @@ namespace Quiet::Project
         AssetReloadStage Stage = AssetReloadStage::Idle;
         std::size_t Completed = 0;
         std::size_t Total = 0;
-        std::string CurrentAssetID;
+        Core::UUID CurrentAssetID;
         bool HadFailures = false;
     };
 
@@ -77,7 +77,7 @@ namespace Quiet::Project
 
         bool ReloadAssets(bool forceReimport = false);
         bool ReloadRuntimeSupportAssets();
-        bool ReloadAssetByID(std::string_view assetID, bool forceReimport = true);
+        bool ReloadAssetByID(Core::UUID assetID, bool forceReimport = true);
 
         #pragma region Incremental Reloading
         /**

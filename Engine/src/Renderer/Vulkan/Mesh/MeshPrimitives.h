@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "Quiet/Core/UUID.h"
 #include "Renderer/Vulkan/Mesh/MeshLibrary.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -21,9 +22,9 @@ namespace Quiet::Renderer::Vulkan
     class MeshPrimitives
     {
     public:
-        [[nodiscard]] static std::vector<std::string> GetBuiltInAssetIDs();
-        [[nodiscard]] static bool IsBuiltInAssetID(std::string_view assetID);
-        [[nodiscard]] static std::optional<MeshPrimitive> Create(std::string_view assetID);
+        [[nodiscard]] static std::vector<Core::UUID> GetBuiltInAssetIDs();
+        [[nodiscard]] static bool IsBuiltInAssetID(Core::UUID assetID);
+        [[nodiscard]] static std::optional<MeshPrimitive> Create(Core::UUID assetID);
 
     private:
         [[nodiscard]] static MeshPrimitive CreateTriangle();

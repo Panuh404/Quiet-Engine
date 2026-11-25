@@ -1,13 +1,16 @@
 #pragma once
 
 #include <string>
+
 #include <Audio/AudioBus.h>
+
+#include "Quiet/Core/UUID.h"
 
 namespace Quiet::Scene
 {
     struct AudioSourceComponent
     {
-        std::string AudioAssetID;
+        Core::UUID AudioAssetID{};
         Audio::AudioBus Bus = Audio::AudioBus::SFX;
 
         float Volume = 1.0f;

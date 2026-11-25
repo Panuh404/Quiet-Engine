@@ -37,6 +37,7 @@
 #include "Quiet/Project/ProjectWorkflow.h"
 #include "Quiet/Renderer/RenderConventions.h"
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Math/Geometry.h"
 #include "Quiet/Project/AssetRecord.h"
 #include "Quiet/Project/AssetRegistry.h"
@@ -693,32 +694,34 @@ namespace Quiet::Core
             return;
         }
 
+        const std::string assetIDText = UUIDToString(request->AssetID);
+
         const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), request->AssetID);
         if (!record)
         {
-            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not registered.", request->AssetID);
+            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not registered.", assetIDText);
             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                 "Viewport drop failed",
-                "Asset '" + request->AssetID + "' is no longer registered.");
+                "Asset '" + assetIDText + "' is no longer registered.");
             return;
         }
 
         if (record->Type != Project::AssetType::Mesh)
         {
-            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not a mesh.", record->ID);
+            QUIET_CORE_WARN("Viewport asset drop rejected because '{}' is not a mesh.", assetIDText);
             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                 "Viewport drop failed",
-                "Asset '" + record->ID + "' is not a Mesh asset.");
+                "Asset '" + assetIDText + "' is not a Mesh asset.");
             return;
         }
 
         const auto mesh = m_Renderer->GetMeshLibrary().TryGet(record->ID);
         if (!mesh)
         {
-            QUIET_CORE_WARN("Viewport asset drop rejected because mesh '{}' is not loaded.", record->ID);
+            QUIET_CORE_WARN("Viewport asset drop rejected because mesh '{}' is not loaded.", assetIDText);
             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                 "Viewport drop failed",
-                "Mesh asset '" + record->ID + "' is registered but not loaded.");
+                "Mesh asset '" + assetIDText + "' is registered but not loaded.");
             return;
         }
 
@@ -730,18 +733,18 @@ namespace Quiet::Core
         }
 
         Editor::EditorCommands commands(*m_EditorController);
-        if (!commands.CreateStaticMeshActor(activeScene, record->ID, record->ID, m_ProjectContext, m_Renderer->GetMeshLibrary(), actorPosition))
+        if (!commands.CreateStaticMeshActor(activeScene, record->Name, record->ID, m_ProjectContext, m_Renderer->GetMeshLibrary(), actorPosition))
         {
-            QUIET_CORE_WARN("Failed to create Static Mesh actor from dropped asset '{}'.", record->ID);
+            QUIET_CORE_WARN("Failed to create Static Mesh actor from dropped asset '{}'.", assetIDText);
             editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                 "Actor creation failed",
-                "Quiet could not create a Static Mesh actor from asset '" + record->ID + "'.");
+                "Quiet could not create a Static Mesh actor from asset '" + assetIDText + "'.");
             return;
         }
 
         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
             "Mesh actor created",
-            "Created and selected a Static Mesh actor using asset '" + record->ID + "'.");
+            "Created and selected a Static Mesh actor using asset '" + assetIDText + "'.");
     }
 
     void Application::ProcessEditorRequests(Editor::EditorState &editorState)
@@ -818,7 +821,7 @@ namespace Quiet::Core
 
                 case Editor::EditorRequestType::CreatePrimitiveActor:
                 {
-                    const std::string& primitiveID = request->Argument;
+                    const UUID primitiveID = request->AssetID;
                     if (editorState.Scene.Mode != Editor::SceneMode::Edit)
                     {
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
@@ -827,9 +830,11 @@ namespace Quiet::Core
                         break;
                     }
 
-                    if (primitiveID.empty() || !Renderer::Vulkan::MeshPrimitives::IsBuiltInAssetID(primitiveID))
+                    auto primitiveIDText = Core::UUIDToString(primitiveID);
+
+                    if (!primitiveID.IsValid() || !Renderer::Vulkan::MeshPrimitives::IsBuiltInAssetID(primitiveID))
                     {
-                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not a valid built-in primitive.", primitiveID);
+                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not a valid built-in primitive.", primitiveIDText);
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                             "Primitive creation failed",
                             "The requested built-in primitive is invalid.");
@@ -848,36 +853,36 @@ namespace Quiet::Core
                     const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), primitiveID);
                     if (!record || !record->BuiltIn || record->Type != Project::AssetType::Mesh)
                     {
-                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not registered as a built-in Mesh asset.", primitiveID);
+                        QUIET_CORE_WARN("Cannot create primitive actor because '{}' is not registered as a built-in Mesh asset.", primitiveIDText);
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                             "Primitive creation failed",
-                            "Primitive '" + primitiveID + "' is not registered as a built-in Mesh asset.");
+                            "Primitive '" + primitiveIDText + "' is not registered as a built-in Mesh asset.");
                         break;
                     }
 
                     if (!m_Renderer->GetMeshLibrary().Has(primitiveID))
                     {
-                        QUIET_CORE_WARN("Cannot create primitive actor because mesh '{}' is not loaded.", primitiveID);
+                        QUIET_CORE_WARN("Cannot create primitive actor because mesh '{}' is not loaded.", primitiveIDText);
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                             "Primitive creation failed",
-                            "Primitive mesh '" + primitiveID + "' is registered but not loaded.");
+                            "Primitive mesh '" + primitiveIDText + "' is registered but not loaded.");
                         break;
                     }
 
                     Editor::EditorCommands commands(*m_EditorController);
 
-                    if (!commands.CreateStaticMeshActor(*m_Scene, primitiveID, primitiveID, m_ProjectContext, m_Renderer->GetMeshLibrary()))
+                    if (!commands.CreateStaticMeshActor(*m_Scene, record->Name, primitiveID, m_ProjectContext, m_Renderer->GetMeshLibrary()))
                     {
-                        QUIET_CORE_WARN("Failed to create primitive actor '{}'.", primitiveID);
+                        QUIET_CORE_WARN("Failed to create primitive actor '{}'.", primitiveIDText);
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                             "Primitive creation failed",
-                            "Quiet could not create the '" + primitiveID + "' actor.");
+                            "Quiet could not create the '" + primitiveIDText + "' actor.");
                         break;
                     }
 
                     editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                         "Primitive created",
-                        "Created and selected a '" + primitiveID + "' actor at the world origin.");
+                        "Created and selected a '" + primitiveIDText + "' actor at the world origin.");
                     break;
                 }
 
@@ -931,7 +936,7 @@ namespace Quiet::Core
                         break;
                     }
 
-                    if (request->Argument.empty())
+                    if (!request->AssetID.IsValid())
                     {
                         QUIET_CORE_WARN("Cannot reimport asset because no asset ID was provided.");
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
@@ -943,20 +948,21 @@ namespace Quiet::Core
                     m_Renderer->WaitIdle();
                     Renderer::UI::ClearTexturePreviewCache(true);
                     m_Renderer->GetStaticMeshMaterialResources().ClearTextureDescriptorCache();
-                    const bool assetLoaded = m_ProjectAssetLoader->ReloadAssetByID(request->Argument, true);
+                    const std::string assetIDText = UUIDToString(request->AssetID);
+                    const bool assetLoaded = m_ProjectAssetLoader->ReloadAssetByID(request->AssetID, true);
 
                     if (!assetLoaded)
                     {
-                        QUIET_CORE_WARN("Asset '{}' could not be reimported.", request->Argument);
+                        QUIET_CORE_WARN("Asset '{}' could not be reimported.", assetIDText);
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                             "Reimport failed",
-                            "Asset '" + request->Argument + "' could not be reimported. Check the console for details.");
+                            "Asset '" + assetIDText + "' could not be reimported. Check the console for details.");
                     }
                     else
                     {
                         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
                             "Asset reimported",
-                            "Asset '" + request->Argument + "' was reimported successfully.");
+                            "Asset '" + assetIDText + "' was reimported successfully.");
                     }
 
                     RelinkSceneStaticMeshes(*m_Scene);
@@ -1670,20 +1676,23 @@ namespace Quiet::Core
                     case EditorBootstrapStage::LoadingAssets:
                     {
                         const Project::AssetReloadProgress& assetProgress = m_ProjectAssetLoader->GetIncrementalReloadProgress();
+                        const auto* currentAsset = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), assetProgress.CurrentAssetID);
+                        const std::string currentAssetLabel = currentAsset ? currentAsset->Name : UUIDToString(assetProgress.CurrentAssetID);
+
                         const float stageProgress = assetProgress.Total > 0 ? static_cast<float>(assetProgress.Completed) / static_cast<float>(assetProgress.Total) : 1.0f;
                         if (assetProgress.Stage == Project::AssetReloadStage::Meshes)
                         {
-                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading meshes..." : "Loading mesh: " + assetProgress.CurrentAssetID;
+                            statusText = !assetProgress.CurrentAssetID.IsValid() ? "Loading meshes..." : "Loading mesh: " + currentAssetLabel;
                             progress = 0.15f + stageProgress * 0.35f;
                         }
                         else if (assetProgress.Stage == Project::AssetReloadStage::Textures)
                         {
-                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading textures..." : "Loading texture: " + assetProgress.CurrentAssetID;
+                            statusText = !assetProgress.CurrentAssetID.IsValid() ? "Loading textures..." : "Loading texture: " + currentAssetLabel;
                             progress = 0.50f + stageProgress * 0.30f;
                         }
                         else if (assetProgress.Stage == Project::AssetReloadStage::Audio)
                         {
-                            statusText = assetProgress.CurrentAssetID.empty() ? "Loading audio..." : "Loading audio: " + assetProgress.CurrentAssetID;
+                            statusText = !assetProgress.CurrentAssetID.IsValid() ? "Loading audio..." : "Loading audio: " + currentAssetLabel;
                             progress = 0.80f + stageProgress * 0.10f;
                         }
                         else
@@ -2039,14 +2048,14 @@ namespace Quiet::Core
             Scene::StaticMeshComponent* staticMesh = actor.TryGetComponent<Scene::StaticMeshComponent>();
             if (!staticMesh) continue;
 
-            const std::string& meshID = staticMesh->MeshResourceID;
+            const UUID meshID = staticMesh->MeshResourceID;
             if (auto mesh = meshLibrary.TryGet(meshID))
             {
                 staticMesh->Mesh = mesh;
             }
             else
             {
-                QUIET_CORE_WARN("Could not relink actor '{}' to missing mesh resource '{}'.", actor.GetName(), meshID);
+                QUIET_CORE_WARN("Could not relink actor '{}' to missing mesh resource '{}'.", actor.GetName(), UUIDToString(meshID));
             }
         }
     }

@@ -58,6 +58,7 @@ namespace Quiet::Editor
     {
         EditorRequestType Type{};
         std::string Argument{};
+        Core::UUID AssetID{};
     };
 
     enum class EditorFeedbackSeverity
@@ -104,14 +105,14 @@ namespace Quiet::Editor
 
     struct EditorViewportAssetDropRequest
     {
-        std::string AssetID{};
+        Core::UUID AssetID{};
 
         float ScreenX = 0.0f;
         float ScreenY = 0.0f;
 
         [[nodiscard]] bool IsValid() const
         {
-            return !AssetID.empty();
+            return AssetID.IsValid();
         }
     };
 
@@ -170,7 +171,7 @@ namespace Quiet::Editor
 
     struct EditorScriptingState
     {
-        std::unordered_map<std::string, std::string> SourceErrors{};
+        std::unordered_map<Core::UUID, std::string> SourceErrors{};
     };
 
     struct EditorProjectManagerState
@@ -204,6 +205,11 @@ namespace Quiet::Editor
         void QueueRequest(EditorRequestType type)
         {
             PendingRequests.push_back(EditorRequest{ type });
+        }
+
+        void QueueRequest(EditorRequestType type, Core::UUID assetID)
+        {
+            PendingRequests.push_back(EditorRequest{ type, {}, assetID });
         }
 
         void QueueRequest(EditorRequestType type, std::string argument)

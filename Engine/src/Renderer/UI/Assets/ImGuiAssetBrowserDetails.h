@@ -33,7 +33,7 @@ namespace Quiet::Renderer::UI::Assets
                                 Audio::AudioSubsystem& audioSubsystem,
                                 const Scene::Scene& scene,
                                 const Editor::EditorState& editorState,
-                                const std::string& selectedAssetID,
+                                Core::UUID selectedAssetID,
                                 float uiScale);
 
     void DrawAssetDetailsPopup(const Project::ProjectContext& projectContext,
@@ -41,10 +41,10 @@ namespace Quiet::Renderer::UI::Assets
                                const Vulkan::TextureLibrary& textureLibrary,
                                Audio::AudioSubsystem& audioSubsystem,
                                const Editor::EditorState& editorState,
-                               const std::string& selectedAssetID,
+                               Core::UUID selectedAssetID,
                                float uiScale);
 
     void DrawAssetSelectionSummaryInline(const Project::ProjectContext& projectContext,
-                                         const std::vector<std::string>& selectedAssetIDs,
-                                         const std::string& primaryAssetID);
+                                         const std::vector<Core::UUID>& selectedAssetIDs,
+                                         Core::UUID primaryAssetID);
 }

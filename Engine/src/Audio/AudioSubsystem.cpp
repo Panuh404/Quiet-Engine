@@ -107,28 +107,28 @@ namespace Quiet::Audio
         return true;
     }
 
-    bool AudioSubsystem::PlayOneShotAsset(const std::string_view assetID) const
+    bool AudioSubsystem::PlayOneShotAsset(Core::UUID assetID) const
     {
         if (!m_Library) return false;
         const auto asset = m_Library->Get(assetID);
 
         if (!asset.has_value())
         {
-            QUIET_CORE_WARN("Cannot play audio asset '{}': asset is not loaded.", assetID);
+            QUIET_CORE_WARN("Cannot play audio asset '{}': asset is not loaded.", Core::UUIDToString(assetID));
             return false;
         }
 
         return PlayOneShot(asset->SourcePath);
     }
 
-    bool AudioSubsystem::StartPreviewAsset(const std::string_view assetID)
+    bool AudioSubsystem::StartPreviewAsset(Core::UUID assetID)
     {
         if (!m_Initialized || !m_Engine || !m_Library) return false;
 
         const auto asset = m_Library->Get(assetID);
         if (!asset.has_value())
         {
-            QUIET_CORE_WARN("Cannot preview audio asset '{}': asset metadata is not loaded.", assetID);
+            QUIET_CORE_WARN("Cannot preview audio asset '{}': asset metadata is not loaded.", Core::UUIDToString(assetID));
             return false;
         }
 
@@ -149,7 +149,7 @@ namespace Quiet::Audio
 
         if (initializeResult != MA_SUCCESS)
         {
-            QUIET_CORE_WARN("Failed to initialize preview for audio asset '{}': {}", assetID, ma_result_description(initializeResult));
+            QUIET_CORE_WARN("Failed to initialize preview for audio asset '{}': {}", Core::UUIDToString(assetID), ma_result_description(initializeResult));
             return false;
         }
 
@@ -157,14 +157,14 @@ namespace Quiet::Audio
         if (startResult != MA_SUCCESS)
         {
             ma_sound_uninit(previewSound.get());
-            QUIET_CORE_WARN("Failed to start preview for audio asset '{}': {}", assetID, ma_result_description(startResult));
+            QUIET_CORE_WARN("Failed to start preview for audio asset '{}': {}", Core::UUIDToString(assetID), ma_result_description(startResult));
             return false;
         }
 
         m_PreviewSound = std::move(previewSound);
-        m_PreviewAssetID = std::string(assetID);
+        m_PreviewAssetID = assetID;
 
-        QUIET_CORE_INFO("Started audio preview '{}'.", m_PreviewAssetID);
+        QUIET_CORE_INFO("Started audio preview '{}'.", Core::UUIDToString(m_PreviewAssetID));
         return true;
     }
 
@@ -172,7 +172,7 @@ namespace Quiet::Audio
     {
         if (!m_PreviewSound)
         {
-            m_PreviewAssetID.clear();
+            m_PreviewAssetID = {};
             return;
         }
 
@@ -180,11 +180,11 @@ namespace Quiet::Audio
         ma_sound_uninit(m_PreviewSound.get());
 
         m_PreviewSound.reset();
-        if (!m_PreviewAssetID.empty())
+        if (!m_PreviewAssetID.IsValid())
         {
-            QUIET_CORE_INFO("Stopped audio preview '{}'.", m_PreviewAssetID);
+            QUIET_CORE_INFO("Stopped audio preview '{}'.", Core::UUIDToString(m_PreviewAssetID));
         }
-        m_PreviewAssetID.clear();
+        m_PreviewAssetID = {};
     }
 
     bool AudioSubsystem::IsPreviewPlaying() const
@@ -192,7 +192,7 @@ namespace Quiet::Audio
         return m_PreviewSound && ma_sound_is_playing(m_PreviewSound.get()) == MA_TRUE;
     }
 
-    bool AudioSubsystem::IsPreviewingAsset(std::string_view assetID) const
+    bool AudioSubsystem::IsPreviewingAsset(Core::UUID assetID) const
     {
         return IsPreviewPlaying() && m_PreviewAssetID == assetID;
     }

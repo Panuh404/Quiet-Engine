@@ -3,6 +3,8 @@
 #include <string>
 #include "glm/vec4.hpp"
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Scene
 {
     struct MaterialComponent
@@ -10,11 +12,11 @@ namespace Quiet::Scene
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         // Empty means the material uses only BaseColor.
-        std::string BaseColorTextureAssetID;
+        Core::UUID BaseColorTextureAssetID{};
 
         [[nodiscard]] bool HasBaseColorTexture() const
         {
-            return !BaseColorTextureAssetID.empty();
+            return BaseColorTextureAssetID.IsValid();
         }
     };
 }

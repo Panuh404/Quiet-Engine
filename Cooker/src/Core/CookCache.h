@@ -5,11 +5,12 @@
 #include <string>
 #include <unordered_map>
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Project/AssetType.h"
 
 namespace Quiet::Cooker
 {
-    inline constexpr std::uint32_t CurrentCookCacheVersion = 1;
+    inline constexpr std::uint32_t CurrentCookCacheVersion = 2;
 
     /**
      * @brief Records fingerprints, conversion signature, and runtime output path.
@@ -43,7 +44,7 @@ namespace Quiet::Cooker
     struct CookCache
     {
         std::uint32_t Version = CurrentCookCacheVersion;
-        std::unordered_map<std::string, CookCacheEntry> Assets;
+        std::unordered_map<Core::UUID, CookCacheEntry> Assets;
     };
 
     /**

@@ -212,6 +212,7 @@ namespace Quiet::Project
         {
             AssetRecord record{};
             record.ID = runtimeRecord.ID;
+            record.Name = runtimeRecord.Name;
             record.Type = runtimeRecord.Type;
             record.Path = runtimeRecord.Path;
             record.BuiltIn = false;
@@ -241,119 +242,27 @@ namespace Quiet::Project
         return SaveAssetRegistry();
     }
 
-    bool ProjectContext::RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    bool ProjectContext::RegisterMeshAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
     {
-        assetID = TrimCopy(std::move(assetID));
-        if (!IsValidAssetID(assetID)) return false;
-
-        assetPath = NormalizeAssetPath(std::move(assetPath));
-        if (!builtIn && assetPath.empty()) return false;
-
-        AssetRecord record{};
-        record.ID = std::move(assetID);
-        record.Type = AssetType::Mesh;
-        record.Path = builtIn ? std::string{} : assetPath.generic_string();
-        record.BuiltIn = builtIn;
-
-        AssetRegistry updatedRegistry = m_AssetRegistry;
-        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
-
-        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
-        const AssetRegistry previousRegistry = m_AssetRegistry;
-        m_AssetRegistry = std::move(updatedRegistry);
-
-        if (SaveAssetRegistry()) return true;
-        m_AssetRegistry = previousRegistry;
-
-        (void)SaveAssetRegistry();
-        return false;
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::Mesh);
     }
 
-    bool ProjectContext::RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    bool ProjectContext::RegisterTextureAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
     {
-        assetID = TrimCopy(std::move(assetID));
-        if (!IsValidAssetID(assetID)) return false;
-
-        assetPath = NormalizeAssetPath(std::move(assetPath));
-        if (!builtIn && assetPath.empty()) return false;
-
-        AssetRecord record{};
-        record.ID = std::move(assetID);
-        record.Type = AssetType::Texture;
-        record.Path = builtIn ? std::string{} : assetPath.generic_string();
-        record.BuiltIn = builtIn;
-
-        AssetRegistry updatedRegistry = m_AssetRegistry;
-        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
-
-        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
-        const AssetRegistry previousRegistry = m_AssetRegistry;
-
-        m_AssetRegistry = std::move(updatedRegistry);
-        if (SaveAssetRegistry()) return true;
-
-        m_AssetRegistry = previousRegistry;
-        (void)SaveAssetRegistry();
-        return false;
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::Texture);
     }
 
-    bool ProjectContext::RegisterAudioAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    bool ProjectContext::RegisterAudioAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
     {
-        assetID = TrimCopy(std::move(assetID));
-        if (!IsValidAssetID(assetID)) return false;
-
-        assetPath = NormalizeAssetPath(std::move(assetPath));
-        if (!builtIn && assetPath.empty()) return false;
-
-        AssetRecord record{};
-        record.ID = std::move(assetID);
-        record.Type = AssetType::Audio;
-        record.Path = builtIn ? std::string{} : assetPath.generic_string();
-        record.BuiltIn = builtIn;
-
-        AssetRegistry updatedRegistry = m_AssetRegistry;
-        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
-
-        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
-
-        const AssetRegistry previousRegistry = m_AssetRegistry;
-        m_AssetRegistry = std::move(updatedRegistry);
-        if (SaveAssetRegistry()) return true;
-        m_AssetRegistry = previousRegistry;
-
-        (void)SaveAssetRegistry();
-        return false;
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::Audio);
     }
 
-    bool ProjectContext::RegisterScriptAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn)
+    bool ProjectContext::RegisterScriptAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
     {
-        assetID = TrimCopy(std::move(assetID));
-        if (!IsValidAssetID(assetID)) return false;
-
-        assetPath = NormalizeAssetPath(std::move(assetPath));
-        if (!builtIn && assetPath.empty()) return false;
-
-        AssetRecord record{};
-        record.ID = std::move(assetID);
-        record.Type = AssetType::Script;
-        record.Path = builtIn ? std::string{} : assetPath.generic_string();
-        record.BuiltIn = builtIn;
-
-        AssetRegistry updatedRegistry = m_AssetRegistry;
-        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
-
-        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
-        const AssetRegistry previousRegistry = m_AssetRegistry;
-        m_AssetRegistry = std::move(updatedRegistry);
-
-        if (SaveAssetRegistry()) return true;
-        m_AssetRegistry = previousRegistry;
-        (void)SaveAssetRegistry();
-
-        return false;
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::Script);
     }
 
-    bool ProjectContext::RemoveAssetByID(std::string_view assetID)
+    bool ProjectContext::RemoveAssetByID(Core::UUID assetID)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
         if (!record || record->BuiltIn) return false;
@@ -372,15 +281,15 @@ namespace Quiet::Project
         return false;
     }
 
-    bool ProjectContext::RemoveAssetsByID(const std::vector<std::string> &assetIDs, std::string &outErrorMessage)
+    bool ProjectContext::RemoveAssetsByID(const std::vector<Core::UUID>& assetIDs, std::string &outErrorMessage)
     {
         outErrorMessage.clear();
-        std::vector<std::string> normalizedAssetIDs;
+        std::vector<Core::UUID> normalizedAssetIDs;
         normalizedAssetIDs.reserve(assetIDs.size());
 
-        for (const std::string& assetID : assetIDs)
+        for (const Core::UUID& assetID : assetIDs)
         {
-            if (assetID.empty()) continue;
+            if (!assetID.IsValid()) continue;
             if (std::find(
                 normalizedAssetIDs.begin(),
                 normalizedAssetIDs.end(),
@@ -397,24 +306,24 @@ namespace Quiet::Project
         }
 
         AssetRegistry updatedRegistry = m_AssetRegistry;
-        for (const std::string& assetID : normalizedAssetIDs)
+        for (const Core::UUID& assetID : normalizedAssetIDs)
         {
             const AssetRecord* record = AssetRegistryIO::FindByID(updatedRegistry, assetID);
             if (!record)
             {
-                outErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                outErrorMessage = "Asset '" + Core::UUIDToString(assetID) + "' is no longer registered.";
                 return false;
             }
 
             if (record->BuiltIn)
             {
-                outErrorMessage = "Built-in asset '" + record->ID + "' cannot be removed.";
+                outErrorMessage = "Built-in asset '" + Core::UUIDToString(record->ID) + "' cannot be removed.";
                 return false;
             }
 
             if (!AssetRegistryIO::RemoveByID(updatedRegistry, assetID))
             {
-                outErrorMessage = "Failed to remove asset '" + assetID + "' from the pending registry update.";
+                outErrorMessage = "Failed to remove asset '" + Core::UUIDToString(assetID) + "' from the pending registry update.";
                 return false;
             }
         }
@@ -434,17 +343,17 @@ namespace Quiet::Project
         return false;
     }
 
-    bool ProjectContext::DeleteAssetsFromProject(const std::vector<std::string>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage)
+    bool ProjectContext::DeleteAssetsFromProject(const std::vector<Core::UUID>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage)
     {
         outErrorMessage.clear();
         outWarningMessage.clear();
 
-        std::vector<std::string> normalizedAssetIDs;
+        std::vector<Core::UUID> normalizedAssetIDs;
         normalizedAssetIDs.reserve(assetIDs.size());
 
-        for (const std::string& assetID : assetIDs)
+        for (const Core::UUID& assetID : assetIDs)
         {
-            if (assetID.empty()) continue;
+            if (!assetID.IsValid()) continue;
             if (std::find(normalizedAssetIDs.begin(), normalizedAssetIDs.end(), assetID) == normalizedAssetIDs.end())
             {
                 normalizedAssetIDs.push_back(assetID);
@@ -467,12 +376,12 @@ namespace Quiet::Project
 
         struct PlannedAssetDelete
         {
-            std::string AssetID{};
+            Core::UUID AssetID{};
             std::filesystem::path SourcePath{};
             std::filesystem::path StagedPath{};
         };
 
-        const std::unordered_set<std::string> selectedAssetIDs(normalizedAssetIDs.begin(), normalizedAssetIDs.end());
+        const std::unordered_set<Core::UUID> selectedAssetIDs(normalizedAssetIDs.begin(), normalizedAssetIDs.end());
         const std::filesystem::path stagingParent = assetsRoot / ".quiet-delete-staging";
         const std::filesystem::path stagingRoot = stagingParent / Quiet::Core::UUIDToString(Core::UUIDGenerator::New());
 
@@ -484,24 +393,24 @@ namespace Quiet::Project
 
         std::size_t stagingIndex = 0;
 
-        for (const std::string& assetID : normalizedAssetIDs)
+        for (const Core::UUID& assetID : normalizedAssetIDs)
         {
             const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);
             if (!record)
             {
-                outErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                outErrorMessage = "Asset '" + Core::UUIDToString(assetID) + "' is no longer registered.";
                 return false;
             }
 
             if (record->BuiltIn)
             {
-                outErrorMessage = "Built-in asset '" + record->ID + "' cannot be deleted.";
+                outErrorMessage = "Built-in asset '" + Core::UUIDToString(record->ID) + "' cannot be deleted.";
                 return false;
             }
 
             if (record->Path.empty())
             {
-                outErrorMessage = "Asset '" + record->ID + "' has no physical source path. Use Remove from Registry instead.";
+                outErrorMessage = "Asset '" + Core::UUIDToString(record->ID) + "' has no physical source path. Use Remove from Registry instead.";
                 return false;
             }
 
@@ -509,14 +418,14 @@ namespace Quiet::Project
             ec.clear();
             if (!std::filesystem::exists(sourcePath, ec) || ec)
             {
-                outErrorMessage = "The source file for asset '" + record->ID + "' does not exist. Use Remove from Registry instead.";
+                outErrorMessage = "The source file for asset '" + Core::UUIDToString(record->ID) + "' does not exist. Use Remove from Registry instead.";
                 return false;
             }
 
             ec.clear();
             if (!std::filesystem::is_regular_file(sourcePath, ec) || ec)
             {
-                outErrorMessage = "The registered source for asset '" + record->ID + "' is not a regular file.";
+                outErrorMessage = "The registered source for asset '" + Core::UUIDToString(record->ID) + "' is not a regular file.";
                 return false;
             }
 
@@ -524,13 +433,13 @@ namespace Quiet::Project
             const std::filesystem::path canonicalSourcePath = std::filesystem::weakly_canonical(sourcePath, ec);
             if (ec)
             {
-                outErrorMessage = "Failed to resolve the source file for asset '" + record->ID + "': " + ec.message();
+                outErrorMessage = "Failed to resolve the source file for asset '" + Core::UUIDToString(record->ID) + "': " + ec.message();
                 return false;
             }
 
             if (!IsPathInsideOrEqual(canonicalSourcePath, assetsRoot))
             {
-                outErrorMessage = "External asset '" + record->ID + "' cannot be deleted through the project Assets browser. Use Remove from Registry instead.";
+                outErrorMessage = "External asset '" + Core::UUIDToString(record->ID) + "' cannot be deleted through the project Assets browser. Use Remove from Registry instead.";
                 return false;
             }
 
@@ -550,7 +459,7 @@ namespace Quiet::Project
                 const std::filesystem::path otherPath = MakeAbsoluteNormalizedPath(ResolveAssetRecordPath(*this, otherRecord.Path));
                 if (otherPath == canonicalSourcePath)
                 {
-                    outErrorMessage = "The source file for asset '" + record->ID + "' is also registered as asset '" + otherRecord.ID + "'. Remove the duplicate registry record first.";
+                    outErrorMessage = "The source file for asset '" + Core::UUIDToString(record->ID) + "' is also registered as asset '" + Core::UUIDToString(otherRecord.ID) + "'. Remove the duplicate registry record first.";
                     return false;
                 }
             }
@@ -567,7 +476,7 @@ namespace Quiet::Project
 
             if (!AssetRegistryIO::RemoveByID(updatedRegistry, record->ID))
             {
-                outErrorMessage = "Failed to remove asset '" + record->ID + "' from the pending registry update.";
+                outErrorMessage = "Failed to remove asset '" + Core::UUIDToString(record->ID) + "' from the pending registry update.";
                 return false;
             }
         }
@@ -619,7 +528,7 @@ namespace Quiet::Project
                 std::filesystem::remove_all(stagingRoot, cleanupError);
             }
 
-            outErrorMessage = "Failed to stage asset '" + plannedDelete.AssetID + "' for deletion: " + ec.message();
+            outErrorMessage = "Failed to stage asset '" + Core::UUIDToString(plannedDelete.AssetID) + "' for deletion: " + ec.message();
             if (!rollbackFailures.empty())
             {
                 outErrorMessage += "\nThe rollback was incomplete:\n" + rollbackFailures + "\n\nRecovery files were preserved at:\n" + stagingRoot.generic_string();
@@ -678,7 +587,7 @@ namespace Quiet::Project
         return true;
     }
 
-    bool ProjectContext::RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path &outRenamedAssetPath, std::string &outErrorMessage)
+    bool ProjectContext::RenameAssetFile(Core::UUID assetID, std::string newBaseName, std::filesystem::path &outRenamedAssetPath, std::string &outErrorMessage)
     {
         outRenamedAssetPath.clear();
         outErrorMessage.clear();
@@ -774,7 +683,7 @@ namespace Quiet::Project
             const std::filesystem::path existingPath = ResolveAssetRecordPath(*this, existingRecord.Path).lexically_normal();
             if (existingPath == renamedPath)
             {
-                outErrorMessage = "The destination path is already registered as asset '" + existingRecord.ID + "'.";
+                outErrorMessage = "The destination path is already registered as asset '" + Core::UUIDToString(existingRecord.ID) + "'.";
                 return false;
             }
         }
@@ -884,7 +793,7 @@ namespace Quiet::Project
     }
 
     bool ProjectContext::RenameAssetFolder(const std::filesystem::path &folder, std::string newName,
-        std::filesystem::path &outRenamedFolder, std::string &outErrorMessage)
+                                           std::filesystem::path &outRenamedFolder, std::string &outErrorMessage)
     {
         outRenamedFolder.clear();
         outErrorMessage.clear();
@@ -994,7 +903,7 @@ namespace Quiet::Project
 
     bool ProjectContext::DeleteAssetFolderFromProject(
         const std::filesystem::path &folder,
-        std::vector<std::string> &outRemovedAssetIDs,
+        std::vector<Core::UUID> &outRemovedAssetIDs,
         std::string &outErrorMessage,
         std::string &outWarningMessage)
     {
@@ -1068,7 +977,7 @@ namespace Quiet::Project
             if (!AssetRegistryIO::RemoveByID(updatedRegistry, record.ID))
             {
                 outRemovedAssetIDs.clear();
-                outErrorMessage = "Failed to remove asset '" + record.ID + "' from the pending registry update.";
+                outErrorMessage = "Failed to remove asset '" + Core::UUIDToString(record.ID) + "' from the pending registry update.";
                 return false;
             }
         }
@@ -1160,7 +1069,7 @@ namespace Quiet::Project
     }
 
     bool ProjectContext::MoveAssetToFolder(
-        std::string_view assetID,
+        Core::UUID assetID,
         const std::filesystem::path &destinationFolder,
         std::filesystem::path &outMovedAssetPath,
         std::string &outErrorMessage)
@@ -1273,7 +1182,7 @@ namespace Quiet::Project
             const std::filesystem::path existingPath = ResolveAssetRecordPath(*this, existingRecord.Path);
             if (existingPath.lexically_normal() == movedPath.lexically_normal())
             {
-                outErrorMessage = "The destination path is already registered as asset '" + existingRecord.ID + "'.";
+                outErrorMessage = "The destination path is already registered as asset '" + Core::UUIDToString(existingRecord.ID) + "'.";
                 return false;
             }
         }
@@ -1362,6 +1271,34 @@ namespace Quiet::Project
             return relativePath;
         }
         return resolvedAssetPath;
+    }
+
+    bool ProjectContext::RegisterAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName, AssetType type)
+    {
+        if (AssetRegistryIO::FindByID(m_AssetRegistry, assetID)) return false;
+
+        assetPath = NormalizeAssetPath(std::move(assetPath));
+        if (assetPath.empty()) return false;
+
+        AssetRecord record{
+            assetID,
+            TrimCopy(std::move(assetName)),
+            type,
+            assetPath.generic_string(),
+            false
+        };
+
+        AssetRegistry updatedRegistry = m_AssetRegistry;
+        if (!AssetRegistryIO::AddOrUpdate(updatedRegistry, std::move(record))) return false;
+
+        AssetRegistryIO::EnsureBuiltInAssets(updatedRegistry);
+        const AssetRegistry previousRegistry = m_AssetRegistry;
+        m_AssetRegistry = std::move(updatedRegistry);
+        if (SaveAssetRegistry()) return true;
+
+        m_AssetRegistry = previousRegistry;
+        (void)SaveAssetRegistry();
+        return false;
     }
 
     void ProjectContext::NormalizeAssetRegistryPaths()

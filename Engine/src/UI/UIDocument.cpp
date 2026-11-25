@@ -289,7 +289,7 @@ namespace Quiet::UI
             else if (const auto* image = std::get_if<UIDocumentImage>(&node.Properties))
             {
                 result["type"] = "image";
-                properties["texture_id"] = image->TextureID;
+                properties["texture_id"] = image->TextureID.IsValid() ? Core::UUIDToString(image->TextureID) : std::string{};
             }
             else if (std::holds_alternative<UIDocumentButton>(node.Properties))
             {
@@ -491,7 +491,14 @@ namespace Quiet::UI
                 else if (type == "image")
                 {
                     UIDocumentImage image;
-                    image.TextureID = properties.at("texture_id").get<std::string>();
+                    const std::string textureIDText = properties.at("texture_id").get<std::string>();
+                    if (!textureIDText.empty() &&
+                        (!Core::UUIDFromString(textureIDText, image.TextureID) ||
+                         !image.TextureID.IsValid() ||
+                         Core::UUIDToString(image.TextureID) != textureIDText))
+                    {
+                        throw std::runtime_error("Invalid UI image texture UUID.");
+                    }
                     node.Properties = std::move(image);
                 }
                 else if (type == "button")

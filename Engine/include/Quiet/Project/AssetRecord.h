@@ -1,8 +1,11 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #include "AssetType.h"
+
+#include "Quiet/Core/UUID.h"
 
 namespace Quiet::Project
 {
@@ -14,18 +17,20 @@ namespace Quiet::Project
      */
     struct AssetRecord
     {
-        std::string ID;
+        Core::UUID ID{};
+        std::string Name;
         AssetType Type = AssetType::Unknown;
         std::string Path;
         bool BuiltIn = false;
+        std::map<std::string, Core::UUID> MeshTextureBindings{};
 
         /**
-         * @brief Checks for a nonempty ID and a type other than Unknown.
+         * @brief Checks for a valid UUID, a nonempty name, and a known type.
          * @note Does not validate the path, file contents, or loaded resource.
          */
         [[nodiscard]] bool IsValid() const
         {
-            return !ID.empty() && Type != AssetType::Unknown;
+            return ID.IsValid() && !Name.empty() && Type != AssetType::Unknown;
         }
     };
 }

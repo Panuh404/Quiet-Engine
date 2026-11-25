@@ -1,8 +1,5 @@
 #pragma once
 
-#include <optional>
-#include <string_view>
-
 #include "Quiet/Core/UUID.h"
 
 namespace Quiet::Project::BuiltInAssetIDs
@@ -16,16 +13,6 @@ namespace Quiet::Project::BuiltInAssetIDs
     inline constexpr Core::UUID Sphere      { 0x51554945544D4553ULL, 0x0000000000000006ULL };
     inline constexpr Core::UUID Cylinder    { 0x51554945544D4553ULL, 0x0000000000000007ULL };
 
-    // Used only when translating the existing name-based asset format.
-    [[nodiscard]] constexpr std::optional<Core::UUID> FromLegacyMeshID(const std::string_view legacyID)
-    {
-        if (legacyID == "Triangle") return Triangle;
-        if (legacyID == "Quad")     return Quad;
-        if (legacyID == "Plane")    return Plane;
-        if (legacyID == "Cube")     return Cube;
-        if (legacyID == "Pyramid")  return Pyramid;
-        if (legacyID == "Sphere")   return Sphere;
-        if (legacyID == "Cylinder") return Cylinder;
-        return std::nullopt;
-    }
+    // Renderer-owned texture. This ID is reserved outside the project registry.
+    inline constexpr Core::UUID EditorTopbarLogo{ 0x5155494554544558ULL, 0x0000000000000001ULL };
 }

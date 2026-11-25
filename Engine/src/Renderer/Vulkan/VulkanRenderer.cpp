@@ -15,6 +15,7 @@
 #include "GLFW/glfw3.h"
 #include "Quiet/Assets/FontImporter.h"
 #include "Quiet/Assets/TextureImporter.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
 #include "Quiet/Renderer/TextLayout.h"
 #include "Quiet/UI/PaintCommands.h"
 
@@ -64,8 +65,6 @@ namespace
     #ifndef QUIET_ENGINE_RESOURCES_PATH
     #define QUIET_ENGINE_RESOURCES_PATH "Resources"
     #endif
-
-    constexpr const char* kEditorTopbarLogoTextureID = "Editor.TopbarLogo";
 
      void TransitionImageLayout(VkCommandBuffer commandBuffer,
                                 VkImage image,
@@ -456,7 +455,7 @@ namespace Quiet::Renderer::Vulkan
         try
         {
             m_TextureLibrary->CreateTexture2D(
-                kEditorTopbarLogoTextureID,
+                Project::BuiltInAssetIDs::EditorTopbarLogo,
                 *m_PhysicalDevice,
                 *m_LogicalDevice,
                 *m_GraphicsCommands,
@@ -468,7 +467,7 @@ namespace Quiet::Renderer::Vulkan
         {
             QUIET_CORE_WARN(
                 "Failed to create editor topbar logo GPU texture '{}': {}",
-                kEditorTopbarLogoTextureID,
+                Core::UUIDToString(Project::BuiltInAssetIDs::EditorTopbarLogo),
                 e.what()
             );
         }

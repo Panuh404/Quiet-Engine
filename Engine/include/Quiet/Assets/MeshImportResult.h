@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Assets/MeshData.h"
 
 namespace Quiet::Assets
@@ -29,7 +30,7 @@ namespace Quiet::Assets
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         std::string BaseColorTexturePath;
-        std::string BaseColorTextureAssetID;
+        Core::UUID BaseColorTextureAssetID{};
 
         bool BaseColorTextureEmbedded = false;
         int EmbeddedTextureIndex = -1;

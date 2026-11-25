@@ -28,7 +28,7 @@ namespace
         return changed && committed;
     }
 
-    const Quiet::Project::AssetRecord* FindMeshAssetRecord(const Quiet::Project::ProjectContext& projectContext, const std::string& meshResourceID)
+    const Quiet::Project::AssetRecord* FindMeshAssetRecord(const Quiet::Project::ProjectContext& projectContext, const Quiet::Core::UUID meshResourceID)
     {
         const auto& registry = projectContext.GetAssetRegistry();
         const auto* record = Quiet::Project::AssetRegistryIO::FindByID(registry, meshResourceID);
@@ -40,7 +40,7 @@ namespace
 
     std::shared_ptr<Quiet::Renderer::Vulkan::StaticMesh> ResolveMeshResource(const Quiet::Project::ProjectContext& projectContext,
                                                                              const Quiet::Renderer::Vulkan::MeshLibrary& meshLibrary,
-                                                                             const std::string& meshResourceID)
+                                                                             const Quiet::Core::UUID meshResourceID)
     {
         if (!FindMeshAssetRecord(projectContext, meshResourceID)) return nullptr;
         return meshLibrary.TryGet(meshResourceID);
@@ -61,7 +61,7 @@ namespace
                 Quiet::Scene::MaterialComponent material{};
                 material.BaseColor = importedSlot.BaseColor;
                 material.BaseColorTextureAssetID = importedSlot.BaseColorTextureAssetID;
-                slots.push_back(std::move(material));
+                slots.push_back(material);
             }
             return slots;
         }
@@ -130,10 +130,7 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetUIRectOffset(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& offset)
     {
-        if (!CanEditScene() ||
-            !std::isfinite(offset.x) ||
-            !std::isfinite(offset.y))
-            return false;
+        if (!CanEditScene() || !std::isfinite(offset.x) || !std::isfinite(offset.y)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -164,10 +161,7 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetUIRectAnchor(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& anchor)
     {
-        if (!CanEditScene() ||
-            !std::isfinite(anchor.x) ||
-            !std::isfinite(anchor.y))
-            return false;
+        if (!CanEditScene() || !std::isfinite(anchor.x) || !std::isfinite(anchor.y)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -184,10 +178,7 @@ namespace Quiet::Editor
 
     bool EditorCommands::SetUIRectPivot(Scene::Scene& scene, const Core::UUID actorID, const glm::vec2& pivot)
     {
-        if (!CanEditScene() ||
-            !std::isfinite(pivot.x) ||
-            !std::isfinite(pivot.y))
-            return false;
+        if (!CanEditScene() || !std::isfinite(pivot.x) || !std::isfinite(pivot.y)) return false;
 
         Scene::Actor* actor = scene.FindActorByID(actorID);
         if (!actor) return false;
@@ -542,22 +533,23 @@ namespace Quiet::Editor
 
 #pragma region Static Meshes
 
-    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID,
+    bool EditorCommands::CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, Core::UUID meshResourceID,
                                                const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary,
                                                const glm::vec3& position)
     {
-        const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
+        const auto* record = FindMeshAssetRecord(projectContext, meshResourceID);
+        const auto mesh = record ? meshLibrary.TryGet(meshResourceID) : nullptr;
         if (!mesh)
         {
-            QUIET_CORE_WARN("Cannot create mesh actor because mesh asset '{}' is not registered or loaded.", meshResourceID);
+            QUIET_CORE_WARN("Cannot create mesh actor because mesh asset '{}' is not registered or loaded.", Core::UUIDToString(meshResourceID));
             return false;
         }
         return ApplyImmediateMutation(m_EditorController, scene, [&]() -> bool
         {
-            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? meshResourceID : actorName);
+            Scene::Actor& actor = scene.CreateActor(actorName.empty() ? Core::UUIDToString(meshResourceID) : actorName);
             actor.GetComponent<Scene::TransformComponent>().WorldTransform.Position = position;
 
-            Scene::StaticMeshComponent& staticMesh = actor.AddComponent<Scene::StaticMeshComponent>();
+            auto& staticMesh = actor.AddComponent<Scene::StaticMeshComponent>();
             staticMesh.MeshResourceID = meshResourceID;
             staticMesh.Mesh = mesh;
             staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
@@ -579,11 +571,11 @@ namespace Quiet::Editor
             return false;
         }
 
-        const std::string& defaultMeshID = meshAssetIDs.front();
+        const Core::UUID& defaultMeshID = meshAssetIDs.front();
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, defaultMeshID);
         if (!mesh)
         {
-            QUIET_CORE_WARN("Default mesh asset '{}' is registered but not currently available in the mesh library.", defaultMeshID);
+            QUIET_CORE_WARN("Default mesh asset '{}' is registered but not currently available in the mesh library.", Core::UUIDToString(defaultMeshID));
             return false;
         }
 
@@ -592,7 +584,7 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor || actor->HasComponent<Scene::StaticMeshComponent>()) return false;
 
-            Scene::StaticMeshComponent& staticMesh = actor->AddComponent<Scene::StaticMeshComponent>();
+            auto& staticMesh = actor->AddComponent<Scene::StaticMeshComponent>();
             staticMesh.MeshResourceID = defaultMeshID;
             staticMesh.Mesh = mesh;
             staticMesh.MaterialSlots = CreateDefaultMaterialSlots(mesh);
@@ -618,12 +610,12 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::PasteStaticMeshValues(Scene::Scene &scene, Core::UUID actorID, const std::string &meshResourceID, bool visible, const Project::ProjectContext &projectContext, const Renderer::Vulkan::MeshLibrary &meshLibrary)
+    bool EditorCommands::PasteStaticMeshValues(Scene::Scene &scene, Core::UUID actorID, Core::UUID meshResourceID, bool visible, const Project::ProjectContext &projectContext, const Renderer::Vulkan::MeshLibrary &meshLibrary)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
         if (!mesh)
         {
-            QUIET_CORE_WARN("Cannot paste Static Mesh values because mesh asset '{}' is not registered or loaded.", meshResourceID);
+            QUIET_CORE_WARN("Cannot paste Static Mesh values because mesh asset '{}' is not registered or loaded.", Core::UUIDToString(meshResourceID));
             return false;
         }
 
@@ -632,7 +624,7 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor) return false;
 
-            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            auto* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
             if (!staticMesh) return false;
 
             const bool resourceChanged = staticMesh->MeshResourceID != meshResourceID;
@@ -649,12 +641,12 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary)
+    bool EditorCommands::SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, Core::UUID meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary)
     {
         const auto mesh = ResolveMeshResource(projectContext, meshLibrary, meshResourceID);
         if (!mesh)
         {
-            QUIET_CORE_WARN("Mesh asset '{}' is not registered in the project or is not currently loaded.", meshResourceID);
+            QUIET_CORE_WARN("Mesh asset '{}' is not registered in the project or is not currently loaded.", Core::UUIDToString(meshResourceID));
             return false;
         }
 
@@ -663,7 +655,7 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor) return false;
 
-            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            auto* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
             if (!staticMesh) return false;
             if (staticMesh->MeshResourceID == meshResourceID) return false;
 
@@ -682,7 +674,7 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor) return false;
 
-            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            auto* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
             if (!staticMesh) return false;
             staticMesh->Visible = visible;
 
@@ -717,7 +709,7 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor || actor->HasComponent<Scene::MaterialComponent>()) return false;
 
-            Scene::MaterialComponent& material = actor->AddComponent<Scene::MaterialComponent>();
+            auto& material = actor->AddComponent<Scene::MaterialComponent>();
             material.BaseColor = validatedColor;
             return true;
         });
@@ -741,8 +733,8 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor) return false;
 
-            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
-            Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+            auto* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            auto* material = actor->TryGetComponent<Scene::MaterialComponent>();
             if (!staticMesh || !staticMesh->Mesh || !material) return false;
 
             *material = Scene::MaterialComponent{};
@@ -759,14 +751,13 @@ namespace Quiet::Editor
     {
         const auto& assetRegistry = projectContext.GetAssetRegistry();
 
-        const auto isRegisteredTextureAsset =
-            [&](const std::string& textureAssetID)
-            {
-                if (textureAssetID.empty()) return true;
+        const auto isRegisteredTextureAsset = [&](const Core::UUID textureAssetID)
+        {
+            if (!textureAssetID.IsValid()) return true;
 
-                const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
-                return record && record->Type == Project::AssetType::Texture;
-            };
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
+            return record && record->Type == Project::AssetType::Texture;
+        };
 
         if (!isRegisteredTextureAsset(material.BaseColorTextureAssetID))
         {
@@ -822,8 +813,8 @@ namespace Quiet::Editor
             Scene::Actor* actor = scene.FindActorByID(actorID);
             if (!actor) return false;
 
-            Scene::StaticMeshComponent* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
-            Scene::MaterialComponent* material = actor->TryGetComponent<Scene::MaterialComponent>();
+            auto* staticMesh = actor->TryGetComponent<Scene::StaticMeshComponent>();
+            auto* material = actor->TryGetComponent<Scene::MaterialComponent>();
             if (!staticMesh || !material) return false;
 
             if (staticMesh->MaterialSlots.size() != validatedMaterialSlots.size())
@@ -865,7 +856,7 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetMaterialBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, const std::string &textureAssetID)
+    bool EditorCommands::SetMaterialBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, Core::UUID textureAssetID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -910,7 +901,7 @@ namespace Quiet::Editor
         return true;
     }
 
-    bool EditorCommands::SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, std::uint32_t slotIndex, const std::string &textureAssetID)
+    bool EditorCommands::SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene &scene, Core::UUID actorID, std::uint32_t slotIndex, Core::UUID textureAssetID)
     {
         return ApplyImmediateMutation(m_EditorController, scene, [&]()
         {
@@ -1508,7 +1499,7 @@ namespace Quiet::Editor
 
     bool EditorCommands::PasteScriptValues(Scene::Scene& scene, const Core::UUID actorID, const Scene::ScriptComponent& script, const Project::ProjectContext& projectContext)
     {
-        if (!script.ScriptAssetID.empty())
+        if (script.ScriptAssetID.IsValid())
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), script.ScriptAssetID);
             if (!record || record->Type != Project::AssetType::Script) return false;
@@ -1528,10 +1519,10 @@ namespace Quiet::Editor
         });
     }
 
-    bool EditorCommands::SetScriptAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext)
+    bool EditorCommands::SetScriptAsset(Scene::Scene& scene, const Core::UUID actorID, Core::UUID scriptAssetID, const Project::ProjectContext& projectContext)
     {
         std::vector<Scene::ScriptProperty> discoveredProperties;
-        if (!scriptAssetID.empty())
+        if (scriptAssetID.IsValid())
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), scriptAssetID);
             if (!record || record->Type != Project::AssetType::Script) return false;
@@ -1539,7 +1530,7 @@ namespace Quiet::Editor
 
             if (!Scripting::DiscoverScriptProperties(projectContext, scriptAssetID, discoveredProperties, discoveryError))
             {
-                QUIET_CORE_WARN("Could not discover exposed properties for script '{}': {}", scriptAssetID, discoveryError);
+                QUIET_CORE_WARN("Could not refresh exposed properties for script '{}': {}", Core::UUIDToString(scriptAssetID), discoveryError);
                 discoveredProperties.clear();
             }
         }
@@ -1565,7 +1556,7 @@ namespace Quiet::Editor
         if (!actor) return false;
 
         const auto* script = actor->TryGetComponent<Scene::ScriptComponent>();
-        if (!script || script->ScriptAssetID.empty()) return false;
+        if (!script || !script->ScriptAssetID.IsValid()) return false;
 
         std::vector<Scene::ScriptProperty> discoveredProperties;
         std::string discoveryError;
@@ -1708,7 +1699,7 @@ namespace Quiet::Editor
                 break;
         }
 
-        if (requiredAssetType != Project::AssetType::Unknown && !property.AssetValue.empty())
+        if (requiredAssetType != Project::AssetType::Unknown && property.AssetValue.IsValid())
         {
             const auto* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), property.AssetValue);
             if (!record || record->Type != requiredAssetType) return false;
@@ -1792,7 +1783,7 @@ namespace Quiet::Editor
             !std::isfinite(audioSource.DopplerFactor))
             return false;
 
-        if (!audioSource.AudioAssetID.empty())
+        if (audioSource.AudioAssetID.IsValid())
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), audioSource.AudioAssetID);
             if (!record || record->Type != Project::AssetType::Audio) return false;
@@ -1834,9 +1825,9 @@ namespace Quiet::Editor
     }
 
 
-    bool EditorCommands::SetAudioSourceAsset(Scene::Scene& scene, const Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext)
+    bool EditorCommands::SetAudioSourceAsset(Scene::Scene& scene, const Core::UUID actorID, Core::UUID audioAssetID, const Project::ProjectContext& projectContext)
     {
-        if (!audioAssetID.empty())
+        if (audioAssetID.IsValid())
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), audioAssetID);
             if (!record || record->Type != Project::AssetType::Audio) return false;

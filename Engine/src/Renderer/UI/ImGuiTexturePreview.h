@@ -5,6 +5,8 @@
 
 #include <imgui.h>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Renderer::Vulkan
 {
     class TextureLibrary;
@@ -14,7 +16,7 @@ namespace Quiet::Renderer::Vulkan
 namespace Quiet::Renderer::UI
 {
     [[nodiscard]] ImTextureID GetOrCreateTexturePreviewID(
-        std::string_view textureAssetID,
+        Core::UUID textureAssetID,
         const Vulkan::TextureLibrary& textureLibrary
     );
 
@@ -25,7 +27,7 @@ namespace Quiet::Renderer::UI
     );
 
     void DrawTexturePreview(
-        std::string_view textureAssetID,
+        Core::UUID textureAssetID,
         const Vulkan::TextureLibrary& textureLibrary,
         const Vulkan::TextureStats& textureStats,
         float uiScale,

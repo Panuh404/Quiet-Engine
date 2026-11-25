@@ -6,6 +6,8 @@
 #include <string_view>
 #include <Audio/AudioBus.h>
 
+#include "Quiet/Core/UUID.h"
+
 struct ma_engine;
 struct ma_sound;
 using ma_sound_group = ma_sound;
@@ -56,7 +58,7 @@ namespace Quiet::Audio
         [[nodiscard]] bool PlayOneShot(const std::filesystem::path& filepath) const;
 
         /** @brief Resolves loaded metadata and requests one-shot playback. */
-        [[nodiscard]] bool PlayOneShotAsset(std::string_view assetID) const;
+        [[nodiscard]] bool PlayOneShotAsset(Core::UUID assetIDD) const;
 
         /**
          * @brief Replaces the preview with a streamed, nonspatial sound.
@@ -64,7 +66,7 @@ namespace Quiet::Audio
          * @note Missing metadata preserves the current preview.
          * @note Replacement failure after metadata resolution leaves no preview.
          */
-        [[nodiscard]] bool StartPreviewAsset(std::string_view assetID);
+        [[nodiscard]] bool StartPreviewAsset(Core::UUID assetID);
 
         /** @brief Releases the preview sound and clears its recorded asset ID. */
         void StopPreview();
@@ -73,13 +75,13 @@ namespace Quiet::Audio
         [[nodiscard]] bool IsPreviewPlaying() const;
 
         /** @brief Reports whether the requested asset is the playing preview. */
-        [[nodiscard]] bool IsPreviewingAsset(std::string_view assetID) const;
+        [[nodiscard]] bool IsPreviewingAsset(Core::UUID assetID) const;
 
         /**
          * @brief Returns the recorded preview ID, which may remain after completion.
          * @note Borrows storage that preview changes can invalidate.
          */
-        [[nodiscard]] std::string_view GetPreviewAssetID() const { return m_PreviewAssetID; }
+        [[nodiscard]] Core::UUID GetPreviewAssetID() const { return m_PreviewAssetID; }
 
     private:
         void Initialize();
@@ -93,7 +95,7 @@ namespace Quiet::Audio
         std::unique_ptr<AudioLibrary> m_Library;
         std::unique_ptr<ma_sound> m_PreviewSound;
 
-        std::string m_PreviewAssetID;
+        Core::UUID m_PreviewAssetID{};
         bool m_Initialized = false;
 
         std::unique_ptr<ma_sound_group> m_MusicGroup;

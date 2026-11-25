@@ -8,6 +8,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include "Quiet/Project/BuiltInAssetIDs.h"
+#include "Renderer/Vulkan/Mesh/MeshPrimitives.h"
+
 namespace Quiet::Project
 {
     namespace
@@ -45,12 +48,14 @@ namespace Quiet::Project
             if (manifest.Version != CurrentRuntimeManifestVersion || manifest.ProjectName.empty()) return false;
             if (!IsSafePackageRelativePath(manifest.StartupScene)) return false;
 
-            std::unordered_set<std::string> assetIDs;
+            std::unordered_set<Core::UUID> assetIDs;
             assetIDs.reserve(manifest.Assets.size());
 
+            const auto builtInIDs = Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs();
             for (const RuntimeAssetRecord& record : manifest.Assets)
             {
-                if (!record.IsValid()) return false;
+                if (!record.IsValid() || record.ID == BuiltInAssetIDs::EditorTopbarLogo) return false;
+                if (std::find(builtInIDs.begin(), builtInIDs.end(), record.ID) != builtInIDs.end()) return false;
                 if (!IsSafePackageRelativePath(record.Path)) return false;
                 if (!assetIDs.insert(record.ID).second) return false;
             }
@@ -84,7 +89,10 @@ namespace Quiet::Project
             if (!root.is_object()) return false;
 
             RuntimeManifest manifest{};
-            manifest.Version = root.at("Version").get<int>();
+            const auto& version = root.at("Version");
+            if (!version.is_number_integer() || version != CurrentRuntimeManifestVersion) return false;
+
+            manifest.Version = version;
             manifest.ProjectName = root.at("ProjectName").get<std::string>();
             manifest.StartupScene = root.at("StartupScene").get<std::string>();
 
@@ -96,7 +104,12 @@ namespace Quiet::Project
                 if (!value.is_object()) return false;
 
                 RuntimeAssetRecord record{};
-                record.ID = value.at("ID").get<std::string>();
+                const std::string idText = value.at("ID").get<std::string>();
+                if (!Core::UUIDFromString(idText, record.ID) || Core::UUIDToString(record.ID) != idText)
+                {
+                    return false;
+                }
+                record.Name = value.at("Name").get<std::string>();
                 record.Path = value.at("Path").get<std::string>();
 
                 const std::string typeName = value.at("Type").get<std::string>();
@@ -147,8 +160,9 @@ namespace Quiet::Project
         for (const RuntimeAssetRecord& record : sortedManifest.Assets)
         {
             root["Assets"].push_back(
-            {
-                    { "ID", record.ID },
+                {
+                    { "ID", Core::UUIDToString(record.ID) },
+                    { "Name", record.Name },
                     { "Type", std::string(ToString(record.Type)) },
                     { "Path", std::filesystem::path(record.Path).lexically_normal().generic_string() }
                 }

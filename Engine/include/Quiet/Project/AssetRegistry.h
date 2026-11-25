@@ -10,13 +10,15 @@
 
 namespace Quiet::Project
 {
+    inline constexpr int CurrentAssetRegistryVersion = 2;
+
     /**
      * @brief Stores versioned project asset records.
      * @ingroup quiet_assets
      */
     struct AssetRegistry
     {
-        int Version = 1;
+        int Version = CurrentAssetRegistryVersion;
         std::vector<AssetRecord> Records;
     };
 
@@ -34,16 +36,6 @@ namespace Quiet::Project
          * @brief Creates a registry containing built-in mesh records.
          */
         [[nodiscard]] static AssetRegistry MakeDefault();
-
-        /**
-         * @brief Builds an in-memory legacy asset ID to UUID mapping.
-         * @return False if the registry contains invalid or duplicate IDs,
-         *         or an invalid built-in record.
-         * @note The output is unchanged on a reported validation failure.
-         *       Generated UUIDs differ between calls. This function does not
-         *       persist the mapping or modify the registry.
-         */
-        [[nodiscard]] static bool CreateLegacyUUIDMap(const AssetRegistry& registry, std::unordered_map<std::string, Core::UUID>& outMapping);
 
         /**
          * @brief Loads accepted records, restores built-ins, and replaces the output.
@@ -79,16 +71,10 @@ namespace Quiet::Project
          * @return True when at least one record was removed.
          * @note Does not delete files, unload resources, or protect built-ins.
          */
-        static bool RemoveByID(AssetRegistry& registry, std::string_view id);
+        static bool RemoveByID(AssetRegistry& registry, Core::UUID id);
 
-        [[nodiscard]] static const AssetRecord* FindByID(const AssetRegistry& registry, std::string_view id);
-        [[nodiscard]] static std::vector<const AssetRecord*> GetAssetsByType(
-            const AssetRegistry& registry,
-            AssetType type
-        );
-        [[nodiscard]] static std::vector<std::string> GetAssetIDsByType(
-            const AssetRegistry& registry,
-            AssetType type
-        );
+        [[nodiscard]] static const AssetRecord* FindByID(const AssetRegistry& registry, Core::UUID id);
+        [[nodiscard]] static std::vector<const AssetRecord*> GetAssetsByType(const AssetRegistry& registry, AssetType type);
+        [[nodiscard]] static std::vector<Core::UUID> GetAssetIDsByType(const AssetRegistry& registry, AssetType type);
     };
 }

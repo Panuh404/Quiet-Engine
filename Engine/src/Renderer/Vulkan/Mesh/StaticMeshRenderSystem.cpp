@@ -251,7 +251,7 @@ namespace Quiet::Renderer::Vulkan
                     if (!IsValidSubmeshDrawRange(submesh, *mesh))
                     {
                         QUIET_CORE_WARN("Skipped invalid submesh draw range. mesh='{}' submesh='{}' baseIndex={} indexCount={} meshIndexCount={}",
-                            staticMesh.MeshResourceID, submesh.Name, submesh.BaseIndex, submesh.IndexCount, mesh->GetIndexCount());
+                            Quiet::Core::UUIDToString(staticMesh.MeshResourceID), submesh.Name, submesh.BaseIndex, submesh.IndexCount, mesh->GetIndexCount());
                         continue;
                     }
 

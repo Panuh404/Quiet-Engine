@@ -129,7 +129,7 @@ namespace Quiet::Audio
             AudioBus Bus = AudioBus::SFX;
             Core::UUID ActorID{};
 
-            std::string AudioAssetID;
+            Core::UUID AudioAssetID{};
             std::unique_ptr<ma_sound> Sound;
 
             glm::vec3 PreviousPosition{ 0.0f };

@@ -76,7 +76,7 @@ namespace Quiet::Project
     {
         if (!record.IsValid() || record.Type != AssetType::Mesh)
         {
-            QUIET_CORE_WARN("Cannot load invalid runtime mesh asset '{}'.", record.ID);
+            QUIET_CORE_WARN("Cannot load invalid runtime mesh asset '{}'.", Core::UUIDToString(record.ID));
             return false;
         }
 
@@ -85,7 +85,7 @@ namespace Quiet::Project
 
         if (!std::filesystem::is_regular_file(assetPath, ec) || ec)
         {
-            QUIET_CORE_WARN("Runtime mesh asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
+            QUIET_CORE_WARN("Runtime mesh asset '{}' points to missing file '{}'.", Core::UUIDToString(record.ID), assetPath.string());
             return false;
         }
 
@@ -94,7 +94,7 @@ namespace Quiet::Project
 
         if (!Assets::QMeshReader::LoadFromFile(assetPath, meshData, readError))
         {
-            QUIET_CORE_WARN("Failed to read runtime mesh asset '{}' from '{}': {}", record.ID, assetPath.string(), readError);
+            QUIET_CORE_WARN("Failed to read runtime mesh asset '{}' from '{}': {}", Core::UUIDToString(record.ID), assetPath.string(), readError);
             return false;
         }
 
@@ -166,13 +166,13 @@ namespace Quiet::Project
         }
         catch (const std::exception& e)
         {
-            QUIET_CORE_ERROR("Failed to create runtime mesh resource '{}' from '{}': {}", record.ID, assetPath.string(), e.what());
+            QUIET_CORE_ERROR("Failed to create runtime mesh resource '{}' from '{}': {}", Core::UUIDToString(record.ID), assetPath.string(), e.what());
             return false;
         }
 
         QUIET_CORE_INFO("{} cooked mesh asset '{}' from '{}'. submeshes={} materialSlots={} vertices={} indices={}",
             alreadyLoaded ? "Reloaded" : "Loaded",
-            record.ID,
+            Core::UUIDToString(record.ID),
             assetPath.string(),
             meshData.Submeshes.size(),
             materialSlotCount,
@@ -187,7 +187,7 @@ namespace Quiet::Project
     {
         if (!record.IsValid() || record.Type != AssetType::Texture)
         {
-            QUIET_CORE_WARN("Cannot load invalid runtime texture asset '{}'.", record.ID);
+            QUIET_CORE_WARN("Cannot load invalid runtime texture asset '{}'.", Core::UUIDToString(record.ID));
             return false;
         }
 
@@ -195,7 +195,7 @@ namespace Quiet::Project
         std::error_code ec;
         if (!std::filesystem::is_regular_file(assetPath, ec) || ec)
         {
-            QUIET_CORE_WARN("Runtime texture asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
+            QUIET_CORE_WARN("Runtime texture asset '{}' points to missing file '{}'.", Core::UUIDToString(record.ID), assetPath.string());
             return false;
         }
 
@@ -204,7 +204,7 @@ namespace Quiet::Project
 
         if (!Assets::QTextureReader::LoadFromFile(assetPath, textureData, readError))
         {
-            QUIET_CORE_WARN("Failed to read runtime texture asset '{}' from '{}': {}", record.ID, assetPath.string(), readError);
+            QUIET_CORE_WARN("Failed to read runtime texture asset '{}' from '{}': {}", Core::UUIDToString(record.ID), assetPath.string(), readError);
             return false;
         }
 
@@ -248,7 +248,7 @@ namespace Quiet::Project
         }
         catch (const std::exception& e)
         {
-            QUIET_CORE_ERROR("Failed to create runtime texture resource '{}' from '{}': {}", record.ID, assetPath.string(), e.what());
+            QUIET_CORE_ERROR("Failed to create runtime texture resource '{}' from '{}': {}", Core::UUIDToString(record.ID), assetPath.string(), e.what());
             return false;
         }
 
@@ -260,7 +260,7 @@ namespace Quiet::Project
 
         QUIET_CORE_INFO("{} cooked texture asset '{}' from '{}'. dimensions={}x{} mips={} gpuData={} bytes",
             alreadyLoaded ? "Reloaded" : "Loaded",
-            record.ID,
+            Core::UUIDToString(record.ID),
             assetPath.string(),
             textureData.Width,
             textureData.Height,
@@ -274,7 +274,7 @@ namespace Quiet::Project
     {
         if (!record.IsValid() || record.Type != AssetType::Audio)
         {
-            QUIET_CORE_WARN("Cannot load invalid runtime audio asset '{}'.", record.ID);
+            QUIET_CORE_WARN("Cannot load invalid runtime audio asset '{}'.", Core::UUIDToString(record.ID));
             return false;
         }
 
@@ -282,18 +282,18 @@ namespace Quiet::Project
         std::error_code ec;
         if (!std::filesystem::is_regular_file(assetPath, ec) || ec)
         {
-            QUIET_CORE_WARN("Runtime audio asset '{}' points to missing file '{}'.", record.ID, assetPath.string());
+            QUIET_CORE_WARN("Runtime audio asset '{}' points to missing file '{}'.", Core::UUIDToString(record.ID), assetPath.string());
             return false;
         }
 
         const bool alreadyLoaded = m_AudioLibrary.Has(record.ID);
         if (!m_AudioLibrary.LoadFromFile(record.ID, assetPath, true))
         {
-            QUIET_CORE_WARN("Failed to load runtime audio asset '{}' from '{}'.", record.ID, assetPath.string());
+            QUIET_CORE_WARN("Failed to load runtime audio asset '{}' from '{}'.", Core::UUIDToString(record.ID), assetPath.string());
             return false;
         }
 
-        QUIET_CORE_INFO("{} cooked audio asset '{}' from '{}'.", alreadyLoaded ? "Reloaded" : "Loaded", record.ID, assetPath.string());
+        QUIET_CORE_INFO("{} cooked audio asset '{}' from '{}'.", alreadyLoaded ? "Reloaded" : "Loaded", Core::UUIDToString(record.ID), assetPath.string());
         return true;
     }
 }

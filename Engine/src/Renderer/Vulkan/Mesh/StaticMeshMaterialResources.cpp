@@ -79,23 +79,20 @@ namespace Quiet::Renderer::Vulkan
         Destroy();
     }
 
-    VkDescriptorSet StaticMeshMaterialResources::GetDescriptorSetForTexture(const TextureLibrary &textureLibrary,
-                                                                            std::string_view textureAssetID)
+    VkDescriptorSet StaticMeshMaterialResources::GetDescriptorSetForTexture(const TextureLibrary& textureLibrary, Core::UUID textureAssetID)
     {
-        if (textureAssetID.empty())
+        if (!textureAssetID.IsValid())
             return m_FallbackDescriptorSet;
 
-        const std::string textureID(textureAssetID);
-        if (const auto it = m_TextureDescriptorSets.find(textureID); it != m_TextureDescriptorSets.end())
+        if (const auto it = m_TextureDescriptorSets.find(textureAssetID); it != m_TextureDescriptorSets.end())
             return it->second;
 
-        const std::optional<VkDescriptorImageInfo> imageInfo = textureLibrary.TryGetDescriptorImageInfo(textureID);
+        const std::optional<VkDescriptorImageInfo> imageInfo = textureLibrary.TryGetDescriptorImageInfo(textureAssetID);
         if (!imageInfo.has_value())
             return m_FallbackDescriptorSet;
 
         VkDescriptorSet descriptorSet = AllocateDescriptorSet(imageInfo.value());
-        m_TextureDescriptorSets.emplace(textureID, descriptorSet);
-
+        m_TextureDescriptorSets.emplace(textureAssetID, descriptorSet);
         return descriptorSet;
     }
 

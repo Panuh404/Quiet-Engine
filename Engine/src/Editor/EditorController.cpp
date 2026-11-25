@@ -77,20 +77,20 @@ namespace Quiet::Editor
         // Actors are still grouped separately because exposed-property
         // reconciliation only applies to ScriptComponents currently
         // present in the Edit Scene.
-        std::unordered_map<std::string, std::vector<Core::UUID>> actorsByScript;
+        std::unordered_map<Core::UUID, std::vector<Core::UUID>> actorsByScript;
 
         for (const Scene::Actor& actor : scene.GetActors())
         {
             const auto* script = actor.TryGetComponent<Scene::ScriptComponent>();
-            if (!script || script->ScriptAssetID.empty()) continue;
+            if (!script || !script->ScriptAssetID.IsValid()) continue;
 
             actorsByScript[script->ScriptAssetID].push_back(actor.GetID());
         }
 
         // Diagnostics, however, belong to Script assets themselves,
         // not only to scripts that happen to be assigned to an Actor.
-        const std::vector<std::string> scriptAssetIDs = projectContext.EnumerateScriptAssetIDs();
-        const std::unordered_set<std::string> registeredScripts(scriptAssetIDs.begin(), scriptAssetIDs.end());
+        const std::vector<Core::UUID> scriptAssetIDs = projectContext.EnumerateScriptAssetIDs();
+        const std::unordered_set<Core::UUID> registeredScripts(scriptAssetIDs.begin(), scriptAssetIDs.end());
 
         for (auto iterator = m_ScriptSourceWriteTimes.begin(); iterator != m_ScriptSourceWriteTimes.end();)
         {
@@ -120,20 +120,20 @@ namespace Quiet::Editor
 
         std::vector<PendingRefresh> pendingRefreshes;
 
-        const auto setSourceError = [&](const std::string& scriptAssetID, const std::string& error)
+        const auto setSourceError = [&](const Core::UUID scriptAssetID, const std::string& error)
         {
             auto& errors = m_State.Scripting.SourceErrors;
 
             const auto existing = errors.find(scriptAssetID);
             if (existing == errors.end() || existing->second != error)
             {
-                QUIET_CORE_WARN("Script source '{}' has an editor metadata error: {}", scriptAssetID, error);
+                QUIET_CORE_WARN("Script source '{}' has an editor metadata error: {}", Core::UUIDToString(scriptAssetID), error);
             }
 
             errors[scriptAssetID] =error;
         };
 
-        for (const std::string& scriptAssetID : scriptAssetIDs)
+        for (const Core::UUID scriptAssetID : scriptAssetIDs)
         {
             std::filesystem::file_time_type writeTime{};
             std::string sourceError;

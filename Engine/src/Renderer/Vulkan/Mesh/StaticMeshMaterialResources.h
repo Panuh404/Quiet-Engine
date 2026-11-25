@@ -8,6 +8,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Renderer::Vulkan
 {
     class PhysicalDevice;
@@ -30,7 +32,7 @@ namespace Quiet::Renderer::Vulkan
 
         [[nodiscard]] VkDescriptorSetLayout GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
         [[nodiscard]] VkDescriptorSet GetFallbackDescriptorSet() const { return m_FallbackDescriptorSet; }
-        [[nodiscard]] VkDescriptorSet GetDescriptorSetForTexture(const TextureLibrary& textureLibrary, std::string_view textureAssetID);
+        [[nodiscard]] VkDescriptorSet GetDescriptorSetForTexture(const TextureLibrary& textureLibrary, Core::UUID textureAssetID);
 
         void ClearTextureDescriptorCache();
 
@@ -54,6 +56,6 @@ namespace Quiet::Renderer::Vulkan
         std::unique_ptr<Texture2D> m_FallbackWhiteTexture;
         VkDescriptorSet m_FallbackDescriptorSet = VK_NULL_HANDLE;
 
-        std::unordered_map<std::string, VkDescriptorSet> m_TextureDescriptorSets;
+        std::unordered_map<Core::UUID, VkDescriptorSet> m_TextureDescriptorSets;
     };
 }

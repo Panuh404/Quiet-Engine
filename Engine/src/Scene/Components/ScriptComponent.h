@@ -53,14 +53,14 @@ namespace Quiet::Scene
         glm::vec4 Color4Value{1.0f};
 
         Core::UUID ActorValue{};
-        std::string AssetValue;
+        Core::UUID AssetValue{};
 
         bool operator==(const ScriptProperty&) const = default;
     };
 
     struct ScriptComponent
     {
-        std::string ScriptAssetID;
+        Core::UUID ScriptAssetID{};
         std::vector<ScriptProperty> Properties;
     };
 }

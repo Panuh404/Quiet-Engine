@@ -20,9 +20,9 @@ namespace
         VkDescriptorSet DescriptorSet = VK_NULL_HANDLE;
     };
 
-    std::unordered_map<std::string, TexturePreviewCacheEntry>& GetTexturePreviewCache()
+    std::unordered_map<Quiet::Core::UUID, TexturePreviewCacheEntry>& GetTexturePreviewCache()
     {
-        static std::unordered_map<std::string, TexturePreviewCacheEntry> cache;
+        static std::unordered_map<Quiet::Core::UUID, TexturePreviewCacheEntry> cache;
         return cache;
     }
 
@@ -50,9 +50,9 @@ namespace
 
 namespace Quiet::Renderer::UI
 {
-    ImTextureID GetOrCreateTexturePreviewID(const std::string_view textureAssetID, const Vulkan::TextureLibrary& textureLibrary)
+    ImTextureID GetOrCreateTexturePreviewID(Core::UUID textureAssetID, const Vulkan::TextureLibrary& textureLibrary)
     {
-        const std::string textureID(textureAssetID);
+        const Core::UUID textureID(textureAssetID);
         const std::shared_ptr<Vulkan::Texture2D> texture = textureLibrary.TryGet(textureID);
 
         if (!texture) return ImTextureID{};
@@ -109,7 +109,7 @@ namespace Quiet::Renderer::UI
         };
     }
 
-    void DrawTexturePreview(const std::string_view textureAssetID,
+    void DrawTexturePreview(Core::UUID textureAssetID,
                             const Vulkan::TextureLibrary& textureLibrary,
                             const Vulkan::TextureStats& textureStats,
                             const float uiScale,
@@ -126,16 +126,8 @@ namespace Quiet::Renderer::UI
         const float maxPreviewSide = maxPreviewSideBase * uiScale;
         const float framePadding = 10.0f * uiScale;
 
-        const ImVec2 previewSize = CalculateTexturePreviewSize(
-            textureStats.Width,
-            textureStats.Height,
-            maxPreviewSide
-        );
-
-        const ImVec2 frameSize(
-            previewSize.x + framePadding * 2.0f,
-            previewSize.y + framePadding * 2.0f
-        );
+        const ImVec2 previewSize = CalculateTexturePreviewSize(textureStats.Width, textureStats.Height, maxPreviewSide);
+        const ImVec2 frameSize(previewSize.x + framePadding * 2.0f, previewSize.y + framePadding * 2.0f);
 
         const float availableWidth = ImGui::GetContentRegionAvail().x;
         if (availableWidth > frameSize.x)

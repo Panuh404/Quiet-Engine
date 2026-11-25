@@ -53,12 +53,13 @@ namespace Quiet::Cooker
 
         for (const Project::AssetRecord& record : registry.Records)
         {
+            const std::string assetIDText = Core::UUIDToString(record.ID);
             if (record.BuiltIn || record.Type != Project::AssetType::Script) continue;
 
             const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
             if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
             {
-                std::cerr << "Script '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                std::cerr << "Script '" << assetIDText << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
             }
@@ -66,12 +67,12 @@ namespace Quiet::Cooker
             const std::string extension = NormalizeScriptExtension(sourcePath);
             if (extension.empty())
             {
-                std::cerr << "Script '" << record.ID << "' uses an unsupported format: " << sourcePath.extension().string() << '\n';
+                std::cerr << "Script '" << assetIDText << "' uses an unsupported format: " << sourcePath.extension().string() << '\n';
                 success = false;
                 continue;
             }
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Scripts" / (record.ID + extension);
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Scripts" / (assetIDText + extension);
             const std::filesystem::path cookedPath = outputRoot / runtimePath;
 
             std::string sourceHash;
@@ -79,7 +80,7 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(sourcePath, sourceHash, sourceHashError))
             {
-                std::cerr << "Failed to fingerprint script '" << record.ID << "': " << sourceHashError << '\n';
+                std::cerr << "Failed to fingerprint script '" << assetIDText << "': " << sourceHashError << '\n';
                 success = false;
                 continue;
             }
@@ -113,6 +114,7 @@ namespace Quiet::Cooker
                         {
                             Project::RuntimeAssetRecord runtimeRecord{};
                             runtimeRecord.ID = record.ID;
+                            runtimeRecord.Name = record.Name;
                             runtimeRecord.Type = Project::AssetType::Script;
                             runtimeRecord.Path = runtimePathString;
 
@@ -129,7 +131,7 @@ namespace Quiet::Cooker
                             }
 
                             std::cout
-                                << "Script: " << record.ID << '\n'
+                                << "Script: " << assetIDText << '\n'
                                 << "  Source:      " << sourcePath.filename().string() << '\n'
                                 << "  Cook:        up to date\n"
                                 << "  Language:    Lua\n"
@@ -142,7 +144,7 @@ namespace Quiet::Cooker
 
                         if (!cookedHashSucceeded)
                         {
-                            std::cerr << "Could not fingerprint cached script '" << record.ID << "': " << cookedHashError << ". Repackaging.\n";
+                            std::cerr << "Could not fingerprint cached script '" << assetIDText << "': " << cookedHashError << ". Repackaging.\n";
                         }
                     }
                 }
@@ -158,7 +160,7 @@ namespace Quiet::Cooker
 
             if (copyError)
             {
-                std::cerr << "Failed to package script '" << record.ID << "': " << copyError.message() << '\n';
+                std::cerr << "Failed to package script '" << assetIDText << "': " << copyError.message() << '\n';
                 success = false;
                 continue;
             }
@@ -168,20 +170,21 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(cookedPath, cookedHash, cookedHashError))
             {
-                std::cerr << "Failed to fingerprint packaged script '" << record.ID << "': " << cookedHashError << '\n';
+                std::cerr << "Failed to fingerprint packaged script '" << assetIDText << "': " << cookedHashError << '\n';
                 success = false;
                 continue;
             }
 
             if (cookedHash != sourceHash)
             {
-                std::cerr << "Packaged script '" << record.ID << "' changed during copy.\n";
+                std::cerr << "Packaged script '" << assetIDText << "' changed during copy.\n";
                 success = false;
                 continue;
             }
 
             Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
+            runtimeRecord.Name = record.Name;
             runtimeRecord.Type = Project::AssetType::Script;
             runtimeRecord.Path = runtimePath.generic_string();
 
@@ -200,7 +203,7 @@ namespace Quiet::Cooker
             const std::uintmax_t fileSize = std::filesystem::file_size(cookedPath, sizeError);
 
             std::cout
-                << "Script: " << record.ID << '\n'
+                << "Script: " << assetIDText << '\n'
                 << "  Source:      " << sourcePath.filename().string() << '\n'
                 << "  Language:    Lua\n"
                 << "  File size:   " << (sizeError ? 0 : fileSize) << " bytes\n"

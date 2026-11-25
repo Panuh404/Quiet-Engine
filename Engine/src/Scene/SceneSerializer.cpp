@@ -1,10 +1,12 @@
 #include "SceneSerializer.h"
 
+#include <array>
 #include <fstream>
 #include <optional>
 #include <utility>
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 #include "Quiet/Core/UUID.h"
 
@@ -30,6 +32,25 @@
 namespace Quiet::Scene
 {
     using json = nlohmann::json;
+
+    static constexpr int AssetReferenceVersion = 2;
+
+    static std::string SerializeAssetReference(Core::UUID assetID)
+    {
+        return assetID.IsValid() ? Core::UUIDToString(assetID) : std::string{};
+    }
+
+    static Core::UUID DeserializeAssetReference(const json& object, const char* key, bool required = false)
+    {
+        const std::string text = required ? object.at(key).get<std::string>() : object.value(key, std::string{});
+        if (text.empty()) return {};
+
+        Core::UUID id{};
+        if (!Core::UUIDFromString(text, id) || !id.IsValid() || Core::UUIDToString(id) != text)
+            throw std::runtime_error(std::string("Invalid asset UUID in field '") + key + "'.");
+
+        return id;
+    }
 
 #pragma region Serialization
 
@@ -62,8 +83,8 @@ namespace Quiet::Scene
     {
         return
         {
-                { "type", SerializeHierarchyNodeType(node.Type) },
-                { "id", Quiet::Core::UUIDToString(node.ID) }
+            { "type", SerializeHierarchyNodeType(node.Type) },
+            { "id", Quiet::Core::UUIDToString(node.ID) }
         };
     }
 
@@ -115,8 +136,8 @@ namespace Quiet::Scene
     nlohmann::json SceneSerializer::SerializeMaterial(const MaterialComponent &material)
     {
         return {
-                { "base_color", SerializeVec4(material.BaseColor) },
-                { "base_color_texture_asset_id", material.BaseColorTextureAssetID }
+            { "base_color", SerializeVec4(material.BaseColor) },
+            { "base_color_texture_asset_id", SerializeAssetReference(material.BaseColorTextureAssetID) }
         };
     }
 
@@ -302,7 +323,7 @@ namespace Quiet::Scene
         if (materialJson.contains("base_color"))
             material.BaseColor = DeserializeVec4(materialJson.at("base_color"));
 
-        material.BaseColorTextureAssetID = materialJson.value("base_color_texture_asset_id", std::string{});
+        material.BaseColorTextureAssetID = DeserializeAssetReference(materialJson, "base_color_texture_asset_id");
         return material;
     }
 
@@ -353,11 +374,61 @@ namespace Quiet::Scene
         return true;
     }
 
+    static void ValidateSceneAssetReferences(const json& actors)
+    {
+        for (const auto& actor : actors)
+        {
+            if (const auto mesh = actor.find("static_mesh"); mesh != actor.end())
+            {
+                DeserializeAssetReference(*mesh, "resource_id", true);
+                if (const auto slots = mesh->find("material_slots"); slots != mesh->end() && slots->is_array())
+                {
+                    for (const auto& slot : *slots)
+                        DeserializeAssetReference(slot, "base_color_texture_asset_id");
+                }
+            }
+
+            if (const auto material = actor.find("material"); material != actor.end())
+                DeserializeAssetReference(*material, "base_color_texture_asset_id");
+
+            if (const auto audio = actor.find("audio_source"); audio != actor.end())
+                DeserializeAssetReference(*audio, "audio_asset_id");
+
+            if (const auto script = actor.find("script"); script != actor.end())
+            {
+                DeserializeAssetReference(*script, "script_asset_id");
+                const auto properties = script->find("properties");
+                if (properties == script->end() || !properties->is_array()) continue;
+
+                for (const auto& property : *properties)
+                {
+                    if (!property.is_object() || property.value("name", std::string{}).empty()) continue;
+
+                    ScriptPropertyType type{};
+                    if (!DeserializeScriptPropertyType(property.value("type", std::string{}), type)) continue;
+
+                    switch (type)
+                    {
+                        case ScriptPropertyType::MeshAsset:
+                        case ScriptPropertyType::TextureAsset:
+                        case ScriptPropertyType::AudioAsset:
+                        case ScriptPropertyType::ScriptAsset:
+                            DeserializeAssetReference(property, "value");
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+    }
+
 #pragma endregion
 
     bool SceneSerializer::SaveToFile(const Scene &scene, const std::filesystem::path &path)
     {
         json root;
+        root["asset_reference_version"] = AssetReferenceVersion;
         root["actors"] = json::array();
 
         const SceneAudioSettings& audioSettings = scene.GetAudioSettings();
@@ -421,7 +492,7 @@ namespace Quiet::Scene
             {
                 json staticMeshJson =
                 {
-                    { "resource_id", staticMesh->MeshResourceID },
+                    { "resource_id", SerializeAssetReference(staticMesh->MeshResourceID) },
                     { "visible", staticMesh->Visible }
                 };
 
@@ -470,7 +541,7 @@ namespace Quiet::Scene
             {
                 actorJson["audio_source"] =
                 {
-                    { "audio_asset_id", audioSource->AudioAssetID },
+                    { "audio_asset_id", SerializeAssetReference(audioSource->AudioAssetID) },
                     { "bus", SerializeAudioBus(audioSource->Bus) },
                     { "volume", audioSource->Volume },
                     { "pitch", audioSource->Pitch },
@@ -499,7 +570,7 @@ namespace Quiet::Scene
             {
                 json scriptJson =
                 {
-                    { "script_asset_id", script->ScriptAssetID }
+                    { "script_asset_id", SerializeAssetReference(script->ScriptAssetID) }
                 };
 
                 if (!script->Properties.empty())
@@ -562,7 +633,7 @@ namespace Quiet::Scene
                             case ScriptPropertyType::TextureAsset:
                             case ScriptPropertyType::AudioAsset:
                             case ScriptPropertyType::ScriptAsset:
-                                propertyJson["value"] = property.AssetValue;
+                                propertyJson["value"] = SerializeAssetReference(property.AssetValue);
                                 break;
                         }
 
@@ -784,12 +855,34 @@ namespace Quiet::Scene
             return false;
         }
 
-        json root;
-        in >> root;
-
-        if (!root.contains("actors") || !root["actors"].is_array())
+        const json root = json::parse(in, nullptr, false);
+        if (!root.is_object())
         {
             QUIET_CORE_ERROR("Invalid scene file format: {}", path.string());
+            return false;
+        }
+
+        if (!root.contains("asset_reference_version") ||
+            !root.at("asset_reference_version").is_number_integer() ||
+            root.at("asset_reference_version") != AssetReferenceVersion)
+        {
+            QUIET_CORE_ERROR("Unsupported scene asset-reference version: {}", path.string());
+            return false;
+        }
+
+        if (!root.contains("actors") || !root.at("actors").is_array())
+        {
+            QUIET_CORE_ERROR("Invalid scene file format: {}", path.string());
+            return false;
+        }
+
+        try
+        {
+            ValidateSceneAssetReferences(root.at("actors"));
+        }
+        catch (const std::exception& error)
+        {
+            QUIET_CORE_ERROR("Invalid asset references in scene '{}': {}", path.string(), error.what());
             return false;
         }
 
@@ -887,7 +980,7 @@ namespace Quiet::Scene
             if (actorJson.contains("static_mesh"))
             {
                 const auto& staticMeshJson = actorJson["static_mesh"];
-                const std::string resourceId = staticMeshJson.at("resource_id").get<std::string>();
+                const Core::UUID resourceId = DeserializeAssetReference(staticMeshJson, "resource_id", true);
 
                 auto& staticMesh = actor.AddComponent<StaticMeshComponent>();
                 staticMesh.MeshResourceID = resourceId;
@@ -906,10 +999,7 @@ namespace Quiet::Scene
 
                 if (!staticMesh.Mesh)
                 {
-                    QUIET_CORE_WARN(
-                        "Scene references missing mesh resource '{}'.",
-                        resourceId
-                    );
+                    QUIET_CORE_WARN("Scene references missing mesh resource '{}'.", Core::UUIDToString(resourceId));
                 }
             }
 
@@ -952,7 +1042,7 @@ namespace Quiet::Scene
                 const auto& audioSourceJson = actorJson["audio_source"];
                 AudioSourceComponent audioSource{};
 
-                audioSource.AudioAssetID = audioSourceJson.value("audio_asset_id", std::string{});
+                audioSource.AudioAssetID = DeserializeAssetReference(audioSourceJson, "audio_asset_id");
                 audioSource.Bus = DeserializeAudioBus(audioSourceJson.value("bus", std::string{ "sfx" }));
                 audioSource.Volume = audioSourceJson.value("volume", audioSource.Volume);
                 audioSource.Pitch = audioSourceJson.value("pitch", audioSource.Pitch);
@@ -985,7 +1075,7 @@ namespace Quiet::Scene
                 const auto& scriptJson = actorJson["script"];
 
                 ScriptComponent script{};
-                script.ScriptAssetID = scriptJson.value("script_asset_id", std::string{});
+                script.ScriptAssetID = DeserializeAssetReference(scriptJson, "script_asset_id");
 
                 if (scriptJson.contains("properties") && scriptJson["properties"].is_array())
                 {
@@ -1053,7 +1143,7 @@ namespace Quiet::Scene
                             case ScriptPropertyType::TextureAsset:
                             case ScriptPropertyType::AudioAsset:
                             case ScriptPropertyType::ScriptAsset:
-                                property.AssetValue = propertyJson.value("value", std::string{});
+                                property.AssetValue = DeserializeAssetReference(propertyJson, "value");
                                 break;
                         }
 

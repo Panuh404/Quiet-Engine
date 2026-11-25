@@ -200,11 +200,11 @@ namespace Quiet::Renderer::UI::Assets
                                 Audio::AudioSubsystem& audioSubsystem,
                                 const Scene::Scene& scene,
                                 const Editor::EditorState& editorState,
-                                const std::string& assetID,
+                                Core::UUID assetID,
                                 const float uiScale)
     {
         const auto& audioLibrary = audioSubsystem.GetLibrary();
-        if (assetID.empty())
+        if (!assetID.IsValid())
         {
             DrawAssetSelectionEmptyState();
             return;
@@ -237,7 +237,7 @@ namespace Quiet::Renderer::UI::Assets
         );
         {
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-            ImGui::TextUnformatted(record->ID.c_str());
+            ImGui::TextUnformatted(Core::UUIDToString(record->ID).c_str());
             ImGui::PopStyleColor();
 
             ImGui::SameLine();
@@ -375,11 +375,11 @@ namespace Quiet::Renderer::UI::Assets
                                const Vulkan::TextureLibrary& textureLibrary,
                                Audio::AudioSubsystem& audioSubsystem,
                                const Editor::EditorState& editorState,
-                               const std::string& assetID,
+                               Core::UUID assetID,
                                const float uiScale)
     {
         const auto& audioLibrary = audioSubsystem.GetLibrary();
-        if (assetID.empty()) return;
+        if (!assetID.IsValid()) return;
 
         const auto* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
         if (!record) return;
@@ -400,7 +400,7 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f * uiScale, 7.0f * uiScale));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f * uiScale, 8.0f * uiScale));
 
-            ImGui::TextUnformatted(record->ID.c_str());
+            ImGui::TextUnformatted(Core::UUIDToString(record->ID).c_str());
             ImGui::SameLine();
             ImGui::TextColored(statusColor, "  %s", status.c_str());
 
@@ -408,7 +408,7 @@ namespace Quiet::Renderer::UI::Assets
 
             const std::string typeLabel = std::string(Quiet::Project::ToString(record->Type));
 
-            DrawDetailRow("ID", record->ID.c_str(), labelWidth);
+            DrawDetailRow("ID", Core::UUIDToString(record->ID).c_str(), labelWidth);
             DrawDetailRow("Type", typeLabel.c_str(), labelWidth);
             DrawDetailRow("Status", status.c_str(), labelWidth);
             DrawDetailRow("Built In", record->BuiltIn ? "true" : "false", labelWidth);
@@ -547,7 +547,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::SameLine();
 
-                if (EditorButton("Stop", SZ::Px(ImVec2(80.0f, 0.0f)), !audioSubsystem.GetPreviewAssetID().empty()))
+                if (EditorButton("Stop", SZ::Px(ImVec2(80.0f, 0.0f)), audioSubsystem.GetPreviewAssetID().IsValid()))
                 {
                     audioSubsystem.StopPreview();
                 }
@@ -559,8 +559,8 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     void DrawAssetSelectionSummaryInline(const Project::ProjectContext &projectContext,
-                                         const std::vector<std::string> &selectedAssetIDs,
-                                         const std::string &primaryAssetID)
+                                         const std::vector<Core::UUID> &selectedAssetIDs,
+                                         Core::UUID primaryAssetID)
     {
         if (selectedAssetIDs.size() < 2)
         {
@@ -578,7 +578,7 @@ namespace Quiet::Renderer::UI::Assets
         std::uint32_t missingCount = 0;
         std::uint32_t externalCount = 0;
 
-        for (const std::string& assetID : selectedAssetIDs)
+        for (Core::UUID assetID : selectedAssetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record) continue;
@@ -625,14 +625,14 @@ namespace Quiet::Renderer::UI::Assets
             DrawDetailRowUInt("Issues", issueCount, labelWidth);
             DrawDetailRowUInt("Missing", missingCount, labelWidth);
             DrawDetailRowUInt("External", externalCount, labelWidth);
-            DrawDetailRowWrapped("Primary", primaryAssetID, labelWidth);
+            DrawDetailRowWrapped("Primary", Core::UUIDToString(primaryAssetID), labelWidth);
 
             DrawDetailsSectionTitle("Selected Assets" );
-            for (const std::string& assetID : selectedAssetIDs)
+            for (Core::UUID assetID : selectedAssetIDs)
             {
                 const bool primary = assetID == primaryAssetID;
                 ImGui::PushStyleColor(ImGuiCol_Text, primary ? EditorColor::Accent : EditorColor::Text);
-                ImGui::BulletText("%s%s", assetID.c_str(), primary ? "  (Primary)" : "");
+                ImGui::BulletText("%s%s", Core::UUIDToString(assetID).c_str(), primary ? "  (Primary)" : "");
                 ImGui::PopStyleColor();
             }
         }

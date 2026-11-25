@@ -31,19 +31,19 @@ namespace Quiet::Scripting
         {
             ScriptInstance(
                 const Core::UUID actorID,
-                std::string scriptAssetID,
+                const Core::UUID scriptAssetID,
                 std::filesystem::path sourcePath,
                 const std::filesystem::file_time_type sourceWriteTime,
                 sol::environment environment)
                 : ActorID(actorID),
-                  ScriptAssetID(std::move(scriptAssetID)),
+                  ScriptAssetID(scriptAssetID),
                   SourcePath(std::move(sourcePath)),
                   SourceWriteTime(sourceWriteTime),
                   Environment(std::move(environment))
             {}
 
             Core::UUID ActorID{};
-            std::string ScriptAssetID;
+            Core::UUID ScriptAssetID;
 
             std::filesystem::path SourcePath;
             std::filesystem::file_time_type SourceWriteTime{};
@@ -63,7 +63,7 @@ namespace Quiet::Scripting
 
         sol::state Lua;
         std::vector<ScriptInstance> Instances;
-        std::unordered_map<Core::UUID, std::string> FailedInstances;
+        std::unordered_map<Core::UUID, Core::UUID> FailedInstances;
     };
 
     ScriptWorld::ScriptWorld(Scene::Scene& scene,
@@ -133,7 +133,7 @@ namespace Quiet::Scripting
         for (const Scene::Actor& actor : m_Scene.GetActors())
         {
             const auto* script = actor.TryGetComponent<Scene::ScriptComponent>();
-            if (!script || script->ScriptAssetID.empty()) continue;
+            if (!script || !script->ScriptAssetID.IsValid()) continue;
 
             if (CreateInstance(actor))
                 ++loadedCount;
@@ -172,7 +172,8 @@ namespace Quiet::Scripting
             if (result.valid()) continue;
 
             const sol::error error = result;
-            QUIET_CORE_ERROR("Script '{}' OnUpdate failed for actor '{}': {}. The instance will stop updating.", instance.ScriptAssetID, Core::UUIDToString(instance.ActorID), error.what());
+            QUIET_CORE_ERROR("Script '{}' OnUpdate failed for actor '{}': {}. The instance will stop updating.",
+                Core::UUIDToString(instance.ScriptAssetID), Core::UUIDToString(instance.ActorID), error.what());
 
             instance.Faulted = true;
         }
@@ -234,7 +235,7 @@ namespace Quiet::Scripting
 
                 const sol::error error = result;
                 QUIET_CORE_ERROR("Script '{}' {} failed for actor '{}' against actor '{}': {}. The instance will stop receiving runtime callbacks.",
-                        instance.ScriptAssetID, callbackName, Core::UUIDToString(instance.ActorID), Core::UUIDToString(otherActorID), error.what());
+                        Core::UUIDToString(instance.ScriptAssetID), callbackName, Core::UUIDToString(instance.ActorID), Core::UUIDToString(otherActorID), error.what());
                 instance.Faulted = true;
             };
 
@@ -293,12 +294,12 @@ namespace Quiet::Scripting
         QUIET_CORE_INFO("Shut down scripting world.");
     }
 
-    bool ScriptWorld::ResolveScriptPath(std::string_view scriptAssetID, std::filesystem::path& outPath, std::string& outError) const
+    bool ScriptWorld::ResolveScriptPath(Core::UUID scriptAssetID, std::filesystem::path& outPath, std::string& outError) const
     {
         outPath.clear();
         outError.clear();
 
-        if (scriptAssetID.empty())
+        if (!scriptAssetID.IsValid())
         {
             outError = "Script asset ID is empty.";
             return false;
@@ -307,19 +308,19 @@ namespace Quiet::Scripting
         const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(m_ProjectContext.GetAssetRegistry(), scriptAssetID);
         if (!record)
         {
-            outError = "Script asset '" + std::string(scriptAssetID) + "' is not registered.";
+            outError = "Script asset '" + Core::UUIDToString(scriptAssetID) + "' is not registered.";
             return false;
         }
 
         if (record->Type != Project::AssetType::Script)
         {
-            outError = "Asset '" + std::string(scriptAssetID) + "' is not a Script asset.";
+            outError = "Asset '" + Core::UUIDToString(scriptAssetID) + "' is not a Script asset.";
             return false;
         }
 
         if (record->Path.empty())
         {
-            outError = "Script asset '" + std::string(scriptAssetID) + "' has no path.";
+            outError = "Script asset '" + Core::UUIDToString(scriptAssetID) + "' has no path.";
             return false;
         }
 
@@ -345,11 +346,11 @@ namespace Quiet::Scripting
         if (!m_State) return false;
 
         const auto* script = actor.TryGetComponent<Scene::ScriptComponent>();
-        if (!script || script->ScriptAssetID.empty()) return false;
+        if (!script || !script->ScriptAssetID.IsValid()) return false;
 
         const Core::UUID actorID = actor.GetID();
-        const std::string scriptAssetID = script->ScriptAssetID;
-        const auto recordFailedInstance = [&]()
+        const Core::UUID scriptAssetID = script->ScriptAssetID;
+        const auto recordFailedInstance = [&]
         {
             if (recordFailure)
             {
@@ -362,7 +363,8 @@ namespace Quiet::Scripting
 
         if (!ResolveScriptPath(scriptAssetID, sourcePath, resolveError))
         {
-            QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': {}", Core::UUIDToString(actorID), resolveError);
+            QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': {}",
+                Core::UUIDToString(actorID), resolveError);
             recordFailedInstance();
             return false;
         }
@@ -370,7 +372,8 @@ namespace Quiet::Scripting
         std::error_code filesystemError;
         if (!std::filesystem::is_regular_file(sourcePath, filesystemError) || filesystemError)
         {
-            QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': script source '{}' is unavailable.", Core::UUIDToString(actorID), sourcePath.string());
+            QUIET_CORE_WARN("Cannot create runtime script instance for actor '{}': script source '{}' is unavailable.",
+                Core::UUIDToString(actorID), sourcePath.string());
             recordFailedInstance();
             return false;
         }
@@ -389,7 +392,8 @@ namespace Quiet::Scripting
         if (!loadResult.valid())
         {
             const sol::error error = loadResult;
-            QUIET_CORE_ERROR("Failed to load script '{}' for actor '{}': {}", scriptAssetID, Core::UUIDToString(actorID), error.what());
+            QUIET_CORE_ERROR("Failed to load script '{}' for actor '{}': {}",
+                Core::UUIDToString(scriptAssetID), Core::UUIDToString(actorID), error.what());
             recordFailedInstance();
             return false;
         }
@@ -403,7 +407,8 @@ namespace Quiet::Scripting
 
             if (value.get_type() != sol::type::function)
             {
-                QUIET_CORE_WARN("Script '{}' on actor '{}' defines '{}' but it is not a function.", instance.ScriptAssetID, Core::UUIDToString(instance.ActorID), name);
+                QUIET_CORE_WARN("Script '{}' on actor '{}' defines '{}' but it is not a function.",
+                    Core::UUIDToString(instance.ScriptAssetID), Core::UUIDToString(instance.ActorID), name);
                 return;
             }
 
@@ -435,12 +440,12 @@ namespace Quiet::Scripting
             if (!result.valid())
             {
                 const sol::error error = result;
-                QUIET_CORE_ERROR("Script '{}' OnCreate failed for actor '{}': {}", instance.ScriptAssetID, Core::UUIDToString(instance.ActorID), error.what());
+                QUIET_CORE_ERROR("Script '{}' OnCreate failed for actor '{}': {}",
+                    Core::UUIDToString(instance.ScriptAssetID), Core::UUIDToString(instance.ActorID), error.what());
                 instance.Faulted = true;
                 return;
             }
         }
-
         instance.Started = true;
     }
 
@@ -455,10 +460,10 @@ namespace Quiet::Scripting
             if (!result.valid())
             {
                 const sol::error error = result;
-                QUIET_CORE_ERROR("Script '{}' OnDestroy failed for actor '{}': {}", instance.ScriptAssetID, Core::UUIDToString(instance.ActorID), error.what());
+                QUIET_CORE_ERROR("Script '{}' OnDestroy failed for actor '{}': {}",
+                    Core::UUIDToString(instance.ScriptAssetID), Core::UUIDToString(instance.ActorID), error.what());
             }
         }
-
         instance.Started = false;
 
         const Core::UUID actorID = instance.ActorID;
@@ -482,7 +487,7 @@ namespace Quiet::Scripting
             const Scene::Actor* actor = m_Scene.FindActorByID(instance.ActorID);
             const Scene::ScriptComponent* script = actor ? actor->TryGetComponent<Scene::ScriptComponent>() : nullptr;
 
-            const bool shouldRemove = !actor || !script || script->ScriptAssetID.empty() || script->ScriptAssetID != instance.ScriptAssetID;
+            const bool shouldRemove = !actor || !script || !script->ScriptAssetID.IsValid() || script->ScriptAssetID != instance.ScriptAssetID;
             if (!shouldRemove)
             {
                 ++index;
@@ -500,7 +505,7 @@ namespace Quiet::Scripting
             const Scene::Actor* actor = m_Scene.FindActorByID(iterator->first);
             const Scene::ScriptComponent* script = actor ? actor->TryGetComponent<Scene::ScriptComponent>() : nullptr;
 
-            if (!script || script->ScriptAssetID.empty() || script->ScriptAssetID != iterator->second)
+            if (!script || !script->ScriptAssetID.IsValid() || script->ScriptAssetID != iterator->second)
             {
                 iterator = m_State->FailedInstances.erase(iterator);
                 continue;
@@ -513,7 +518,7 @@ namespace Quiet::Scripting
         for (const Scene::Actor& actor : m_Scene.GetActors())
         {
             const Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
-            if (!script || script->ScriptAssetID.empty()) continue;
+            if (!script || !script->ScriptAssetID.IsValid()) continue;
 
             const bool alreadyActive =
                 std::any_of(
@@ -579,26 +584,23 @@ namespace Quiet::Scripting
             }
 
             const Core::UUID actorID = current.ActorID;
-            const std::string scriptAssetID = current.ScriptAssetID;
+            const Core::UUID scriptAssetID = current.ScriptAssetID;
             const std::size_t previousSize = m_State->Instances.size();
 
             // Build a replacement without disturbing the currently running instance.
             // Reload failures must leave the old environment alive.
             if (!CreateInstance(*actor, false))
             {
-                QUIET_CORE_WARN(
-                    "Hot reload failed for script '{}' on actor '{}'. Keeping the previous runtime instance.",
-                    scriptAssetID, Core::UUIDToString(actorID));
+                QUIET_CORE_WARN("Hot reload failed for script '{}' on actor '{}'. Keeping the previous runtime instance.",
+                    Core::UUIDToString(scriptAssetID), Core::UUIDToString(actorID));
                 ++index;
                 continue;
             }
 
-            if (m_State->Instances.size() !=
-                previousSize + 1)
+            if (m_State->Instances.size() != previousSize + 1)
             {
-                QUIET_CORE_ERROR(
-                    "Hot reload for script '{}' on actor '{}' did not create the expected replacement instance.",
-                    scriptAssetID, Core::UUIDToString(actorID));
+                QUIET_CORE_ERROR("Hot reload for script '{}' on actor '{}' did not create the expected replacement instance.",
+                    Core::UUIDToString(scriptAssetID), Core::UUIDToString(actorID));
                 ++index;
                 continue;
             }
@@ -612,7 +614,7 @@ namespace Quiet::Scripting
 
             m_State->Instances.insert(m_State->Instances.begin() + static_cast<std::ptrdiff_t>(index), std::move(replacement));
             StartInstance(index);
-            QUIET_CORE_INFO("Hot reloaded script '{}' for actor '{}'.", scriptAssetID, Core::UUIDToString(actorID));
+            QUIET_CORE_INFO("Hot reloaded script '{}' for actor '{}'.", Core::UUIDToString(scriptAssetID), Core::UUIDToString(actorID));
 
             ++index;
         }

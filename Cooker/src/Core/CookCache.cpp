@@ -78,13 +78,14 @@ namespace Quiet::Cooker
             json root;
             input >> root;
 
-            const std::uint32_t version = root.at("Version").get<std::uint32_t>();
-            if (version != CurrentCookCacheVersion)
+            const auto& version = root.at("Version");
+            if (!version.is_number_integer())
             {
-                // An incompatible cache is equivalent to no cache.
-                outCache = {};
-                return true;
+                outError = "Cook cache Version must be an integer.";
+                return false;
             }
+
+            if (version != CurrentCookCacheVersion) return true;
 
             CookCache cache{};
             cache.Version = version;
@@ -98,7 +99,16 @@ namespace Quiet::Cooker
 
             for (auto iterator = assets.begin(); iterator != assets.end(); ++iterator)
             {
-                const std::string assetID = iterator.key();
+                const std::string& assetIDText = iterator.key();
+                Core::UUID assetID{};
+                if (!Core::UUIDFromString(assetIDText, assetID) ||
+                    !assetID.IsValid() ||
+                    Core::UUIDToString(assetID) != assetIDText)
+                {
+                    outError = "Cook cache contains an invalid asset UUID: " + assetIDText;
+                    return false;
+                }
+
                 const json& value = iterator.value();
 
                 Project::AssetType type = Project::AssetType::Unknown;
@@ -115,7 +125,7 @@ namespace Quiet::Cooker
                 entry.CookSignature = value.at("CookSignature").get<std::string>();
                 entry.RuntimePath = value.at("RuntimePath").get<std::string>();
 
-                if (assetID.empty() || !entry.IsValid())
+                if (!entry.IsValid())
                 {
                     outError = "Cook cache contains an invalid asset entry.";
                     return false;
@@ -156,8 +166,8 @@ namespace Quiet::Cooker
 
         for (const auto& [assetID, entry] : cache.Assets)
         {
-            if (assetID.empty() || !entry.IsValid()) continue;
-            root["Assets"][assetID] =
+            if (!assetID.IsValid() || !entry.IsValid()) continue;
+            root["Assets"][Core::UUIDToString(assetID)] =
             {
                 { "Type", std::string(Project::ToString(entry.Type)) },
                 { "SourceHash", entry.SourceHash },

@@ -10,6 +10,7 @@
 
 #include <glm/glm.hpp>
 
+#include "Quiet/Core/UUID.h"
 #include "Renderer/Vulkan/Mesh/StaticMesh.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -40,7 +41,7 @@ namespace Quiet::Renderer::Vulkan
     public:
         MeshLibrary() = default;
 
-        void CreateStaticMesh(const std::string& name,
+        void CreateStaticMesh(Core::UUID assetID,
                               const PhysicalDevice& physicalDevice,
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
@@ -50,7 +51,7 @@ namespace Quiet::Renderer::Vulkan
                               std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                               MeshStats stats);
 
-        void ReplaceStaticMesh(const std::string& name,
+        void ReplaceStaticMesh(Core::UUID assetID,
                                const PhysicalDevice& physicalDevice,
                                const LogicalDevice& logicalDevice,
                                const GraphicsCommands& graphicsCommands,
@@ -60,17 +61,17 @@ namespace Quiet::Renderer::Vulkan
                                std::vector<StaticMeshMaterialSlot> importedMaterialSlots,
                                MeshStats stats);
 
-        std::shared_ptr<StaticMesh> Get(const std::string& name) const;
-        std::shared_ptr<StaticMesh> TryGet(const std::string &name) const;
-        bool Has(const std::string& name) const;
+        std::shared_ptr<StaticMesh> Get(Core::UUID assetID) const;
+        std::shared_ptr<StaticMesh> TryGet(Core::UUID assetID) const;
+        bool Has(Core::UUID assetID) const;
 
-        [[nodiscard]] std::vector<std::string> GetNames() const;
-        [[nodiscard]] std::optional<MeshStats> GetStats(const std::string& name) const;
+        [[nodiscard]] std::vector<Core::UUID> GetAssetIDs() const;
+        [[nodiscard]] std::optional<MeshStats> GetStats(Core::UUID assetID) const;
 
         [[nodiscard]] std::size_t GetCount() const { return m_Meshes.size(); }
 
     private:
-        std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_Meshes;
-        std::unordered_map<std::string, MeshStats> m_Stats;
+        std::unordered_map<Core::UUID, std::shared_ptr<StaticMesh>> m_Meshes;
+        std::unordered_map<Core::UUID, MeshStats> m_Stats;
     };
 }

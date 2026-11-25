@@ -9,11 +9,11 @@
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorState.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
 
 namespace
 {
     namespace QUI = Quiet::Renderer::UI;
-    constexpr const char* kEditorTopbarLogoTextureID = "Editor.TopbarLogo";
 
     const char* GetSceneModeLabel(Quiet::Editor::SceneMode mode)
     {
@@ -46,7 +46,7 @@ namespace
 
     void DrawTopbarLogo(const Quiet::Renderer::Vulkan::TextureLibrary& textureLibrary, const float uiScale)
     {
-        const ImTextureID logoTexture = QUI::GetOrCreateTexturePreviewID(kEditorTopbarLogoTextureID, textureLibrary);
+        const ImTextureID logoTexture = QUI::GetOrCreateTexturePreviewID(Quiet::Project::BuiltInAssetIDs::EditorTopbarLogo, textureLibrary);
 
         if (!logoTexture) return;
         const float logoSize = 36.0f * uiScale;

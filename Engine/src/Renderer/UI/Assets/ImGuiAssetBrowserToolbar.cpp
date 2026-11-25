@@ -119,16 +119,19 @@ namespace
         ImGui::Separator();
 
         const bool editMode = editorState.Scene.Mode == Editor::SceneMode::Edit;
-        for (const std::string& primitiveID : Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+        for (const Quiet::Core::UUID primitiveUUID : Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
         {
-            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveID);
+            const std::string primitiveIDText = Quiet::Core::UUIDToString(primitiveUUID);
+            const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveUUID);
             const bool registered = record && record->BuiltIn && record->Type == Project::AssetType::Mesh;
-            const bool loaded = registered && meshLibrary.Has(primitiveID);
-            const bool canCreate = editMode && loaded;
 
-            if (QUI::EditorMenuItem(primitiveID.c_str(), nullptr, false, canCreate))
+            const bool loaded = registered && meshLibrary.Has(primitiveUUID);
+            const bool canCreate = editMode && loaded;
+            const std::string label = record ? record->Name : primitiveIDText;
+
+            if (QUI::EditorMenuItem(label.c_str(), nullptr, false, canCreate))
             {
-                editorState.QueueRequest(Editor::EditorRequestType::CreatePrimitiveActor, primitiveID);
+                editorState.QueueRequest(Editor::EditorRequestType::CreatePrimitiveActor, primitiveUUID);
                 ImGui::CloseCurrentPopup();
             }
 
@@ -140,11 +143,11 @@ namespace
                 }
                 else if (!registered)
                 {
-                    ImGui::SetTooltip("Primitive '%s' is not registered as a built-in mesh.", primitiveID.c_str());
+                    ImGui::SetTooltip("Primitive '%s' is not registered as a built-in mesh.", label.c_str());
                 }
                 else
                 {
-                    ImGui::SetTooltip("Primitive '%s' is registered but not loaded.", primitiveID.c_str());
+                    ImGui::SetTooltip("Primitive '%s' is registered but not loaded.", label.c_str());
                 }
             }
         }

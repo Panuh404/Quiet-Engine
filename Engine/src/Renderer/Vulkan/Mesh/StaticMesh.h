@@ -10,6 +10,8 @@
 
 #include "glm/vec4.hpp"
 #include "glm/vec3.hpp"
+
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Assets/MeshData.h"
 #include "Quiet/Math/Geometry.h"
 
@@ -45,7 +47,7 @@ namespace Quiet::Renderer::Vulkan
         glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         std::string BaseColorTexturePath;
-        std::string BaseColorTextureAssetID;
+        Core::UUID BaseColorTextureAssetID;
 
         bool BaseColorTextureEmbedded = false;
         int EmbeddedTextureIndex = -1;

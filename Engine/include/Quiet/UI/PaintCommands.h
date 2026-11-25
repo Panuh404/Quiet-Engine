@@ -8,6 +8,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/UI/Geometry.h"
 
 namespace Quiet::UI
@@ -93,7 +94,7 @@ namespace Quiet::UI
     {
         glm::vec2 Min{0.0f};
         glm::vec2 Max{0.0f};
-        std::string TextureID;
+        Core::UUID TextureID{};
         glm::vec4 Tint{1.0f};
 
         /**

@@ -283,17 +283,18 @@ namespace Quiet::Cooker
 
         for (const Project::AssetRecord& record : registry.Records)
         {
+            const std::string assetIDText = Core::UUIDToString(record.ID);
             if (record.BuiltIn || record.Type != Project::AssetType::Texture) continue;
 
             const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
             if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
             {
-                std::cerr << "Texture '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                std::cerr << "Texture '" << assetIDText << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
             }
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Textures" / (record.ID + ".qtexture");
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Textures" / (assetIDText + ".qtexture");
             const std::filesystem::path cookedPath = outputRoot / runtimePath;
 
             std::string sourceHash;
@@ -301,7 +302,7 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(sourcePath, sourceHash, sourceHashError))
             {
-                std::cerr << "Failed to fingerprint texture '" << record.ID << "': " << sourceHashError << '\n';
+                std::cerr << "Failed to fingerprint texture '" << assetIDText << "': " << sourceHashError << '\n';
                 success = false;
                 continue;
             }
@@ -342,6 +343,7 @@ namespace Quiet::Cooker
                             {
                                 Project::RuntimeAssetRecord runtimeRecord{};
                                 runtimeRecord.ID = record.ID;
+                                runtimeRecord.Name = record.Name;
                                 runtimeRecord.Type = Project::AssetType::Texture;
                                 runtimeRecord.Path = runtimePathString;
 
@@ -365,7 +367,7 @@ namespace Quiet::Cooker
                                 }
 
                                 std::cout
-                                    << "Texture: " << record.ID << '\n'
+                                    << "Texture: " << assetIDText << '\n'
                                     << "  Source:      " << sourcePath.filename().string() << '\n'
                                     << "  Cook:        up to date\n"
                                     << "  Dimensions:  " << cachedTexture.Width << 'x' << cachedTexture.Height << '\n'
@@ -379,7 +381,7 @@ namespace Quiet::Cooker
                                 continue;
                             }
 
-                            std::cerr << "Cached QTexture for '" << record.ID << "' failed validation";
+                            std::cerr << "Cached QTexture for '" << assetIDText << "' failed validation";
                             if (!cachedTextureError.empty())
                             {
                                 std::cerr << ": " << cachedTextureError;
@@ -388,7 +390,7 @@ namespace Quiet::Cooker
                         }
                         else if (!cookedHashSucceeded)
                         {
-                            std::cerr << "Could not fingerprint cached QTexture for '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                            std::cerr << "Could not fingerprint cached QTexture for '" << assetIDText << "': " << cookedHashError << ". Recooking.\n";
                         }
                     }
                 }
@@ -397,7 +399,7 @@ namespace Quiet::Cooker
             Assets::TexturePixelData pixels = Assets::TextureImporter::LoadPixelsFromFile(sourcePath);
             if (!pixels.IsValid())
             {
-                std::cerr << "Failed to import texture '" << record.ID << "': " << pixels.Metadata.Error << '\n';
+                std::cerr << "Failed to import texture '" << assetIDText << "': " << pixels.Metadata.Error << '\n';
                 success = false;
                 continue;
             }
@@ -407,7 +409,7 @@ namespace Quiet::Cooker
 
             if (!BuildRgba8SrgbMipChain(pixels, mipLevels, mipError))
             {
-                std::cerr << "Failed to generate mipmaps for texture '" << record.ID << "': " << mipError << '\n';
+                std::cerr << "Failed to generate mipmaps for texture '" << assetIDText << "': " << mipError << '\n';
                 success = false;
                 continue;
             }
@@ -421,7 +423,7 @@ namespace Quiet::Cooker
 
             if (!CompressRgba8MipChainToBC7(mipLevels, BC7IntegrationQuality, bc7MipLevels, bc7Stats, compressionError))
             {
-                std::cerr << "Failed to BC7-compress texture '" << record.ID << "': " << compressionError << '\n';
+                std::cerr << "Failed to BC7-compress texture '" << assetIDText << "': " << compressionError << '\n';
                 success = false;
                 continue;
             }
@@ -434,7 +436,7 @@ namespace Quiet::Cooker
 
             if (!WriteQTexture(cookedPath, bc7MipLevels, stats, writeError))
             {
-                std::cerr << "Failed to write texture '" << record.ID << "': " << writeError << '\n';
+                std::cerr << "Failed to write texture '" << assetIDText << "': " << writeError << '\n';
                 success = false;
                 continue;
             }
@@ -443,7 +445,7 @@ namespace Quiet::Cooker
 
             if (!ValidateQTextureRoundTrip(cookedPath, bc7MipLevels, validationError))
             {
-                std::cerr << "Failed to validate texture '" << record.ID << "': " << validationError << '\n';
+                std::cerr << "Failed to validate texture '" << assetIDText << "': " << validationError << '\n';
                 success = false;
                 continue;
             }
@@ -454,11 +456,12 @@ namespace Quiet::Cooker
             const bool cookedHashSucceeded = ComputeFileHash(cookedPath, cookedHash, cookedHashError);
             if (!cookedHashSucceeded)
             {
-                std::cerr << "Warning: texture '" << record.ID << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
+                std::cerr << "Warning: texture '" << assetIDText << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
             }
 
             Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
+            runtimeRecord.Name = record.Name;
             runtimeRecord.Type = Project::AssetType::Texture;
             runtimeRecord.Path = runtimePath.generic_string();
             outRuntimeAssets.push_back(std::move(runtimeRecord));
@@ -483,7 +486,7 @@ namespace Quiet::Cooker
             const std::uint64_t baseRgbaBytes = static_cast<std::uint64_t>(mipLevels.front().Pixels.size());
 
             std::cout
-            << "Texture: " << record.ID << '\n'
+            << "Texture: " << assetIDText << '\n'
             << "  Source:      " << sourcePath.filename().string() << '\n'
             << "  Format:      " << pixels.Metadata.Format << " -> QTexture/KTX2 BC7 sRGB\n"
             << "  Dimensions:  " << stats.Width << 'x' << stats.Height << '\n'

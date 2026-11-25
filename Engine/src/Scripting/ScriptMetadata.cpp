@@ -16,7 +16,7 @@
 namespace
 {
     bool ResolveScriptSourcePath(const Quiet::Project::ProjectContext& projectContext,
-                                 const std::string_view scriptAssetID,
+                                 Quiet::Core::UUID scriptAssetID,
                                  std::filesystem::path& outSourcePath,
                                  std::string& outError)
     {
@@ -58,7 +58,7 @@ namespace
 namespace Quiet::Scripting
 {
     bool ResolveScriptSourcePath(const Project::ProjectContext &projectContext,
-                                 std::string_view scriptAssetID,
+                                 Core::UUID scriptAssetID,
                                  std::filesystem::path &outSourcePath,
                                  std::string &outError)
     {
@@ -95,7 +95,7 @@ namespace Quiet::Scripting
     }
 
     bool DiscoverScriptProperties(const Project::ProjectContext& projectContext,
-                                  const std::string_view scriptAssetID,
+                                  Core::UUID scriptAssetID,
                                   std::vector<Scene::ScriptProperty>& outProperties,
                                   std::string& outError)
     {
@@ -478,7 +478,7 @@ namespace Quiet::Scripting
     }
 
     bool GetScriptSourceWriteTime(const Project::ProjectContext &projectContext,
-                                  std::string_view scriptAssetID,
+                                  Core::UUID scriptAssetID,
                                   std::filesystem::file_time_type &outWriteTime,
                                   std::string &outError)
     {

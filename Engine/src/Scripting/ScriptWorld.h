@@ -100,7 +100,7 @@ namespace Quiet::Scripting
         void Initialize();
         void Shutdown();
 
-        bool ResolveScriptPath(std::string_view scriptAssetID, std::filesystem::path& outPath, std::string& outError) const;
+        bool ResolveScriptPath(Core::UUID scriptAssetID, std::filesystem::path& outPath, std::string& outError) const;
 
         bool CreateInstance(const Scene::Actor& actor, bool recordFailure = true);
         void StartInstance(std::size_t index);

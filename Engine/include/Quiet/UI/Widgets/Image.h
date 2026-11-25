@@ -26,8 +26,8 @@ namespace Quiet::UI
          * @note An empty ID clears the image.
          *       Does not load a resource or validate its availability.
          */
-        void SetTextureID(std::string textureID);
-        [[nodiscard]] const std::string& GetTextureID() const noexcept { return m_TextureID; }
+        void SetTextureID(Core::UUID textureID);
+        [[nodiscard]] Core::UUID GetTextureID() const noexcept { return m_TextureID; }
 
         /**
          * @brief Sets straight-alpha linear RGBA tint.
@@ -45,7 +45,7 @@ namespace Quiet::UI
         void OnPaint(PaintList& commands) const override;
 
     private:
-        std::string m_TextureID;
+        Core::UUID m_TextureID{};
         glm::vec4 m_Tint{1.0f};
     };
 }

@@ -51,7 +51,7 @@ namespace Quiet::Audio
         {
             const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
 
-            if (source.AudioAssetID.empty()) continue;
+            if (!source.AudioAssetID.IsValid()) continue;
             if (!CreateSourceBinding(registry, entity)) continue;
 
             if (source.Spatial) ++spatialCount;
@@ -158,7 +158,7 @@ namespace Quiet::Audio
         if (stopResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to prepare runtime audio source '{}' for actor '{}' for playback: {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
             return false;
         }
 
@@ -168,7 +168,7 @@ namespace Quiet::Audio
         if (seekResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to rewind runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
             return false;
         }
 
@@ -176,7 +176,7 @@ namespace Quiet::Audio
         if (startResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to play runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(startResult));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(startResult));
             return false;
         }
         return true;
@@ -191,7 +191,7 @@ namespace Quiet::Audio
         if (stopResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to stop runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(stopResult));
             return false;
         }
 
@@ -203,7 +203,7 @@ namespace Quiet::Audio
         if (seekResult != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to rewind stopped runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(seekResult));
             return false;
         }
         return true;
@@ -221,7 +221,7 @@ namespace Quiet::Audio
         if (result != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to pause runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(result));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(result));
             return false;
         }
 
@@ -239,7 +239,7 @@ namespace Quiet::Audio
         if (result != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to resume runtime audio source '{}' for actor '{}': {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), ma_result_description(result));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), ma_result_description(result));
             return false;
         }
 
@@ -259,7 +259,7 @@ namespace Quiet::Audio
         if (result != MA_SUCCESS)
         {
             QUIET_CORE_WARN("Failed to seek runtime audio source '{}' for actor '{}' to {:.3f}s: {}",
-                binding->AudioAssetID, Core::UUIDToString(binding->ActorID), seconds, ma_result_description(result));
+                Core::UUIDToString(binding->AudioAssetID), Core::UUIDToString(binding->ActorID), seconds, ma_result_description(result));
             return false;
         }
         return true;
@@ -314,12 +314,13 @@ namespace Quiet::Audio
         const auto& transform = registry.get<Scene::TransformComponent>(entity).WorldTransform;
         const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
 
-        if (source.AudioAssetID.empty()) return false;
+        if (!source.AudioAssetID.IsValid()) return false;
         const auto asset = m_AudioSubsystem.GetLibrary().Get(source.AudioAssetID);
 
         if (!asset.has_value())
         {
-            QUIET_CORE_WARN("Cannot create runtime audio source for actor '{}': audio asset '{}' is not loaded.", Core::UUIDToString(identity.ID), source.AudioAssetID);
+            QUIET_CORE_WARN("Cannot create runtime audio source for actor '{}': audio asset '{}' is not loaded.",
+                Core::UUIDToString(identity.ID), Core::UUIDToString(source.AudioAssetID));
             return false;
         }
 
@@ -337,7 +338,8 @@ namespace Quiet::Audio
         const ma_result initializedResult = ma_sound_init_from_file(m_AudioSubsystem.m_Engine.get(), path.c_str(), flags, soundGroup, nullptr, sound.get());
         if (initializedResult != MA_SUCCESS)
         {
-            QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(initializedResult));
+            QUIET_CORE_WARN("Failed to initialize runtime audio source '{}' for actor '{}': {}",
+                Core::UUIDToString(source.AudioAssetID), Core::UUIDToString(identity.ID), ma_result_description(initializedResult));
             return false;
         }
 
@@ -388,7 +390,8 @@ namespace Quiet::Audio
             {
                 ma_sound_uninit(sound.get());
 
-                QUIET_CORE_WARN("Failed to start runtime audio source '{}' for actor '{}': {}", source.AudioAssetID, Core::UUIDToString(identity.ID), ma_result_description(startResult));
+                QUIET_CORE_WARN("Failed to start runtime audio source '{}' for actor '{}': {}",
+                    Core::UUIDToString(source.AudioAssetID), Core::UUIDToString(identity.ID), ma_result_description(startResult));
                 return false;
             }
         }
@@ -445,7 +448,7 @@ namespace Quiet::Audio
                 const auto* source = registry.try_get<Scene::AudioSourceComponent>(binding.Entity);
                 removeBinding =
                     source == nullptr ||
-                    source->AudioAssetID.empty() ||
+                    !source->AudioAssetID.IsValid() ||
                     source->AudioAssetID != binding.AudioAssetID ||
                     source->Bus != binding.Bus;
             }
@@ -467,7 +470,7 @@ namespace Quiet::Audio
             if (FindSourceBinding(entity)) continue;
 
             const auto& source = registry.get<Scene::AudioSourceComponent>(entity);
-            if (source.AudioAssetID.empty()) continue;
+            if (!source.AudioAssetID.IsValid()) continue;
 
             // Skip unresolved IDs without attempting backend initialization every frame.
             if (!m_AudioSubsystem.GetLibrary().Has(source.AudioAssetID)) continue;

@@ -9,6 +9,8 @@
 #include <glm/geometric.hpp>
 #include <glm/vec2.hpp>
 
+#include "Quiet/Project/BuiltInAssetIDs.h"
+
 namespace
 {
     constexpr float kPi = 3.14159265358979323846f;
@@ -154,41 +156,39 @@ namespace
 
 namespace Quiet::Renderer::Vulkan
 {
-    std::vector<std::string> MeshPrimitives::GetBuiltInAssetIDs()
+    std::vector<Core::UUID> MeshPrimitives::GetBuiltInAssetIDs()
     {
+        using namespace Project::BuiltInAssetIDs;
+
         return {
-            "Triangle",
-            "Quad",
-            "Plane",
-            "Cube",
-            "Pyramid",
-            "Sphere",
-            "Cylinder"
+            Triangle,
+            Quad,
+            Plane,
+            Cube,
+            Pyramid,
+            Sphere,
+            Cylinder
         };
     }
 
-    bool MeshPrimitives::IsBuiltInAssetID(std::string_view assetID)
+    bool MeshPrimitives::IsBuiltInAssetID(const Core::UUID assetID)
     {
         const auto ids = GetBuiltInAssetIDs();
-        return std::any_of(
-             ids.begin(),
-             ids.end(),
-             [&](const std::string& id)
-             {
-                 return id == assetID;
-             }
-         );
+        return std::find(ids.begin(), ids.end(), assetID) != ids.end();
     }
 
-    std::optional<MeshPrimitive> MeshPrimitives::Create(const std::string_view assetID)
+    std::optional<MeshPrimitive> MeshPrimitives::Create(const Core::UUID assetID)
     {
-        if (assetID == "Triangle")  return CreateTriangle();
-        if (assetID == "Quad")      return CreateQuad();
-        if (assetID == "Plane")     return CreatePlane();
-        if (assetID == "Cube")      return CreateCube();
-        if (assetID == "Pyramid")   return CreatePyramid();
-        if (assetID == "Sphere")    return CreateSphere();
-        if (assetID == "Cylinder")  return CreateCylinder();
+        using namespace Project::BuiltInAssetIDs;
+
+        if (assetID == Triangle)    return CreateTriangle();
+        if (assetID == Quad)        return CreateQuad();
+        if (assetID == Plane)       return CreatePlane();
+        if (assetID == Cube)        return CreateCube();
+        if (assetID == Pyramid)     return CreatePyramid();
+        if (assetID == Sphere)      return CreateSphere();
+        if (assetID == Cylinder)    return CreateCylinder();
+
         return std::nullopt;
     }
 

@@ -190,12 +190,12 @@ namespace Quiet::Editor
 
     #pragma region Static Meshes
 
-        bool CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, const std::string& meshResourceID, const Project::ProjectContext& projectContext,
+        bool CreateStaticMeshActor(Scene::Scene& scene, const std::string& actorName, Core::UUID meshResourceID, const Project::ProjectContext& projectContext,
                                    const Renderer::Vulkan::MeshLibrary& meshLibrary, const glm::vec3& position = glm::vec3(0.0f));
         bool AddStaticMesh(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool RemoveStaticMesh(Scene::Scene& scene, Core::UUID actorID);
-        bool PasteStaticMeshValues(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, bool visible, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
-        bool SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, const std::string& meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
+        bool PasteStaticMeshValues(Scene::Scene& scene, Core::UUID actorID, Core::UUID meshResourceID, bool visible, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
+        bool SetStaticMeshResource(Scene::Scene& scene, Core::UUID actorID, Core::UUID meshResourceID, const Project::ProjectContext& projectContext, const Renderer::Vulkan::MeshLibrary& meshLibrary);
         bool SetStaticMeshVisible(Scene::Scene& scene, Core::UUID actorID, bool visible);
 
     #pragma endregion
@@ -207,9 +207,9 @@ namespace Quiet::Editor
         bool ResetMaterial(Scene::Scene& scene, Core::UUID actorID);
         bool PasteMaterialValues(Scene::Scene& scene, Core::UUID actorID, const Scene::MaterialComponent& material, const std::vector<Scene::MaterialComponent>& materialSlots, const Project::ProjectContext& projectContext);
         bool SetMaterialBaseColor(Scene::Scene& scene, Core::UUID actorID, const glm::vec4& baseColor);
-        bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& textureAssetID);
+        bool SetMaterialBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, Core::UUID textureAssetID);
         bool SetStaticMeshMaterialSlotBaseColor(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const glm::vec4& baseColor);
-        bool SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, const std::string& textureAssetID);
+        bool SetStaticMeshMaterialSlotBaseColorTextureAsset(Scene::Scene& scene, Core::UUID actorID, std::uint32_t slotIndex, Core::UUID textureAssetID);
 
     #pragma endregion
 
@@ -283,7 +283,7 @@ namespace Quiet::Editor
         bool ResetScript(Scene::Scene& scene, Core::UUID actorID);
         bool PasteScriptValues(Scene::Scene& scene, Core::UUID actorID, const Scene::ScriptComponent& script, const Project::ProjectContext& projectContext);
 
-        bool SetScriptAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& scriptAssetID, const Project::ProjectContext& projectContext);
+        bool SetScriptAsset(Scene::Scene& scene, Core::UUID actorID, Core::UUID scriptAssetID, const Project::ProjectContext& projectContext);
 
         bool RefreshScriptProperties(Scene::Scene& scene, Core::UUID actorID, const Project::ProjectContext& projectContext);
         bool SetScriptPropertyValue(Scene::Scene& scene, Core::UUID actorID, const Scene::ScriptProperty& property);
@@ -298,7 +298,7 @@ namespace Quiet::Editor
         bool ResetAudioSource(Scene::Scene& scene, Core::UUID actorID);
         bool PasteAudioSourceValues(Scene::Scene& scene, Core::UUID actorID, const Scene::AudioSourceComponent& audioSource, const Project::ProjectContext& projectContext);
 
-        bool SetAudioSourceAsset(Scene::Scene& scene, Core::UUID actorID, const std::string& audioAssetID, const Project::ProjectContext& projectContext);
+        bool SetAudioSourceAsset(Scene::Scene& scene, Core::UUID actorID, Core::UUID audioAssetID, const Project::ProjectContext& projectContext);
         bool SetAudioSourceBus(Scene::Scene& scene, Core::UUID actorID, Audio::AudioBus bus);
         bool SetAudioSourceVolume(Scene::Scene& scene, Core::UUID actorID, float volume);
         bool SetAudioSourcePitch(Scene::Scene& scene, Core::UUID actorID, float pitch);

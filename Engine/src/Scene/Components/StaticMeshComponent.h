@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "Quiet/Core/UUID.h"
 #include "Scene/Components/MaterialComponent.h"
 
 namespace Quiet::Renderer::Vulkan
@@ -16,7 +17,7 @@ namespace Quiet::Scene
 {
     struct StaticMeshComponent
     {
-        std::string MeshResourceID;
+        Core::UUID MeshResourceID{};
         std::shared_ptr<Renderer::Vulkan::StaticMesh> Mesh;
         std::vector<MaterialComponent> MaterialSlots;
 

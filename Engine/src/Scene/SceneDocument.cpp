@@ -6,6 +6,9 @@
 #include "Scene/Components/RotatorComponent.h"
 #include "Scene/Components/StaticMeshComponent.h"
 
+#include "Quiet/Core/UUID.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
+
 namespace Quiet::Scene
 {
     void SceneDocument::CreateDefault(Scene& scene, const Renderer::Vulkan::MeshLibrary& meshLibrary)
@@ -19,8 +22,8 @@ namespace Quiet::Scene
         centerTransform.WorldTransform.Scale = { 1.0f, 1.0f, 1.0f };
         center.AddComponent<RotatorComponent>(RotatorComponent{ 0.0f });
         auto& centerMesh = center.AddComponent<StaticMeshComponent>();
-        centerMesh.MeshResourceID = "Cube";
-        centerMesh.Mesh = meshLibrary.Get("Cube");
+        centerMesh.MeshResourceID = Project::BuiltInAssetIDs::Cube;
+        centerMesh.Mesh = meshLibrary.Get(centerMesh.MeshResourceID);
         centerMesh.Visible = true;
 
         // Camera

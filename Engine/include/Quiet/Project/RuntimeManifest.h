@@ -5,20 +5,22 @@
 #include <vector>
 
 #include "AssetType.h"
+#include "Quiet/Core/UUID.h"
 
 namespace Quiet::Project
 {
-    inline constexpr int CurrentRuntimeManifestVersion = 1;
+    inline constexpr int CurrentRuntimeManifestVersion = 2;
 
     struct RuntimeAssetRecord
     {
-        std::string ID;
+        Core::UUID ID{};
+        std::string Name;
         AssetType Type = AssetType::Unknown;
         std::string Path;
 
         [[nodiscard]] bool IsValid() const
         {
-            return !ID.empty() && Type != AssetType::Unknown && !Path.empty();
+            return ID.IsValid() && !Name.empty() && Type != AssetType::Unknown && !Path.empty();
         }
     };
 

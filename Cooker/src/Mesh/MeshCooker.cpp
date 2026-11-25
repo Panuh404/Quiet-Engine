@@ -481,17 +481,18 @@ namespace Quiet::Cooker
 
         for (const Project::AssetRecord& record : registry.Records)
         {
+            const std::string assetIDText = Core::UUIDToString(record.ID);
             if (record.BuiltIn || record.Type != Project::AssetType::Mesh) continue;
 
             const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
             if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
             {
-                std::cerr << "Mesh '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                std::cerr << "Mesh '" << assetIDText << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
             }
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Meshes" / (record.ID + ".qmesh");
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Meshes" / (assetIDText + ".qmesh");
             const std::filesystem::path cookedPath = outputRoot / runtimePath;
 
             std::string sourceHash;
@@ -499,7 +500,7 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(sourcePath, sourceHash, sourceHashError))
             {
-                std::cerr << "Failed to fingerprint mesh '" << record.ID << "': " << sourceHashError << '\n';
+                std::cerr << "Failed to fingerprint mesh '" << assetIDText << "': " << sourceHashError << '\n';
                 success = false;
                 continue;
             }
@@ -541,6 +542,7 @@ namespace Quiet::Cooker
                             {
                                 Project::RuntimeAssetRecord runtimeRecord{};
                                 runtimeRecord.ID = record.ID;
+                                runtimeRecord.Name = record.Name;
                                 runtimeRecord.Type = Project::AssetType::Mesh;
                                 runtimeRecord.Path = runtimePathString;
 
@@ -557,7 +559,7 @@ namespace Quiet::Cooker
                                 }
 
                                 std::cout
-                                    << "Mesh: " << record.ID << '\n'
+                                    << "Mesh: " << assetIDText << '\n'
                                     << "  Source:      " << sourcePath.filename().string() << '\n'
                                     << "  Cook:        up to date\n"
                                     << "  Vertices:    " << cachedMesh.Vertices.size() << '\n'
@@ -570,7 +572,7 @@ namespace Quiet::Cooker
                                 continue;
                             }
 
-                            std::cerr << "Cached QMesh for '" << record.ID << "' failed validation";
+                            std::cerr << "Cached QMesh for '" << assetIDText << "' failed validation";
                             if (!cachedMeshError.empty())
                             {
                                 std::cerr << ": " << cachedMeshError;
@@ -579,7 +581,7 @@ namespace Quiet::Cooker
                         }
                         else if (!cookedHashSucceeded)
                         {
-                            std::cerr << "Could not fingerprint cached QMesh for '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                            std::cerr << "Could not fingerprint cached QMesh for '" << assetIDText << "': " << cookedHashError << ". Recooking.\n";
                         }
                     }
                 }
@@ -588,7 +590,7 @@ namespace Quiet::Cooker
             Assets::MeshImportResult mesh = Assets::MeshImporter::LoadFromFile(sourcePath);
             if (!mesh.Succeeded())
             {
-                std::cerr << "Failed to import mesh '" << record.ID << "': " << mesh.Error << '\n';
+                std::cerr << "Failed to import mesh '" << assetIDText << "': " << mesh.Error << '\n';
                 success = false;
                 continue;
             }
@@ -598,7 +600,7 @@ namespace Quiet::Cooker
 
             if (!OptimizeMeshForCooking(mesh, stats, optimizationError))
             {
-                std::cerr << "Failed to optimize mesh '" << record.ID << "': " << optimizationError << '\n';
+                std::cerr << "Failed to optimize mesh '" << assetIDText << "': " << optimizationError << '\n';
                 success = false;
                 continue;
             }
@@ -608,7 +610,7 @@ namespace Quiet::Cooker
 
             if (!WriteQMesh(cookedPath, mesh, writeStats, writeError))
             {
-                std::cerr << "Failed to write mesh '" << record.ID << "': " << writeError << '\n';
+                std::cerr << "Failed to write mesh '" << assetIDText << "': " << writeError << '\n';
                 success = false;
                 continue;
             }
@@ -618,7 +620,7 @@ namespace Quiet::Cooker
 
             if (!ValidateQMeshRoundTrip(cookedPath, mesh, quantizationStats, validationError))
             {
-                std::cerr << "Failed to validate mesh '" << record.ID << "': " << validationError << '\n';
+                std::cerr << "Failed to validate mesh '" << assetIDText << "': " << validationError << '\n';
                 success = false;
                 continue;
             }
@@ -629,11 +631,12 @@ namespace Quiet::Cooker
             const bool cookedHashSucceeded = ComputeFileHash(cookedPath, cookedHash, cookedHashError);
             if (!cookedHashSucceeded)
             {
-                std::cerr << "Warning: mesh '" << record.ID << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
+                std::cerr << "Warning: mesh '" << assetIDText << "' was cooked successfully but could not be cached: " << cookedHashError << '\n';
             }
 
             Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
+            runtimeRecord.Name = record.Name;
             runtimeRecord.Type = Project::AssetType::Mesh;
             runtimeRecord.Path = runtimePath.generic_string();
             outRuntimeAssets.push_back(std::move(runtimeRecord));
@@ -651,7 +654,7 @@ namespace Quiet::Cooker
             }
 
             std::cout
-                << "Mesh: " << record.ID << '\n'
+                << "Mesh: " << assetIDText << '\n'
                 << "  Vertices:  " << stats.SourceVertices << " -> " << stats.OptimizedVertices << '\n'
                 << "  Triangles: " << stats.Triangles << '\n'
                 << std::fixed

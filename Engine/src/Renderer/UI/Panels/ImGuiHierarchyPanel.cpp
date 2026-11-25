@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "Quiet/Core/UUID.h"
 #include "Quiet/Editor/EditorActionID.h"
 #include "Quiet/Editor/EditorActions.h"
 #include "Quiet/Editor/EditorCommands.h"
@@ -738,10 +739,12 @@ namespace
     {
         if (!QUI::EditorBeginMenu("Primitive Mesh")) return;
 
-        for (const std::string& primitiveID : Quiet::Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
+        for (const Quiet::Core::UUID primitiveUUID : Quiet::Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
         {
+            const std::string primitiveID = Quiet::Core::UUIDToString(primitiveUUID);
             const bool loaded = meshLibrary.Has(primitiveID);
-            const std::string label = primitiveID + " Actor";
+            const auto* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveID);
+            const std::string label = (record ? record->Name : primitiveID) + " Actor";
 
             if (QUI::EditorMenuItem(label.c_str(), nullptr, false, loaded))
             {

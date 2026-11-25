@@ -30,7 +30,7 @@ namespace Quiet::UI
 
     struct UIDocumentImage
     {
-        std::string TextureID;
+        Core::UUID TextureID{};
     };
 
     struct UIDocumentButton {};

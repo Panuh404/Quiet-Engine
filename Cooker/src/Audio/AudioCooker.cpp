@@ -129,12 +129,13 @@ namespace Quiet::Cooker
 
         for (const Project::AssetRecord& record : registry.Records)
         {
+            const std::string assetIDText = Core::UUIDToString(record.ID);
             if (record.BuiltIn || record.Type != Project::AssetType::Audio) continue;
 
             const std::filesystem::path sourcePath = ResolveAssetPath(projectRoot, record);
             if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
             {
-                std::cerr << "Audio '" << record.ID << "' points to a missing source file: " << sourcePath << '\n';
+                std::cerr << "Audio '" << assetIDText << "' points to a missing source file: " << sourcePath << '\n';
                 success = false;
                 continue;
             }
@@ -142,12 +143,12 @@ namespace Quiet::Cooker
             const std::string extension = NormalizeAudioExtension(sourcePath);
             if (extension.empty())
             {
-                std::cerr << "Audio '" << record.ID << "' uses an unsupported format: " << sourcePath.extension().string() << '\n';
+                std::cerr << "Audio '" << assetIDText << "' uses an unsupported format: " << sourcePath.extension().string() << '\n';
                 success = false;
                 continue;
             }
 
-            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Audio" / (record.ID + extension);
+            const std::filesystem::path runtimePath = std::filesystem::path("Content") / "Audio" / (assetIDText + extension);
             const std::filesystem::path cookedPath = outputRoot / runtimePath;
 
             std::string sourceHash;
@@ -155,7 +156,7 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(sourcePath, sourceHash, sourceHashError))
             {
-                std::cerr << "Failed to fingerprint audio '" << record.ID << "': " << sourceHashError << '\n';
+                std::cerr << "Failed to fingerprint audio '" << assetIDText << "': " << sourceHashError << '\n';
                 success = false;
                 continue;
             }
@@ -193,6 +194,7 @@ namespace Quiet::Cooker
                             {
                                 Project::RuntimeAssetRecord runtimeRecord{};
                                 runtimeRecord.ID = record.ID;
+                                runtimeRecord.Name = record.Name;
                                 runtimeRecord.Type = Project::AssetType::Audio;
                                 runtimeRecord.Path = runtimePathString;
 
@@ -200,7 +202,7 @@ namespace Quiet::Cooker
                                 outNextCookCache.Assets[record.ID] = cached;
 
                                 std::cout
-                                    << "Audio: " << record.ID << '\n'
+                                    << "Audio: " << assetIDText << '\n'
                                     << "  Source:      " << sourcePath.filename().string() << '\n'
                                     << "  Cook:        up to date\n"
                                     << "  Format:      " << stats.Encoding << '\n'
@@ -213,11 +215,11 @@ namespace Quiet::Cooker
                                 continue;
                             }
 
-                            std::cerr << "Cached audio asset '" << record.ID << "' failed validation: " << inspectError << ". Recooking.\n";
+                            std::cerr << "Cached audio asset '" << assetIDText << "' failed validation: " << inspectError << ". Recooking.\n";
                         }
                         else if (!cookedHashSucceeded)
                         {
-                            std::cerr << "Could not fingerprint cached audio '" << record.ID << "': " << cookedHashError << ". Recooking.\n";
+                            std::cerr << "Could not fingerprint cached audio '" << assetIDText << "': " << cookedHashError << ". Recooking.\n";
                         }
                     }
                 }
@@ -228,7 +230,7 @@ namespace Quiet::Cooker
 
             if (!InspectAudioFile(sourcePath, sourceStats, inspectError))
             {
-                std::cerr << "Failed to validate audio '" << record.ID << "': " << inspectError << '\n';
+                std::cerr << "Failed to validate audio '" << assetIDText << "': " << inspectError << '\n';
                 success = false;
                 continue;
             }
@@ -237,7 +239,7 @@ namespace Quiet::Cooker
             std::filesystem::copy_file(sourcePath, cookedPath, std::filesystem::copy_options::overwrite_existing, copyError);
             if (copyError)
             {
-                std::cerr << "Failed to package audio '" << record.ID << "': " << copyError.message() << '\n';
+                std::cerr << "Failed to package audio '" << assetIDText << "': " << copyError.message() << '\n';
                 success = false;
                 continue;
             }
@@ -247,14 +249,14 @@ namespace Quiet::Cooker
 
             if (!ComputeFileHash(cookedPath, cookedHash, cookedHashError))
             {
-                std::cerr << "Failed to fingerprint packaged audio '" << record.ID << "': " << cookedHashError << '\n';
+                std::cerr << "Failed to fingerprint packaged audio '" << assetIDText << "': " << cookedHashError << '\n';
                 success = false;
                 continue;
             }
 
             if (cookedHash != sourceHash)
             {
-                std::cerr << "Packaged audio '" << record.ID << "' changed during copy.\n";
+                std::cerr << "Packaged audio '" << assetIDText << "' changed during copy.\n";
                 success = false;
                 continue;
             }
@@ -264,13 +266,14 @@ namespace Quiet::Cooker
 
             if (!InspectAudioFile(cookedPath, cookedStats, cookedInspectError))
             {
-                std::cerr << "Packaged audio '" << record.ID << "' failed validation: " << cookedInspectError << '\n';
+                std::cerr << "Packaged audio '" << assetIDText << "' failed validation: " << cookedInspectError << '\n';
                 success = false;
                 continue;
             }
 
             Project::RuntimeAssetRecord runtimeRecord{};
             runtimeRecord.ID = record.ID;
+            runtimeRecord.Name = record.Name;
             runtimeRecord.Type = Project::AssetType::Audio;
             runtimeRecord.Path = runtimePath.generic_string();
 
@@ -286,7 +289,7 @@ namespace Quiet::Cooker
             outNextCookCache.Assets[record.ID] = std::move(cacheEntry);
 
             std::cout
-                << "Audio: " << record.ID << '\n'
+                << "Audio: " << assetIDText << '\n'
                 << "  Source:      " << sourcePath.filename().string() << '\n'
                 << "  Format:      " << cookedStats.Encoding << '\n'
                 << "  Channels:    " << cookedStats.Channels << '\n'

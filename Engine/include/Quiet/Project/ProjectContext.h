@@ -44,10 +44,11 @@ namespace Quiet::Project
         [[nodiscard]] std::filesystem::path GetAssetRegistryPath() const { return m_RootPath / "AssetRegistry.json"; }
         [[nodiscard]] const AssetRegistry& GetAssetRegistry() const { return m_AssetRegistry; }
         [[nodiscard]] AssetRegistry& GetAssetRegistry() { return m_AssetRegistry; }
-        [[nodiscard]] std::vector<std::string> EnumerateMeshAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh); }
-        [[nodiscard]] std::vector<std::string> EnumerateTextureAssetIDs() const {return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Texture); }
-        [[nodiscard]] std::vector<std::string> EnumerateAudioAssetIDs() const {return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Audio); }
-        [[nodiscard]] std::vector<std::string> EnumerateScriptAssetIDs() const {return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Script); }
+
+        [[nodiscard]] std::vector<Core::UUID> EnumerateMeshAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Mesh); }
+        [[nodiscard]] std::vector<Core::UUID> EnumerateTextureAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Texture); }
+        [[nodiscard]] std::vector<Core::UUID> EnumerateAudioAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Audio); }
+        [[nodiscard]] std::vector<Core::UUID> EnumerateScriptAssetIDs() const { return AssetRegistryIO::GetAssetIDsByType(m_AssetRegistry, AssetType::Script); }
 
         void SetActiveScenePath(std::filesystem::path path)
         {
@@ -117,14 +118,15 @@ namespace Quiet::Project
             return AssetRegistryIO::SaveToFile(GetAssetRegistryPath(), m_AssetRegistry);
         }
 
-        [[nodiscard]] bool RegisterMeshAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
-        [[nodiscard]] bool RegisterTextureAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
-        [[nodiscard]] bool RegisterAudioAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
-        [[nodiscard]] bool RegisterScriptAsset(std::string assetID, std::filesystem::path assetPath, bool builtIn = false);
-        [[nodiscard]] bool RemoveAssetByID(std::string_view assetID);
-        [[nodiscard]] bool RemoveAssetsByID(const std::vector<std::string>& assetIDs, std::string& outErrorMessage);
-        [[nodiscard]] bool DeleteAssetsFromProject(const std::vector<std::string>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage);
-        [[nodiscard]] bool RenameAssetFile(std::string_view assetID, std::string newBaseName, std::filesystem::path& outRenamedAssetPath, std::string& outErrorMessage);
+        [[nodiscard]] bool RegisterMeshAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+        [[nodiscard]] bool RegisterTextureAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+        [[nodiscard]] bool RegisterAudioAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+        [[nodiscard]] bool RegisterScriptAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+
+        [[nodiscard]] bool RemoveAssetByID(Core::UUID assetID);
+        [[nodiscard]] bool RemoveAssetsByID(const std::vector<Core::UUID>& assetIDs, std::string& outErrorMessage);
+        [[nodiscard]] bool DeleteAssetsFromProject(const std::vector<Core::UUID>& assetIDs, std::string& outErrorMessage, std::string& outWarningMessage);
+        [[nodiscard]] bool RenameAssetFile(Core::UUID assetID, std::string newBaseName, std::filesystem::path& outRenamedAssetPath, std::string& outErrorMessage);
 
         // Folders
         [[nodiscard]] bool CreateAssetFolder(
@@ -141,12 +143,12 @@ namespace Quiet::Project
 
         [[nodiscard]] bool DeleteAssetFolderFromProject(
             const std::filesystem::path& folder,
-            std::vector<std::string>& outRemovedAssetIDs,
+            std::vector<Core::UUID>& outRemovedAssetIDs,
             std::string& outErrorMessage,
             std::string& outWarningMessage);
 
         [[nodiscard]] bool MoveAssetToFolder(
-            std::string_view assetID,
+            Core::UUID assetID,
             const std::filesystem::path& destinationFolder,
             std::filesystem::path& outMovedAssetPath,
             std::string& outErrorMessage);
@@ -167,6 +169,7 @@ namespace Quiet::Project
         [[nodiscard]] std::filesystem::path NormalizeAssetPath(std::filesystem::path assetPath) const;
 
     private:
+        [[nodiscard]] bool RegisterAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName, AssetType type);
         void NormalizeAssetRegistryPaths();
 
         std::filesystem::path m_RootPath;

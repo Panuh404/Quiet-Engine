@@ -10,6 +10,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Assets
 {
     struct QTextureData;
@@ -43,48 +45,48 @@ namespace Quiet::Renderer::Vulkan
     class TextureLibrary
     {
     public:
-        void CreateTexture2D(const std::string& name,
+        void CreateTexture2D(Core::UUID assetID,
                              const PhysicalDevice& physicalDevice,
                              const LogicalDevice& logicalDevice,
                              const GraphicsCommands& graphicsCommands,
                              const Assets::TexturePixelData& pixelData,
                              TextureStats stats);
 
-        void ReplaceTexture2D(const std::string& name,
+        void ReplaceTexture2D(Core::UUID assetID,
                               const PhysicalDevice& physicalDevice,
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
                               const Assets::TexturePixelData& pixelData,
                               TextureStats stats);
 
-        void CreateTexture2D(const std::string& name,
+        void CreateTexture2D(Core::UUID assetID,
                              const PhysicalDevice& physicalDevice,
                              const LogicalDevice& logicalDevice,
                              const GraphicsCommands& graphicsCommands,
                              const Assets::QTextureData& textureData,
                              TextureStats stats);
 
-        void ReplaceTexture2D(const std::string& name,
+        void ReplaceTexture2D(Core::UUID assetID,
                               const PhysicalDevice& physicalDevice,
                               const LogicalDevice& logicalDevice,
                               const GraphicsCommands& graphicsCommands,
                               const Assets::QTextureData& textureData,
                               TextureStats stats);
 
-        void RegisterTexture(const std::string& name, TextureStats stats);
-        void ReplaceTexture(const std::string& name, TextureStats stats);
+        void RegisterTexture(Core::UUID assetID, TextureStats stats);
+        void ReplaceTexture(Core::UUID assetID, TextureStats stats);
 
-        [[nodiscard]] std::shared_ptr<Texture2D> TryGet(const std::string& name) const;
-        [[nodiscard]] std::optional<VkDescriptorImageInfo> TryGetDescriptorImageInfo(const std::string& name) const;
-        [[nodiscard]] std::optional<TextureStats> GetStats(const std::string& name) const;
-        [[nodiscard]] std::vector<std::string> GetNames() const;
+        [[nodiscard]] std::shared_ptr<Texture2D> TryGet(Core::UUID assetID) const;
+        [[nodiscard]] std::optional<VkDescriptorImageInfo> TryGetDescriptorImageInfo(Core::UUID assetID) const;
+        [[nodiscard]] std::optional<TextureStats> GetStats(Core::UUID assetID) const;
+        [[nodiscard]] std::vector<Core::UUID> GetAssetIDs() const;
         [[nodiscard]] std::size_t GetCount() const { return m_Stats.size(); }
-        [[nodiscard]] bool Has(const std::string& name) const;
+        [[nodiscard]] bool Has(Core::UUID assetID) const;
 
         void Clear();
 
     private:
-        std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_Textures;
-        std::unordered_map<std::string, TextureStats> m_Stats;
+        std::unordered_map<Core::UUID, std::shared_ptr<Texture2D>> m_Textures;
+        std::unordered_map<Core::UUID, TextureStats> m_Stats;
     };
 }
