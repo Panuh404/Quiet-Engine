@@ -398,7 +398,7 @@ namespace
         }
 
         visual.Accepted = true;
-        visual.Label = "Release to create " + record->ID + " actor";
+        visual.Label = "Release to create " + record->Name + " actor";
 
         const ImVec2 mousePosition = ImGui::GetMousePos();
         const Quiet::Editor::EditorViewportAssetDropRequest dropRequest{ record->ID, mousePosition.x, mousePosition.y };

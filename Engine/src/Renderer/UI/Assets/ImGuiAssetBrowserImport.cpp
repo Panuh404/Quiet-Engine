@@ -1,13 +1,12 @@
 #include "Renderer/UI/Assets/ImGuiAssetBrowserImport.h"
 
-#include <cctype>
 #include <filesystem>
 #include <string>
-#include <string_view>
 #include <system_error>
 #include <imgui.h>
 
 #include "Quiet/Project/AssetRegistry.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 #include "Renderer/UI/Assets/ImGuiAssetFileDialog.h"
 #include "Renderer/UI/ImGuiTheme.h"
@@ -15,41 +14,6 @@
 namespace
 {
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
-
-    std::string MakeSafeImportAssetID(std::string assetID)
-    {
-        static constexpr std::string_view invalidCharacters = "\\/:*?\"<>|";
-
-        for (char& character : assetID)
-        {
-            if (invalidCharacters.find(character) != std::string_view::npos)
-            {
-                character = '_';
-            }
-        }
-
-        const auto isSpace = [](const unsigned char character)
-        {
-            return std::isspace(character) != 0;
-        };
-
-        while (!assetID.empty() && isSpace(static_cast<unsigned char>(assetID.front())))
-        {
-            assetID.erase(assetID.begin());
-        }
-
-        while (!assetID.empty() && isSpace(static_cast<unsigned char>(assetID.back())))
-        {
-            assetID.pop_back();
-        }
-
-        if (assetID.empty() || assetID == "." || assetID == "..")
-        {
-            return "Asset";
-        }
-
-        return assetID;
-    }
 
     std::filesystem::path ResolveImportSourcePath(const Quiet::Project::ProjectContext& projectContext, const std::string& sourcePath)
     {
@@ -87,25 +51,13 @@ namespace
         Quiet::Project::ProjectContext& projectContext,
         Quiet::Editor::EditorState& editorState,
         const std::string& currentAssetFolder,
-        const std::string& assetID,
+        const std::string& assetName,
         const std::string& sourcePathText,
         const Quiet::Project::AssetType assetType,
         std::string& errorMessage)
     {
         namespace Assets = Quiet::Renderer::UI::Assets;
         namespace Project = Quiet::Project;
-
-        if (assetID.empty())
-        {
-            errorMessage = "Asset ID cannot be empty.";
-            return false;
-        }
-
-        if (Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID))
-        {
-            errorMessage = "An asset with ID '" + assetID + "' already exists. Use Reimport for an existing asset.";
-            return false;
-        }
 
         const std::filesystem::path sourcePath = ResolveImportSourcePath(projectContext, sourcePathText);
 
@@ -178,7 +130,7 @@ namespace
 
         if (const Project::AssetRecord* existingRecord = FindRegisteredAssetAtPath(projectContext, destinationPath))
         {
-            errorMessage = "The destination file is already registered as asset '" + existingRecord->ID + "'.";
+            errorMessage = "The destination file is already registered as asset '" + existingRecord->Name + "'.";
             return false;
         }
 
@@ -195,23 +147,31 @@ namespace
             }
         }
 
+        Quiet::Core::UUID assetID{};
+        do
+        {
+            assetID = Quiet::Core::UUIDGenerator::New();
+        }
+        while (assetID == Project::BuiltInAssetIDs::EditorTopbarLogo ||
+               Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID));
+
         bool registered = false;
         switch (assetType)
         {
             case Project::AssetType::Mesh:
-                registered = projectContext.RegisterMeshAsset(assetID, destinationPath, false);
+                registered = projectContext.RegisterMeshAsset(assetID, destinationPath, assetName);
                 break;
 
             case Project::AssetType::Texture:
-                registered = projectContext.RegisterTextureAsset(assetID, destinationPath, false);
+                registered = projectContext.RegisterTextureAsset(assetID, destinationPath, assetName);
                 break;
 
             case Project::AssetType::Audio:
-                registered = projectContext.RegisterAudioAsset(assetID, destinationPath, false);
+                registered = projectContext.RegisterAudioAsset(assetID, destinationPath, assetName);
                 break;
 
             case Project::AssetType::Script:
-                registered = projectContext.RegisterScriptAsset(assetID, destinationPath, false);
+                registered = projectContext.RegisterScriptAsset(assetID, destinationPath, assetName);
                 break;
 
             case Project::AssetType::Unknown:
@@ -240,7 +200,7 @@ namespace Quiet::Renderer::UI::Assets
     bool DrawRegisterAssetForm(Project::ProjectContext& projectContext,
                                Editor::EditorState& editorState,
                                const std::string& currentAssetFolder,
-                               std::array<char, 128>& assetIDBuffer,
+                               std::array<char, 128>& assetNameBuffer,
                                std::array<char, 1024>& assetPathBuffer,
                                std::string& errorMessage,
                                bool& reopenImportPopupAfterFileDialog)
@@ -276,10 +236,10 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, SZ::Px(ImVec2(10.0f, 7.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(10.0f, 8.0f)));
 
-        ImGui::TextUnformatted("Asset ID");
+        ImGui::TextUnformatted("Asset Name");
         ImGui::SetNextItemWidth(-FLT_MIN);
 
-        ImGui::InputTextWithHint("##AssetID", "Leave empty to auto-generate from filename", assetIDBuffer.data(), assetIDBuffer.size());
+        ImGui::InputTextWithHint("##AssetName", "Leave empty to use the filename", assetNameBuffer.data(), assetNameBuffer.size());
         ImGui::TextUnformatted("Source File");
 
         const float browseWidth = SZ::Px(96.0f);
@@ -349,28 +309,21 @@ namespace Quiet::Renderer::UI::Assets
         const bool canImport = hasPath && supportedType && fileExists && !destinationError && !destinationConflict;
         if (EditorButton("Import", SZ::Px(ImVec2(125.0f, 0.0f)), canImport))
         {
-            std::string assetID = assetIDBuffer.data();
-            if (assetID.empty())
-            {
-                assetID = ExtractFileNameNoExt(currentPath);
-            }
-            assetID = MakeSafeImportAssetID(assetID);
-
-            // Keep the UI synchronized with the actual ID Quiet will register.
-            CopyToBuffer(assetIDBuffer, assetID);
-
-            errorMessage.clear();
+            std::string assetName = assetNameBuffer.data();
+            if (assetName.find_first_not_of(" \t\r\n\f\v") == std::string::npos)
+                assetName = resolvedSourcePath.stem().string();
+            if (assetName.empty()) assetName = "Asset";
 
             if (ImportAssetIntoSelectedFolder(
                     projectContext,
                     editorState,
                     currentAssetFolder,
-                    assetID,
+                    assetName,
                     currentPath,
                     detectedType,
                     errorMessage))
             {
-                assetIDBuffer[0] = '\0';
+                assetNameBuffer[0] = '\0';
                 assetPathBuffer[0] = '\0';
                 imported = true;
             }
@@ -388,7 +341,7 @@ namespace Quiet::Renderer::UI::Assets
         Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         const std::string& currentAssetFolder,
-        std::array<char, 128>& assetIDBuffer,
+        std::array<char, 128>& assetNameBuffer,
         std::array<char, 1024>& assetPathBuffer,
         std::string& errorMessage,
         bool& reopenImportPopupAfterFileDialog)
@@ -402,7 +355,7 @@ namespace Quiet::Renderer::UI::Assets
             // performed while Browse is active.
             if (!importPopupOpen && !reopenImportPopupAfterFileDialog)
             {
-                assetIDBuffer.fill('\0');
+                assetNameBuffer.fill('\0');
                 assetPathBuffer.fill('\0');
                 errorMessage.clear();
             }
@@ -421,7 +374,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::Separator();
         ImGui::PopStyleColor();
 
-        if (DrawRegisterAssetForm(projectContext, editorState, currentAssetFolder, assetIDBuffer, assetPathBuffer, errorMessage, reopenImportPopupAfterFileDialog))
+        if (DrawRegisterAssetForm(projectContext, editorState, currentAssetFolder, assetNameBuffer, assetPathBuffer, errorMessage, reopenImportPopupAfterFileDialog))
         {
             editorState.AssetOperationFeedback.Set(
                 Editor::EditorFeedbackSeverity::Success,
@@ -437,7 +390,7 @@ namespace Quiet::Renderer::UI::Assets
 
         if (EditorButton("Cancel", SZ::Px(ImVec2(125.0f, 0.0f))))
         {
-            assetIDBuffer[0] = '\0';
+            assetNameBuffer[0] = '\0';
             assetPathBuffer[0] = '\0';
             errorMessage.clear();
             reopenImportPopupAfterFileDialog = false;

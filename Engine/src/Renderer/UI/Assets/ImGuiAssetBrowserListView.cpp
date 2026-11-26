@@ -34,8 +34,8 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID)
+        Quiet::Core::UUID& pendingDetailsAssetID,
+        Quiet::Core::UUID& pendingReimportAssetID)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
 
@@ -99,7 +99,7 @@ namespace Quiet::Renderer::UI::Assets
                         pendingNavigateFolder = folder.RelativePath;
                     }
 
-                    std::vector<std::string> droppedAssetIDs;
+                    std::vector<Quiet::Core::UUID> droppedAssetIDs;
                     if (AcceptAssetBrowserDrop(droppedAssetIDs))
                     {
                         assetMoveRequest.AssetIDs = std::move(droppedAssetIDs);
@@ -179,7 +179,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::TableSetColumnIndex(0);
                 {
                     const ImVec2 cellStart = ImGui::GetCursorScreenPos();
-                    const std::string hitID = "##AssetRowHit_Asset_" + record.ID;
+                    const std::string hitID = "##AssetRowHit_Asset_" + Quiet::Core::UUIDToString(record.ID);
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
                     {
@@ -233,7 +233,7 @@ namespace Quiet::Renderer::UI::Assets
                         }
                         else
                         {
-                            DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
+                            DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.Name);
                         }
                     }
                 }
@@ -242,7 +242,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::TableSetColumnIndex(1);
                 {
                     const ImVec2 cellStart = ImGui::GetCursorScreenPos();
-                    const std::string hitID = "##AssetRowHit_Type_" + record.ID;
+                    const std::string hitID = "##AssetRowHit_Type_" + Quiet::Core::UUIDToString(record.ID);
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
                     {
@@ -284,7 +284,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::TableSetColumnIndex(2);
                 {
                     const ImVec2 cellStart = ImGui::GetCursorScreenPos();
-                    const std::string hitID = "##AssetRowHit_State_" + record.ID;
+                    const std::string hitID = "##AssetRowHit_State_" + Quiet::Core::UUIDToString(record.ID);
 
                     if (DrawAssetTableCellHitTarget(hitID.c_str(), rowHeight))
                     {
@@ -357,7 +357,7 @@ namespace Quiet::Renderer::UI::Assets
                 ImGui::TableSetColumnIndex(3);
                 {
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SZ::Px(4.0f));
-                    const std::string inspectLabel = "Inspect##" + record.ID;
+                    const std::string inspectLabel = "Inspect##" + Quiet::Core::UUIDToString(record.ID);
 
                     if (EditorButton(inspectLabel.c_str(), SZ::Px(ImVec2(82.0f, 0.0f))))
                         pendingDetailsAssetID = record.ID;

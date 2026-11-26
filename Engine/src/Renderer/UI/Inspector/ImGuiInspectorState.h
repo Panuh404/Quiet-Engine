@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Quiet/Core/UUID.h"
+
 #include <string>
 #include <vector>
 
@@ -43,7 +45,7 @@ namespace Quiet::Renderer::UI::Inspector
         ComponentClipboardType Type = ComponentClipboardType::None;
         Scene::TransformComponent Transform{};
 
-        std::string StaticMeshResourceID;
+        Quiet::Core::UUID StaticMeshResourceID{};
         bool StaticMeshVisible = true;
 
         Scene::MaterialComponent Material{};

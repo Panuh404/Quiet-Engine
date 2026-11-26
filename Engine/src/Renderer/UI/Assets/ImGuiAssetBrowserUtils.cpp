@@ -13,7 +13,7 @@ namespace
 {
     namespace Assets = Quiet::Renderer::UI::Assets;
 
-    bool ContainsAssetID(const std::vector<std::string>& assetIDs, const std::string& assetID)
+    bool ContainsAssetID(const std::vector<Quiet::Core::UUID>& assetIDs, Quiet::Core::UUID assetID)
     {
         return std::find(
             assetIDs.begin(),
@@ -21,7 +21,7 @@ namespace
             assetID) != assetIDs.end();
     }
 
-    bool ContainsAssetRecordID(const std::vector<const Quiet::Project::AssetRecord*>& records, const std::string& assetID)
+    bool ContainsAssetRecordID(const std::vector<const Quiet::Project::AssetRecord*>& records, Quiet::Core::UUID assetID)
     {
         return std::any_of(
             records.begin(),
@@ -33,7 +33,7 @@ namespace
         );
     }
 
-    void AddAssetIDIfMissing(std::vector<std::string>& assetIDs, const std::string& assetID)
+    void AddAssetIDIfMissing(std::vector<Quiet::Core::UUID>& assetIDs, Quiet::Core::UUID assetID)
     {
         if (!ContainsAssetID(assetIDs, assetID)) assetIDs.push_back(assetID);
     }
@@ -135,7 +135,7 @@ namespace Quiet::Renderer::UI::Assets
     bool MatchesAssetSearch(const Project::AssetRecord &record, const std::string &query)
     {
         if (query.empty()) return true;
-        if (ContainsCaseInsensitive(record.ID, query)) return true;
+        if (ContainsCaseInsensitive(record.Name, query) || ContainsCaseInsensitive(Quiet::Core::UUIDToString(record.ID), query)) return true;
         if (ContainsCaseInsensitive(record.Path, query)) return true;
 
         const std::string typeLabel = std::string(Project::ToString(record.Type));
@@ -598,7 +598,7 @@ namespace Quiet::Renderer::UI::Assets
         CollapseAdjacentHistoryEntries(state);
     }
 
-    bool IsAssetSelected(const AssetBrowserState &state, const std::string &assetID)
+    bool IsAssetSelected(const AssetBrowserState &state, Quiet::Core::UUID assetID)
     {
         return ContainsAssetID(state.SelectedAssetIDs, assetID);
     }
@@ -606,18 +606,18 @@ namespace Quiet::Renderer::UI::Assets
     void ClearAssetSelection(AssetBrowserState &state)
     {
         state.SelectedAssetIDs.clear();
-        state.SelectionAnchorAssetID.clear();
-        state.SelectedDetailsAssetID.clear();
+        state.SelectionAnchorAssetID = {};
+        state.SelectedDetailsAssetID = {};
     }
 
-    void SelectSingleAsset(AssetBrowserState &state, const std::string &assetID)
+    void SelectSingleAsset(AssetBrowserState &state, Quiet::Core::UUID assetID)
     {
         state.SelectedAssetIDs.clear();
 
-        if (assetID.empty())
+        if (!assetID.IsValid())
         {
-            state.SelectionAnchorAssetID.clear();
-            state.SelectedDetailsAssetID.clear();
+            state.SelectionAnchorAssetID = {};
+            state.SelectedDetailsAssetID = {};
             return;
         }
 
@@ -628,9 +628,9 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     void HandleAssetSelectionClick(AssetBrowserState &state, const std::vector<const Project::AssetRecord *> &orderedAssets,
-        const std::string &assetID, bool toggleModifier, bool rangeModifier)
+        Quiet::Core::UUID assetID, bool toggleModifier, bool rangeModifier)
     {
-        if (assetID.empty()) return;
+        if (!assetID.IsValid()) return;
 
         const auto clickedIterator = std::find_if(
             orderedAssets.begin(),
@@ -642,7 +642,7 @@ namespace Quiet::Renderer::UI::Assets
         );
 
         if (clickedIterator == orderedAssets.end()) return;
-        if (rangeModifier && !state.SelectionAnchorAssetID.empty())
+        if (rangeModifier && state.SelectionAnchorAssetID.IsValid())
         {
             const auto anchorIterator = std::find_if(
                 orderedAssets.begin(),
@@ -702,7 +702,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (removedPrimary)
             {
-                state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+                state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? Quiet::Core::UUID{} : state.SelectedAssetIDs.back();
             }
         }
 
@@ -710,17 +710,17 @@ namespace Quiet::Renderer::UI::Assets
         state.SelectedContentFolder.clear();
     }
 
-    void RemoveAssetFromSelection(AssetBrowserState &state, const std::string &assetID)
+    void RemoveAssetFromSelection(AssetBrowserState &state, Quiet::Core::UUID assetID)
     {
         state.SelectedAssetIDs.erase(std::remove(state.SelectedAssetIDs.begin(), state.SelectedAssetIDs.end(), assetID),state.SelectedAssetIDs.end());
         if (state.SelectionAnchorAssetID == assetID)
         {
-            state.SelectionAnchorAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+            state.SelectionAnchorAssetID = state.SelectedAssetIDs.empty() ? Quiet::Core::UUID{} : state.SelectedAssetIDs.back();
         }
 
         if (state.SelectedDetailsAssetID == assetID)
         {
-            state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.back();
+            state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? Quiet::Core::UUID{} : state.SelectedAssetIDs.back();
         }
     }
 
@@ -729,7 +729,7 @@ namespace Quiet::Renderer::UI::Assets
         state.SelectedAssetIDs.erase(std::remove_if(
             state.SelectedAssetIDs.begin(),
             state.SelectedAssetIDs.end(),
-            [&](const std::string& assetID)
+            [&](Quiet::Core::UUID assetID)
             {
                 return !ContainsAssetRecordID(folderAssets, assetID);
             }),
@@ -919,12 +919,7 @@ namespace Quiet::Renderer::UI::Assets
 
     std::string MakeAssetDisplayName(const Project::AssetRecord& record)
     {
-        if (!record.Path.empty())
-        {
-            const std::string filename = std::filesystem::path(record.Path).filename().string();
-            if (!filename.empty()) return filename;
-        }
-        return record.ID.empty() ? "<unnamed>" : record.ID;
+        return record.Name.empty() ? "<unnamed>" : record.Name;
     }
 
     bool IsAssetReadyStatus(const std::string& status)

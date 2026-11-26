@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
+#include <type_traits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,11 +16,11 @@ namespace
     namespace SZ = Quiet::Renderer::UI::EditorSizing;
     namespace Assets = Quiet::Renderer::UI::Assets;
 
-    constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_ASSET_ID";
+    constexpr const char* kAssetBrowserPayloadType = "QUIET_ASSET_BROWSER_UUIDS";
 
-    std::vector<std::string> BuildDragAssetIDs(const Quiet::Project::AssetRecord& record, const Assets::AssetBrowserState& state)
+    std::vector<Quiet::Core::UUID> BuildDragAssetIDs(const Quiet::Project::AssetRecord& record, const Assets::AssetBrowserState& state)
     {
-        std::vector<std::string> assetIDs;
+        std::vector<Quiet::Core::UUID> assetIDs;
         assetIDs.push_back(record.ID);
 
         if (!Assets::IsAssetSelected(state, record.ID))
@@ -27,76 +29,34 @@ namespace
         }
 
         assetIDs.reserve(state.SelectedAssetIDs.size() );
-        for (const std::string& selectedAssetID : state.SelectedAssetIDs)
+        for (Quiet::Core::UUID selectedAssetID : state.SelectedAssetIDs)
         {
-            if (selectedAssetID.empty() || selectedAssetID == record.ID) continue;
+            if (!selectedAssetID.IsValid() || selectedAssetID == record.ID) continue;
             assetIDs.push_back(selectedAssetID);
         }
 
         return assetIDs;
     }
 
-    std::vector<char> BuildAssetBrowserPayloadData(const std::vector<std::string>& assetIDs)
+    bool TryReadAssetBrowserPayload(const ImGuiPayload* payload, std::vector<Quiet::Core::UUID>& outAssetIDs)
     {
-        std::size_t requiredSize = 1;
-
-        for (const std::string& assetID : assetIDs)
-        {
-            requiredSize += assetID.size() + 1;
-        }
-
-        std::vector<char> payloadData;
-        payloadData.reserve(requiredSize);
-
-        for (const std::string& assetID : assetIDs)
-        {
-            payloadData.insert(
-                payloadData.end(),
-                assetID.begin(),
-                assetID.end()
-            );
-
-            payloadData.push_back('\0');
-        }
-
-        // Double-null terminator marks the end of the list.
-        payloadData.push_back('\0');
-        return payloadData;
-    }
-
-    bool TryReadAssetBrowserPayload(const ImGuiPayload* payload, std::vector<std::string>& outAssetIDs)
-    {
+        static_assert(std::is_trivially_copyable_v<Quiet::Core::UUID>);
         outAssetIDs.clear();
-        if (!payload || !payload->Data || payload->DataSize <= 2) return false;
+        if (!payload || !payload->Data || payload->DataSize <= 0) return false;
 
-        const char* payloadData = static_cast<const char*>(payload->Data);
-        const std::size_t payloadSize = static_cast<std::size_t>(payload->DataSize);
+        const auto byteCount = static_cast<std::size_t>(payload->DataSize);
+        if (byteCount % sizeof(Quiet::Core::UUID) != 0) return false;
 
-        if (payloadData[payloadSize - 1] != '\0') return false;
-
-        std::size_t offset = 0;
-        while (offset < payloadSize)
+        std::vector<Quiet::Core::UUID> assetIDs(byteCount / sizeof(Quiet::Core::UUID));
+        std::memcpy(assetIDs.data(), payload->Data, byteCount);
+        if (std::any_of(assetIDs.begin(), assetIDs.end(),
+                [](Quiet::Core::UUID id) { return !id.IsValid(); }))
         {
-            std::size_t end = offset;
-            while (end < payloadSize && payloadData[end] != '\0')
-            {
-                ++end;
-            }
-
-            if (end >= payloadSize)
-            {
-                outAssetIDs.clear();
-                return false;
-            }
-
-            // Empty entry is the final list terminator.
-            if (end == offset) break;
-
-            outAssetIDs.emplace_back(payloadData + offset, end - offset);
-            offset = end + 1;
+            return false;
         }
 
-        return !outAssetIDs.empty();
+        outAssetIDs = std::move(assetIDs);
+        return true;
     }
 
 }
@@ -272,10 +232,9 @@ namespace Quiet::Renderer::UI::Assets
             return;
         }
 
-        const std::vector<std::string> dragAssetIDs = BuildDragAssetIDs(record, state);
-        const std::vector<char> payloadData = BuildAssetBrowserPayloadData(dragAssetIDs);
-
-        ImGui::SetDragDropPayload(kAssetBrowserPayloadType, payloadData.data(), payloadData.size());
+        const std::vector<Quiet::Core::UUID> dragAssetIDs = BuildDragAssetIDs(record, state);
+        ImGui::SetDragDropPayload(kAssetBrowserPayloadType, dragAssetIDs.data(),
+                                  dragAssetIDs.size() * sizeof(Quiet::Core::UUID));
 
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + SZ::Px(280.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
@@ -294,7 +253,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::Spacing();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Accent);
-        ImGui::TextWrapped("%s", record.ID.c_str());
+        ImGui::TextWrapped("%s", record.Name.c_str());
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
@@ -336,7 +295,7 @@ namespace Quiet::Renderer::UI::Assets
         return outPayload.IsValid();
     }
 
-    bool AcceptAssetBrowserDrop(std::vector<std::string>& outAssetIDs)
+    bool AcceptAssetBrowserDrop(std::vector<Quiet::Core::UUID>& outAssetIDs)
     {
         outAssetIDs.clear();
 

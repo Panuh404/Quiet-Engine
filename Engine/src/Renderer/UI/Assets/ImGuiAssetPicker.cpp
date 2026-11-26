@@ -29,7 +29,8 @@ namespace
     bool MatchesAssetPickerSearch(const Quiet::Project::AssetRecord& record, const std::string& searchQuery)
     {
         if (searchQuery.empty()) return true;
-        return Assets::ContainsCaseInsensitive(record.ID, searchQuery) || Assets::ContainsCaseInsensitive(record.Path, searchQuery);
+        return Assets::ContainsCaseInsensitive(record.Name, searchQuery) ||
+               Assets::ContainsCaseInsensitive(Quiet::Core::UUIDToString(record.ID), searchQuery) || Assets::ContainsCaseInsensitive(record.Path, searchQuery);
     }
 
     void DrawMeshPickerGlyph(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, const ImVec4& color)
@@ -169,7 +170,7 @@ namespace
 
         const float rowHeight = SZ::Px(58.0f);
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-        const std::string rowID = "##AssetPickerRow_" + record.ID;
+        const std::string rowID = "##AssetPickerRow_" + Quiet::Core::UUIDToString(record.ID);
         const bool pressed = QUI::EditorSelectable(rowID.c_str(), selected, ImGuiSelectableFlags_None, ImVec2(0.0f, rowHeight), assignable);
         const ImVec2 rowMax = ImGui::GetItemRectMax();
 
@@ -256,7 +257,7 @@ namespace
 
         const float availableTextWidth = std::max(SZ::Px(40.0f), textRight - textX);
 
-        const std::string displayID = Assets::MakeEllipsizedText(record.ID, availableTextWidth);
+        const std::string displayID = Assets::MakeEllipsizedText(record.Name, availableTextWidth);
         const std::string displayPath = Assets::MakeEllipsizedText(record.Path.empty() ? std::string("<built-in>"): record.Path, availableTextWidth);
 
         drawList->AddText(
@@ -311,7 +312,7 @@ namespace
             }
             else
             {
-                Assets::DrawAssetPaddedTooltip(record.Path.empty() ? record.ID : record.Path);
+                Assets::DrawAssetPaddedTooltip(record.Path.empty() ? record.Name : record.Path);
             }
         }
 
@@ -362,7 +363,7 @@ namespace
                                    const Assets::AssetPickerOptions& options,
                                    const ImVec2& fieldMin,
                                    const ImVec2& fieldMax,
-                                   std::string& outSelectedAssetID)
+                                   Quiet::Core::UUID& outSelectedAssetID)
     {
         Assets::AssetBrowserDragPayload payload{};
 
@@ -384,7 +385,7 @@ namespace
             assignable = IsAssetPickerRecordAssignable(*record, diagnostics, options);
             if (assignable)
             {
-                overlayLabel = "Assign " + record->ID;
+                overlayLabel = "Assign " + record->Name;
             }
             else if (record->Type != options.Type)
             {
@@ -409,11 +410,11 @@ namespace Quiet::Renderer::UI::Assets
         const char *id,
         const Project::ProjectContext &projectContext,
         const AssetPickerOptions &options,
-        const std::string &currentAssetID,
-        std::string &outSelectedAssetID)
+        Quiet::Core::UUID currentAssetID,
+        Quiet::Core::UUID& outSelectedAssetID)
     {
         const bool hasCurrentSelection =
-    !currentAssetID.empty();
+    currentAssetID.IsValid();
 
     const Project::AssetRecord* currentRecord = hasCurrentSelection ? Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), currentAssetID) : nullptr;
     const bool currentRecordMissing = hasCurrentSelection && !currentRecord;
@@ -434,23 +435,23 @@ namespace Quiet::Renderer::UI::Assets
     {
         if (currentRecordMissing)
         {
-            previewLabel = "Missing: " + currentAssetID;
+            previewLabel = "Missing: " + Quiet::Core::UUIDToString(currentAssetID);
         }
         else if (currentTypeMismatch)
         {
-            previewLabel = "Invalid Type: " + currentAssetID;
+            previewLabel = "Invalid Type: " + currentRecord->Name;
         }
         else if (currentSourceMissing)
         {
-            previewLabel = MakeAssetPathDiagnosticLabel(currentDiagnostics) + ": " + currentAssetID;
+            previewLabel = MakeAssetPathDiagnosticLabel(currentDiagnostics) + ": " + currentRecord->Name;
         }
         else if (currentMeshNotLoaded)
         {
-            previewLabel = "Not Loaded: " + currentAssetID;
+            previewLabel = "Not Loaded: " + currentRecord->Name;
         }
         else
         {
-            previewLabel = currentAssetID;
+            previewLabel = currentRecord->Name;
         }
     }
 
@@ -493,7 +494,7 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         ImGui::SetNextItemWidth(-1.0f);
-        ImGui::InputTextWithHint("##AssetPickerSearch", "Search by asset ID or path...", g_AssetPickerSearchBuffer.data(), g_AssetPickerSearchBuffer.size());
+        ImGui::InputTextWithHint("##AssetPickerSearch", "Search by name, UUID, or path...", g_AssetPickerSearchBuffer.data(), g_AssetPickerSearchBuffer.size());
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -502,7 +503,7 @@ namespace Quiet::Renderer::UI::Assets
         if (currentRecordMissing)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
-            ImGui::TextWrapped("The currently assigned asset '%s' is no longer present in the registry.", currentAssetID.c_str());
+            ImGui::TextWrapped("The currently assigned asset '%s' is no longer present in the registry.", Quiet::Core::UUIDToString(currentAssetID).c_str());
             ImGui::PopStyleColor();
 
             ImGui::Spacing();
@@ -543,7 +544,10 @@ namespace Quiet::Renderer::UI::Assets
             {
                 if (!left) return false;
                 if (!right) return true;
-                return ToLowerCopy(left->ID) < ToLowerCopy(right->ID);
+                const auto leftName = ToLowerCopy(left->Name);
+                const auto rightName = ToLowerCopy(right->Name);
+                if (leftName != rightName) return leftName < rightName;
+                return left->ID < right->ID;
             }
         );
 
@@ -556,14 +560,14 @@ namespace Quiet::Renderer::UI::Assets
         {
             if (options.AllowNone && (searchQuery.empty() || ContainsCaseInsensitive("None", searchQuery)))
             {
-                if (EditorSelectable("None", currentAssetID.empty(), ImGuiSelectableFlags_None, ImVec2(0.0f, SZ::Px(36.0f))))
+                if (EditorSelectable("None", !currentAssetID.IsValid(), ImGuiSelectableFlags_None, ImVec2(0.0f, SZ::Px(36.0f))))
                 {
-                    outSelectedAssetID.clear();
+                    outSelectedAssetID = {};
                     changed = true;
                     ImGui::CloseCurrentPopup();
                 }
 
-                if (currentAssetID.empty()) ImGui::SetItemDefaultFocus();
+                if (!currentAssetID.IsValid()) ImGui::SetItemDefaultFocus();
                 ++visibleRecordCount;
             }
 

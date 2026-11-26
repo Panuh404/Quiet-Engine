@@ -1563,7 +1563,7 @@ namespace Quiet::Editor
 
         if (!Scripting::DiscoverScriptProperties(projectContext, script->ScriptAssetID, discoveredProperties, discoveryError))
         {
-            QUIET_CORE_WARN("Could not refresh exposed properties for script '{}': {}", script->ScriptAssetID, discoveryError);
+            QUIET_CORE_WARN("Could not refresh exposed properties for script '{}': {}", Core::UUIDToString(script->ScriptAssetID), discoveryError);
             return false;
         }
 

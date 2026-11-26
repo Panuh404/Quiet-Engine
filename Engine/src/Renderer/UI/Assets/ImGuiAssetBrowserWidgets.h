@@ -24,23 +24,23 @@ namespace Quiet::Renderer::UI::Assets
     {
         // The card that initiated the drag. Inspector and Viewport
         // assignment continue to use this primary asset.
-        std::string AssetID{};
+        Quiet::Core::UUID AssetID{};
 
         // Complete selection being dragged. Folder move operations use
         // every asset in this collection.
-        std::vector<std::string> AssetIDs{};
+        std::vector<Quiet::Core::UUID> AssetIDs{};
         bool Delivered = false;
 
         [[nodiscard]] bool IsValid() const
         {
-            return !AssetID.empty() && !AssetIDs.empty();
+            return AssetID.IsValid() && !AssetIDs.empty();
         }
     };
 
     void DrawAssetBrowserDragSource(const Project::AssetRecord& record, const AssetBrowserState& state, bool enabled);
 
     [[nodiscard]] bool ReadAssetBrowserDrop(AssetBrowserDragPayload& outPayload, ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
-    [[nodiscard]] bool AcceptAssetBrowserDrop(std::vector<std::string>& outAssetIDs);
+    [[nodiscard]] bool AcceptAssetBrowserDrop(std::vector<Quiet::Core::UUID>& outAssetIDs);
 
     struct AssetBrowserCardMetrics
     {

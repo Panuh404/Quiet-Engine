@@ -279,8 +279,8 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
+        Quiet::Core::UUID& pendingDetailsAssetID,
+        Quiet::Core::UUID& pendingReimportAssetID,
         AssetBrowserThumbnailSize thumbnailSize)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
@@ -341,7 +341,7 @@ namespace Quiet::Renderer::UI::Assets
                 pendingNavigateFolder = folder.RelativePath;
             }
 
-            std::vector<std::string> droppedAssetIDs;
+            std::vector<Quiet::Core::UUID> droppedAssetIDs;
             if (AcceptAssetBrowserDrop(droppedAssetIDs))
             {
                 assetMoveRequest.AssetIDs = std::move(droppedAssetIDs);
@@ -456,7 +456,7 @@ namespace Quiet::Renderer::UI::Assets
             const ImVec2 cardSize(cardWidth, cardHeight);
             const ImVec2 cardMax(cardMin.x + cardSize.x, cardMin.y + cardSize.y);
 
-            const std::string hitID = "##AssetBrowserCard_" + record.ID;
+            const std::string hitID = "##AssetBrowserCard_" + Quiet::Core::UUIDToString(record.ID);
             ImGui::InvisibleButton(hitID.c_str(), cardSize);
             const bool hovered = ImGui::IsItemHovered();
 
@@ -572,7 +572,7 @@ namespace Quiet::Renderer::UI::Assets
                 const ImVec2 secondaryMin(cardMin.x + padding, contentY);
                 const ImVec2 secondaryMax(cardMax.x - padding, secondaryMin.y + ImGui::GetTextLineHeight());
 
-                DrawAssetCardTextLine(record.ID, secondaryMin, secondaryMax, EditorColor::TextDim);
+                DrawAssetCardTextLine(Quiet::Core::UUIDToString(record.ID), secondaryMin, secondaryMax, EditorColor::TextDim);
                 contentY = secondaryMax.y;
             }
 
@@ -597,7 +597,7 @@ namespace Quiet::Renderer::UI::Assets
                 }
                 else
                 {
-                    DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.ID);
+                    DrawAssetPaddedTooltip(!record.Path.empty() ? record.Path : record.Name);
                 }
             }
             ImGui::SetCursorScreenPos(afterCardCursor);

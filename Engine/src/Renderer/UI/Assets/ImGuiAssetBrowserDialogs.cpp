@@ -69,7 +69,7 @@ namespace
 
     void ClearAssetRename(Assets::AssetBrowserState& state)
     {
-        state.RenameAssetID.clear();
+        state.RenameAssetID = {};
         state.AssetRenameErrorMessage.clear();
         state.AssetRenameBuffer.fill('\0');
         state.RequestOpenAssetRenamePopup = false;
@@ -592,7 +592,7 @@ namespace Quiet::Renderer::UI::Assets
 
                 ImGui::BeginChild("##DeleteFolderAssetList", ImVec2(0.0f, SZ::Px(170.0f)), ImGuiChildFlags_Borders);
                 {
-                    for (const std::string& assetID : summary.RegisteredAssetIDs)
+                    for (Quiet::Core::UUID assetID : summary.RegisteredAssetIDs)
                     {
                         const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
                         const std::uint32_t referenceCount = record ? CountAssetReferences(scene, *record) : 0;
@@ -612,7 +612,7 @@ namespace Quiet::Renderer::UI::Assets
                             statusColor = EditorColor::Warning;
                         }
 
-                        ImGui::BulletText("%s", assetID.c_str());
+                        ImGui::BulletText("%s", Quiet::Core::UUIDToString(assetID).c_str());
 
                         ImGui::SameLine();
 
@@ -691,12 +691,12 @@ namespace Quiet::Renderer::UI::Assets
     // Rename
     void RequestAssetRename(AssetBrowserState &state, const Project::AssetRecord &record)
     {
-        if (record.ID.empty() || record.BuiltIn || record.Path.empty()) return;
+        if (!record.ID.IsValid() || record.BuiltIn || record.Path.empty()) return;
 
         const std::filesystem::path sourcePath = record.Path;
         std::string currentBaseName = sourcePath.stem().string();
 
-        if (currentBaseName.empty()) currentBaseName = record.ID;
+        if (currentBaseName.empty()) currentBaseName = record.Name;
         state.RenameAssetID = record.ID;
         state.AssetRenameErrorMessage.clear();
 
@@ -713,7 +713,7 @@ namespace Quiet::Renderer::UI::Assets
             state.RequestOpenAssetRenamePopup = false;
         }
 
-        if (state.RenameAssetID.empty()) return;
+        if (!state.RenameAssetID.IsValid()) return;
         ImGui::SetNextWindowSize(SZ::Px(ImVec2(500.0f, 0.0f)), ImGuiCond_Appearing);
         bool popupOpen = true;
 
@@ -757,7 +757,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::PopStyleColor();
 
         ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Text);
-        ImGui::TextWrapped("%s", record->ID.c_str());
+        ImGui::TextWrapped("%s", Quiet::Core::UUIDToString(record->ID).c_str());
         ImGui::PopStyleColor();
 
         ImGui::Spacing();
@@ -843,13 +843,13 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     // Remove
-    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<std::string>& assetIDs)
+    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<Quiet::Core::UUID>& assetIDs)
     {
         state.ConfirmRemoveAssetIDs.clear();
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
-            if (assetID.empty()) continue;
+            if (!assetID.IsValid()) continue;
             if (std::find(
                 state.ConfirmRemoveAssetIDs.begin(),
                 state.ConfirmRemoveAssetIDs.end(),
@@ -898,7 +898,7 @@ namespace Quiet::Renderer::UI::Assets
         std::uint32_t referencedCount = 0;
         std::uint32_t missingCount = 0;
 
-        for (const std::string& assetID :
+        for (Quiet::Core::UUID assetID :
              state.ConfirmRemoveAssetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
@@ -955,7 +955,7 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::BeginChild("##RemoveRegistryAssetList", ImVec2(0.0f, SZ::Px(180.0f)), ImGuiChildFlags_Borders);
         {
-            for (const std::string& assetID : state.ConfirmRemoveAssetIDs)
+            for (Quiet::Core::UUID assetID : state.ConfirmRemoveAssetIDs)
             {
                 const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
                 std::string status;
@@ -984,7 +984,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
                 }
 
-                ImGui::BulletText("%s", assetID.c_str());
+                ImGui::BulletText("%s", Quiet::Core::UUIDToString(assetID).c_str());
                 ImGui::SameLine();
                 ImGui::TextColored(statusColor, "— %s", status.c_str());
             }
@@ -1053,13 +1053,13 @@ namespace Quiet::Renderer::UI::Assets
     }
 
     // Delete
-    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<std::string>& assetIDs)
+    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<Quiet::Core::UUID>& assetIDs)
     {
         state.ConfirmDeleteAssetIDs.clear();
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
-            if (assetID.empty()) continue;
+            if (!assetID.IsValid()) continue;
             if (std::find(state.ConfirmDeleteAssetIDs.begin(), state.ConfirmDeleteAssetIDs.end(), assetID) == state.ConfirmDeleteAssetIDs.end())
             {
                 state.ConfirmDeleteAssetIDs.push_back(assetID);
@@ -1108,7 +1108,7 @@ namespace Quiet::Renderer::UI::Assets
         std::uint32_t externalCount = 0;
         std::uint32_t missingRegistryCount = 0;
 
-        for (const std::string& assetID : state.ConfirmDeleteAssetIDs)
+        for (Quiet::Core::UUID assetID : state.ConfirmDeleteAssetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
@@ -1191,7 +1191,7 @@ namespace Quiet::Renderer::UI::Assets
 
         ImGui::BeginChild("##DeleteProjectAssetList", ImVec2(0.0f, SZ::Px(190.0f)), ImGuiChildFlags_Borders);
         {
-            for (const std::string& assetID : state.ConfirmDeleteAssetIDs)
+            for (Quiet::Core::UUID assetID : state.ConfirmDeleteAssetIDs)
             {
                 const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
 
@@ -1236,7 +1236,7 @@ namespace Quiet::Renderer::UI::Assets
                     }
                 }
 
-                ImGui::BulletText("%s", assetID.c_str());
+                ImGui::BulletText("%s", Quiet::Core::UUIDToString(assetID).c_str());
 
                 ImGui::SameLine();
 

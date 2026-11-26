@@ -108,7 +108,7 @@ namespace
         if (Assets::IsAssetBrowserContextMenuRequestedForLastItem())
             ActivateProjectFolder(state, currentAssetFolder,relativeFolderPath);
 
-        std::vector<std::string> droppedAssetIDs;
+        std::vector<Quiet::Core::UUID> droppedAssetIDs;
         if (Assets::AcceptAssetBrowserDrop(droppedAssetIDs))
         {
             assetMoveRequest.AssetIDs = std::move(droppedAssetIDs);

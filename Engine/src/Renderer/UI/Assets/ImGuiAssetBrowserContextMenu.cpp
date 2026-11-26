@@ -98,8 +98,8 @@ namespace Quiet::Renderer::UI::Assets
         const bool runtimeModeActive,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID)
+        Quiet::Core::UUID& pendingDetailsAssetID,
+        Quiet::Core::UUID& pendingReimportAssetID)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
@@ -170,7 +170,7 @@ namespace Quiet::Renderer::UI::Assets
         ImGui::Separator();
 
         if (EditorMenuItem("Copy ID"))
-            ImGui::SetClipboardText(record.ID.c_str());
+            ImGui::SetClipboardText(Quiet::Core::UUIDToString(record.ID).c_str());
 
         const bool hasPath = !record.Path.empty();
 

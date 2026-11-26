@@ -92,8 +92,8 @@ namespace Quiet::Renderer::UI::Inspector
     bool DrawAssetPickerPropertyRow(const char* label,
                                     const Project::ProjectContext& projectContext,
                                     const Assets::AssetPickerOptions& options,
-                                    const std::string& currentAssetID,
-                                    std::string& outSelectedAssetID);
+                                    Quiet::Core::UUID currentAssetID,
+                                    Quiet::Core::UUID& outSelectedAssetID);
 
     bool DrawIntPropertyRow(const char* label, std::int64_t& value, const TrackedInspectorInteraction& tracked);
     bool DrawStringPropertyRow(const char* label, std::string& value, const TrackedInspectorInteraction& tracked);
@@ -108,7 +108,7 @@ namespace Quiet::Renderer::UI::Inspector
     std::string GetMaterialSlotSourceName(const Scene::Actor& actor, const std::uint32_t slotIndex);
     std::size_t CountSubmeshesUsingMaterialSlot(const Scene::Actor& actor, const std::uint32_t slotIndex);
     std::string MakeMaterialSlotUsageLabel(const std::size_t submeshCount);
-    void DrawCompactMaterialTexturePreview(const std::string& textureAssetID, const Vulkan::TextureLibrary& textureLibrary);
+    void DrawCompactMaterialTexturePreview(Quiet::Core::UUID textureAssetID, const Vulkan::TextureLibrary& textureLibrary);
     bool DrawMaterialSlotHeader(const Scene::Actor& actor, const Scene::MaterialComponent& materialSlot, const std::uint32_t slotIndex, const bool defaultOpen);
     void DrawMaterialSlotEditor(Scene::Scene& scene,
                                 Scene::Actor& actor,

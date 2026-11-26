@@ -14,7 +14,7 @@ namespace Quiet::Renderer::UI::Assets
     struct AssetFolderDeleteSummary
     {
         std::string Folder{};
-        std::vector<std::string> RegisteredAssetIDs{};
+        std::vector<Quiet::Core::UUID> RegisteredAssetIDs{};
 
         std::uint32_t PhysicalFileCount = 0;
         std::uint32_t NestedFolderCount = 0;

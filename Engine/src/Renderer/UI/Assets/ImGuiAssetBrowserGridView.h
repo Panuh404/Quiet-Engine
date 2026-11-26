@@ -24,8 +24,8 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID,
+        Quiet::Core::UUID& pendingDetailsAssetID,
+        Quiet::Core::UUID& pendingReimportAssetID,
         AssetBrowserThumbnailSize thumbnailSize
     );
 }

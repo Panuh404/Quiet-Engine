@@ -451,8 +451,8 @@ namespace Quiet::Renderer::UI::Inspector
     bool DrawAssetPickerPropertyRow(const char* label,
                                     const Project::ProjectContext& projectContext,
                                     const Assets::AssetPickerOptions& options,
-                                    const std::string& currentAssetID,
-                                    std::string& outSelectedAssetID)
+                                    Quiet::Core::UUID currentAssetID,
+                                    Quiet::Core::UUID& outSelectedAssetID)
     {
         ImGui::PushID(label);
         BeginInspectorPropertyRow(label);
@@ -787,9 +787,9 @@ namespace Quiet::Renderer::UI::Inspector
         return std::to_string(submeshCount) + " submeshes";
     }
 
-    void DrawCompactMaterialTexturePreview(const std::string& textureAssetID, const Vulkan::TextureLibrary& textureLibrary)
+    void DrawCompactMaterialTexturePreview(Quiet::Core::UUID textureAssetID, const Vulkan::TextureLibrary& textureLibrary)
     {
-        if (textureAssetID.empty()) return;
+        if (!textureAssetID.IsValid()) return;
         const auto textureStats = textureLibrary.GetStats(textureAssetID);
         if (!textureStats.has_value())
         {
@@ -1004,7 +1004,7 @@ namespace Quiet::Renderer::UI::Inspector
             texturePickerOptions.AllowNone = true;
             texturePickerOptions.TextureLibrary = &textureLibrary;
 
-            std::string selectedTextureAssetID;
+            Quiet::Core::UUID selectedTextureAssetID{};
             if (DrawAssetPickerPropertyRow("Base Color Texture", projectContext, texturePickerOptions, materialSlot.BaseColorTextureAssetID, selectedTextureAssetID))
             {
                 commands.SetStaticMeshMaterialSlotBaseColorTextureAsset(scene, actor.GetID(), slotIndex, selectedTextureAssetID);

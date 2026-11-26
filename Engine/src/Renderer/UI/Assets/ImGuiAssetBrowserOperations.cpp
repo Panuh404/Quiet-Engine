@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Quiet/Project/AssetRegistry.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
 #include "Renderer/UI/Assets/ImGuiAssetBrowserUtils.h"
 
 namespace
@@ -16,14 +17,15 @@ namespace
 
     struct PlannedAssetMove
     {
-        std::string AssetID{};
+        Quiet::Core::UUID AssetID{};
         std::string SourceFolder{};
         std::filesystem::path DestinationPath{};
     };
 
     struct PlannedAssetDuplicate
     {
-        std::string NewAssetID{};
+        Quiet::Core::UUID NewAssetID{};
+        std::string NewAssetName{};
 
         Quiet::Project::AssetType Type = Quiet::Project::AssetType::Unknown;
         std::filesystem::path SourcePath{};
@@ -32,18 +34,18 @@ namespace
 
     struct CompletedAssetDuplicate
     {
-        std::string AssetID{};
+        Quiet::Core::UUID AssetID{};
         std::filesystem::path Path{};
     };
 
-    std::vector<std::string> NormalizeAssetIDs(const std::vector<std::string>& assetIDs)
+    std::vector<Quiet::Core::UUID> NormalizeAssetIDs(const std::vector<Quiet::Core::UUID>& assetIDs)
     {
-        std::vector<std::string> normalized;
+        std::vector<Quiet::Core::UUID> normalized;
         normalized.reserve(assetIDs.size());
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
-            if (assetID.empty()) continue;
+            if (!assetID.IsValid()) continue;
             if (std::find(
                 normalized.begin(),
                 normalized.end(),
@@ -58,11 +60,11 @@ namespace
 
     bool IsDestinationRegisteredByAnotherAsset(
         const Quiet::Project::ProjectContext& projectContext,
-        const std::string& movingAssetID,
+        Quiet::Core::UUID movingAssetID,
         const std::filesystem::path& destinationPath,
-        std::string& outConflictingAssetID)
+        Quiet::Core::UUID& outConflictingAssetID)
     {
-        outConflictingAssetID.clear();
+        outConflictingAssetID = {};
 
         const std::filesystem::path normalizedDestination = destinationPath.lexically_normal();
         for (const Quiet::Project::AssetRecord& record : projectContext.GetAssetRegistry().Records)
@@ -95,20 +97,20 @@ namespace
         return false;
     }
 
-    std::string MakeUniqueDuplicateAssetID(
+    Quiet::Core::UUID MakeUniqueDuplicateAssetID(
         const Quiet::Project::ProjectContext& projectContext,
-        const std::string& sourceAssetID,
-        const std::unordered_set<std::string>& plannedAssetIDs)
+        const std::unordered_set<Quiet::Core::UUID>& plannedAssetIDs)
     {
-        for (std::size_t index = 1; index < 100000; ++index)
+        Quiet::Core::UUID candidate{};
+        do
         {
-            const std::string suffix = index == 1 ? "_Copy" : "_Copy" + std::to_string(index);
-            const std::string candidate = sourceAssetID + suffix;
-
-            if (plannedAssetIDs.contains(candidate)) continue;
-            if (!Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), candidate)) return candidate;
+            candidate = Quiet::Core::UUIDGenerator::New();
         }
-        return {};
+        while (candidate == Quiet::Project::BuiltInAssetIDs::EditorTopbarLogo ||
+               plannedAssetIDs.contains(candidate) ||
+               Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), candidate));
+
+        return candidate;
     }
 
     bool TryMakeUniqueDuplicatePath(
@@ -177,7 +179,7 @@ namespace
         Quiet::Editor::EditorState& editorState,
         Assets::AssetBrowserState& state,
         const Assets::AssetBrowserClipboardMode mode,
-        const std::vector<std::string>& requestedAssetIDs)
+        const std::vector<Quiet::Core::UUID>& requestedAssetIDs)
     {
         if (mode == Assets::AssetBrowserClipboardMode::None) return false;
 
@@ -189,17 +191,17 @@ namespace
             return false;
         }
 
-        const std::vector<std::string> assetIDs = NormalizeAssetIDs(requestedAssetIDs);
+        const std::vector<Quiet::Core::UUID> assetIDs = NormalizeAssetIDs(requestedAssetIDs);
         if (assetIDs.empty()) return false;
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             const Quiet::Project::AssetRecord* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
             {
                 editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
                     "Clipboard operation failed",
-                    "Asset '" + assetID + "' is no longer registered.");
+                    "Asset '" + Quiet::Core::UUIDToString(assetID) + "' is no longer registered.");
                 return false;
             }
 
@@ -207,7 +209,7 @@ namespace
             {
                 editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
                     "Clipboard operation failed",
-                    "Built-in asset '" + record->ID + "' has no physical source file to copy or move.");
+                    "Built-in asset '" + Quiet::Core::UUIDToString(record->ID) + "' has no physical source file to copy or move.");
                 return false;
             }
 
@@ -216,7 +218,7 @@ namespace
             {
                 editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
                     "Clipboard operation failed",
-                    "Asset '" + record->ID + "' does not have a valid physical source file.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' does not have a valid physical source file.");
                 return false;
             }
 
@@ -224,7 +226,7 @@ namespace
             {
                 editorState.AssetOperationFeedback.Set(Quiet::Editor::EditorFeedbackSeverity::Error,
                     "Move preparation failed",
-                    "External asset '" + record->ID + "' cannot be moved through the project Assets browser.");
+                    "External asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be moved through the project Assets browser.");
                 return false;
             }
         }
@@ -294,7 +296,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        const std::vector<Quiet::Core::UUID> assetIDs = NormalizeAssetIDs(request.AssetIDs);
         if (assetIDs.empty()) return false;
 
         const std::string targetFolder = NormalizeProjectRelativePathString(request.TargetFolder);
@@ -313,14 +315,14 @@ namespace Quiet::Renderer::UI::Assets
 
         std::unordered_set<std::string> plannedDestinationPaths;
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "Asset '" + assetID + "' is no longer registered.");
+                    "Asset '" + Quiet::Core::UUIDToString(assetID) + "' is no longer registered.");
                 return false;
             }
 
@@ -328,7 +330,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "Built-in asset '" + record->ID + "' cannot be moved.");
+                    "Built-in asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be moved.");
                 return false;
             }
 
@@ -337,7 +339,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "Asset '" + record->ID + "' does not have a valid physical source file.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' does not have a valid physical source file.");
                 return false;
             }
 
@@ -345,7 +347,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "External asset '" + record->ID + "' cannot be moved through the project Assets browser.");
+                    "External asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be moved through the project Assets browser.");
                 return false;
             }
 
@@ -354,7 +356,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Warning,
                     "Move cancelled",
-                    "Asset '" + record->ID + "' is already stored in the destination folder.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' is already stored in the destination folder.");
                 return false;
             }
 
@@ -363,7 +365,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "Asset '" + record->ID + "' has no valid source filename.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' has no valid source filename.");
                 return false;
             }
 
@@ -394,12 +396,12 @@ namespace Quiet::Renderer::UI::Assets
                 return false;
             }
 
-            std::string conflictingAssetID;
+            Quiet::Core::UUID conflictingAssetID{};
             if (IsDestinationRegisteredByAnotherAsset(projectContext, record->ID, destinationPath, conflictingAssetID))
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Move failed",
-                    "The destination path is already registered as asset '" + conflictingAssetID + "'.");
+                    "The destination path is already registered as asset '" + Quiet::Core::UUIDToString(conflictingAssetID) + "'.");
 
                 return false;
             }
@@ -435,7 +437,7 @@ namespace Quiet::Renderer::UI::Assets
                 std::string rollbackError;
 
                 if (!projectContext.MoveAssetToFolder(rollbackIterator->AssetID, rollbackIterator->SourceFolder, restoredAssetPath, rollbackError))
-                    rollbackFailures.push_back(rollbackIterator->AssetID + ": " + (rollbackError.empty()? "unknown rollback failure" : rollbackError));
+                    rollbackFailures.push_back(Quiet::Core::UUIDToString(rollbackIterator->AssetID) + ": " + (rollbackError.empty()? "unknown rollback failure" : rollbackError));
             }
 
             editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
@@ -487,7 +489,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        const std::vector<Quiet::Core::UUID> assetIDs = NormalizeAssetIDs(request.AssetIDs);
         if (assetIDs.empty()) return false;
 
         const std::string targetFolder = NormalizeProjectRelativePathString(request.TargetFolder);
@@ -503,24 +505,24 @@ namespace Quiet::Renderer::UI::Assets
         std::vector<PlannedAssetDuplicate> plan;
         plan.reserve(assetIDs.size());
 
-        std::unordered_set<std::string> plannedAssetIDs;
+        std::unordered_set<Quiet::Core::UUID> plannedAssetIDs;
         std::unordered_set<std::string> plannedDestinationPaths;
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Duplicate failed",
-                    "Asset '" + assetID + "' is no longer registered.");
+                    "Asset '" + Quiet::Core::UUIDToString(assetID) + "' is no longer registered.");
                 return false;
             }
             if (record->BuiltIn)
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Duplicate failed",
-                    "Built-in asset '" + record->ID + "' has no physical source file to duplicate.");
+                    "Built-in asset '" + Quiet::Core::UUIDToString(record->ID) + "' has no physical source file to duplicate.");
                 return false;
             }
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
@@ -528,7 +530,7 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Duplicate failed",
-                    "Asset '" + record->ID + "' does not have a valid physical source file.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' does not have a valid physical source file.");
                 return false;
             }
 
@@ -538,18 +540,11 @@ namespace Quiet::Renderer::UI::Assets
             {
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Duplicate failed",
-                    "Asset '" + record->ID + "' has no valid source filename.");
+                    "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' has no valid source filename.");
                 return false;
             }
 
-            const std::string newAssetID = MakeUniqueDuplicateAssetID(projectContext, record->ID, plannedAssetIDs);
-            if (newAssetID.empty())
-            {
-                editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
-                    "Duplicate failed",
-                    "Quiet could not generate a unique asset ID for '" + record->ID + "'.");
-                return false;
-            }
+            const Quiet::Core::UUID newAssetID = MakeUniqueDuplicateAssetID(projectContext, plannedAssetIDs);
 
             std::filesystem::path destinationPath;
             std::string pathErrorMessage;
@@ -568,6 +563,7 @@ namespace Quiet::Renderer::UI::Assets
             plan.push_back(PlannedAssetDuplicate
                 {
                     newAssetID,
+                    record->Name + " Copy",
                     record->Type,
                     sourcePath,
                     destinationPath
@@ -600,7 +596,7 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     if (!projectContext.RemoveAssetByID(iterator->AssetID))
                     {
-                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + iterator->AssetID + "'.";
+                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + Quiet::Core::UUIDToString(iterator->AssetID) + "'.";
                         continue;
                     }
 
@@ -623,19 +619,19 @@ namespace Quiet::Renderer::UI::Assets
             switch (duplicate.Type)
             {
                 case Project::AssetType::Mesh:
-                    registered = projectContext.RegisterMeshAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    registered = projectContext.RegisterMeshAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
                     break;
 
                 case Project::AssetType::Texture:
-                    registered = projectContext.RegisterTextureAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    registered = projectContext.RegisterTextureAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
                     break;
 
                 case Project::AssetType::Audio:
-                    registered = projectContext.RegisterAudioAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    registered = projectContext.RegisterAudioAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
                     break;
 
                 case Project::AssetType::Script:
-                    registered = projectContext.RegisterScriptAsset(duplicate.NewAssetID, duplicate.DestinationPath, false);
+                    registered = projectContext.RegisterScriptAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
                     break;
 
                 case Project::AssetType::Unknown:
@@ -646,7 +642,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (!registered)
             {
-                std::string feedbackMessage = "The copied file could not be registered as asset '" + duplicate.NewAssetID + "'.";
+                std::string feedbackMessage = "The copied file could not be registered as asset '" + Quiet::Core::UUIDToString(duplicate.NewAssetID) + "'.";
                 std::error_code currentRemoveError;
                 std::filesystem::remove(duplicate.DestinationPath, currentRemoveError);
 
@@ -660,7 +656,7 @@ namespace Quiet::Renderer::UI::Assets
                 {
                     if (!projectContext.RemoveAssetByID(iterator->AssetID))
                     {
-                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + iterator->AssetID + "'.";
+                        feedbackMessage += "\n• Failed to remove rolled-back registry entry '" + Quiet::Core::UUIDToString(iterator->AssetID) + "'.";
                         continue;
                     }
 
@@ -695,7 +691,7 @@ namespace Quiet::Renderer::UI::Assets
             state.SelectedAssetIDs.push_back(duplicate.NewAssetID);
         }
 
-        state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? std::string{} : state.SelectedAssetIDs.front();
+        state.SelectedDetailsAssetID = state.SelectedAssetIDs.empty() ? Quiet::Core::UUID{} : state.SelectedAssetIDs.front();
         state.SelectionAnchorAssetID = state.SelectedDetailsAssetID;
         state.SelectedContentFolder.clear();
 
@@ -722,7 +718,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        const std::string& assetID = request.AssetIDs.front();
+        Quiet::Core::UUID assetID = request.AssetIDs.front();
         std::filesystem::path renamedAssetPath;
         std::string renameErrorMessage;
 
@@ -740,7 +736,7 @@ namespace Quiet::Renderer::UI::Assets
         editorState.QueueRequest(Editor::EditorRequestType::ReloadAssets);
         editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success,
             "Asset renamed",
-            "Renamed the source file for asset '" + assetID + "' to '" + renamedAssetPath.generic_string() + "'. The stable asset ID was preserved.");
+            "Renamed the source file for asset '" + Quiet::Core::UUIDToString(assetID) + "' to '" + renamedAssetPath.generic_string() + "'. The stable asset ID was preserved.");
         return true;
     }
 
@@ -761,14 +757,14 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        const std::vector<Quiet::Core::UUID> assetIDs = NormalizeAssetIDs(request.AssetIDs);
         if (assetIDs.empty()) return false;
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
             {
-                state.RemoveErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                state.RemoveErrorMessage = "Asset '" + Quiet::Core::UUIDToString(assetID) + "' is no longer registered.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Remove failed",
                     state.RemoveErrorMessage);
@@ -777,7 +773,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (record->BuiltIn)
             {
-                state.RemoveErrorMessage = "Built-in asset '" + record->ID + "' cannot be removed.";
+                state.RemoveErrorMessage = "Built-in asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be removed.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Remove failed",
                     state.RemoveErrorMessage);
@@ -787,7 +783,7 @@ namespace Quiet::Renderer::UI::Assets
             const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
             if (referenceCount > 0)
             {
-                state.RemoveErrorMessage = "Asset '" + record->ID + "' is referenced by " + std::to_string(referenceCount)
+                state.RemoveErrorMessage = "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' is referenced by " + std::to_string(referenceCount)
                     + (referenceCount == 1 ? " actor" : " actors") + " in the current scene.";
 
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
@@ -808,7 +804,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             RemoveAssetFromSelection(state, assetID);
         }
@@ -863,7 +859,7 @@ namespace Quiet::Renderer::UI::Assets
             const bool sourceExists = std::filesystem::exists(assetPath, ec);
             if (ec)
             {
-                summary.ErrorMessage = "Failed to inspect registered asset '" + record.ID + "': " + ec.message();
+                summary.ErrorMessage = "Failed to inspect registered asset '" + Quiet::Core::UUIDToString(record.ID) + "': " + ec.message();
                 return summary;
             }
 
@@ -999,7 +995,7 @@ namespace Quiet::Renderer::UI::Assets
 
         const std::string deletedFolder = summary.Folder;
         const std::string parentFolder = GetParentAssetFolder(projectContext, deletedFolder);
-        std::vector<std::string> removedAssetIDs;
+        std::vector<Quiet::Core::UUID> removedAssetIDs;
 
         std::string deleteErrorMessage;
         std::string deleteWarningMessage;
@@ -1016,7 +1012,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        for (const std::string& assetID : removedAssetIDs)
+        for (Quiet::Core::UUID assetID : removedAssetIDs)
         {
             RemoveAssetFromSelection(state, assetID);
         }
@@ -1067,14 +1063,14 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        const std::vector<std::string> assetIDs = NormalizeAssetIDs(request.AssetIDs);
+        const std::vector<Quiet::Core::UUID> assetIDs = NormalizeAssetIDs(request.AssetIDs);
         if (assetIDs.empty()) return false;
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID);
             if (!record)
             {
-                state.DeleteErrorMessage = "Asset '" + assetID + "' is no longer registered.";
+                state.DeleteErrorMessage = "Asset '" + Quiet::Core::UUIDToString(assetID) + "' is no longer registered.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Delete failed",
                     state.DeleteErrorMessage);
@@ -1083,7 +1079,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (record->BuiltIn)
             {
-                state.DeleteErrorMessage = "Built-in asset '" + record->ID + "' cannot be deleted.";
+                state.DeleteErrorMessage = "Built-in asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be deleted.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Delete failed",
                     state.DeleteErrorMessage);
@@ -1093,7 +1089,7 @@ namespace Quiet::Renderer::UI::Assets
             const AssetPathDiagnostics diagnostics = InspectAssetPath(projectContext, *record);
             if (diagnostics.IsMissing())
             {
-                state.DeleteErrorMessage = "Asset '" + record->ID + "' does not have a valid physical source file. Use Remove from Registry instead.";
+                state.DeleteErrorMessage = "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' does not have a valid physical source file. Use Remove from Registry instead.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Delete failed",
                     state.DeleteErrorMessage);
@@ -1102,7 +1098,7 @@ namespace Quiet::Renderer::UI::Assets
 
             if (diagnostics.External)
             {
-                state.DeleteErrorMessage = "External asset '" + record->ID + "' cannot be physically deleted through the project Assets browser. Use Remove from Registry instead.";
+                state.DeleteErrorMessage = "External asset '" + Quiet::Core::UUIDToString(record->ID) + "' cannot be physically deleted through the project Assets browser. Use Remove from Registry instead.";
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
                     "Delete failed",
                     state.DeleteErrorMessage);
@@ -1112,7 +1108,7 @@ namespace Quiet::Renderer::UI::Assets
             const std::uint32_t referenceCount = CountAssetReferences(scene, *record);
             if (referenceCount > 0)
             {
-                state.DeleteErrorMessage = "Asset '" + record->ID + "' is referenced by " +
+                state.DeleteErrorMessage = "Asset '" + Quiet::Core::UUIDToString(record->ID) + "' is referenced by " +
                     std::to_string(referenceCount) + (referenceCount == 1 ? " actor" : " actors") + " in the current scene.";
 
                 editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Error,
@@ -1134,7 +1130,7 @@ namespace Quiet::Renderer::UI::Assets
             return false;
         }
 
-        for (const std::string& assetID : assetIDs)
+        for (Quiet::Core::UUID assetID : assetIDs)
         {
             RemoveAssetFromSelection(state, assetID);
         }
@@ -1187,7 +1183,7 @@ namespace Quiet::Renderer::UI::Assets
             std::remove_if(
                 state.Clipboard.AssetIDs.begin(),
                 state.Clipboard.AssetIDs.end(),
-                [&](const std::string& assetID)
+                [&](Quiet::Core::UUID assetID)
                 {
                     return Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), assetID) == nullptr;
                 }

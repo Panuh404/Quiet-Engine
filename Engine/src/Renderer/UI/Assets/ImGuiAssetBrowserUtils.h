@@ -87,17 +87,17 @@ namespace Quiet::Renderer::UI::Assets
     void RepairAssetFolderHistoryAfterDelete(AssetBrowserState& state, const std::string& deletedFolder, const std::string& fallbackFolder);
 
     // Asset selection
-    [[nodiscard]] bool IsAssetSelected(const AssetBrowserState& state, const std::string& assetID);
+    [[nodiscard]] bool IsAssetSelected(const AssetBrowserState& state, Quiet::Core::UUID assetID);
 
     void ClearAssetSelection(AssetBrowserState& state);
-    void SelectSingleAsset(AssetBrowserState& state, const std::string& assetID);
+    void SelectSingleAsset(AssetBrowserState& state, Quiet::Core::UUID assetID);
     void HandleAssetSelectionClick(AssetBrowserState& state,
                                    const std::vector<const Project::AssetRecord*>& orderedAssets,
-                                   const std::string& assetID,
+                                   Quiet::Core::UUID assetID,
                                    bool toggleModifier,
                                    bool rangeModifier);
 
-    void RemoveAssetFromSelection(AssetBrowserState& state, const std::string& assetID);
+    void RemoveAssetFromSelection(AssetBrowserState& state, Quiet::Core::UUID assetID);
     void RepairAssetSelection(AssetBrowserState& state, const std::vector<const Project::AssetRecord*>& folderAssets);
     void SetAssetBrowserSource(AssetBrowserState& state, AssetBrowserSource source);
 

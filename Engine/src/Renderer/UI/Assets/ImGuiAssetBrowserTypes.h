@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "Quiet/Core/UUID.h"
+
 namespace Quiet::Renderer::UI::Assets
 {
     enum class AssetBrowserTypeFilter
@@ -66,7 +68,7 @@ namespace Quiet::Renderer::UI::Assets
 
     struct AssetBrowserAssetMoveRequest
     {
-        std::vector<std::string> AssetIDs{};
+        std::vector<Quiet::Core::UUID> AssetIDs{};
         std::string TargetFolder{};
 
         [[nodiscard]] bool IsValid() const
@@ -85,7 +87,7 @@ namespace Quiet::Renderer::UI::Assets
     struct AssetBrowserClipboardState
     {
         AssetBrowserClipboardMode Mode = AssetBrowserClipboardMode::None;
-        std::vector<std::string> AssetIDs{};
+        std::vector<Quiet::Core::UUID> AssetIDs{};
         std::string ProjectRoot{};
 
         [[nodiscard]] bool IsValid() const
@@ -116,7 +118,7 @@ namespace Quiet::Renderer::UI::Assets
     struct AssetBrowserOperationRequest
     {
         AssetBrowserOperationAction Action = AssetBrowserOperationAction::None;
-        std::vector<std::string> AssetIDs{};
+        std::vector<Quiet::Core::UUID> AssetIDs{};
         std::string TargetFolder{};
         std::string NewName{};
 
@@ -160,7 +162,7 @@ namespace Quiet::Renderer::UI::Assets
 
     struct AssetBrowserState
     {
-        std::array<char, 128> AssetIDBuffer{};
+        std::array<char, 128> AssetNameBuffer{};
         std::array<char, 1024> AssetPathBuffer{};
         std::array<char, 128> FolderNameBuffer{};
         std::array<char, 128> SearchBuffer{};
@@ -171,16 +173,16 @@ namespace Quiet::Renderer::UI::Assets
         std::string RemoveErrorMessage{};
         std::string DeleteErrorMessage{};
         std::string AssetRenameErrorMessage{};
-        std::string RenameAssetID{};
+        Quiet::Core::UUID RenameAssetID{};
 
-        std::string SelectedDetailsAssetID{};
-        std::vector<std::string> ConfirmRemoveAssetIDs{};
-        std::vector<std::string> ConfirmDeleteAssetIDs{};
+        Quiet::Core::UUID SelectedDetailsAssetID{};
+        std::vector<Quiet::Core::UUID> ConfirmRemoveAssetIDs{};
+        std::vector<Quiet::Core::UUID> ConfirmDeleteAssetIDs{};
         std::string CurrentAssetFolder{};
         std::string SelectedContentFolder{};
 
-        std::vector<std::string> SelectedAssetIDs{};
-        std::string SelectionAnchorAssetID{};
+        std::vector<Quiet::Core::UUID> SelectedAssetIDs{};
+        Quiet::Core::UUID SelectionAnchorAssetID{};
         AssetBrowserClipboardState Clipboard{};
 
         std::vector<std::string> FolderHistory{};

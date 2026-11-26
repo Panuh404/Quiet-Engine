@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Quiet/Core/UUID.h"
+
 #include <string>
 
 #include "Quiet/Project/AssetType.h"
@@ -29,7 +31,7 @@ namespace Quiet::Renderer::UI::Assets
         const char* id,
         const Project::ProjectContext& projectContext,
         const AssetPickerOptions& options,
-        const std::string& currentAssetID,
-        std::string& outSelectedAssetID
+        Quiet::Core::UUID currentAssetID,
+        Quiet::Core::UUID& outSelectedAssetID
     );
 }

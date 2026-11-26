@@ -16,7 +16,7 @@ namespace Quiet::Renderer::UI
     struct AssetFileDialogResult
     {
         Project::AssetType Type = Project::AssetType::Unknown;
-        std::string AssetID;
+        std::string SuggestedName;
         std::string SourcePath;
     };
 

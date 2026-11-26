@@ -17,8 +17,8 @@ namespace Quiet::Renderer::UI::Assets
         bool runtimeModeActive,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
-        std::string& pendingDetailsAssetID,
-        std::string& pendingReimportAssetID
+        Quiet::Core::UUID& pendingDetailsAssetID,
+        Quiet::Core::UUID& pendingReimportAssetID
     );
 
     void DrawAssetFolderContextMenu(

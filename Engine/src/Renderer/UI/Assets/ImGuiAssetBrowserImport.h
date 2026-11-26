@@ -12,7 +12,7 @@ namespace Quiet::Renderer::UI::Assets
         Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         const std::string& currentAssetFolder,
-        std::array<char, 128>& assetIDBuffer,
+        std::array<char, 128>& assetNameBuffer,
         std::array<char, 1024>& assetPathBuffer,
         std::string& errorMessage,
         bool& reopenImportPopupAfterFileDialog
@@ -22,7 +22,7 @@ namespace Quiet::Renderer::UI::Assets
         Project::ProjectContext& projectContext,
         Editor::EditorState& editorState,
         const std::string& currentAssetFolder,
-        std::array<char, 128>& assetIDBuffer,
+        std::array<char, 128>& assetNameBuffer,
         std::array<char, 1024>& assetPathBuffer,
         std::string& errorMessage,
         bool& reopenImportPopupAfterFileDialog

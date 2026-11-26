@@ -355,7 +355,7 @@ namespace Quiet::Renderer::UI::Assets
         auto& audioSubsystem = context.AudioSubsystem;
         const auto& audioLibrary = audioSubsystem.GetLibrary();
 
-        auto& assetIDBuffer = state.AssetIDBuffer;
+        auto& assetNameBuffer = state.AssetNameBuffer;
         auto& assetPathBuffer = state.AssetPathBuffer;
         auto& registerErrorMessage = state.ImportErrorMessage;
         auto& selectedDetailsAssetID = state.SelectedDetailsAssetID;
@@ -409,7 +409,7 @@ namespace Quiet::Renderer::UI::Assets
                     state.ImportTargetFolder = currentAssetFolder;
                 }
 
-                assetIDBuffer.fill('\0');
+                assetNameBuffer.fill('\0');
                 assetPathBuffer.fill('\0');
                 registerErrorMessage.clear();
                 reopenImportPopupAfterFileDialog = false;
@@ -431,7 +431,7 @@ namespace Quiet::Renderer::UI::Assets
                 projectContext,
                 editorState,
                 importTargetFolder,
-                assetIDBuffer,
+                assetNameBuffer,
                 assetPathBuffer,
                 registerErrorMessage,
                 reopenImportPopupAfterFileDialog);
@@ -439,7 +439,7 @@ namespace Quiet::Renderer::UI::Assets
             if (const auto selectedAsset = DrawAssetFileDialog())
             {
                 CopyToBuffer(assetPathBuffer, selectedAsset->SourcePath);
-                CopyToBuffer(assetIDBuffer, selectedAsset->AssetID);
+                CopyToBuffer(assetNameBuffer, selectedAsset->SuggestedName);
                 registerErrorMessage.clear();
             }
 
@@ -570,8 +570,8 @@ namespace Quiet::Renderer::UI::Assets
                                 assetSearchBuffer.data()
                             );
 
-                    std::string pendingDetailsAssetID;
-                    std::string pendingReimportAssetID;
+                    Quiet::Core::UUID pendingDetailsAssetID{};
+                    Quiet::Core::UUID pendingReimportAssetID{};
                     std::string pendingNavigateFolder;
 
                     if (useSplitDetailsLayout)
@@ -648,22 +648,22 @@ namespace Quiet::Renderer::UI::Assets
                     if (useSplitDetailsLayout)
                         ImGui::EndChild();
 
-                    if (!pendingDetailsAssetID.empty())
+                    if (pendingDetailsAssetID.IsValid())
                     {
                         selectedDetailsAssetID = pendingDetailsAssetID;
                         openAssetDetailsPopup = true;
                     }
 
-                    if (!pendingReimportAssetID.empty())
+                    if (pendingReimportAssetID.IsValid())
                     {
                         selectedDetailsAssetID = pendingReimportAssetID;
                         editorState.QueueRequest(Editor::EditorRequestType::ReimportAsset, pendingReimportAssetID);
                     }
 
-                    const bool selectedAssetStillExists = selectedDetailsAssetID.empty() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
+                    const bool selectedAssetStillExists = !selectedDetailsAssetID.IsValid() || Project::AssetRegistryIO::FindByID(registry, selectedDetailsAssetID) != nullptr;
                     if (!selectedAssetStillExists)
                     {
-                        selectedDetailsAssetID.clear();
+                        selectedDetailsAssetID = {};
                     }
 
                     if (!useSplitDetailsLayout)

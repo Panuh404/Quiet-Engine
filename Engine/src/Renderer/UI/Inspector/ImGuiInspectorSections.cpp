@@ -379,7 +379,7 @@ namespace Quiet::Renderer::UI::Inspector
         const bool hasStaticMeshClipboard = state.Clipboard.Type == ComponentClipboardType::StaticMesh;
 
         const Project::AssetRecord* copiedMeshRecord = nullptr;
-        if (hasStaticMeshClipboard && !state.Clipboard.StaticMeshResourceID.empty())
+        if (hasStaticMeshClipboard && state.Clipboard.StaticMeshResourceID.IsValid())
         {
             copiedMeshRecord = Project::AssetRegistryIO::FindByID(context.ProjectContext.GetAssetRegistry(), state.Clipboard.StaticMeshResourceID);
         }
@@ -443,7 +443,7 @@ namespace Quiet::Renderer::UI::Inspector
         meshPickerOptions.Type = Project::AssetType::Mesh;
         meshPickerOptions.MeshLibrary = &context.MeshLibrary;
 
-        std::string selectedMeshAssetID;
+        Quiet::Core::UUID selectedMeshAssetID{};
 
         if (DrawAssetPickerPropertyRow("Mesh Resource", context.ProjectContext, meshPickerOptions, staticMesh->MeshResourceID, selectedMeshAssetID))
         {
@@ -472,9 +472,9 @@ namespace Quiet::Renderer::UI::Inspector
         const bool hasMaterialClipboard = state.Clipboard.Type == ComponentClipboardType::Material;
         const bool materialSlotCountsMatch = hasMaterialClipboard && state.Clipboard.MaterialSlots.size() == staticMesh->MaterialSlots.size();
         const auto& assetRegistry = context.ProjectContext.GetAssetRegistry();
-        const auto isRegisteredTextureAsset = [&](const std::string& textureAssetID)
+        const auto isRegisteredTextureAsset = [&](Quiet::Core::UUID textureAssetID)
         {
-            if (textureAssetID.empty()) return true;
+            if (!textureAssetID.IsValid()) return true;
             const Project::AssetRecord* record = Project::AssetRegistryIO::FindByID(assetRegistry, textureAssetID);
             return record && record->Type == Project::AssetType::Texture;
         };
@@ -576,7 +576,7 @@ namespace Quiet::Renderer::UI::Inspector
         texturePickerOptions.AllowNone = true;
         texturePickerOptions.TextureLibrary = &context.TextureLibrary;
 
-        std::string selectedTextureAssetID;
+        Quiet::Core::UUID selectedTextureAssetID{};
 
         if (DrawAssetPickerPropertyRow("Base Color Texture", context.ProjectContext, texturePickerOptions, material->BaseColorTextureAssetID, selectedTextureAssetID))
         {
@@ -593,7 +593,7 @@ namespace Quiet::Renderer::UI::Inspector
         }
         else
         {
-            const std::string& textureAssetID = material->BaseColorTextureAssetID;
+            Quiet::Core::UUID textureAssetID = material->BaseColorTextureAssetID;
             const auto textureStats = context.TextureLibrary.GetStats(textureAssetID);
 
             if (!textureStats.has_value())
@@ -1041,7 +1041,7 @@ namespace Quiet::Renderer::UI::Inspector
         audioPickerOptions.Type = Project::AssetType::Audio;
         audioPickerOptions.AllowNone = true;
 
-        std::string selectedAudioAssetID;
+        Quiet::Core::UUID selectedAudioAssetID{};
         if (DrawAssetPickerPropertyRow("Audio", context.ProjectContext, audioPickerOptions, audioSource->AudioAssetID, selectedAudioAssetID))
         {
             context.Commands.SetAudioSourceAsset(context.Scene, actor.GetID(), selectedAudioAssetID, context.ProjectContext);
@@ -1175,7 +1175,7 @@ namespace Quiet::Renderer::UI::Inspector
             }
         }
 
-        if (audioSource->AudioAssetID.empty())
+        if (!audioSource->AudioAssetID.IsValid())
         {
             ImGui::Spacing();
 
@@ -1247,7 +1247,7 @@ namespace Quiet::Renderer::UI::Inspector
         Scene::ScriptComponent* script = actor.TryGetComponent<Scene::ScriptComponent>();
         if (!script) return;
 
-        const bool hasScript = !script->ScriptAssetID.empty();
+        const bool hasScript = script->ScriptAssetID.IsValid();
 
         std::filesystem::path sourcePath;
         std::string sourcePathError;
@@ -1268,7 +1268,12 @@ namespace Quiet::Renderer::UI::Inspector
             { "Refresh Exposed Properties", sourceAvailable, unavailableReason }
         }};
 
-        const std::string scriptHeaderTitle = std::string("Script · ") + (hasScript ? script->ScriptAssetID : "None") + "###ScriptComponentHeader";
+        const auto* scriptRecord = hasScript
+            ? Project::AssetRegistryIO::FindByID(context.ProjectContext.GetAssetRegistry(), script->ScriptAssetID)
+            : nullptr;
+        const std::string scriptName = scriptRecord ? scriptRecord->Name
+            : (hasScript ? Core::UUIDToString(script->ScriptAssetID) : "None");
+        const std::string scriptHeaderTitle = "Script · " + scriptName + "###ScriptComponentHeader";
 
         const bool canPasteScript = state.Clipboard.Type == ComponentClipboardType::Script;
         const auto header = BeginInspectorComponent(
@@ -1326,14 +1331,14 @@ namespace Quiet::Renderer::UI::Inspector
         pickerOptions.Type = Project::AssetType::Script;
         pickerOptions.AllowNone = true;
 
-        std::string selectedScriptAssetID;
+        Quiet::Core::UUID selectedScriptAssetID{};
 
         if (DrawAssetPickerPropertyRow("Script", context.ProjectContext, pickerOptions, script->ScriptAssetID, selectedScriptAssetID))
         {
             context.Commands.SetScriptAsset(context.Scene, actor.GetID(), selectedScriptAssetID, context.ProjectContext);
         }
 
-        if (!script->ScriptAssetID.empty())
+        if (script->ScriptAssetID.IsValid())
         {
             ImGui::Spacing();
 
@@ -1507,7 +1512,7 @@ namespace Quiet::Renderer::UI::Inspector
                                     break;
                             }
 
-                            std::string selectedAssetID;
+                            Quiet::Core::UUID selectedAssetID{};
                             if (DrawAssetPickerPropertyRow(property.Name.c_str(), context.ProjectContext, options, property.AssetValue, selectedAssetID))
                             {
                                 edited.AssetValue = selectedAssetID;

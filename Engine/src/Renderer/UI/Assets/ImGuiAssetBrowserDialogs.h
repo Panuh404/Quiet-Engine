@@ -29,7 +29,7 @@ namespace Quiet::Renderer::UI::Assets
     void DrawAssetRenamePopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, AssetBrowserState& state);
 
     // Remove Popup
-    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<std::string>& assetIDs);
+    void RequestAssetRegistryRemoval(AssetBrowserState& state, const std::vector<Quiet::Core::UUID>& assetIDs);
     void DrawRemoveAssetConfirmationPopup(Project::ProjectContext& projectContext,
                                           Editor::EditorState& editorState,
                                           const Scene::Scene& scene,
@@ -37,7 +37,7 @@ namespace Quiet::Renderer::UI::Assets
                                           float uiScale);
 
     // Delete Popup
-    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<std::string>& assetIDs);
+    void RequestAssetProjectDeletion(AssetBrowserState& state, const std::vector<Quiet::Core::UUID>& assetIDs);
     void DrawDeleteAssetConfirmationPopup(Project::ProjectContext& projectContext,
                                           Editor::EditorState& editorState,
                                           const Scene::Scene& scene,

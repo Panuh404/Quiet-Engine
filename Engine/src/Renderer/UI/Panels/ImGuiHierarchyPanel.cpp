@@ -742,8 +742,8 @@ namespace
         for (const Quiet::Core::UUID primitiveUUID : Quiet::Renderer::Vulkan::MeshPrimitives::GetBuiltInAssetIDs())
         {
             const std::string primitiveID = Quiet::Core::UUIDToString(primitiveUUID);
-            const bool loaded = meshLibrary.Has(primitiveID);
-            const auto* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveID);
+            const bool loaded = meshLibrary.Has(primitiveUUID);
+            const auto* record = Quiet::Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), primitiveUUID);
             const std::string label = (record ? record->Name : primitiveID) + " Actor";
 
             if (QUI::EditorMenuItem(label.c_str(), nullptr, false, loaded))
@@ -751,7 +751,7 @@ namespace
                 editorCommands.CreateStaticMeshActor(
                     scene,
                     label,
-                    primitiveID,
+                    primitiveUUID,
                     projectContext,
                     meshLibrary
                 );
@@ -779,9 +779,10 @@ namespace
 
             foundImportedMesh = true;
             const bool loaded = meshLibrary.Has(record.ID);
-            const std::string label = record.ID + " Actor";
+            const std::string label = record.Name + " Actor";
+            const std::string menuLabel = label + "###" + Quiet::Core::UUIDToString(record.ID);
 
-            if (QUI::EditorMenuItem(label.c_str(), nullptr, false, loaded))
+            if (QUI::EditorMenuItem(menuLabel.c_str(), nullptr, false, loaded))
             {
                 editorCommands.CreateStaticMeshActor(
                     scene,
@@ -793,7 +794,7 @@ namespace
             }
 
             if (!loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-                ImGui::SetTooltip("Mesh asset '%s' is registered but not loaded.", record.ID.c_str());
+                ImGui::SetTooltip("Mesh asset '%s' is registered but not loaded.", record.Name.c_str());
 
             else if (loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) && !record.Path.empty())
                 ImGui::SetTooltip("%s", record.Path.c_str());
