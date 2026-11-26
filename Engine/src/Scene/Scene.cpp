@@ -35,6 +35,7 @@ namespace Quiet::Scene
         m_AudioSettings = other.m_AudioSettings;
         m_PhysicsSettings = other.m_PhysicsSettings;
         m_RenderSettings = other.m_RenderSettings;
+        m_HUDSelection = other.m_HUDSelection;
         for (const Actor& source : other.m_Actors)
         {
             Actor& target = CreateActorWithID(source.GetID(), source.GetName());
@@ -162,6 +163,7 @@ namespace Quiet::Scene
         m_AudioSettings = SceneAudioSettings{};
         m_PhysicsSettings = ScenePhysicsSettings{};
         m_RenderSettings = SceneRenderSettings{};
+        m_HUDSelection.reset();
         m_Hierarchy = SceneHierarchyState{};
         m_Registry.clear();
         m_Actors.clear();

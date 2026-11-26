@@ -10,7 +10,9 @@ namespace Quiet::Project
         Mesh,
         Texture,
         Audio,
-        Script
+        Script,
+        UIDocument,
+        UIStyleSheet
     };
 
     [[nodiscard]] constexpr std::string_view ToString(const AssetType type)
@@ -21,6 +23,8 @@ namespace Quiet::Project
             case AssetType::Texture: return "Texture";
             case AssetType::Audio: return "Audio";
             case AssetType::Script: return "Script";
+            case AssetType::UIDocument: return "UIDocument";
+            case AssetType::UIStyleSheet: return "UIStyleSheet";
             case AssetType::Unknown:
             default:
                 return "Unknown";
@@ -52,6 +56,16 @@ namespace Quiet::Project
         if (value == "Unknown")
         {
             outType = AssetType::Unknown;
+            return true;
+        }
+        if (value == "UIDocument")
+        {
+            outType = AssetType::UIDocument;
+            return true;
+        }
+        if (value == "UIStyleSheet")
+        {
+            outType = AssetType::UIStyleSheet;
             return true;
         }
         return false;

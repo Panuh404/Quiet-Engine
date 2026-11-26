@@ -450,6 +450,13 @@ namespace Quiet::Scene
         root["physics_settings"] = {
             { "gravity", SerializeVec3(physicsSettings.Gravity) }
         };
+        if (const auto& hud = scene.GetHUDSelection(); hud)
+        {
+            root["hud"] = {
+                { "document_asset_id", SerializeAssetReference(hud->DocumentAssetID) },
+                { "stylesheet_asset_id", SerializeAssetReference(hud->StyleSheetAssetID) }
+            };
+        }
         root["editor_hierarchy"] = SerializeHierarchyState(scene.GetHierarchy());
 
         for (const Actor& actor : scene.GetActors())
@@ -876,9 +883,20 @@ namespace Quiet::Scene
             return false;
         }
 
+        std::optional<SceneHUDSelection> hudSelection;
         try
         {
             ValidateSceneAssetReferences(root.at("actors"));
+            if (const auto hud = root.find("hud"); hud != root.end())
+            {
+                if (!hud->is_object())
+                    throw std::runtime_error("Scene 'hud' must be an object.");
+
+                hudSelection = SceneHUDSelection{
+                    DeserializeAssetReference(*hud, "document_asset_id"),
+                    DeserializeAssetReference(*hud, "stylesheet_asset_id")
+                };
+            }
         }
         catch (const std::exception& error)
         {
@@ -887,6 +905,7 @@ namespace Quiet::Scene
         }
 
         scene.Clear();
+        scene.GetHUDSelection() = hudSelection;
 
         if (root.contains("audio_settings"))
         {

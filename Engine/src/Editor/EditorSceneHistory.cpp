@@ -363,6 +363,7 @@ namespace Quiet::Editor
         m_PendingSnapshot.reset();
         m_CleanSnapshot = CaptureSnapshot(scene, state);
 
+
         RefreshHistoryFlags(state);
         RefreshDirtyState(scene, state);
     }
@@ -507,6 +508,7 @@ namespace Quiet::Editor
         snapshot.AudioSettings = scene.GetAudioSettings();
         snapshot.PhysicsSettings = scene.GetPhysicsSettings();
         snapshot.RenderSettings = scene.GetRenderSettings();
+        snapshot.HUDSelection = scene.GetHUDSelection();
         snapshot.SelectedActorID = state.Selection.SelectedActorID;
 
         return snapshot;
@@ -567,6 +569,7 @@ namespace Quiet::Editor
         scene.GetAudioSettings() = snapshot.AudioSettings;
         scene.GetPhysicsSettings() = snapshot.PhysicsSettings;
         scene.GetRenderSettings() = snapshot.RenderSettings;
+        scene.GetHUDSelection() = snapshot.HUDSelection;
         state.Selection.SelectedActorID = snapshot.SelectedActorID;
     }
 
@@ -577,7 +580,8 @@ namespace Quiet::Editor
                lhs.Hierarchy == rhs.Hierarchy &&
                AreAudioSettingsEqual(lhs.AudioSettings, rhs.AudioSettings) &&
                AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings) &&
-               ArePhysicsSettingsEqual(lhs.PhysicsSettings, rhs.PhysicsSettings);
+               ArePhysicsSettingsEqual(lhs.PhysicsSettings, rhs.PhysicsSettings) &&
+               lhs.HUDSelection == rhs.HUDSelection;
     }
 
     void EditorSceneHistory::PushUndoSnapshot(SceneSnapshot snapshot)

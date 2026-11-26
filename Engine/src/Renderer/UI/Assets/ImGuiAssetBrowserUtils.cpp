@@ -914,6 +914,11 @@ namespace Quiet::Renderer::UI::Assets
         {
             return editorState.Scripting.SourceErrors.contains(record.ID) ? "Error" : "Valid";
         }
+        if (record.Type == Project::AssetType::UIDocument ||
+            record.Type == Project::AssetType::UIStyleSheet)
+        {
+            return "Registered";
+        }
         return "Unknown";
     }
 
@@ -965,6 +970,12 @@ namespace Quiet::Renderer::UI::Assets
     std::uint32_t CountAssetReferences(const Scene::Scene& scene, const Project::AssetRecord& record)
     {
         std::uint32_t count = 0;
+
+        const auto& hud = scene.GetHUDSelection();
+        if (record.Type == Project::AssetType::UIDocument)
+            return hud && hud->DocumentAssetID == record.ID ? 1u : 0u;
+        if (record.Type == Project::AssetType::UIStyleSheet)
+            return hud && hud->StyleSheetAssetID == record.ID ? 1u : 0u;
 
         for (const Scene::Actor& actor : scene.GetActors())
         {

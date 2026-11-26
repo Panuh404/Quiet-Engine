@@ -122,6 +122,8 @@ namespace Quiet::Project
         [[nodiscard]] bool RegisterTextureAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
         [[nodiscard]] bool RegisterAudioAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
         [[nodiscard]] bool RegisterScriptAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+        [[nodiscard]] bool RegisterUIDocumentAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
+        [[nodiscard]] bool RegisterUIStyleSheetAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName);
 
         [[nodiscard]] bool RemoveAssetByID(Core::UUID assetID);
         [[nodiscard]] bool RemoveAssetsByID(const std::vector<Core::UUID>& assetIDs, std::string& outErrorMessage);

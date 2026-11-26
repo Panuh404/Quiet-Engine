@@ -634,6 +634,14 @@ namespace Quiet::Renderer::UI::Assets
                     registered = projectContext.RegisterScriptAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
                     break;
 
+                case Project::AssetType::UIDocument:
+                    registered = projectContext.RegisterUIDocumentAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
+                    break;
+
+                case Project::AssetType::UIStyleSheet:
+                    registered = projectContext.RegisterUIStyleSheetAsset(duplicate.NewAssetID, duplicate.DestinationPath, duplicate.NewAssetName);
+                    break;
+
                 case Project::AssetType::Unknown:
                 default:
                     registered = false;

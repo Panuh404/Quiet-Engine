@@ -136,6 +136,14 @@ namespace Quiet::Renderer::UI::Assets
                 DrawPillLabel("Script", EditorColor::Accent, EditorColor::Background3);
                 break;
 
+            case Project::AssetType::UIDocument:
+                DrawPillLabel("UI Document", EditorColor::Accent, EditorColor::Background3);
+                break;
+
+            case Project::AssetType::UIStyleSheet:
+                DrawPillLabel("UI Stylesheet", EditorColor::Accent, EditorColor::Background3);
+                break;
+
             case Project::AssetType::Unknown:
             default:
                 DrawPillLabel("Unknown", EditorColor::TextMuted, EditorColor::Background3);

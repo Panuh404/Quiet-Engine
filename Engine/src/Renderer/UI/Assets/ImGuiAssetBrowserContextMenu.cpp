@@ -23,6 +23,9 @@ namespace
         if (runtimeModeActive)      return "Assets cannot be reimported while runtime mode is active.";
         if (record.Path.empty())    return "This asset has no source path.";
         if (!resolvedPathExists)    return "The source file does not exist on disk.";
+        if (record.Type == Quiet::Project::AssetType::UIDocument ||
+            record.Type == Quiet::Project::AssetType::UIStyleSheet)
+                                    return "UI source assets are read from disk when entering Play.";
         return {};
     }
 

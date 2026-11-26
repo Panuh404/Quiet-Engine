@@ -489,6 +489,11 @@ namespace Quiet::Project
                 QUIET_CORE_WARN("Script asset '{}' is source-only and does not require project reimport.", Core::UUIDToString(assetID));
                 return false;
 
+            case AssetType::UIDocument:
+            case AssetType::UIStyleSheet:
+                QUIET_CORE_WARN("UI asset '{}' is read from disk when entering Editor Play.", Core::UUIDToString(assetID));
+                return false;
+
             case AssetType::Unknown:
             default:
                 QUIET_CORE_WARN("Cannot reimport asset '{}': unsupported asset type.", Core::UUIDToString(assetID));

@@ -10,6 +10,7 @@
 #include "Scene/SceneHierarchy.h"
 #include "Scene/ScenePhysicsSettings.h"
 #include "Scene/SceneRenderSettings.h"
+#include "Scene/SceneHUDSelection.h"
 
 namespace Quiet::Editor
 {
@@ -62,6 +63,7 @@ namespace Quiet::Editor
             Scene::ScenePhysicsSettings PhysicsSettings;
             Scene::SceneRenderSettings RenderSettings;
             std::optional<Core::UUID> SelectedActorID;
+            std::optional<Scene::SceneHUDSelection> HUDSelection;
         };
 
         /**

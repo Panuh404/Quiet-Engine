@@ -43,6 +43,7 @@
 #include "Quiet/Project/AssetRegistry.h"
 #include "Quiet/Project/RuntimeAssetLoader.h"
 #include "Quiet/Project/RuntimeManifest.h"
+#include "Quiet/UI/UIDocument.h"
 
 #include "Renderer/UI/ImGuiLayer.h"
 #include "Renderer/UI/ImGuiTexturePreview.h"
@@ -342,7 +343,8 @@ namespace Quiet::Core
         m_Scene = std::make_unique<Scene::Scene>();
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
 
-        InitializeRuntimeUIDemo();
+        SetRuntimeUIScale(1.25f);
+        if (m_Spec.IsSandbox()) InitializeRuntimeUIDemo();
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -516,8 +518,6 @@ namespace Quiet::Core
 
     void Application::InitializeRuntimeUIDemo()
     {
-        SetRuntimeUIScale(1.25f);
-
         auto panel = std::make_unique<UI::Panel>();
         panel->SetBounds({{24.0f, 24.0f}, {320.0f, 120.0f}});
 
@@ -620,8 +620,130 @@ namespace Quiet::Core
         m_RuntimeUIRoot.AddChild(std::move(clippingPanel));
     }
 
+    void Application::MountEditorPlayHUD(const Scene::Scene& scene)
+    {
+        const auto& hud = scene.GetHUDSelection();
+        if (!hud) return;
+
+        const auto warn = [&](const std::string& reason)
+        {
+            QUIET_CORE_WARN(
+                "Editor Play HUD skipped for scene '{}' (document {}, stylesheet {}): {}",
+                m_ProjectContext.GetActiveScenePath().string(),
+                UUIDToString(hud->DocumentAssetID),
+                UUIDToString(hud->StyleSheetAssetID),
+                reason);
+        };
+
+        if (!hud->DocumentAssetID.IsValid() || !hud->StyleSheetAssetID.IsValid())
+        {
+            warn("Set both document_asset_id and stylesheet_asset_id in the Scene's hud selection.");
+            return;
+        }
+
+        const auto& registry = m_ProjectContext.GetAssetRegistry();
+        const auto resolve = [&](UUID id, Project::AssetType expectedType) -> std::filesystem::path
+        {
+            const auto* record = Project::AssetRegistryIO::FindByID(registry, id);
+            if (!record || record->Type != expectedType || record->BuiltIn || record->Path.empty())
+            {
+                warn("Register asset " + UUIDToString(id) + " as " + std::string(Project::ToString(expectedType)) + " with a source path.");
+                return {};
+            }
+
+            const std::filesystem::path path = record->Path;
+            return (path.is_absolute() ? path : m_ProjectContext.GetRootPath() / path).lexically_normal();
+        };
+
+        const auto documentPath = resolve(hud->DocumentAssetID, Project::AssetType::UIDocument);
+        if (documentPath.empty()) return;
+
+        const auto sheetPath = resolve(hud->StyleSheetAssetID, Project::AssetType::UIStyleSheet);
+        if (sheetPath.empty()) return;
+
+        UI::UIDocument document;
+        UI::UIStyleSheet sheet;
+        std::string error;
+        if (!UI::LoadUIDocumentFromFile(documentPath, document, error))
+        {
+            warn(documentPath.string() + ": " + error);
+            return;
+        }
+        if (!UI::LoadUIStyleSheetFromFile(sheetPath, sheet, error))
+        {
+            warn(sheetPath.string() + ": " + error);
+            return;
+        }
+
+        const auto& textures = m_Renderer->GetTextureLibrary();
+        const auto validateImages = [&](const auto& visit, const UI::UIDocumentNode& node) -> bool
+        {
+            if (const auto* image = std::get_if<UI::UIDocumentImage>(&node.Properties);
+                image && image->TextureID.IsValid())
+            {
+                const auto* record = Project::AssetRegistryIO::FindByID(registry, image->TextureID);
+                if (!record || record->Type != Project::AssetType::Texture ||
+                    !textures.TryGet(image->TextureID))
+                {
+                    warn(documentPath.string() + ": image node " + UUIDToString(node.ID) +
+                         " requires registered, GPU-loaded texture " + UUIDToString(image->TextureID) +
+                         ". Check its Texture record and project asset load diagnostics.");
+                    return false;
+                }
+            }
+
+            for (const auto& child : node.Children)
+            {
+                if (!visit(visit, child)) return false;
+            }
+            return true;
+        };
+
+        for (const auto& node : document.Roots)
+        {
+            if (!validateImages(validateImages, node)) return;
+        }
+
+        auto tree = UI::BuildUIDocument(document, sheet, error);
+        if (!tree)
+        {
+            warn(documentPath.string() + " with " + sheetPath.string() + ": " + error);
+            return;
+        }
+
+        if (m_Spec.BindEditorPlayHUD && !m_Spec.BindEditorPlayHUD(hud->DocumentAssetID, *tree, error))
+        {
+            warn("C++ binding failed for " + documentPath.string() + ": " + error);
+            return;
+        }
+
+        m_EditorPlayHUDRoot = &m_RuntimeUIRoot.AddChild(std::move(tree));
+    }
+
+    void Application::ClearEditorPlayHUD()
+    {
+        if (!m_EditorPlayHUDRoot) return;
+
+        m_RuntimeUIRoot.ClearFocus();
+        m_RuntimeUIRoot.UpdatePointerHover(nullptr);
+        m_RuntimeUIRoot.UpdatePointerPress(nullptr, false, false);
+        auto hud = m_RuntimeUIRoot.DetachChild(*m_EditorPlayHUDRoot);
+        m_EditorPlayHUDRoot = nullptr;
+
+        m_RuntimeUIPaintList.clear();
+        m_RuntimeUIOwnsPrimaryPress = false;
+        m_RuntimeUIOwnsTab = false;
+        m_RuntimeUIOwnsActivationKeys.fill(false);
+        m_RuntimeUIActivationKey.reset();
+        m_RuntimeUIOwnsGamepadNavigation.fill(false);
+        m_RuntimeUIOwnsGamepadConfirm = false;
+        m_RuntimeUIOwnsGamepadCancel = false;
+        m_RuntimeUIGamepadConfirmActive = false;
+    }
+
     void Application::ShutdownCommon()
     {
+        ClearEditorPlayHUD();
         if (m_EditorRuntimeController) m_EditorRuntimeController->Shutdown();
         if (m_Scene && m_Scene->IsRuntimeActive()) m_Scene->EndRuntime();
 
@@ -779,11 +901,15 @@ namespace Quiet::Core
                     break;
 
                 case Editor::EditorRequestType::EnterPlay:
+                    if (editorState.Scene.Mode != Editor::SceneMode::Edit) break;
                     EndEditorViewportNavigationCapture(editorState);
                     m_EditorRuntimeController->EnterPlayMode();
+                    MountEditorPlayHUD(*m_RuntimeScene);
                     break;
 
                 case Editor::EditorRequestType::StopPlay:
+                    if (editorState.Scene.Mode != Editor::SceneMode::Play) break;
+                    ClearEditorPlayHUD();
                     m_EditorRuntimeController->StopPlayMode();
                     break;
 
@@ -1108,6 +1234,8 @@ namespace Quiet::Core
             static_cast<float>(extent.height) / m_RuntimeUIScale);
 
         m_RuntimeUIRoot.SetBounds({ {0.0f, 0.0f}, logicalSize });
+        if (m_EditorPlayHUDRoot)
+            m_EditorPlayHUDRoot->SetBounds({ {0.0f, 0.0f}, logicalSize });
         if (!m_RuntimeUIRoot.GetInvalidationState().Layout) return;
 
         const UI::LayoutContext context

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <optional>
 
 #include <glm/vec3.hpp>
 
@@ -11,6 +12,7 @@
 #include "Scene/SceneHierarchy.h"
 #include "Scene/SceneAudioSettings.h"
 #include "Scene/ScenePhysicsSettings.h"
+#include "Scene/SceneHUDSelection.h"
 #include "Scene/SceneRenderSettings.h"
 #include "Physics/PhysicsContactEvent.h"
 
@@ -278,6 +280,9 @@ namespace Quiet::Scene
         [[nodiscard]] SceneRenderSettings& GetRenderSettings() { return m_RenderSettings; }
         [[nodiscard]] const SceneRenderSettings& GetRenderSettings() const { return m_RenderSettings; }
 
+        [[nodiscard]] std::optional<SceneHUDSelection>& GetHUDSelection() { return m_HUDSelection; }
+        [[nodiscard]] const std::optional<SceneHUDSelection>& GetHUDSelection() const { return m_HUDSelection; }
+
         [[nodiscard]] Actor* FindActorByID(Core::UUID id);
         [[nodiscard]] const Actor* FindActorByID(Core::UUID id) const;
         [[nodiscard]] entt::entity FindEntityByID(Core::UUID id) const;
@@ -318,6 +323,7 @@ namespace Quiet::Scene
         SceneAudioSettings m_AudioSettings{};
         ScenePhysicsSettings m_PhysicsSettings{};
         SceneRenderSettings m_RenderSettings{};
+        std::optional<SceneHUDSelection> m_HUDSelection;
         RuntimeMode m_RuntimeMode = RuntimeMode::None;
 
         std::unique_ptr<Physics::PhysicsWorld> m_PhysicsWorld;

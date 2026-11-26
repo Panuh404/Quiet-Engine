@@ -174,6 +174,14 @@ namespace
                 registered = projectContext.RegisterScriptAsset(assetID, destinationPath, assetName);
                 break;
 
+            case Project::AssetType::UIDocument:
+                registered = projectContext.RegisterUIDocumentAsset(assetID, destinationPath, assetName);
+                break;
+
+            case Project::AssetType::UIStyleSheet:
+                registered = projectContext.RegisterUIStyleSheetAsset(assetID, destinationPath, assetName);
+                break;
+
             case Project::AssetType::Unknown:
             default:
                 registered = false;

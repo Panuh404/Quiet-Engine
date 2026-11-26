@@ -262,6 +262,16 @@ namespace Quiet::Project
         return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::Script);
     }
 
+    bool ProjectContext::RegisterUIDocumentAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
+    {
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::UIDocument);
+    }
+
+    bool ProjectContext::RegisterUIStyleSheetAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
+    {
+        return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::UIStyleSheet);
+    }
+
     bool ProjectContext::RemoveAssetByID(Core::UUID assetID)
     {
         const AssetRecord* record = AssetRegistryIO::FindByID(m_AssetRegistry, assetID);

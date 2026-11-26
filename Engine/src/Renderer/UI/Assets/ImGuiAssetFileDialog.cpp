@@ -21,7 +21,7 @@ namespace
     constexpr const char* kAssetFileDialogKey = "Quiet_SelectAssetFile";
     constexpr const char* kSupportedAssetFilters =
         "All Supported"
-        "{.obj,.fbx,.gltf,.glb,.dae,.png,.jpg,.jpeg,.tga,.bmp,.wav,.flac,.mp3,.lua},"
+        "{.obj,.fbx,.gltf,.glb,.dae,.png,.jpg,.jpeg,.tga,.bmp,.wav,.flac,.mp3,.lua,.quidoc,.quistyle},"
         "Meshes (*.obj *.fbx *.gltf *.glb *.dae)"
         "{.obj,.fbx,.gltf,.glb,.dae},"
         "Textures (*.png *.jpg *.jpeg *.tga *.bmp)"
@@ -29,7 +29,9 @@ namespace
         "Audio (*.wav *.flac *.mp3)"
         "{.wav,.flac,.mp3},"
         "Scripts (*.lua)"
-        "{.lua}";
+        "{.lua},"
+        "UI (*.quidoc *.quistyle)"
+        "{.quidoc,.quistyle}";
 
 
     void ConfigureAssetFileDialogStyles()
@@ -79,6 +81,8 @@ namespace Quiet::Renderer::UI
         if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga" || ext == ".bmp") return Project::AssetType::Texture;
         if (ext == ".wav" || ext == ".flac" || ext == ".mp3") return Project::AssetType::Audio;
         if (ext == ".lua") return Project::AssetType::Script;
+        if (ext == ".quidoc") return Project::AssetType::UIDocument;
+        if (ext == ".quistyle") return Project::AssetType::UIStyleSheet;
         return Project::AssetType::Unknown;
     }
 
