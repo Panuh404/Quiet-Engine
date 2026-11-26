@@ -3,8 +3,9 @@
 Quiet separates asset records, source files, loading operations, and
 loaded resources.
 
-The project registry describes assets by ID, type, path, and built-in
-status. Loaders use those records to populate resource libraries.
+The project registry describes assets by UUID, display name, type, path,
+and built-in status. Loaders use those records to populate resource
+libraries.
 
 This chapter covers asset identity, registry persistence, built-in records,
 source paths, ownership, editable importing, incremental loading, resource
@@ -34,18 +35,16 @@ and [Scene and Actors](Scene.md) for Scene resource references.
 
 ## Asset identity
 
-AssetRecord::ID is a string used for registry lookup and resource loading.
+Quiet uses Core::UUID for asset identity in C++ records, registry
+lookups, resource libraries, and asset references. Registry lookups
+match the UUID alone. UUIDToString produces the canonical text used in
+JSON, log messages, and Copy ID. It writes two groups of sixteen
+lowercase hexadecimal digits separated by a hyphen.
 
-It is distinct from Actor UUIDs. AssetRecord does not require its ID
-to follow a UUID format.
-
-AssetType classifies records as Mesh, Texture, Audio, Script, or Unknown.
-
-Registry lookup uses the ID alone, not an ID-and-type pair.
-AddOrUpdate() can replace a matching record's type and other fields.
-
-Asset IDs and source paths serve different purposes: the ID identifies
-the record, while Path tells a loader where to find source data.
+The Editor allocates UUIDs for new imports and duplicates. Name is a
+display label and can be shared by multiple records. Path describes
+where the source file is located. Source-file rename, move, and
+reimport operations retain the UUID.
 
 ## Asset records
 
@@ -53,12 +52,15 @@ Quiet::Project::AssetRecord contains:
 
 | Field | Meaning |
 | --- | --- |
-| ID | String identity used for lookup |
+| ID | Core::UUID used for lookup and references |
+| Name | Display name shown in the Editor |
 | Type | Asset classification |
 | Path | Source path interpreted by the relevant loading operation |
 | BuiltIn | Marks an engine-provided asset |
+| MeshTextureBindings | Imported texture source keys mapped to texture UUIDs for a custom mesh |
 
-IsValid() checks only that ID is nonempty and Type differs from Unknown.
+IsValid() requires a nonzero UUID, a nonempty Name, and a Type other
+than Unknown. AssetType includes Mesh, Texture, Audio, Script, and Unknown.
 
 It does not validate:
 
@@ -73,21 +75,23 @@ of a usable asset.
 
 ## Registry operations
 
-AssetRegistry stores a Version value, initially 1, and a vector of records.
+AssetRegistry stores a Version value, currently 2, and a vector of records.
 
 ProjectContext stores the project's registry and exposes mutable and
 const access to it.
 
 ### Adding or updating
 
-AssetRegistryIO::AddOrUpdate() rejects records whose IsValid() is false.
+AssetRegistryIO::AddOrUpdate() validates custom records, including
+reserved UUIDs and mesh texture binding fields. It replaces the first
+record with the same UUID or appends a new record, then sorts by UUID.
 
-Otherwise, it replaces the first record with the same ID, or appends
-a new record, then sorts records by ID.
+AddOrUpdate() reports registry acceptance and leaves persistence and
+loading to its caller.
 
-True means that the record was accepted. It does not mean that its contents
-differed from the previous record, that a file was saved, or that loading
-succeeded.
+ProjectContext registration requires a new UUID and a nonempty
+normalized path. It trims the supplied display name and saves the
+registry as part of registration.
 
 ### Removing
 
@@ -107,7 +111,7 @@ It does not independently check IsValid().
 
 GetAssetsByType() returns pointers to matching valid records.
 
-GetAssetIDsByType() returns sorted ID copies for matching valid records.
+GetAssetIDsByType() returns sorted UUID values for matching valid records.
 
 ### Pointer lifetime
 
@@ -191,94 +195,59 @@ be documented in the loading increment.
 
 ## Registry persistence
 
-AssetRegistryIO reads and writes registry JSON independently of resource
-loading.
+AssetRegistryIO reads and writes AssetRegistry.json independently of
+resource loading. ProjectContext stores the file at the project root.
 
-ProjectContext's registry file path is the project root's AssetRegistry.json.
+The root must contain integer Version equal to 2 and an Assets array.
+The reader rejects unknown root and record fields.
+
+| Record field | JSON representation | Reader requirement |
+| --- | --- | --- |
+| ID | Canonical UUID string | Nonzero and unique in the array |
+| Name | String | Nonempty |
+| Type | String | Mesh, Texture, Audio, or Script |
+| Path | String | Defaults to empty |
+| BuiltIn | Boolean | Defaults to false |
+| MeshTextureBindings | Object | Optional for custom meshes. Keys are nonempty source keys. Values are canonical, nonzero UUIDs outside the reserved built-in UUIDs. |
+
+The registry checks the representation of binding targets. Mesh import
+resolves each UUID to a texture record when it uses the binding.
 
 ### Loading
 
-LoadFromFile() opens and parses the file, requires an object root, and
-builds a temporary registry.
+LoadFromFile() parses and validates the entire array into a temporary
+registry. A missing file, malformed JSON, unsupported version, duplicate
+ID, or invalid record returns false and leaves outRegistry unchanged.
+Successful loading restores the built-in records, sorts by UUID, and
+publishes the result.
 
-It reads Version and the Assets array when present, then restores built-in
-records, sorts by ID, and assigns the completed registry to outRegistry.
-
-| Input condition | Behavior |
-| --- | --- |
-| File cannot be opened | Returns false |
-| JSON parsing throws | Returns false |
-| Root is not an object | Returns false |
-| Assets is absent or not an array | Continues without external records |
-| An array entry is not an object | Skips that entry |
-| An entry has an empty ID or Unknown type | Skips that entry |
-| A field has an incompatible JSON type | Can throw during field extraction |
-
-Only the JSON parsing operation is inside the catch block.
-Field extraction and subsequent operations can propagate exceptions.
-
-Because assignment to outRegistry occurs at the end, earlier failures
-leave the caller's registry unchanged.
-
-True means that loading completed under these rules. It does not prove
-that every supplied entry was accepted or that referenced files exist.
-
-Version is read as metadata; this function does not reject unsupported
-version numbers or perform a version migration.
-
-### Duplicate IDs
-
-Loading appends accepted external records directly. It does not generally
-deduplicate their IDs.
-
-FindByID() returns the first match, and AddOrUpdate() replaces the first
-match. Neither establishes uniqueness for an already duplicated registry.
-
-RemoveByID() removes every match.
-
-After sorting, do not depend on which duplicate record will be returned
-when duplicate IDs are present.
+ProjectContext::LoadOrCreateAssetRegistry() creates the default
+registry when the file is absent. If the file exists and fails
+validation, opening the project fails before the registry is saved.
 
 ### Saving
 
-SaveToFile() attempts to create the parent directory, opens the destination,
-and writes Version and valid records as formatted JSON.
+SaveToFile() validates the version, all records, and UUID uniqueness
+before writing. It serializes UUIDs as canonical strings and omits
+MeshTextureBindings when the map is empty.
 
-Invalid records are omitted.
-
-It returns false when opening fails and otherwise returns output.good()
-after writing.
-
-Directory creation uses an error_code, but its result is not independently
-returned; opening the destination determines whether writing can proceed.
-
-Saving does not use a temporary-file replacement or check stream status
-after an explicit close. Its result is not an atomic-save or durability
-guarantee.
-
-Serialization and other uncaught exceptions can propagate.
+On Windows, the writer checks the write and close of a temporary file
+beside the destination. It moves the temporary file into place for a
+new registry or replaces an existing file using a backup. A failed
+replacement can leave a temporary file or backup. On other platforms,
+it writes directly and checks the stream after closing it.
 
 ## Built-in records
 
-MakeDefault() creates a registry and calls EnsureBuiltInAssets().
+MakeDefault() and LoadFromFile() call EnsureBuiltInAssets() to supply
+Triangle, Quad, Plane, Cube, Pyramid, Sphere, and Cylinder. Each has a
+fixed UUID from BuiltInAssetIDs.h, a display name, Type Mesh, an empty
+Path, and BuiltIn set to true.
 
-EnsureBuiltInAssets() obtains primitive IDs from MeshPrimitives and upserts
-each as:
-
-- Type Mesh.
-- Empty source path.
-- BuiltIn true.
-
-It sorts records afterward.
-
-An existing first match with a primitive ID is overwritten with this
-built-in record. Duplicate matches are not all removed.
-
-LoadFromFile() also calls EnsureBuiltInAssets(), so loading restores the
-primitive records even when the file omits them.
-
-The general registry mutation methods do not reserve these IDs or prevent
-built-in removal. Restoration occurs when EnsureBuiltInAssets() runs.
+EnsureBuiltInAssets() restores the engine's primitive record for each
+fixed UUID. Registry validation reserves those UUIDs for their built-in
+mesh records. The renderer's EditorTopbarLogo UUID is also reserved and
+cannot appear in the registry.
 
 ## Editable-project loading
 
@@ -344,13 +313,15 @@ has its own existing-resource shortcut.
 
 ### Loading one ID
 
-ReloadAssetByID() looks up a registry record and dispatches by type.
+ReloadAssetByID() looks up a record by Core::UUID, copies it for the
+operation, and dispatches by type. Mesh import can update the live registry.
 
 | Record | Behavior |
 | --- | --- |
 | Missing ID | Returns false |
 | Built-in Mesh | Uses primitive loading |
-| External Mesh, Texture, or Audio | Uses the corresponding external loader |
+| External Mesh | Loads the mesh and reloads each distinct texture referenced by its imported material slots |
+| External Texture or Audio | Uses the corresponding external loader |
 | Built-in Texture or Audio | Returns false |
 | Script | Returns false; treated as source-only |
 | Unknown type | Returns false |
@@ -409,58 +380,44 @@ operation had no side effects.
 
 ## Imported material textures
 
-Mesh loading examines imported materials with base-color texture paths.
+RegisterImportedMaterialTextures() examines the base-color texture
+references returned by mesh import. Each mesh record's
+MeshTextureBindings map associates an importer source key with the UUID
+of a texture asset. A key is the normalized external reference path or
+an embedded index written as `*0`, `*1`, and so on.
 
-It derives a texture asset ID from the mesh ID, material name, and material
-index.
+Reimport resolves each saved UUID against the registry and uses the
+texture's current Path. Moving or renaming a registered texture through
+the Editor therefore preserves the association when the mesh still
+reports the same source key. The imported material slot stores that UUID
+in BaseColorTextureAssetID.
 
 ### External texture references
 
-Relative material texture paths are resolved against the mesh source
-file's parent directory.
-
-This differs from a registry record's relative Path, which external asset
-loading resolves against the project root.
-
-The registration helper requires the referenced file to exist and accepts
-these extensions, case-insensitively:
-
-- .png
-- .jpg
-- .jpeg
-- .tga
-- .bmp
-
-Successful registration assigns the generated asset ID to the imported
-material's BaseColorTextureAssetID.
-
-Missing files, unsupported extensions, and registration failures add
-warnings and allow processing of the remaining materials.
+When a binding cannot resolve to a custom texture record with a path,
+the importer resolves the texture reference against the mesh source
+file's parent directory. It reuses an existing texture registration
+with the same normalized source path or allocates a new UUID. The
+source must be a regular .png, .jpg, .jpeg, .tga, or .bmp file.
+New external texture records use the source filename stem as their
+display name.
 
 ### Embedded textures
 
-Embedded references are resolved against the import result's embedded
-texture records.
+For a new embedded texture, the importer allocates a UUID and extracts
+the bytes under `Assets/Textures/<mesh-uuid>/<texture-uuid><extension>`.
+For a bound texture, it writes to the current registered path after
+checking that the resolved path is inside the project's Assets
+directory. WriteBinaryFileIfDifferent() compares the file contents with
+the incoming bytes and rewrites the file when they differ.
 
-Valid texture bytes are written beneath:
+### Registration during import
 
-Assets directory / Textures / mesh asset ID / generated texture filename
-
-The filename combines the generated texture ID and embedded extension.
-
-The extracted file is then registered as an external texture asset.
-Registration does not itself decode or upload the texture.
-
-### Extraction comparison
-
-WriteBinaryFileIfDifferent() skips writing when an existing file has the
-same byte count as the incoming data.
-
-Despite its name, it does not compare file contents.
-Changed bytes with an unchanged length can therefore retain the previous
-extracted file.
-
-This is the current implementation contract, not a content-integrity check.
+The loader saves new texture records and updated mesh bindings together
+before publishing the updated registry in memory. Missing, unsupported,
+or unregistrable textures produce import warnings. Extraction, registry
+persistence, and resource creation occur at separate points in the mesh
+load.
 
 ### Loading newly registered textures
 
@@ -584,10 +541,10 @@ See [Application](Application.md) for that startup sequence.
 
 ### Runtime records
 
-RuntimeAssetRecord contains ID, Type, and Path.
-
-Unlike AssetRecord::IsValid(), its validity check also requires a nonempty
-Path. It still does not establish file existence or resource availability.
+RuntimeAssetRecord contains a Core::UUID ID, display Name, Type, and
+package-relative Path. Its validity check requires a nonzero ID,
+nonempty Name and Path, and a known type. The runtime manifest also
+validates UUID uniqueness and relative path syntax.
 
 RuntimeAssetLoader receives an existing manifest. It does not read
 RuntimeManifest.json or independently validate the entire manifest.
@@ -712,16 +669,18 @@ drawing, and font packaging remain unimplemented.
 This example uses an in-memory registry. It does not require an initialized
 renderer or perform asset loading.
 
-    Quiet::Project::AssetRegistry registry{};
+```cpp
+Quiet::Project::AssetRegistry registry{};
 
-    Quiet::Project::AssetRecord record{};
-    record.ID = "ExampleMesh";
-    record.Type = Quiet::Project::AssetType::Mesh;
-    record.Path = "Assets/Meshes/Example.glb";
+Quiet::Project::AssetRecord record{};
+record.ID = Quiet::Core::UUIDGenerator::New();
+record.Name = "ExampleMesh";
+record.Type = Quiet::Project::AssetType::Mesh;
+record.Path = "Assets/Meshes/Example.glb";
 
-    const bool accepted = Quiet::Project::AssetRegistryIO::AddOrUpdate(registry, record);
-
-    const auto* found = Quiet::Project::AssetRegistryIO::FindByID(registry, "ExampleMesh");
+const bool accepted = Quiet::Project::AssetRegistryIO::AddOrUpdate(registry, record);
+const auto* found = Quiet::Project::AssetRegistryIO::FindByID(registry, record.ID);
+```
 
 accepted can be true even when the source file does not exist.
 found points into registry storage; do not retain it across registry mutation.

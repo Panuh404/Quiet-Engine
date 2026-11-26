@@ -129,7 +129,7 @@ ScriptWorld resolves ScriptAssetID through ProjectContext's asset registry.
 
 Resolution requires:
 
-- A nonempty asset ID.
+- A valid script asset UUID.
 - A registered asset.
 - AssetType::Script.
 - A nonempty recorded path.
@@ -454,8 +454,9 @@ validation results, and timer/movement examples.
 
 ## Exposed property types
 
-ScriptComponent stores the assigned script asset ID and a vector of
-typed ScriptProperty values.
+ScriptComponent stores the assigned script's Core::UUID and a vector of
+typed ScriptProperty values. Each typed asset reference uses the
+property's Core::UUID AssetValue field.
 
 The Expose table supports:
 
@@ -471,7 +472,7 @@ The Expose table supports:
 | Color3 | Table with r, g, and b |
 | Color4 | Table with r, g, b, and a |
 | Actor | Actor reference or nil |
-| Mesh, Texture, Audio, Script | Asset ID string or nil |
+| Mesh, Texture, Audio, Script | Canonical asset UUID string or nil |
 
 Value declarations take a name and default value or components.
 Reference declarations take a name without a default reference.
@@ -543,13 +544,13 @@ The reference does not keep the Actor alive.
 
 ### Asset references
 
-Asset declarations require a matching typed property, a nonempty asset
-ID, and a registry record of the expected asset type.
+Asset declarations require a matching typed property with a valid UUID
+and a registry record of the expected asset type. The Lua binding
+returns the canonical UUID string on success and nil if any of those
+checks fail.
 
-Success returns the asset ID string.
-
-This check establishes registry identity and type. It does not establish
-that the asset's source file or runtime resource is available.
+This lookup checks registry identity and type. Source files and loaded
+resources are resolved separately by the systems that use the asset.
 
 ## Scene lookup and deferred Actor requests
 

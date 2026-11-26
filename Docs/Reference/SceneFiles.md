@@ -16,36 +16,43 @@ SceneDocument delegates persistence to SceneSerializer.
 
 | Member | Representation | Reader behavior |
 | --- | --- | --- |
+| asset_reference_version | Integer | Required. Must be 2 |
 | actors | Array | Required |
 | audio_settings | Object | Optional; missing values retain defaults |
 | render_settings | Object | Optional; missing values retain defaults |
 | physics_settings | Object | Optional; missing values retain defaults |
 | editor_hierarchy | Object | Optional; hierarchy can be reconstructed |
 
-There is no Scene format Version field.
-
-The writer emits all five root members.
+The asset_reference_version marker identifies the encoding of asset
+references. The writer emits all six root members.
 Unknown fields are not retained when saving reconstructs the document.
 
-Example containing one empty Actor:
+Example containing one Actor with a mesh asset reference:
 
 ```json
 {
+    "asset_reference_version": 2,
     "actors": [
         {
             "id": "0000000000000001-0000000000000001",
-            "name": "Example",
+            "name": "Crate",
             "transform": {
                 "position": [0, 0, 0],
                 "rotation": [0, 0, 0],
                 "scale": [1, 1, 1]
+            },
+            "static_mesh": {
+                "resource_id": "6547bbc2e20c9127-bbd4ad89f5970ec1",
+                "visible": true
             }
         }
     ]
 }
 ```
 
-This example omits optional settings, components, and hierarchy.
+The mesh UUID matches the Crate entry in the example
+[Runtime Package Files](RuntimePackageFiles.md) manifest. The Scene
+omits optional settings, other components, and hierarchy.
 
 ## Common representations
 
@@ -64,7 +71,11 @@ Rotation arrays contain Euler angles in degrees.
 UUIDToString writes two zero-padded sixteen-digit hexadecimal values
 separated by a hyphen. Use generated IDs for real Scene content.
 
-Asset references contain string IDs, not embedded resources or file paths.
+Asset references are Core::UUID values in memory. In JSON, a set
+reference is a nonzero UUID string in canonical lowercase form and an
+unset reference is an empty string. Optional reference fields also
+accept omission. Null, non-string values, and noncanonical UUID text
+fail asset-reference validation.
 
 ## Scene settings
 
@@ -123,17 +134,16 @@ loading of the corresponding component, subject to the stated checks.
 
 | Field | Type | Reader behavior |
 | --- | --- | --- |
-| resource_id | String | Required |
+| resource_id | Asset UUID string | Required. Empty means unset |
 | visible | Boolean | Defaults to true |
 | material_slots | Array of material objects | Loaded when present as an array |
 
-The mesh ID must already resolve in MeshLibrary.
+The loader adds the component with its stored UUID and looks up the
+mesh in MeshLibrary. If lookup fails, it retains the component and UUID,
+leaves the resource pointer empty, and logs a warning.
 
-If it does not, the loader logs a warning and does not add the mesh
-component. It does not import the missing resource during Scene loading.
-
-The writer emits static_mesh only when the component passes IsValid().
-It emits material_slots only when the slot vector is nonempty.
+The writer emits static_mesh for each Actor with a mesh component and
+includes material_slots when the slot vector is nonempty.
 
 ### material
 
@@ -142,7 +152,7 @@ Both Actor-level material and static-mesh material slots use:
 | Field | Type | Default |
 | --- | --- | --- |
 | base_color | Vector4 | [1, 1, 1, 1] |
-| base_color_texture_asset_id | String | Empty |
+| base_color_texture_asset_id | Asset UUID string | Unset UUID |
 
 Scene deserialization does not validate texture resource availability.
 
@@ -182,7 +192,7 @@ Loading does not enforce a single primary camera.
 
 | Field | Type | Default |
 | --- | --- | --- |
-| audio_asset_id | String | Empty |
+| audio_asset_id | Asset UUID string | Unset UUID |
 | bus | String | sfx |
 | volume | Number | 1 |
 | pitch | Number | 1 |
@@ -334,7 +344,7 @@ the loader's field defaults or unclamped persistence behavior.
 
 | Field | Type | Default |
 | --- | --- | --- |
-| script_asset_id | String | Empty |
+| script_asset_id | Asset UUID string | Unset UUID |
 | properties | Array of property objects | Empty when absent/non-array |
 
 Each property contains name, type, and value.
@@ -354,14 +364,14 @@ skipped. This loader does not reject duplicate property names.
 | color3 | Three-number array | [1, 1, 1] |
 | color4 | Four-number array | [1, 1, 1, 1] |
 | actor | UUID string | Unset UUID |
-| mesh_asset | Asset ID string | Empty |
-| texture_asset | Asset ID string | Empty |
-| audio_asset | Asset ID string | Empty |
-| script_asset | Asset ID string | Empty |
+| mesh_asset | Asset UUID string | Unset UUID |
+| texture_asset | Asset UUID string | Unset UUID |
+| audio_asset | Asset UUID string | Unset UUID |
+| script_asset | Asset UUID string | Unset UUID |
 
 Actor-property parsing does not require that the referenced Actor exists.
-Asset-property loading does not validate registry identity or resource
-availability.
+Asset-property loading validates UUID text and retains the UUID for
+later registry or resource lookup.
 
 The writer omits properties with empty names and writes an unset Actor
 reference as an empty string. It omits properties entirely when the
@@ -411,15 +421,15 @@ Folders organize Editor presentation rather than transform parenting.
 
 ## Loading boundaries
 
-File-open failure returns false.
+File-open failure, malformed JSON, a missing or unsupported
+asset_reference_version, or a missing or invalid actors array returns
+false. The loader also checks asset-reference fields before clearing
+the existing Scene and returns false if that validation fails.
 
-The loader parses JSON without a local exception handler.
-Malformed JSON, missing required fields, and incompatible types can
-propagate exceptions.
-
-It checks actors before clearing the existing Scene.
-After that check, Scene::Clear() resets Actors, settings, hierarchy,
-runtime worlds, and pending runtime requests.
+After these checks, Scene::Clear() resets Actors, settings, hierarchy,
+runtime worlds, and pending runtime requests. Missing fields or
+incompatible types encountered during subsequent reconstruction can
+still propagate exceptions.
 
 Later failure can therefore leave an empty or partially loaded Scene.
 Loading does not use a temporary Scene or roll back prior state.
@@ -429,14 +439,9 @@ return value.
 
 ## Saving boundaries
 
-Saving reconstructs the known fields and writes indented JSON directly
-to the destination.
-
-The serializer does not create the parent directory or use atomic
-replacement.
-
-It checks whether the output opened, but does not check stream status
-after writing before logging success and returning true.
+Saving reconstructs the known fields and writes indented JSON. The
+serializer writes the current asset-reference version and canonical
+UUID strings for all set asset references.
 
 See [Scene and Actors](../Systems/Scene.md) for persistence contracts
 and [Physics](../Systems/Physics.md), [Audio](../Systems/Audio.md), and

@@ -77,10 +77,14 @@ Declare properties at file scope using Expose:
 | Expose.Color3("Tint", 1, 1, 1) | Table with r, g, b |
 | Expose.Color4("TintAlpha", 1, 1, 1, 1) | Table with r, g, b, a |
 | Expose.Actor("Target") | Actor reference or nil |
-| Expose.Mesh("Mesh") | Asset ID or nil |
-| Expose.Texture("Texture") | Asset ID or nil |
-| Expose.Audio("Sound") | Asset ID or nil |
-| Expose.Script("Behavior") | Asset ID or nil |
+| Expose.Mesh("Mesh") | Asset UUID string or nil |
+| Expose.Texture("Texture") | Asset UUID string or nil |
+| Expose.Audio("Sound") | Asset UUID string or nil |
+| Expose.Script("Behavior") | Asset UUID string or nil |
+
+Asset declarations return the assigned UUID as text when the registry
+contains a record of the expected type. They return nil for an unset
+reference, a missing registration, or a type mismatch.
 
 Names must be unique and nonempty. Float, vector, and color declaration
 defaults must be finite.

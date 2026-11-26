@@ -136,7 +136,8 @@ stages.
 
 ## Cache representation
 
-CookCache stores entries by asset ID.
+CookCache stores entries by Core::UUID. Version 2 stores those keys
+as canonical UUID strings in the Assets object.
 
 Each entry records:
 
@@ -167,11 +168,10 @@ or hash external files referenced by that source.
 LoadCookCache() resets its output before loading.
 
 A missing cache file is accepted as an empty cache.
-An incompatible cache version is also accepted as an empty cache.
+A different integer version is also accepted as an empty cache.
 
-For the current version, the Assets member must be an object.
-Entries require a recognized type, a nonempty asset ID, and valid
-entry fields.
+For version 2, Assets must be an object keyed by canonical, nonzero
+UUID strings. Entries require a recognized type and valid entry fields.
 
 Malformed JSON or invalid entry data returns false. Entries are loaded
 into a temporary cache and published only after successful validation.
@@ -187,7 +187,7 @@ converted into a false result.
 SaveCookCache() creates the parent directory when needed and writes
 the current cache version.
 
-Entries with empty asset IDs or invalid fields are omitted.
+Entries with zero UUIDs or invalid fields are omitted.
 
 The destination is opened with truncation. Saving does not use a
 temporary-file replacement, so failure does not guarantee preservation
@@ -203,7 +203,7 @@ Absolute paths are retained; paths are lexically normalized.
 
 Each output uses:
 
-`Content/Meshes/<asset-ID>.qmesh`
+`Content/Meshes/<asset-uuid>.qmesh`
 
 A missing source or failed source fingerprint marks the stage
 unsuccessful and processing continues with other mesh records.
@@ -295,7 +295,7 @@ CookProjectTextures() processes non-built-in Texture records.
 Source paths are resolved against ProjectRoot when relative.
 Each output uses:
 
-`Content/Textures/<asset-ID>.qtexture`
+`Content/Textures/<asset-uuid>.qtexture`
 
 The stage continues after reported per-asset failures and returns false
 if any required operation failed.
@@ -428,8 +428,8 @@ in QAsset containers.
 
 | Stage | Accepted extensions | Runtime path |
 | --- | --- | --- |
-| Audio | .wav, .flac, .mp3 | `Content/Audio/<asset-ID><extension>` |
-| Script | .lua | `Content/Scripts/<asset-ID>.lua` |
+| Audio | .wav, .flac, .mp3 | `Content/Audio/<asset-uuid><extension>` |
+| Script | .lua | `Content/Scripts/<asset-uuid>.lua` |
 
 Extension checks are case-insensitive. Output extensions are lowercase.
 
@@ -626,8 +626,11 @@ before publishing runtime records.
 FinalizeRuntimePackage() copies the startup scene into Scenes using
 the descriptor's StartupScene path and overwrites an existing copy.
 
-It assembles the runtime manifest from the project name, packaged
-startup scene path, and collected asset records.
+It assembles the version 2 runtime manifest from the project name,
+packaged startup Scene path, and collected asset records. Each cooking
+stage carries the current registry UUID and display name into its
+manifest records on both a cache hit and a fresh cook. Output filenames
+use the canonical UUID string.
 
 RuntimeAssets is moved from CookContext into the manifest.
 
@@ -680,9 +683,10 @@ and still attempts to save the next cache.
 
 RuntimeManifestIO validates manifests when saving and loading.
 
-Validation requires the current version, a nonempty project name,
-valid asset records, unique asset IDs, and normalized portable
-package-relative paths.
+Validation requires version 2, a nonempty project name, and normalized
+portable package-relative paths. Manifest records require a nonempty
+display name, a known type, and a unique nonzero UUID outside the
+reserved built-in UUIDs. The reader requires canonical UUID text.
 
 Paths reject absolute forms, dot or parent segments, and the
 implementation's prohibited characters.

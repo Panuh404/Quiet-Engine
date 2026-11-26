@@ -23,19 +23,21 @@ Example:
 
 ```json
 {
-    "Version": 1,
+    "Version": 2,
     "ProjectName": "FirstProject",
     "StartupScene": "Scenes/DefaultScene.json",
     "Assets": [
         {
-            "ID": "Crate",
+            "ID": "6547bbc2e20c9127-bbd4ad89f5970ec1",
+            "Name": "Crate",
             "Type": "Mesh",
-            "Path": "Content/Meshes/Crate.qmesh"
+            "Path": "Content/Meshes/6547bbc2e20c9127-bbd4ad89f5970ec1.qmesh"
         },
         {
-            "ID": "Rotate",
+            "ID": "a4e89b716c83f572-9f215da607be34c8",
+            "Name": "Rotate",
             "Type": "Script",
-            "Path": "Content/Scripts/Rotate.lua"
+            "Path": "Content/Scripts/a4e89b716c83f572-9f215da607be34c8.lua"
         }
     ]
 }
@@ -50,7 +52,7 @@ All four fields are required by the reader.
 
 | Field | JSON type | Validation |
 | --- | --- | --- |
-| Version | Integer | Must equal CurrentRuntimeManifestVersion, currently 1 |
+| Version | Integer | Must equal CurrentRuntimeManifestVersion, currently 2 |
 | ProjectName | String | Nonempty |
 | StartupScene | String | Accepted package-relative path |
 | Assets | Array | Every entry must be a valid asset object |
@@ -59,13 +61,18 @@ An empty Assets array is accepted.
 
 ### Asset fields
 
-All three fields are required.
+All four fields are required.
 
 | Field | JSON type | Validation |
 | --- | --- | --- |
-| ID | String | Nonempty and unique within the manifest |
+| ID | Canonical UUID string | Nonzero, unique within the manifest, and outside the reserved built-in UUIDs |
+| Name | String | Nonempty display name |
 | Type | String | Recognized asset type other than Unknown |
 | Path | String | Nonempty accepted package-relative path |
+
+The reader converts each ID to Core::UUID. Canonical text consists of
+two groups of sixteen lowercase hexadecimal digits separated by a
+hyphen.
 
 Accepted type strings are Mesh, Texture, Audio, and Script.
 Type strings are case-sensitive.
@@ -139,20 +146,20 @@ Implementation:
 - Quiet::Cooker::LoadCookCache
 - Quiet::Cooker::SaveCookCache
 
-Unlike the manifest's asset array, cache Assets is an object keyed by ID.
+The cache Assets object is keyed by canonical UUID strings.
 
 Illustrative example with placeholder fingerprints:
 
 ```json
 {
-    "Version": 1,
+    "Version": 2,
     "Assets": {
-        "Rotate": {
+        "a4e89b716c83f572-9f215da607be34c8": {
             "Type": "Script",
             "SourceHash": "0123456789abcdef",
             "CookedHash": "0123456789abcdef",
             "CookSignature": "script-lua-text-copy-v1",
-            "RuntimePath": "Content/Scripts/Rotate.lua"
+            "RuntimePath": "Content/Scripts/a4e89b716c83f572-9f215da607be34c8.lua"
         }
     }
 }
@@ -164,13 +171,13 @@ These fingerprints are examples, not hashes of a supplied file.
 
 | Field | JSON type | Reader behavior |
 | --- | --- | --- |
-| Version | Unsigned 32-bit integer | Compared with CurrentCookCacheVersion, currently 1 |
+| Version | Integer | Compared with CurrentCookCacheVersion, currently 2 |
 | Assets | Object | Required when the version is compatible |
 
 A missing file is accepted as an empty cache.
 
-A different version is accepted as an empty cache without reading its
-asset entries. This differs from manifest version rejection.
+A different integer version is accepted as an empty cache without
+reading its asset entries.
 
 ### Entry fields
 
@@ -184,7 +191,7 @@ Every field is required.
 | CookSignature | String | Conversion or packaging configuration identifier |
 | RuntimePath | String | Expected package-relative output path |
 
-Asset IDs must be nonempty.
+Each Assets key must be a nonzero, canonical UUID string.
 Type must be recognized and other than Unknown.
 The remaining strings must be nonempty.
 
@@ -239,7 +246,7 @@ cache.
 SaveCookCache() writes CurrentCookCacheVersion rather than copying the
 supplied cache's Version field.
 
-It omits empty asset IDs and entries failing IsValid().
+It omits zero UUIDs and entries failing IsValid().
 It does not normalize RuntimePath or recompute fingerprints.
 
 The writer creates parent directories as needed and truncates the

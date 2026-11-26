@@ -48,7 +48,8 @@ Extension acceptance does not guarantee successful decoding or loading.
 1. Select the destination project folder in Assets.
 2. Select Import, or use Import Asset... from the folder context menu.
 3. Select Browse and choose one source file, or enter its path.
-4. Enter an Asset ID, or leave it empty to derive one from the filename.
+4. Enter an Asset Name, or leave it blank to use the source filename
+   without its extension.
 5. Review the destination and validation messages.
 6. Select Import.
 
@@ -58,9 +59,9 @@ The import copies the selected file into the destination folder using
 its original filename. If it is already that destination file, it can
 be registered without copying.
 
-Import does not overwrite a different file with the same filename.
-It also rejects an existing asset ID or an already registered
-destination file.
+Import rejects filename conflicts and already registered destination
+files. Each new registration gets a UUID. The Asset Name is the
+display label and can be shared by several assets.
 
 Expected result: the registry gains the asset and the Editor queues
 asset loading. Check Console and asset details for loading failures.
@@ -72,22 +73,25 @@ dependency tree.
 
 Meshes can reference additional files, such as glTF buffers or material
 textures. Preserve those files in the required relative locations and
-verify loading. Texture assignments may also require separately
-registered texture assets.
+verify loading. Mesh import can register supported material textures
+from those locations. See the Imported material textures section in
+[Assets internals](../Systems/Assets.md) for how the importer tracks them.
 
 ## Inspect and reimport
 
 Right-click an asset and select Inspect to view its details.
 
-Available context actions include Copy ID, path copying, and Reveal in
-File Manager. Script assets also provide Open Script through the
-system's associated application.
+Use Copy ID to copy the asset's UUID as text. The context menu also
+offers path copying and Reveal in File Manager. Open Script opens a
+script in the system's associated application.
 
 For an existing mesh, texture, or audio asset whose source changed,
 select Reimport.
 
-Reimport uses the registered source path and retains the asset ID.
-It is unavailable for built-ins, missing sources, and runtime modes.
+Reimport reads the registered source path and retains the asset's UUID.
+Mesh reimport also reloads the textures used by the imported material
+slots. This action is unavailable for built-ins, missing sources, and
+runtime modes.
 
 Script source assets do not use this Reimport action.
 See [Scripting internals](../Systems/Scripting.md) for runtime reload
@@ -105,7 +109,7 @@ Use the matching Inspector asset picker:
 | Script | Script component |
 | Typed exposed reference | Matching script property field |
 
-Assignments use asset IDs rather than copying resources into the Actor.
+Actors store asset UUIDs for these assignments.
 
 In Edit mode, dragging a registered, loaded mesh onto the Viewport
 creates a mesh Actor. Non-mesh drops are rejected by this workflow.
@@ -143,10 +147,9 @@ destinations.
 These operations require Edit mode and eligible project assets.
 Keyboard handling also depends on panel focus and text-entry state.
 
-Copying and duplication create new assets with distinct IDs.
-Moving and source-file renaming retain existing asset identity.
-
-The source-file rename operation is not an Asset ID rename.
+Pasting a copy or duplicating an asset creates a new UUID and appends
+" Copy" to its display name. Moving or renaming a source file updates
+the registered path and preserves the asset's UUID and display name.
 
 Use the Editor's operations when reorganizing registered files so registry
 paths remain coordinated. Check operation feedback when a batch fails;
@@ -180,12 +183,12 @@ checks.
 Use a disposable test asset:
 
 1. Import it into a project folder.
-2. Inspect it and confirm successful loading.
-3. Assign it to a suitable Actor component.
-4. Save and reload the Scene to confirm the assignment persists.
-5. Move or rename the source through Assets.
-6. Confirm the same asset ID still resolves.
-7. Remove its Scene references before testing registry removal or deletion.
+2. Inspect it, confirm successful loading, and record its UUID with Copy ID.
+3. Assign it to a suitable Actor component and save the Scene.
+4. Move or rename the source through Assets, then reload the Scene.
+5. Confirm the assignment still resolves and Copy ID gives the same UUID.
+6. Duplicate the asset and confirm the copy has a different UUID.
+7. Remove Scene references before testing registry removal or deletion.
 8. Review Console and operation feedback.
 
 Check other saved Scenes before permanently deleting shared assets.
@@ -195,7 +198,7 @@ Check other saved Scenes before permanently deleting shared assets.
 | Symptom | Check |
 | --- | --- |
 | Import is disabled | Source path, supported extension, destination availability, and filename conflict |
-| Asset ID already exists | Use the existing asset's Reimport action or choose a distinct ID |
+| Destination file is already registered | Inspect the existing registration or use Reimport for changed mesh, texture, or audio sources |
 | Asset is registered but not loaded | Inspect details and Console; check source validity and mesh dependencies |
 | Mesh drop is rejected | Confirm Edit mode, Mesh type, registration, source availability, and loaded resource |
 | Rename or move is unavailable | Check built-in/external status, selection, current source, and mode |
