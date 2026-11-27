@@ -58,6 +58,11 @@ namespace
             RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::Create, relativeFolderPath);
         }
 
+        if (QUI::EditorMenuItem("New Lua Script...", nullptr, false, canModifyFolder))
+        {
+            RequestFolderAction(folderActionRequest, Assets::AssetBrowserFolderAction::CreateScript, relativeFolderPath);
+        }
+
         ImGui::Separator();
 
         const bool clipboardAvailable = Assets::IsAssetClipboardAvailable(projectContext, state);
@@ -101,8 +106,8 @@ namespace Quiet::Renderer::UI::Assets
         const bool runtimeModeActive,
         AssetBrowserState& state,
         AssetBrowserOperationRequest& operationRequest,
-        Quiet::Core::UUID& pendingDetailsAssetID,
-        Quiet::Core::UUID& pendingReimportAssetID)
+        Core::UUID& pendingDetailsAssetID,
+        Core::UUID& pendingReimportAssetID)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, SZ::Px(ImVec2(12.0f, 10.0f)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, SZ::Px(ImVec2(8.0f, 6.0f)));
@@ -138,8 +143,8 @@ namespace Quiet::Renderer::UI::Assets
             operationRequest.AssetIDs = state.SelectedAssetIDs;
         }
 
-        const AssetPathDiagnostics renameDiagnostics = InspectAssetPath(projectContext, record);
-        const bool canRename = !runtimeModeActive && selectedAssetCount == 1 && !record.BuiltIn && !renameDiagnostics.IsMissing() && !renameDiagnostics.External;
+        const AssetPathDiagnostics pathDiagnostics = InspectAssetPath(projectContext, record);
+        const bool canRename = !runtimeModeActive && selectedAssetCount == 1 && !record.BuiltIn && !pathDiagnostics.IsMissing() && !pathDiagnostics.External;
 
         if (EditorMenuItem("Rename", "F2", false, canRename))
         {
@@ -154,7 +159,7 @@ namespace Quiet::Renderer::UI::Assets
             else if (record.BuiltIn)
                 ImGui::SetTooltip("Built-in assets cannot be renamed.");
 
-            else if (renameDiagnostics.External)
+            else if (pathDiagnostics.External)
                 ImGui::SetTooltip("External assets cannot be renamed through the project Assets browser.");
 
             else
@@ -189,11 +194,12 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::SetClipboardText(resolvedPathText.c_str());
         }
 
-        if (record.Type == Project::AssetType::Script)
+        if (const char* openLabel = GetAssetSourceOpenLabel(record.Type))
         {
-            if (EditorMenuItem("Open Script", nullptr, false, resolvedPathExists))
+            if (EditorMenuItem(openLabel, nullptr, false, pathDiagnostics.RegularFile))
             {
-                Platform::OpenPathWithDefaultApplication(resolvedPath);
+                const bool offerApplicationChoice = record.Type != Project::AssetType::Script;
+                Platform::OpenPathWithDefaultApplication(pathDiagnostics.ResolvedPath, offerApplicationChoice);
             }
         }
 

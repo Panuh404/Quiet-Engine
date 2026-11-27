@@ -143,6 +143,17 @@ namespace Quiet::Renderer::UI::Assets
     bool DoesAssetPathExist(const Project::ProjectContext& projectContext,const std::string& assetPath);
 
     // Asset display/status helpers
+    [[nodiscard]] inline const char* GetAssetSourceOpenLabel(Project::AssetType type)
+    {
+        switch (type)
+        {
+            case Project::AssetType::Script:       return "Open Script";
+            case Project::AssetType::UIDocument:   return "Open UI Document";
+            case Project::AssetType::UIStyleSheet: return "Open UI Stylesheet";
+            default:                              return nullptr;
+        }
+    }
+
     std::string MakeStatusLabel(const Project::ProjectContext& projectContext,
                                 const Project::AssetRecord& record,
                                 const Vulkan::MeshLibrary& meshLibrary,

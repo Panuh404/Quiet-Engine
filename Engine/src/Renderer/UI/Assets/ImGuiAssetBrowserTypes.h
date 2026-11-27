@@ -42,6 +42,7 @@ namespace Quiet::Renderer::UI::Assets
     {
         None,
         Create,
+        CreateScript,
         Rename,
         Delete
     };

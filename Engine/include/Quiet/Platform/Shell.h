@@ -6,7 +6,7 @@
 
 namespace Quiet::Platform
 {
-    bool OpenPathWithDefaultApplication(const std::filesystem::path& path);
+    bool OpenPathWithDefaultApplication(const std::filesystem::path& path, bool offerApplicationChoice = false);
     bool RevealPathInFileManager(const std::filesystem::path& path);
 
     [[nodiscard]] std::filesystem::path GetExecutablePath();

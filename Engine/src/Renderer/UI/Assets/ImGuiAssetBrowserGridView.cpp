@@ -471,9 +471,10 @@ namespace Quiet::Renderer::UI::Assets
 
             if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                if (record.Type == Project::AssetType::Script && diagnostics.Exists && diagnostics.RegularFile)
+                if (GetAssetSourceOpenLabel(record.Type) && diagnostics.RegularFile)
                 {
-                    Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath);
+                    const bool offerApplicationChoice = record.Type != Project::AssetType::Script;
+                    Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath, offerApplicationChoice);
                 }
                 else
                 {

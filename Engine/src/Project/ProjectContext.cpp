@@ -8,9 +8,25 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <cerrno>
+#include <cstdio>
+#include <system_error>
 
 #include "Quiet/Core/UUID.h"
+#include "Quiet/Project/BuiltInAssetIDs.h"
 #include "Quiet/Project/RuntimeManifest.h"
+
+#if defined(_WIN32)
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #include <windows.h>
+#endif
 
 namespace
 {
@@ -270,6 +286,133 @@ namespace Quiet::Project
     bool ProjectContext::RegisterUIStyleSheetAsset(Core::UUID assetID, std::filesystem::path assetPath, std::string assetName)
     {
         return RegisterAsset(assetID, std::move(assetPath), std::move(assetName), AssetType::UIStyleSheet);
+    }
+
+    bool ProjectContext::CreateScriptAsset(const std::filesystem::path& parentFolder, std::string scriptName, Core::UUID& outAssetID, std::string& outErrorMessage)
+    {
+        outAssetID = {};
+        outErrorMessage.clear();
+
+        scriptName = TrimCopy(std::move(scriptName));
+        constexpr std::size_t extensionLength = 4;
+
+        if (scriptName.size() >= extensionLength && ToUpperCopy(scriptName.substr(scriptName.size() - extensionLength)) == ".LUA")
+        {
+            scriptName.resize(scriptName.size() - extensionLength);
+            scriptName = TrimCopy(std::move(scriptName));
+        }
+
+        const bool hasControlCharacter = std::any_of(scriptName.begin(), scriptName.end(),[](unsigned char character)
+        {
+            return character < 32;
+        });
+
+        if (!IsValidAssetFolderName(scriptName) || hasControlCharacter)
+        {
+            outErrorMessage = "Enter a valid script name without path separators or reserved characters.";
+            return false;
+        }
+
+        std::filesystem::path resolvedFolder;
+        if (!ResolveExistingAssetFolder(*this, parentFolder, resolvedFolder, outErrorMessage))
+            return false;
+
+        const std::string fileName = scriptName + ".lua";
+        const std::filesystem::path destination = resolvedFolder / fileName;
+
+        const auto discardCreatedFile = [&](std::string error)
+        {
+            std::error_code cleanupError;
+            std::filesystem::remove(destination, cleanupError);
+            if (cleanupError)
+            {
+                error += " Could not remove '" + fileName + "': " + cleanupError.message();
+            }
+
+            outErrorMessage = std::move(error);
+            return false;
+        };
+
+        constexpr char starterSource[] = R"(function OnCreate()
+end
+
+function OnUpdate(deltaTime)
+end
+
+function OnDestroy()
+end)";
+
+        constexpr std::size_t sourceSize = sizeof(starterSource) - 1;
+
+        #if defined(_WIN32)
+            const HANDLE file = CreateFileW(
+                destination.c_str(),
+                GENERIC_WRITE,
+                0,
+                nullptr,
+                CREATE_NEW,
+                FILE_ATTRIBUTE_NORMAL,
+                nullptr);
+
+            if (file == INVALID_HANDLE_VALUE)
+            {
+                const DWORD openError = GetLastError();
+                if (openError == ERROR_FILE_EXISTS || openError == ERROR_ALREADY_EXISTS)
+                {
+                    outErrorMessage = "A file named '" + fileName + "' already exists here.";
+                }
+                else
+                {
+                    outErrorMessage = "Could not create '" + fileName + "'. Windows error " + std::to_string(openError) + ".";
+                }
+                return false;
+            }
+
+            constexpr DWORD bytesToWrite = sourceSize;
+            DWORD bytesWritten = 0;
+            const bool sourceWritten = WriteFile(file, starterSource, bytesToWrite, &bytesWritten, nullptr) != FALSE && bytesWritten == bytesToWrite;
+            const bool fileClosed = CloseHandle(file) != FALSE;
+
+        #else
+            std::FILE* file = std::fopen(destination.c_str(), "wbx");
+            if (!file)
+            {
+                const int openError = errno;
+                outErrorMessage = "Could not create '" + fileName + "': " +
+                    std::error_code(openError, std::generic_category()).message();
+                return false;
+            }
+
+            const bool sourceWritten = std::fwrite(starterSource, 1, sourceSize, file) == sourceSize;
+            const bool fileClosed = std::fclose(file) == 0;
+        #endif
+
+        if (!sourceWritten || !fileClosed)
+            return discardCreatedFile("Could not write the starter Lua script.");
+
+        for (const AssetRecord& record : m_AssetRegistry.Records)
+        {
+            if (record.BuiltIn || record.Path.empty()) continue;
+
+            std::error_code compareError;
+            if (std::filesystem::equivalent(destination, ResolveAssetRecordPath(*this, record.Path), compareError))
+            {
+                return discardCreatedFile("This path is already registered as '" + record.Name + "'. Remove the stale registry entry or choose a different name.");
+            }
+        }
+
+        Core::UUID assetID;
+        do
+        {
+            assetID = Core::UUIDGenerator::New();
+        }
+        while (assetID == BuiltInAssetIDs::EditorTopbarLogo || AssetRegistryIO::FindByID(m_AssetRegistry, assetID));
+
+        if (!RegisterScriptAsset(assetID, destination, scriptName))
+            return discardCreatedFile("Could not register the script in the project asset registry.");
+
+        outAssetID = assetID;
+        return true;
     }
 
     bool ProjectContext::RemoveAssetByID(Core::UUID assetID)

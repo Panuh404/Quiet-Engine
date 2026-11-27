@@ -358,11 +358,12 @@ namespace Quiet::Renderer::UI::Assets
     {
         switch (action)
         {
-            case AssetBrowserFolderAction::Create:  return "Create Folder";
-            case AssetBrowserFolderAction::Rename:  return "Rename Folder";
-            case AssetBrowserFolderAction::Delete:  return "Delete Folder";
+            case AssetBrowserFolderAction::Create:          return "Create Folder";
+            case AssetBrowserFolderAction::CreateScript:    return "New Lua Script";
+            case AssetBrowserFolderAction::Rename:          return "Rename Folder";
+            case AssetBrowserFolderAction::Delete:          return "Delete Folder";
             case AssetBrowserFolderAction::None:
-            default:                                return nullptr;
+            default:                                        return nullptr;
         }
     }
 
@@ -380,6 +381,10 @@ namespace Quiet::Renderer::UI::Assets
                 CopyToBuffer(state.FolderNameBuffer, "New Folder");
                 break;
 
+            case AssetBrowserFolderAction::CreateScript:
+                CopyToBuffer(state.FolderNameBuffer, "NewScript");
+                break;
+
             case AssetBrowserFolderAction::Rename:
                 CopyToBuffer(state.FolderNameBuffer, std::filesystem::path(request.TargetFolder).filename().string());
                 break;
@@ -391,11 +396,7 @@ namespace Quiet::Renderer::UI::Assets
         }
     }
 
-    void DrawAssetFolderActionPopup(
-        Project::ProjectContext& projectContext,
-        Editor::EditorState& editorState,
-        const Scene::Scene& scene,
-        AssetBrowserState& state)
+    void DrawAssetFolderActionPopup(Project::ProjectContext& projectContext, Editor::EditorState& editorState, const Scene::Scene& scene, AssetBrowserState& state)
     {
         const AssetBrowserFolderAction action = state.PendingFolderAction;
         if (action == AssetBrowserFolderAction::None) return;
@@ -418,24 +419,24 @@ namespace Quiet::Renderer::UI::Assets
         }
 
         bool operationSucceeded = false;
-        if (action == AssetBrowserFolderAction::Create)
+        const bool creatingScript = action == AssetBrowserFolderAction::CreateScript;
+        if (action == AssetBrowserFolderAction::Create || creatingScript)
         {
             DrawFolderPath("Create inside", state.FolderOperationTarget);
 
             ImGui::Spacing();
 
             ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::TextMuted);
-            ImGui::TextUnformatted("Folder Name");
+            ImGui::TextUnformatted(creatingScript ? "Script Name (.lua)" : "Folder Name");
             ImGui::PopStyleColor();
 
             if (ImGui::IsWindowAppearing())
                 ImGui::SetKeyboardFocusHere();
 
             ImGui::SetNextItemWidth(-1.0f);
-
-            const bool submittedByEnter =
-                ImGui::InputText("##CreateAssetFolderName", state.FolderNameBuffer.data(), state.FolderNameBuffer.size(),
-                    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+            const bool submittedByEnter = ImGui::InputText(
+                "##CreateAssetName", state.FolderNameBuffer.data(), state.FolderNameBuffer.size(),
+                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
 
             DrawFolderOperationError(state.FolderOperationErrorMessage);
 
@@ -443,8 +444,9 @@ namespace Quiet::Renderer::UI::Assets
             ImGui::Separator();
             ImGui::Spacing();
 
-            const std::string folderName = TrimCopy(state.FolderNameBuffer.data());
-            const bool canCreate = !folderName.empty();
+            const std::string name = TrimCopy(state.FolderNameBuffer.data());
+            const bool canCreateScript = editorState.Scene.Mode == Editor::SceneMode::Edit && state.CurrentSource == AssetBrowserSource::Project;
+            const bool canCreate = !name.empty() && (!creatingScript || canCreateScript);
             const float buttonWidth = SZ::Px(120.0f);
             const float totalWidth = buttonWidth * 2.0f + ImGui::GetStyle().ItemSpacing.x;
 
@@ -460,20 +462,42 @@ namespace Quiet::Renderer::UI::Assets
 
             if (EditorButton("Create", ImVec2(buttonWidth, 0.0f), canCreate) || (submittedByEnter && canCreate))
             {
-                std::filesystem::path createdFolder;
                 state.FolderOperationErrorMessage.clear();
 
-                if (projectContext.CreateAssetFolder(state.FolderOperationTarget, folderName, createdFolder, state.FolderOperationErrorMessage))
+                if (creatingScript)
                 {
-                    NavigateToAssetFolder(projectContext, state, createdFolder.generic_string());
-                    editorState.AssetOperationFeedback.Set(
-                        Editor::EditorFeedbackSeverity::Success,
-                        "Folder created",
-                        "Created '" +
-                        state.CurrentAssetFolder +
-                        "'."
-                    );
-                    operationSucceeded = true;
+                    Core::UUID createdAssetID;
+                    if (projectContext.CreateScriptAsset(state.FolderOperationTarget, name, createdAssetID, state.FolderOperationErrorMessage))
+                    {
+                        NavigateToAssetFolder(projectContext, state, state.FolderOperationTarget);
+                        SelectSingleAsset(state, createdAssetID);
+
+                        const auto* record = Project::AssetRegistryIO::FindByID(projectContext.GetAssetRegistry(), createdAssetID);
+                        if (record)
+                        {
+                            if (!MatchesTypeFilter(*record, state.TypeFilter))
+                                state.TypeFilter = AssetBrowserTypeFilter::All;
+
+                            if (!MatchesDiagnosticsFilter(projectContext, *record, state.DiagnosticsFilter))
+                                state.DiagnosticsFilter = AssetBrowserDiagnosticsFilter::All;
+
+                            if (!MatchesAssetSearch(*record, state.SearchBuffer.data()))
+                                state.SearchBuffer.fill('\0');
+
+                            editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success, "Script created", "Created '" + record->Path + "'.");
+                        }
+                        operationSucceeded = true;
+                    }
+                }
+                else
+                {
+                    std::filesystem::path createdFolder;
+                    if (projectContext.CreateAssetFolder(state.FolderOperationTarget, name, createdFolder, state.FolderOperationErrorMessage))
+                    {
+                        NavigateToAssetFolder(projectContext, state, createdFolder.generic_string());
+                        editorState.AssetOperationFeedback.Set(Editor::EditorFeedbackSeverity::Success, "Folder created", "Created '" + state.CurrentAssetFolder + "'.");
+                        operationSucceeded = true;
+                    }
                 }
             }
         }

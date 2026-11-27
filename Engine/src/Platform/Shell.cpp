@@ -17,6 +17,7 @@
 
     #include <windows.h>
     #include <shellapi.h>
+    #include <shlobj.h>
 #endif
 
 #if defined(__APPLE__)
@@ -51,7 +52,7 @@ namespace
 
 namespace Quiet::Platform
 {
-    bool OpenPathWithDefaultApplication(const std::filesystem::path& path)
+    bool OpenPathWithDefaultApplication(const std::filesystem::path& path, [[maybe_unused]] bool offerApplicationChoice)
     {
         if (path.empty()) return false;
 
@@ -76,6 +77,12 @@ namespace Quiet::Platform
             SW_SHOWNORMAL);
 
         const auto resultCode = reinterpret_cast<std::intptr_t>(result);
+
+        if (offerApplicationChoice && resultCode == SE_ERR_NOASSOC)
+        {
+            const OPENASINFO openAsInfo{widePath.c_str(), nullptr, OAIF_EXEC};
+            return SHOpenWithDialog(nullptr, &openAsInfo) == S_OK;
+        }
 
         if (resultCode <= 32)
         {

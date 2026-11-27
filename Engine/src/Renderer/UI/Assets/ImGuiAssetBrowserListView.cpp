@@ -34,8 +34,8 @@ namespace Quiet::Renderer::UI::Assets
         AssetBrowserFolderActionRequest& folderActionRequest,
         AssetBrowserAssetMoveRequest& assetMoveRequest,
         AssetBrowserOperationRequest& operationRequest,
-        Quiet::Core::UUID& pendingDetailsAssetID,
-        Quiet::Core::UUID& pendingReimportAssetID)
+        Core::UUID& pendingDetailsAssetID,
+        Core::UUID& pendingReimportAssetID)
     {
         auto& selectedContentFolder = state.SelectedContentFolder;
 
@@ -338,9 +338,10 @@ namespace Quiet::Renderer::UI::Assets
 
                 if (rowHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 {
-                    if (record.Type == Project::AssetType::Script && diagnostics.Exists && diagnostics.RegularFile)
+                    if (GetAssetSourceOpenLabel(record.Type) && diagnostics.RegularFile)
                     {
-                        Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath);
+                        const bool offerApplicationChoice = record.Type != Project::AssetType::Script;
+                        Platform::OpenPathWithDefaultApplication(diagnostics.ResolvedPath, offerApplicationChoice);
                     }
                     else
                     {
