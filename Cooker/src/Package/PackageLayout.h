@@ -19,10 +19,12 @@ namespace Quiet::Cooker
         std::size_t RemovedTextures = 0;
         std::size_t RemovedAudio = 0;
         std::size_t RemovedScripts = 0;
+        std::size_t RemovedUIDocuments = 0;
+        std::size_t RemovedUIStyleSheets = 0;
 
         [[nodiscard]] std::size_t TotalRemoved() const
         {
-            return RemovedMeshes + RemovedTextures + RemovedAudio + RemovedScripts;
+            return RemovedMeshes + RemovedTextures + RemovedAudio + RemovedScripts + RemovedUIDocuments + RemovedUIStyleSheets;
         }
     };
 

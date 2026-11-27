@@ -25,6 +25,8 @@ namespace
         std::size_t Textures = 0;
         std::size_t Audio = 0;
         std::size_t Scripts = 0;
+        std::size_t UIDocuments = 0;
+        std::size_t UIStyleSheets = 0;
     };
 
     AssetCounts CountProjectAssets(const Quiet::Project::AssetRegistry& registry)
@@ -48,6 +50,12 @@ namespace
                     break;
                 case Quiet::Project::AssetType::Script:
                     ++counts.Scripts;
+                    break;
+                case Quiet::Project::AssetType::UIDocument:
+                    ++counts.UIDocuments;
+                    break;
+                case Quiet::Project::AssetType::UIStyleSheet:
+                    ++counts.UIStyleSheets;
                     break;
                 case Quiet::Project::AssetType::Unknown:
                 default:
@@ -164,6 +172,8 @@ int main(int argc, char** argv)
         << "  Textures:   " << counts.Textures << '\n'
         << "  Audio:      " << counts.Audio << '\n'
         << "  Scripts:    " << counts.Scripts << '\n'
+        << "  UI documents:   " << counts.UIDocuments << '\n'
+        << "  UI stylesheets: " << counts.UIStyleSheets << '\n'
         << '\n'
         << "Output layout prepared successfully.\n";
 
@@ -242,6 +252,8 @@ int main(int argc, char** argv)
         << "    Textures:     " << packageResult.CleanupStats.RemovedTextures << '\n'
         << "    Audio:        " << packageResult.CleanupStats.RemovedAudio << '\n'
         << "    Scripts:      " << packageResult.CleanupStats.RemovedScripts << '\n'
+        << "    UI documents:   " << packageResult.CleanupStats.RemovedUIDocuments << '\n'
+        << "    UI stylesheets: " << packageResult.CleanupStats.RemovedUIStyleSheets << '\n'
         << "  Manifest:       " << packageResult.ManifestPath << '\n'
         << '\n'
         << "Asset cooking completed successfully.\n";

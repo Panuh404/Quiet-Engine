@@ -3,6 +3,7 @@
 
 #include "Quiet/Core/Application.h"
 #include "Quiet/Core/Log.h"
+#include "TestDriveHUD.h"
 
 int main(const int argc, char** argv)
 {
@@ -13,6 +14,7 @@ int main(const int argc, char** argv)
         spec.Width = 1200;
         spec.Height = 800;
         spec.Mode = Quiet::Core::AppMode::Sandbox;
+        spec.BindRuntimeHUD = Quiet::Samples::BindTestDriveHUD;
 
         if (argc >= 2)
         {

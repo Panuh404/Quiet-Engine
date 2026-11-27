@@ -10,6 +10,8 @@ target_link_libraries(Quiet_Editor
         Quiet::Engine
 )
 
+target_include_directories(Quiet_Editor PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../Samples")
+
 if(WIN32)
     enable_language(RC)
 

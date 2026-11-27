@@ -11,4 +11,6 @@ target_link_libraries(Quiet_Sandbox
         Quiet::Engine
 )
 
+target_include_directories(Quiet_Sandbox PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../Samples")
+
 quiet_copy_engine_resources(Quiet_Sandbox)

@@ -30,13 +30,15 @@ namespace Quiet::Cooker
 
     bool PrepareOutputLayout(const std::filesystem::path& outputRoot, std::string& outError)
     {
-        static constexpr std::array<const char*, 5> directories =
+        static constexpr std::array<const char*, 7> directories =
         {
             "Scenes",
             "Content/Meshes",
             "Content/Textures",
             "Content/Audio",
             "Content/Scripts",
+            "Content/UIDocuments",
+            "Content/UIStyleSheets",
         };
 
         outError.clear();
@@ -71,7 +73,9 @@ namespace Quiet::Cooker
             if (record.Type != Project::AssetType::Mesh &&
                 record.Type != Project::AssetType::Texture &&
                 record.Type != Project::AssetType::Audio &&
-                record.Type != Project::AssetType::Script)
+                record.Type != Project::AssetType::Script &&
+                record.Type != Project::AssetType::UIDocument &&
+                record.Type != Project::AssetType::UIStyleSheet)
                 continue;
 
             referencedAssets.insert(std::filesystem::path(record.Path).lexically_normal().generic_string());
@@ -84,12 +88,14 @@ namespace Quiet::Cooker
             Project::AssetType Type = Project::AssetType::Unknown;
         };
 
-        const std::array<CleanupTarget, 4> targets =
+        const std::array<CleanupTarget, 6> targets =
         {{
             { outputRoot / "Content" / "Meshes", ".qmesh", Project::AssetType::Mesh },
             { outputRoot / "Content" / "Textures", ".qtexture", Project::AssetType::Texture },
             { outputRoot / "Content" / "Audio", {}, Project::AssetType::Audio },
-            { outputRoot / "Content" / "Scripts", ".lua", Project::AssetType::Script }
+            { outputRoot / "Content" / "Scripts", ".lua", Project::AssetType::Script },
+            { outputRoot / "Content" / "UIDocuments", ".quidoc", Project::AssetType::UIDocument },
+            { outputRoot / "Content" / "UIStyleSheets", ".quistyle", Project::AssetType::UIStyleSheet }
         }};
 
         std::vector<std::pair<std::filesystem::path, Project::AssetType>> staleFiles;
@@ -168,10 +174,12 @@ namespace Quiet::Cooker
 
             switch (type)
             {
-                case Project::AssetType::Mesh:      ++outStats.RemovedMeshes; break;
-                case Project::AssetType::Texture:   ++outStats.RemovedTextures; break;
-                case Project::AssetType::Audio:     ++outStats.RemovedAudio; break;
-                case Project::AssetType::Script:    ++outStats.RemovedScripts; break;
+                case Project::AssetType::Mesh:          ++outStats.RemovedMeshes; break;
+                case Project::AssetType::Texture:       ++outStats.RemovedTextures; break;
+                case Project::AssetType::Audio:         ++outStats.RemovedAudio; break;
+                case Project::AssetType::Script:        ++outStats.RemovedScripts; break;
+                case Project::AssetType::UIDocument:    ++outStats.RemovedUIDocuments; break;
+                case Project::AssetType::UIStyleSheet:  ++outStats.RemovedUIStyleSheets; break;
                 default:
                     break;
             }

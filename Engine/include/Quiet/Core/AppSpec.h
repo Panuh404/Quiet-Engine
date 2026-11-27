@@ -44,7 +44,7 @@ namespace Quiet::Core
         std::uint32_t Height = 720;
         bool StartMaximized = true;
         AppMode Mode = AppMode::Sandbox;
-        std::function<bool(UUID, UI::Widget&, std::string&)> BindEditorPlayHUD;
+        std::function<bool(UUID, UI::Widget&, std::string&)> BindRuntimeHUD;
 
         [[nodiscard]] bool IsSandbox() const { return Mode == AppMode::Sandbox; }
         [[nodiscard]] bool IsEditor() const { return Mode == AppMode::Editor; }

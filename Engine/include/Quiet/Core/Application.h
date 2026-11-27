@@ -136,8 +136,8 @@ namespace Quiet::Core
         void InitializeSandboxStartup();
         void InitializeRuntimeUIDemo();
 
-        void MountEditorPlayHUD(const Scene::Scene& scene);
-        void ClearEditorPlayHUD();
+        void MountRuntimeHUD(const Scene::Scene& scene);
+        void ClearRuntimeHUD();
 
         void ShutdownCommon();
 
@@ -281,7 +281,7 @@ namespace Quiet::Core
 
         float m_RuntimeUIScale = 1.0f;
         UI::Widget m_RuntimeUIRoot;
-        UI::Widget* m_EditorPlayHUDRoot = nullptr;
+        UI::Widget* m_RuntimeHUDRoot = nullptr;
         UI::PaintList m_RuntimeUIPaintList;
     };
 }

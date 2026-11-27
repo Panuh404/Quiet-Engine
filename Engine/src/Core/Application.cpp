@@ -344,7 +344,8 @@ namespace Quiet::Core
         m_Renderer = std::make_unique<Renderer::Vulkan::VulkanRenderer>(m_Spec, *m_Window);
 
         SetRuntimeUIScale(1.25f);
-        if (m_Spec.IsSandbox()) InitializeRuntimeUIDemo();
+        if (m_Spec.IsSandbox() && m_Spec.RuntimePackagePath.empty())
+            InitializeRuntimeUIDemo();
 
         m_ProjectAssetLoader = std::make_unique<Project::ProjectAssetLoader>(
             m_ProjectContext,
@@ -513,6 +514,9 @@ namespace Quiet::Core
             m_ProjectContext,
             *m_Input);
 
+        if (!m_Spec.RuntimePackagePath.empty())
+            MountRuntimeHUD(*m_Scene);
+
         QUIET_CORE_INFO("Sandbox bootstrap entered play runtime.");
     }
 
@@ -620,7 +624,7 @@ namespace Quiet::Core
         m_RuntimeUIRoot.AddChild(std::move(clippingPanel));
     }
 
-    void Application::MountEditorPlayHUD(const Scene::Scene& scene)
+    void Application::MountRuntimeHUD(const Scene::Scene& scene)
     {
         const auto& hud = scene.GetHUDSelection();
         if (!hud) return;
@@ -628,7 +632,8 @@ namespace Quiet::Core
         const auto warn = [&](const std::string& reason)
         {
             QUIET_CORE_WARN(
-                "Editor Play HUD skipped for scene '{}' (document {}, stylesheet {}): {}",
+                "{} HUD skipped for scene '{}' (document {}, stylesheet {}): {}",
+                m_Spec.IsEditor() ? "Editor Play" : "Sandbox",
                 m_ProjectContext.GetActiveScenePath().string(),
                 UUIDToString(hud->DocumentAssetID),
                 UUIDToString(hud->StyleSheetAssetID),
@@ -647,7 +652,11 @@ namespace Quiet::Core
             const auto* record = Project::AssetRegistryIO::FindByID(registry, id);
             if (!record || record->Type != expectedType || record->BuiltIn || record->Path.empty())
             {
-                warn("Register asset " + UUIDToString(id) + " as " + std::string(Project::ToString(expectedType)) + " with a source path.");
+                const char* remedy = m_Spec.IsEditor()
+                    ? "Check the project registry and source path."
+                    : "Check RuntimeManifest.json and recook the package.";
+                warn("Expected " + std::string(Project::ToString(expectedType)) +
+                     " asset " + UUIDToString(id) + " with a file path. " + remedy);
                 return {};
             }
 
@@ -711,24 +720,24 @@ namespace Quiet::Core
             return;
         }
 
-        if (m_Spec.BindEditorPlayHUD && !m_Spec.BindEditorPlayHUD(hud->DocumentAssetID, *tree, error))
+        if (m_Spec.BindRuntimeHUD && !m_Spec.BindRuntimeHUD(hud->DocumentAssetID, *tree, error))
         {
             warn("C++ binding failed for " + documentPath.string() + ": " + error);
             return;
         }
 
-        m_EditorPlayHUDRoot = &m_RuntimeUIRoot.AddChild(std::move(tree));
+        m_RuntimeHUDRoot = &m_RuntimeUIRoot.AddChild(std::move(tree));
     }
 
-    void Application::ClearEditorPlayHUD()
+    void Application::ClearRuntimeHUD()
     {
-        if (!m_EditorPlayHUDRoot) return;
+        if (!m_RuntimeHUDRoot) return;
 
         m_RuntimeUIRoot.ClearFocus();
         m_RuntimeUIRoot.UpdatePointerHover(nullptr);
         m_RuntimeUIRoot.UpdatePointerPress(nullptr, false, false);
-        auto hud = m_RuntimeUIRoot.DetachChild(*m_EditorPlayHUDRoot);
-        m_EditorPlayHUDRoot = nullptr;
+        auto hud = m_RuntimeUIRoot.DetachChild(*m_RuntimeHUDRoot);
+        m_RuntimeHUDRoot = nullptr;
 
         m_RuntimeUIPaintList.clear();
         m_RuntimeUIOwnsPrimaryPress = false;
@@ -743,7 +752,7 @@ namespace Quiet::Core
 
     void Application::ShutdownCommon()
     {
-        ClearEditorPlayHUD();
+        ClearRuntimeHUD();
         if (m_EditorRuntimeController) m_EditorRuntimeController->Shutdown();
         if (m_Scene && m_Scene->IsRuntimeActive()) m_Scene->EndRuntime();
 
@@ -904,12 +913,12 @@ namespace Quiet::Core
                     if (editorState.Scene.Mode != Editor::SceneMode::Edit) break;
                     EndEditorViewportNavigationCapture(editorState);
                     m_EditorRuntimeController->EnterPlayMode();
-                    MountEditorPlayHUD(*m_RuntimeScene);
+                    MountRuntimeHUD(*m_RuntimeScene);
                     break;
 
                 case Editor::EditorRequestType::StopPlay:
                     if (editorState.Scene.Mode != Editor::SceneMode::Play) break;
-                    ClearEditorPlayHUD();
+                    ClearRuntimeHUD();
                     m_EditorRuntimeController->StopPlayMode();
                     break;
 
@@ -1234,8 +1243,8 @@ namespace Quiet::Core
             static_cast<float>(extent.height) / m_RuntimeUIScale);
 
         m_RuntimeUIRoot.SetBounds({ {0.0f, 0.0f}, logicalSize });
-        if (m_EditorPlayHUDRoot)
-            m_EditorPlayHUDRoot->SetBounds({ {0.0f, 0.0f}, logicalSize });
+        if (m_RuntimeHUDRoot)
+            m_RuntimeHUDRoot->SetBounds({ {0.0f, 0.0f}, logicalSize });
         if (!m_RuntimeUIRoot.GetInvalidationState().Layout) return;
 
         const UI::LayoutContext context
