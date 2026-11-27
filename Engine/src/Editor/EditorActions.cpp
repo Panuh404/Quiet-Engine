@@ -70,7 +70,7 @@ namespace Quiet::Editor
         const bool isEditMode = (m_State.Scene.Mode == SceneMode::Edit);
         const bool isSimulating = (m_State.Scene.Mode == SceneMode::Simulate);
         const bool isPlaying = (m_State.Scene.Mode == SceneMode::Play);
-        const bool hasSelection = m_State.Selection.SelectedActorID.has_value();
+        const bool hasSelection = m_State.Selection.GetPrimaryActorID().has_value();
 
         switch (actionID)
         {
@@ -88,6 +88,8 @@ namespace Quiet::Editor
 
             case EditorActionID::DuplicateSelected:
             case EditorActionID::DeleteSelected:
+                return isEditMode && hasSelection && !m_State.Selection.HasMultipleActors();
+
             case EditorActionID::FocusSelected:
                 return isEditMode && hasSelection;
 

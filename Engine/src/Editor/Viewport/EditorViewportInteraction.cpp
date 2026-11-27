@@ -74,12 +74,12 @@ namespace Quiet::Editor
         const auto hoveredActorID = m_State.Selection.HoveredActorID;
         if (hoveredActorID.has_value() && scene.FindActorByID(hoveredActorID.value()))
         {
-            m_State.Selection.SelectedActorID = hoveredActorID;
+            m_State.Selection.SelectActor(hoveredActorID);
             QUIET_CORE_TRACE("Viewport selected hovered actor.");
         }
         else
         {
-            m_State.Selection.SelectedActorID.reset();
+            m_State.Selection.SelectActor(std::nullopt);
         }
     }
 
@@ -107,11 +107,21 @@ namespace Quiet::Editor
                                                    const Renderer::Vulkan::VulkanRenderer& renderer,
                                                    bool mouseCaptureEnabled)
     {
-        if (mouseCaptureEnabled) return;
         if (m_State.Scene.Mode != SceneMode::Edit) return;
+        if (m_State.Selection.HasMultipleActors())
+        {
+            if (m_WasUsingGizmo)
+            {
+                EndSceneMutation(scene);
+                m_WasUsingGizmo = false;
+            }
+            return;
+        }
+        if (mouseCaptureEnabled) return;
         if (m_State.Viewport.NavigationCaptureRequested != ViewportNavigationMode::None || m_State.Viewport.NavigationMode != ViewportNavigationMode::None) return;
         if (!renderer.IsSceneViewportReady()) return;
-        if (!m_State.Selection.SelectedActorID.has_value()) return;
+        const auto selectedActorID = m_State.Selection.GetPrimaryActorID();
+        if (!selectedActorID) return;
         if (m_State.Viewport.Width == 0 || m_State.Viewport.Height == 0) return;
 
         const VkExtent2D sceneExtent = renderer.GetSceneViewportExtent();
@@ -120,10 +130,10 @@ namespace Quiet::Editor
             static_cast<float>(sceneExtent.height);
 
         const auto cameraData = camera.BuildUniformData(aspect, Renderer::UseEditorScreenProjectionYFlip);
-        Scene::Actor* actor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
+        Scene::Actor* actor = scene.FindActorByID(*selectedActorID);
         if (!actor)
         {
-            m_State.Selection.SelectedActorID.reset();
+            m_State.Selection.RemoveActor(*selectedActorID);
             return;
         }
 
@@ -195,14 +205,13 @@ namespace Quiet::Editor
         );
 
         drawList->PushClipRect(viewportMin, viewportMax, true);
+        const auto selectedActorID = m_State.Selection.GetPrimaryActorID();
 
         if (m_State.Viewport.ShowPhysicsColliders)
         {
             for (const Scene::Actor& actor : scene.GetActors())
             {
-                const bool selected =
-                    m_State.Selection.SelectedActorID.has_value() &&
-                    m_State.Selection.SelectedActorID.value() == actor.GetID();
+                const bool selected = selectedActorID == actor.GetID();
 
                 DrawPhysicsColliderOverlay(actor, cameraData, m_State.Viewport, drawList, selected);
             }
@@ -226,9 +235,7 @@ namespace Quiet::Editor
                 }
 
                 const Core::UUID actorID = actor.GetID();
-                const bool actorSelected =
-                    m_State.Selection.SelectedActorID.has_value() &&
-                    m_State.Selection.SelectedActorID.value() == actorID;
+                const bool actorSelected = selectedActorID == actorID;
 
                 const bool actorHovered =
                     !actorSelected &&
@@ -285,11 +292,7 @@ namespace Quiet::Editor
         {
             const Core::UUID hoveredActorID = m_State.Selection.HoveredActorID.value();
 
-            const bool hoveredActorIsSelected =
-                m_State.Selection.SelectedActorID.has_value() &&
-                m_State.Selection.SelectedActorID.value() == hoveredActorID;
-
-            if (!hoveredActorIsSelected)
+            if (selectedActorID != hoveredActorID)
             {
                 const Scene::Actor* hoveredActor = scene.FindActorByID(hoveredActorID);
                 if (hoveredActor)
@@ -299,9 +302,9 @@ namespace Quiet::Editor
             }
         }
 
-        if (m_State.Viewport.ShowSelectionFeedback && m_State.Selection.SelectedActorID.has_value())
+        if (m_State.Viewport.ShowSelectionFeedback && selectedActorID)
         {
-            const Scene::Actor* selectedActor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
+            const Scene::Actor* selectedActor = scene.FindActorByID(*selectedActorID);
             if (selectedActor)
             {
                 DrawSelectedActorViewportOverlay(*selectedActor, cameraData, m_State.Viewport, drawList);

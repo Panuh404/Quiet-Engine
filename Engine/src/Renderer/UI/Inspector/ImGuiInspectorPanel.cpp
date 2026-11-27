@@ -14,17 +14,34 @@ namespace Quiet::Renderer::UI::Inspector
     {
         ImGui::Begin("Inspector");
 
+        const bool isEditMode = context.EditorState.Scene.Mode == Editor::SceneMode::Edit;
+        auto& selection = context.EditorState.Selection;
+
         Scene::Actor* selectedActor = nullptr;
-        if (context.EditorState.Selection.SelectedActorID.has_value())
+        if (const auto actorID = selection.GetPrimaryActorID())
         {
-            selectedActor = context.Scene.FindActorByID(context.EditorState.Selection.SelectedActorID.value());
-            if (!selectedActor)
+            selectedActor = context.Scene.FindActorByID(*actorID);
+            if (!selectedActor && isEditMode)
             {
-                context.EditorState.Selection.SelectedActorID.reset();
+                selection.RemoveActor(*actorID);
+                if (const auto nextActorID = selection.GetPrimaryActorID())
+                    selectedActor = context.Scene.FindActorByID(*nextActorID);
             }
         }
 
-        const bool isEditMode = context.EditorState.Scene.Mode == Editor::SceneMode::Edit;
+        if (selection.HasMultipleActors())
+        {
+            ImGui::Text("%zu actors selected", selection.GetActorCount());
+            if (selectedActor)
+            {
+                const auto& name = selectedActor->GetName();
+                ImGui::Text("Primary actor: %s", name.empty() ? "Unnamed Actor" : name.c_str());
+            }
+            DrawInspectorBanner("Select one actor to edit its properties.");
+            ImGui::End();
+            return;
+        }
+
         const TrackedInspectorInteraction tracked{ context.Scene, context.Commands, isEditMode };
 
         if (!isEditMode)

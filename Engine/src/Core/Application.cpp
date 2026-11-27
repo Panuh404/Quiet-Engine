@@ -128,14 +128,12 @@ namespace
 
     glm::vec3 ResolveViewportNavigationPivot(const Quiet::Scene::Scene& scene, const Quiet::Editor::EditorState& editorState, const Quiet::Scene::FreeCamera& camera)
     {
-        const bool selectedActorIsPilotedCamera =
-            editorState.Selection.SelectedActorID.has_value() &&
-            editorState.Selection.PilotedCameraActorID.has_value() &&
-            editorState.Selection.SelectedActorID.value() == editorState.Selection.PilotedCameraActorID.value();
+        const auto selectedActorID = editorState.Selection.GetPrimaryActorID();
+        const bool selectedActorIsPilotedCamera = selectedActorID && selectedActorID == editorState.Selection.PilotedCameraActorID;
 
-        if (!selectedActorIsPilotedCamera && editorState.Selection.SelectedActorID.has_value())
+        if (selectedActorID && !selectedActorIsPilotedCamera)
         {
-            const Quiet::Scene::Actor* actor = scene.FindActorByID(editorState.Selection.SelectedActorID.value());
+            const Quiet::Scene::Actor* actor = scene.FindActorByID(*selectedActorID);
             if (actor)
             {
                 const Quiet::Scene::TransformComponent& transform = actor->GetComponent<Quiet::Scene::TransformComponent>();
@@ -1220,7 +1218,7 @@ namespace Quiet::Core
         if (editorState.Viewport.ShowSelectionFeedback &&
             editorState.Scene.Mode != Editor::SceneMode::Play)
         {
-            selectedActorID = editorState.Selection.SelectedActorID;
+            selectedActorID = editorState.Selection.GetPrimaryActorID();
         }
 
         BuildRuntimeUIPaintList();

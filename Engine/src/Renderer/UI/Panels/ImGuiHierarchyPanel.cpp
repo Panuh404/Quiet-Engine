@@ -846,6 +846,19 @@ namespace Quiet::Renderer::UI
             std::optional<Core::UUID> pendingActorMoveToRoot;
             std::optional<Core::UUID> pendingFolderDelete;
 
+            auto& selection = editorState.Selection;
+            const ImGuiIO& io = ImGui::GetIO();
+            std::vector<Core::UUID> orderedActorIDs;
+            std::optional<Core::UUID> clickedActorID;
+
+            const auto drawActorSelectionRow = [&](const Scene::Actor& actor)
+            {
+                const Core::UUID actorID = actor.GetID();
+                if (io.KeyShift) orderedActorIDs.push_back(actorID);
+                if (DrawActorRow(actor, selection.IsActorSelected(actorID), isEditMode))
+                    clickedActorID = actorID;
+            };
+
             Scene::SceneHierarchyState& hierarchy = scene.GetHierarchy();
 
             if (hierarchy.RootNodes.empty())
@@ -866,7 +879,7 @@ namespace Quiet::Renderer::UI
                         if (DrawFolderRow(*folder, isEditMode))
                         {
                             folder->Expanded = !folder->Expanded;
-                            editorState.Selection.SelectedActorID.reset();
+                            selection.SelectActor(std::nullopt);
                         }
 
                         if (isEditMode)
@@ -977,17 +990,9 @@ namespace Quiet::Renderer::UI
                                 if (!childActor) continue;
 
                                 const Core::UUID childActorID = childActor->GetID();
+                                drawActorSelectionRow(*childActor);
 
-                                const bool isSelected =
-                                    editorState.Selection.SelectedActorID.has_value() &&
-                                    editorState.Selection.SelectedActorID.value() == childActorID;
-
-                                if (DrawActorRow(*childActor, isSelected, isEditMode))
-                                {
-                                    editorState.Selection.SelectedActorID = childActorID;
-                                }
-
-                                if (isEditMode)
+                                if (isEditMode && !selection.HasMultipleActors())
                                 {
                                     BeginActorDragSource(*childActor);
                                 }
@@ -995,7 +1000,7 @@ namespace Quiet::Renderer::UI
                                 const std::string childActorContextID = "FolderChildActorContextMenu_" + Core::UUIDToString(childActorID);
                                 if (ImGui::BeginPopupContextItem(childActorContextID.c_str()))
                                 {
-                                    const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                                    const bool canEdit = isEditMode && !selection.HasMultipleActors();
 
                                     if (EditorMenuItem("Move To Root", nullptr, false, canEdit))
                                     {
@@ -1040,22 +1045,15 @@ namespace Quiet::Renderer::UI
                     if (!actor) continue;
 
                     const Core::UUID actorID = actor->GetID();
-
-                    const bool isSelected =
-                        editorState.Selection.SelectedActorID.has_value() &&
-                        editorState.Selection.SelectedActorID.value() == actorID;
-
-                    if (DrawActorRow(*actor, isSelected, isEditMode))
-                    {
-                        editorState.Selection.SelectedActorID = actorID;
-                    }
+                    drawActorSelectionRow(*actor);
 
                     const ImVec2 rowMin = ImGui::GetItemRectMin();
                     const ImVec2 rowMax = ImGui::GetItemRectMax();
 
                     if (isEditMode)
                     {
-                        BeginRootActorDragSource(*actor);
+                        if (!selection.HasMultipleActors())
+                            BeginRootActorDragSource(*actor);
 
                         if (ImGui::BeginDragDropTarget())
                         {
@@ -1098,7 +1096,7 @@ namespace Quiet::Renderer::UI
 
                     if (ImGui::BeginPopupContextItem(actorContextID.c_str()))
                     {
-                        const bool canEdit = editorState.Scene.Mode == Editor::SceneMode::Edit;
+                        const bool canEdit = isEditMode && !selection.HasMultipleActors();
                         const bool canMoveUp = canEdit && rootNodeIndex > 0;
                         const bool canMoveDown = canEdit && rootNodeIndex + 1 < hierarchy.RootNodes.size();
 
@@ -1197,6 +1195,16 @@ namespace Quiet::Renderer::UI
                 }
             }
 
+            if (clickedActorID)
+            {
+                if (io.KeyShift)
+                    selection.SelectActorRange(orderedActorIDs, *clickedActorID);
+                else if (io.KeyCtrl)
+                    selection.ToggleActor(*clickedActorID);
+                else
+                    selection.SelectActor(*clickedActorID);
+            }
+
             DrawRenameFolderPopup(scene, editorCommands);
 
             if (pendingFolderDelete.has_value())
@@ -1230,10 +1238,10 @@ namespace Quiet::Renderer::UI
                     pendingActorMoveToRoot.value()
                 );
             }
-            else if (pendingAction.has_value() && pendingActorSelection.has_value())
+            else if (pendingAction && pendingActorSelection && !selection.HasMultipleActors())
             {
-                editorState.Selection.SelectedActorID = pendingActorSelection.value();
-                editorActions.Execute(pendingAction.value());
+                selection.SelectActor(*pendingActorSelection);
+                editorActions.Execute(*pendingAction);
             }
         }
         if (ImGui::GetDragDropPayload() == nullptr)

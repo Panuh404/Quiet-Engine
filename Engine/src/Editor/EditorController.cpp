@@ -34,7 +34,7 @@ namespace Quiet::Editor
 {
     void EditorController::ResetSelection()
     {
-        m_State.Selection.SelectedActorID.reset();
+        m_State.Selection.SelectActor(std::nullopt);
         m_State.Selection.HoveredActorID.reset();
     }
 
@@ -252,15 +252,14 @@ namespace Quiet::Editor
 
     void EditorController::FocusSelectedActor(Scene::Scene& scene, Scene::FreeCamera& camera)
     {
-        if (!m_State.Selection.SelectedActorID.has_value())
-        {
-            return;
-        }
+        const auto actorID = m_State.Selection.GetPrimaryActorID();
+        if (!actorID) return;
 
-        Scene::Actor* actor = scene.FindActorByID(m_State.Selection.SelectedActorID.value());
+        Scene::Actor* actor = scene.FindActorByID(*actorID);
         if (!actor)
         {
-            m_State.Selection.SelectedActorID.reset();
+            if (m_State.Scene.Mode == SceneMode::Edit)
+                m_State.Selection.RemoveActor(*actorID);
             return;
         }
 

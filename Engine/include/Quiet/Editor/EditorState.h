@@ -1,13 +1,16 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <unordered_map>
+#include <vector>
 
 #include "Quiet/Core/UUID.h"
 
@@ -98,9 +101,77 @@ namespace Quiet::Editor
 
     struct EditorSelectionState
     {
-        std::optional<Core::UUID> SelectedActorID;
         std::optional<Core::UUID> HoveredActorID;
         std::optional<Core::UUID> PilotedCameraActorID;
+
+        [[nodiscard]] std::optional<Core::UUID> GetPrimaryActorID() const
+        {
+            if (m_ActorIDs.empty()) return std::nullopt;
+            return m_ActorIDs.back();
+        }
+
+        [[nodiscard]] std::size_t GetActorCount() const
+        {
+            return m_ActorIDs.size();
+        }
+
+        [[nodiscard]] bool HasMultipleActors() const
+        {
+            return m_ActorIDs.size() > 1;
+        }
+
+        [[nodiscard]] bool IsActorSelected(Core::UUID actorID) const
+        {
+            return std::find(m_ActorIDs.begin(), m_ActorIDs.end(), actorID) != m_ActorIDs.end();
+        }
+
+        void SelectActor(std::optional<Core::UUID> actorID)
+        {
+            m_ActorIDs.clear();
+            if (actorID) m_ActorIDs.push_back(*actorID);
+            m_RangeAnchor = actorID;
+        }
+
+        void RemoveActor(Core::UUID actorID)
+        {
+            std::erase(m_ActorIDs, actorID);
+            if (m_RangeAnchor == actorID)
+                m_RangeAnchor = GetPrimaryActorID();
+        }
+
+        void ToggleActor(Core::UUID actorID)
+        {
+            if (IsActorSelected(actorID))
+            {
+                RemoveActor(actorID);
+                return;
+            }
+
+            m_ActorIDs.push_back(actorID);
+            m_RangeAnchor = actorID;
+        }
+
+        void SelectActorRange(std::span<const Core::UUID> orderedActorIDs, Core::UUID actorID)
+        {
+            const auto anchor = std::find(
+                orderedActorIDs.begin(), orderedActorIDs.end(), m_RangeAnchor.value_or(actorID));
+            const auto target = std::find(orderedActorIDs.begin(), orderedActorIDs.end(), actorID);
+
+            if (anchor == orderedActorIDs.end() || target == orderedActorIDs.end())
+            {
+                SelectActor(actorID);
+                return;
+            }
+
+            m_RangeAnchor = *anchor;
+            m_ActorIDs.assign(std::min(anchor, target), std::max(anchor, target) + 1);
+            std::erase(m_ActorIDs, actorID);
+            m_ActorIDs.push_back(actorID);
+        }
+
+    private:
+        std::vector<Core::UUID> m_ActorIDs;
+        std::optional<Core::UUID> m_RangeAnchor;
     };
 
     struct EditorViewportAssetDropRequest

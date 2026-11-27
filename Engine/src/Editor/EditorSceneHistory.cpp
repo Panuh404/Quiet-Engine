@@ -509,7 +509,7 @@ namespace Quiet::Editor
         snapshot.PhysicsSettings = scene.GetPhysicsSettings();
         snapshot.RenderSettings = scene.GetRenderSettings();
         snapshot.HUDSelection = scene.GetHUDSelection();
-        snapshot.SelectedActorID = state.Selection.SelectedActorID;
+        snapshot.SelectedActorID = state.Selection.GetPrimaryActorID();
 
         return snapshot;
     }
@@ -570,13 +570,12 @@ namespace Quiet::Editor
         scene.GetPhysicsSettings() = snapshot.PhysicsSettings;
         scene.GetRenderSettings() = snapshot.RenderSettings;
         scene.GetHUDSelection() = snapshot.HUDSelection;
-        state.Selection.SelectedActorID = snapshot.SelectedActorID;
+        state.Selection.SelectActor(snapshot.SelectedActorID);
     }
 
     bool EditorSceneHistory::AreSnapshotsEqual(const SceneSnapshot& lhs, const SceneSnapshot& rhs)
     {
-        return lhs.SelectedActorID == rhs.SelectedActorID &&
-               AreActorListsEqual(lhs.Actors, rhs.Actors) &&
+        return AreActorListsEqual(lhs.Actors, rhs.Actors) &&
                lhs.Hierarchy == rhs.Hierarchy &&
                AreAudioSettingsEqual(lhs.AudioSettings, rhs.AudioSettings) &&
                AreRenderSettingsEqual(lhs.RenderSettings, rhs.RenderSettings) &&
