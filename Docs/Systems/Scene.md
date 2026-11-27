@@ -183,6 +183,19 @@ multiline content, pixel height, color, and visibility. Inspector
 positioning controls are provided by UI Rectangle. Font selection
 remains unimplemented.
 
+## HUD selection
+
+Scene::GetHUDSelection() exposes an optional SceneHUDSelection, defined in
+`Engine/src/Scene/SceneHUDSelection.h`. Its two Core::UUID fields identify
+the selected document and stylesheet assets. SceneSerializer persists
+them in the optional `hud` object. The registry resolves these UUIDs
+when Application mounts the HUD for Play.
+
+The Scene copy carries the selection, and Clear() resets it. Application
+owns the live tree and callbacks. See the
+[Scene file format](../Reference/SceneFiles.md) and
+[Application](Application.md).
+
 ## Scene copying and Actor duplication
 
 Scene copying and Actor duplication operate at different scopes.
@@ -209,7 +222,7 @@ empty Scene.
 
 1. Returns immediately for self-assignment.
 2. Clears the destination through `Clear()`.
-3. Copies audio, physics, and render settings.
+3. Copies audio, physics, and render settings and the HUD selection.
 4. Recreates each source Actor with its existing UUID and name.
 5. Copies its Transform and supported optional components.
 6. Copies the source hierarchy.
@@ -455,9 +468,9 @@ Discarding that copy leaves the authored editor Scene available.
 
 `EndRuntime()` stops runtime while retaining scene data.
 
-`Clear()` resets runtime worlds, Actor storage, hierarchy, settings, queues,
-and contact events. It does not call `Scene::EndRuntime()` or dispatch the
-Scene mode-end hook.
+`Clear()` resets runtime worlds, Actor storage, hierarchy, settings, the HUD
+selection, queues, and contact events. It does not call `Scene::EndRuntime()`
+or dispatch the Scene mode-end hook.
 
 Resetting ScriptWorld still invokes its destructor, whose shutdown path
 ends scripts. Clear therefore must not be described as skipping all script

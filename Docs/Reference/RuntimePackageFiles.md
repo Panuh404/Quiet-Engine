@@ -1,6 +1,6 @@
 # Runtime Package Files <!--! {#quiet_format_runtime_package} -->
 
-The package root contains two JSON documents with different purposes:
+The package uses two root-level JSON metadata files:
 
 | File | Consumer | Purpose |
 | --- | --- | --- |
@@ -38,6 +38,18 @@ Example:
             "Name": "Rotate",
             "Type": "Script",
             "Path": "Content/Scripts/a4e89b716c83f572-9f215da607be34c8.lua"
+        },
+        {
+            "ID": "ce4e18a5106b43d2-a901000000000001",
+            "Name": "Play HUD",
+            "Type": "UIDocument",
+            "Path": "Content/UIDocuments/ce4e18a5106b43d2-a901000000000001.quidoc"
+        },
+        {
+            "ID": "ce4e18a5106b43d2-a901000000000002",
+            "Name": "Play HUD Styles",
+            "Type": "UIStyleSheet",
+            "Path": "Content/UIStyleSheets/ce4e18a5106b43d2-a901000000000002.quistyle"
         }
     ]
 }
@@ -74,8 +86,13 @@ The reader converts each ID to Core::UUID. Canonical text consists of
 two groups of sixteen lowercase hexadecimal digits separated by a
 hyphen.
 
-Accepted type strings are Mesh, Texture, Audio, and Script.
+Accepted type strings are Mesh, Texture, Audio, Script, UIDocument,
+and UIStyleSheet.
 Type strings are case-sensitive.
+
+For UI assets, Cooker writes UUID-derived paths under
+`Content/UIDocuments/` and `Content/UIStyleSheets/`. Both format examples
+use the same UUIDs as the [Scene HUD selection](SceneFiles.md) example.
 
 The manifest has no BuiltIn field or asset fingerprints.
 Built-in assets are supplied separately during runtime initialization.
@@ -225,6 +242,9 @@ Signatures are compared as exact strings.
 They describe the current stage configuration rather than a complete
 fingerprint of every tool or dependency binary.
 
+The UI document and stylesheet packaging pass runs on every cook and
+does not add entries to the cache.
+
 ### Loading and failure
 
 LoadCookCache() resets outCache and clears outError before inspecting
@@ -261,6 +281,10 @@ The manifest identifies resources; it does not embed them.
 
 Successful manifest parsing does not guarantee successful resource,
 Scene, audio, or Lua initialization.
+
+Sandbox attempts to mount the HUD after starting the selected Scene.
+A HUD load or dependency failure produces a warning and an empty overlay
+while the Scene keeps running.
 
 See [Cooking guide](../Guides/Cooking.md) for package production and
 Sandbox launch, and [Assets](../Systems/Assets.md) for runtime loading.

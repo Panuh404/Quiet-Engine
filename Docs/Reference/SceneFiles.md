@@ -21,10 +21,12 @@ SceneDocument delegates persistence to SceneSerializer.
 | audio_settings | Object | Optional; missing values retain defaults |
 | render_settings | Object | Optional; missing values retain defaults |
 | physics_settings | Object | Optional; missing values retain defaults |
+| hud | Object | Optional. Selects the document and stylesheet assets |
 | editor_hierarchy | Object | Optional; hierarchy can be reconstructed |
 
 The asset_reference_version marker identifies the encoding of asset
-references. The writer emits all six root members.
+references. The writer emits the six standard root members and emits
+`hud` when the Scene has a HUD selection.
 Unknown fields are not retained when saving reconstructs the document.
 
 Example containing one Actor with a mesh asset reference:
@@ -76,6 +78,40 @@ reference is a nonzero UUID string in canonical lowercase form and an
 unset reference is an empty string. Optional reference fields also
 accept omission. Null, non-string values, and noncanonical UUID text
 fail asset-reference validation.
+
+## HUD
+
+The optional top-level `hud` object stores `SceneHUDSelection`. It
+contains these two asset references:
+
+| Member | Expected registry type |
+| --- | --- |
+| document_asset_id | UIDocument |
+| stylesheet_asset_id | UIStyleSheet |
+
+For example, add this member to an existing Scene object and substitute
+the UUIDs from that project's asset registry.
+
+```json
+{
+    "hud": {
+        "document_asset_id": "ce4e18a5106b43d2-a901000000000001",
+        "stylesheet_asset_id": "ce4e18a5106b43d2-a901000000000002"
+    }
+}
+```
+
+Omit `hud` for a Scene without a selection. When the object is present,
+both UUIDs must resolve to the expected types for mounting to succeed.
+An omitted or empty field represents an unset reference. A non-object
+`hud` value or malformed reference text fails Scene loading before
+Scene::Clear(). Valid UUID text can refer to a missing asset. Application
+checks availability at mount time and logs a warning if it cannot build
+the HUD.
+
+These fields use registry UUIDs. Node UUIDs belong to the document, and
+style UUIDs belong to entries in the stylesheet. See the
+[Editor guide](../Guides/Editor.md) for a matching pair of source files.
 
 ## Scene settings
 
@@ -426,10 +462,10 @@ asset_reference_version, or a missing or invalid actors array returns
 false. The loader also checks asset-reference fields before clearing
 the existing Scene and returns false if that validation fails.
 
-After these checks, Scene::Clear() resets Actors, settings, hierarchy,
-runtime worlds, and pending runtime requests. Missing fields or
-incompatible types encountered during subsequent reconstruction can
-still propagate exceptions.
+After these checks, Scene::Clear() resets Actors, settings, the HUD
+selection, hierarchy, runtime worlds, and pending runtime requests.
+Missing fields or incompatible types encountered during subsequent
+reconstruction can still propagate exceptions.
 
 Later failure can therefore leave an empty or partially loaded Scene.
 Loading does not use a temporary Scene or roll back prior state.

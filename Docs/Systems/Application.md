@@ -281,6 +281,7 @@ When both dimensions are nonzero, it requests a viewport resize.
 
 It then calls BeginRuntime() on the main Scene with RuntimeMode::Play,
 passing the physics subsystem, audio subsystem, project context, and Input.
+With a runtime package, it calls MountRuntimeHUD() before the first frame.
 
 Sandbox therefore begins Play during construction. It does not wait for
 the first Run() frame, and it does not create the Editor's separate runtime
@@ -411,25 +412,41 @@ commands and submits without the Editor grid or selection feedback.
 Application stores Quiet::UI::Widget m_RuntimeUIRoot and
 Quiet::UI::PaintList m_RuntimeUIPaintList directly.
 
-After constructing VulkanRenderer, InitializeCommonStartup() calls
-InitializeRuntimeUIDemo() to create the retained demonstration: a Panel/Label,
-a bottom-right anchored VerticalBox containing a heading and HorizontalBox of Buttons, and a
-clipping Panel with an overflowing Button. Their authored inputs and
-callbacks are defined in that function. See [Renderer](Renderer.md) for
-the complete example and layout contracts.
-Startup explicitly selects runtime UI scale 1.25, applies ButtonStyle and
-TextStyle copies to the action group, and disables the second action Button.
+InitializeCommonStartup() selects runtime UI scale 1.25 after constructing
+VulkanRenderer. InitializeRuntimeUIDemo() populates the root only when Sandbox
+starts without a runtime package. The demo is described in [Renderer](Renderer.md).
 
-The hierarchy belongs to Application, independently of the editable Scene
-and disposable Editor runtime Scene. Starting or stopping Play does not
-clone, replace, or reset it. It currently has no Scene persistence,
-Inspector authoring, or Lua integration.
+Scene stores an optional HUD selection containing a document asset UUID and
+a stylesheet asset UUID. Application owns the live widgets under
+m_RuntimeUIRoot. The borrowed m_RuntimeHUDRoot points to the mounted document
+root. The editable Scene and its runtime copy store only the UUIDs.
+
+MountRuntimeHUD() runs after the Editor Play transition creates and starts the
+runtime Scene copy, or after cooked Sandbox starts its main Scene. It
+resolves both asset records by UUID and type through ProjectContext. The
+Editor resolves file paths from the editable project, and cooked Sandbox
+resolves them from the package registry derived from RuntimeManifest.json.
+
+MountRuntimeHUD() reads both JSON files, verifies each nonempty image texture
+UUID against the registry and renderer texture library, and builds the
+widget tree with UI::BuildUIDocument(). When AppSpec::BindRuntimeHUD is
+supplied, Application passes it the document asset UUID, a borrowed root,
+and a string for reporting an error. The tree is attached only after all
+of these operations succeed. A missing HUD selection leaves the root empty.
+A reported resolution, load, build, or binding failure logs a warning and
+leaves runtime active with an empty overlay.
+
+ClearRuntimeHUD() clears focus and press state, detaches and destroys the
+subtree and callbacks, clears the paint list, and resets UI input ownership.
+Editor Stop calls it before releasing the runtime Scene, and application
+shutdown calls it before ending runtime. A later Play session reads the
+files again and builds a new tree. Edit and Simulate have no project HUD.
 
 UpdateRuntimeUILayout() synchronizes geometry with the actual Scene target:
 
 1. Reads the actual Scene target extent from VulkanRenderer.
-2. Divides the extent by m_RuntimeUIScale and assigns the logical root size
-   at position (0, 0).
+2. Divides the extent by m_RuntimeUIScale and assigns the logical size at
+   position (0, 0) to the application root and mounted document root.
 3. Returns if the root's Layout flag is clear.
 4. Borrows VulkanRenderer::GetDefaultFontAtlas() through UI::LayoutContext.
 5. Calls Measure() bottom-up, then ArrangeChildren() top-down.
@@ -451,7 +468,7 @@ pixels; reusing it must not apply the scale again.
 SetRuntimeUIScale() accepts finite values from 0.25 through 4.0 inclusive.
 Invalid values return false without mutation; unchanged values return true
 without invalidation. A change invalidates root Layout, Paint, and Interaction.
-The member defaults to 1.0 before the demonstration chooses 1.25. Call between
+The member defaults to 1.0 before common startup selects 1.25. Call between
 traversals on the application thread. This setting affects retained UI only,
 not Editor ImGui, Actor-authored text, or Scene camera/rendering. It has no
 project persistence or automatic DPI selection.
@@ -692,8 +709,8 @@ returns.
 
 ### Runtime termination
 
-ShutdownCommon() first asks the Editor runtime controller to shut down,
-when present.
+ShutdownCommon() first clears the mounted HUD, then asks the Editor
+runtime controller to shut down when present.
 
 That controller ends active runtime on its runtime Scene and releases it.
 

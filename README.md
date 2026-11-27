@@ -23,6 +23,8 @@ ownership, practical tooling, and understandable engine architecture.
 - Vulkan static-mesh rendering with frame synchronization, an offscreen
   Editor viewport, adaptive grid, picking, and selection outlines.
 - EnTT-backed Actors and components with JSON Scene persistence.
+- Screen-space text and project-authored HUDs with retained widgets,
+  stylesheets, and C++ behavior binding in Editor Play and cooked Sandbox.
 - Dear ImGui Editor with hierarchy folders, component inspection,
   transform gizmos, viewport navigation, undo/redo, and dirty tracking.
 - Project Launcher with discovery, creation, recent projects, and
@@ -36,7 +38,8 @@ ownership, practical tooling, and understandable engine architecture.
 - Lua scripting with per-Actor environments, callbacks, exposed
   properties, engine bindings, deferred Actor requests, and hot reload.
 - Asset cooking with optimized QMesh geometry, BC7 sRGB QTexture data,
-  native audio/Lua packaging, validated cache reuse, and runtime manifests.
+  native audio, Lua, and UI JSON packaging, validated cache reuse, and
+  runtime manifests.
 
 Play and Simulate use disposable runtime Scene copies, preserving
 the editable Scene.
@@ -96,6 +99,9 @@ other presets, resources, and troubleshooting.
 
 Executable outputs use Build/Binaries/Debug or Build/Binaries/Release.
 Presets keep intermediate build directories separate.
+
+Editor and Sandbox share the [TestDrive HUD binding](Samples/TestDriveHUD.h)
+to exercise the same button callback in both modes.
 
 ## Documentation
 

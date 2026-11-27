@@ -31,8 +31,12 @@ for project preparation.
 The Cooker uses the descriptor's startup Scene, not whichever Scene
 happens to be open in the Editor.
 
-It processes registered project meshes, textures, audio, and scripts,
-rather than collecting only the assets referenced by that Scene.
+It processes registered project meshes, textures, audio, scripts, UI
+documents, and UI stylesheets, including assets outside the startup Scene.
+
+To verify a HUD in the package, select its two asset UUIDs in the startup
+Scene and test the HUD in Editor Play before cooking. Import any textures
+referenced by Image nodes. See the [Editor guide](Editor.md) for the setup.
 
 Script packaging does not validate Lua syntax. Test scripts before
 packaging.
@@ -111,6 +115,8 @@ does not establish a completed package.
 | Content/Textures/ | BC7 sRGB QTexture files |
 | Content/Audio/ | Copied WAV, FLAC, or MP3 files |
 | Content/Scripts/ | Copied Lua source files |
+| Content/UIDocuments/ | Validated copies of UI document JSON |
+| Content/UIStyleSheets/ | Validated copies of UI stylesheet JSON |
 | .quiet-cook-cache.json | Metadata used by subsequent Cooker invocations |
 
 Output names are based on asset IDs.
@@ -143,6 +149,19 @@ finally {
 Expected result: Sandbox loads the manifest, packaged resources, and
 startup Scene, then begins runtime.
 
+When the startup Scene selects the HUD from the Editor guide, Ready and
+the styled button appear in Sandbox. If you assigned an image texture,
+the cooked image appears too. Press **Shift+F1** to release mouse capture
+before clicking the button. With the TestDrive binding, **Activate** changes
+Ready to Activated. Relaunch to check that the label starts at Ready.
+Sandbox resolves the HUD files and image textures from the package.
+
+If the HUD is missing, check the `hud` fields in the copied startup Scene,
+the corresponding entries in RuntimeManifest.json, and the startup
+warning for the failing asset or node. A Scene with no HUD selection
+starts with an empty overlay. A broken selection also leaves it empty
+and logs a warning.
+
 Check startup diagnostics for asset or Scene loading failures.
 A successful cook does not guarantee that all runtime initialization
 will succeed on the launching machine.
@@ -161,6 +180,7 @@ runtime paths, and validated output files.
 Mesh and texture cache reuse includes reader validation.
 Audio reuse includes metadata inspection.
 Script reuse checks fingerprints without parsing Lua.
+UI documents and stylesheets are validated and recopied each time.
 
 Changed, missing, or invalid cached outputs are rebuilt or recopied.
 

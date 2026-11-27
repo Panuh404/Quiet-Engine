@@ -286,9 +286,10 @@ painting commands. Application owns the hierarchy and cached command list.
 VulkanRenderer borrows that list during DrawFrame() and records the
 corresponding Vulkan operations.
 
-This path is separate from Actor-authored TextComponent and UIRectComponent
-data. Widgets have no Scene serialization, Inspector controls, or Lua API.
-They do not replace the Editor's Dear ImGui tooling.
+Actor-authored TextComponent and UIRectComponent data use a separate path.
+The Scene can select a UI document and stylesheet by asset UUID. Application
+builds the retained widgets at runtime from those files. The Editor uses
+Dear ImGui for its own tools.
 
 ### Implementation map
 
@@ -306,15 +307,48 @@ They do not replace the Editor's Dear ImGui tooling.
 | Button state painting and behavior | `Engine/include/Quiet/UI/Widgets/Button.h` and `Engine/src/UI/Widgets/Button.cpp`: Quiet::UI::Button |
 | Button appearance values | `Engine/include/Quiet/UI/Styling/ButtonStyle.h`: Quiet::UI::ButtonStyle |
 | Text appearance values | `Engine/include/Quiet/UI/Styling/TextStyle.h`: Quiet::UI::TextStyle |
+| Authored widget data, JSON, and tree construction | `Engine/include/Quiet/UI/UIDocument.h` and `Engine/src/UI/UIDocument.cpp`: Quiet::UI::UIDocument, LoadUIDocumentFromFile(), and BuildUIDocument() |
+| Authored style entries and JSON | `Engine/include/Quiet/UI/Styling/UIStyleSheet.h` and `Engine/src/UI/Styling/UIStyleSheet.cpp`: Quiet::UI::UIStyleSheet and LoadUIStyleSheetFromFile() |
 | Owned logical commands | `Engine/include/Quiet/UI/PaintCommands.h`: SolidRectCommand, TextCommand, ImageCommand, PaintCommand, PaintList |
 | Logical-to-target conversion | `Engine/src/UI/PaintCommands.cpp`: Quiet::UI::ScalePaintList() |
-| Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: InitializeCommonStartup(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |
+| Tree ownership, layout, and paint caching | `Engine/src/Core/Application.cpp`: MountRuntimeHUD(), ClearRuntimeHUD(), UpdateRuntimeUILayout(), and BuildRuntimeUIPaintList() |
 | GPU command translation | `Engine/src/Renderer/Vulkan/VulkanRenderer.cpp`: DrawFrame() and RecordFrameCommandBuffer() |
 | Rectangle graphics state | `Engine/src/Renderer/Vulkan/Panel/PanelPipeline.h`: PanelPipeline |
 | Image graphics state | `Engine/src/Renderer/Vulkan/Image/ImagePipeline.h`: ImagePipeline |
 | Image descriptors and texture retention | `Engine/src/Renderer/Vulkan/Image/ImageResources.h`: ImageResources |
 | Shader data | `Engine/src/Renderer/Vulkan/RenderTypes.h`: PanelPushConstants and ImagePushConstants |
 | Image shaders | `Engine/Resources/Shaders/Image.vert` and `Image.frag` |
+
+### UI documents and stylesheets
+
+A UI document stores the ordered widget hierarchy, layout, enabled and
+clipping flags, and optional behavior overrides for focusability and hit
+testing. An Image node can reference a project texture by asset UUID.
+The document's own asset UUID comes from the registry. Each node also has
+a nonzero UUID unique within that document and an independent display name.
+
+A stylesheet stores reusable ButtonStyle and TextStyle values. A node's
+optional style UUID identifies an entry in the selected stylesheet.
+Style UUIDs are unique within that stylesheet and independent of the
+stylesheet's registry UUID. Button styles apply to Button nodes and text
+styles apply to Label nodes.
+
+The document format uses integer `version` 1 and a `roots` array. The
+stylesheet format uses integer `version` 1 and a `styles` array. Both
+file loaders validate their own data before returning it. BuildUIDocument()
+also validates the node-to-style references and their types, then creates
+an independent widget tree with copies of the applicable style values.
+See the [Editor guide](../Guides/Editor.md) for a minimal pair of files.
+
+Callbacks are assigned in C++ after building the tree. Application calls
+AppSpec::BindRuntimeHUD with the document's asset UUID. A binder can use
+Widget::FindByID() to locate nodes and Button::SetOnClick() to install
+behavior. The shared TestDrive binder in `Samples/TestDriveHUD.h` uses the
+document UUID to select the fixture and node UUIDs to bind its button and
+label. The callback borrows the label within the same live tree.
+
+Application resolves project assets and controls the live tree's
+lifetime. See [Application](Application.md) for the mount and teardown order.
 
 ### Hierarchy and geometry
 
@@ -674,8 +708,8 @@ each frame.
 ### Uniform UI scaling
 
 Application::SetRuntimeUIScale() accepts finite values in [0.25, 4.0],
-rejecting other input without changing state. The member defaults to 1.0;
-the current demonstration explicitly selects 1.25. Changing the scale
+rejecting other input without changing state. The member defaults to 1.0.
+Common startup explicitly selects 1.25. Changing the scale
 invalidates root Layout and dependent work; setting the same scale is a no-op.
 Call between traversals on the application thread. This setting is not
 persisted project configuration or automatic display-DPI detection.
@@ -799,14 +833,14 @@ swapchain recreation. Recreation waits for device idle and rebuilds both
 for the replacement pipeline layout and target format. Ordinary viewport
 extent changes use dynamic viewport/scissor without rebuilding pipelines.
 
-### Current demonstration and limitations
+### Unpackaged Sandbox demonstration
 
-InitializeCommonStartup() calls InitializeRuntimeUIDemo() in
-`Engine/src/Core/Application.cpp` to select scale 1.25 and create a Panel at
-logical (24, 24), sized 320 by 120, and a child
-Label with authored offset (16, 24) and minimum size 288 by 72. Its text is
-"Retained UI label";
-its logical surface origin is (40, 48). In target pixels, the panel starts
+When Sandbox starts without a package, InitializeCommonStartup() selects
+scale 1.25 and calls InitializeRuntimeUIDemo() in
+`Engine/src/Core/Application.cpp`. The demo creates a Panel at logical
+(24, 24), sized 320 by 120, and a child Label with authored offset (16, 24)
+and minimum size 288 by 72. The "Retained UI label" has logical surface
+origin (40, 48). In target pixels, the panel starts
 at (30, 30), measures 400 by 150, and the Label begins at (50, 60) with
 rendered pixel height 40.
 
@@ -837,18 +871,14 @@ Only the part within the Panel is visible and interactive. Its callback
 logs "Clipped retained action activated.". This deliberate overflow is a
 clipping demonstration, not truncated content caused by a font failure.
 
-This Application-owned tree appears in ready Editor frames and Sandbox.
-It survives Editor Play and Stop because it is not owned by either Scene.
-The temporary image preview has been removed; Image remains available as
-a C++ widget.
+### Current limitations
 
 Measurement is unconstrained. Minimum/maximum size policies, proportional
 space allocation, wrapping, scrolling, and automatic shrinking are not
 implemented. A small viewport can overflow the anchored group; clipping
 does not reflow it. Image has no intrinsic texture-size measurement.
-Shared live themes/style resolution, widget serialization, and a UI designer
-remain future work. The complete Text and runtime UI roadmap area
-is not finished by these layout foundations.
+Widget authoring uses JSON or C++. Live themes, a visual UI editor, and a
+general Lua widget API remain future work.
 
 ## Swapchain and Scene viewport
 

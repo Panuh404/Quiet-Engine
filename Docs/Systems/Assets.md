@@ -60,7 +60,12 @@ Quiet::Project::AssetRecord contains:
 | MeshTextureBindings | Imported texture source keys mapped to texture UUIDs for a custom mesh |
 
 IsValid() requires a nonzero UUID, a nonempty Name, and a Type other
-than Unknown. AssetType includes Mesh, Texture, Audio, Script, and Unknown.
+than Unknown. Registered asset types are Mesh, Texture, Audio, Script,
+UIDocument, and UIStyleSheet.
+
+UI documents and stylesheets use the same registry as other project assets.
+Their paths identify JSON source files. A Scene uses the document and
+stylesheet registry UUIDs to select a HUD.
 
 It does not validate:
 
@@ -205,7 +210,7 @@ The reader rejects unknown root and record fields.
 | --- | --- | --- |
 | ID | Canonical UUID string | Nonzero and unique in the array |
 | Name | String | Nonempty |
-| Type | String | Mesh, Texture, Audio, or Script |
+| Type | String | Mesh, Texture, Audio, Script, UIDocument, or UIStyleSheet |
 | Path | String | Defaults to empty |
 | BuiltIn | Boolean | Defaults to false |
 | MeshTextureBindings | Object | Optional for custom meshes. Keys are nonempty source keys. Values are canonical, nonzero UUIDs outside the reserved built-in UUIDs. |
@@ -323,7 +328,8 @@ operation, and dispatches by type. Mesh import can update the live registry.
 | External Mesh | Loads the mesh and reloads each distinct texture referenced by its imported material slots |
 | External Texture or Audio | Uses the corresponding external loader |
 | Built-in Texture or Audio | Returns false |
-| Script | Returns false; treated as source-only |
+| Script | Returns false because scripts load through the scripting system |
+| UIDocument or UIStyleSheet | Returns false because Application reads the selected source files on Play entry |
 | Unknown type | Returns false |
 
 Its default forceReimport value is true, unlike the batch methods whose
@@ -535,7 +541,9 @@ It borrows those libraries and renderer dependencies. Destroying the
 loader does not destroy the loaded resources.
 
 Application handles package selection, manifest loading, project-context
-initialization, startup Scene loading, and runtime entry.
+initialization, startup Scene loading, and runtime entry. App startup uses
+the manifest-backed registry to read the selected HUD files after the
+texture libraries and runtime Scene are ready.
 
 See [Application](Application.md) for that startup sequence.
 

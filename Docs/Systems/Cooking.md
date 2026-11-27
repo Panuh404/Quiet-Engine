@@ -94,16 +94,16 @@ After validating project inputs, main():
 5. Cooks textures.
 6. Packages audio.
 7. Packages scripts.
-8. Finalizes the runtime package.
+8. Finalizes the runtime package, beginning with UI source packaging.
 
 A stage returning false stops later stages and returns exit code 1.
 
 Preparing output and writing assets happen before finalization.
 A later failure does not roll back earlier filesystem changes.
 
-The CLI's displayed asset counts exclude built-in records and count
-registered Mesh, Texture, Audio, and Script assets. These counts do not
-establish successful conversion or availability.
+The CLI counts registered Mesh, Texture, Audio, Script, UIDocument, and
+UIStyleSheet records, excluding built-ins. Conversion and packaging stages
+report success separately.
 
 ## Output layout
 
@@ -116,6 +116,8 @@ PrepareOutputLayout() creates these directories as needed:
 | Content/Textures | Cooked texture assets |
 | Content/Audio | Packaged audio assets |
 | Content/Scripts | Packaged script assets |
+| Content/UIDocuments | Packaged UI documents |
+| Content/UIStyleSheets | Packaged UI stylesheets |
 
 Directory creation does not empty existing output.
 
@@ -623,6 +625,23 @@ before publishing runtime records.
 
 ## Finalization boundary
 
+FinalizeRuntimePackage() first calls PackageUIAssets() in
+`Cooker/src/Package/PackageBuilder.cpp`. That pass processes all registered,
+non-built-in UI documents and stylesheets. It resolves each source path,
+fingerprints the source, validates it through the corresponding UI JSON
+loader, and copies the file. It fingerprints the copy before adding a
+runtime manifest record with the registry UUID, display name, type, and
+package-relative path.
+
+| Asset type | Packaged file |
+| --- | --- |
+| UIDocument | `Content/UIDocuments/<asset-uuid>.quidoc` |
+| UIStyleSheet | `Content/UIStyleSheets/<asset-uuid>.quistyle` |
+
+The UI pass copies files on every cook. It uses fingerprints to verify the
+copy independently of cook cache reuse. Sandbox checks the selected
+document's stylesheet and texture dependencies when it mounts the HUD.
+
 FinalizeRuntimePackage() copies the startup scene into Scenes using
 the descriptor's StartupScene path and overwrites an existing copy.
 
@@ -634,8 +653,9 @@ use the canonical UUID string.
 
 RuntimeAssets is moved from CookContext into the manifest.
 
-Failure to prepare the scene directory, copy the scene, or write the
-manifest returns false.
+Failure to package a UI file, prepare the scene directory, copy the scene,
+or write the manifest returns false. Earlier filesystem changes can remain
+after a failure.
 
 After writing the manifest, finalization attempts stale-asset pruning
 and cache saving. Failures in those operations become warning strings
@@ -647,7 +667,8 @@ cache persistence succeeded.
 ## Stale-output cleanup
 
 PruneStaleCookedAssets() builds a set of normalized runtime paths from
-the manifest's Mesh, Texture, Audio, and Script records.
+the manifest's Mesh, Texture, Audio, Script, UIDocument, and UIStyleSheet
+records.
 
 It recursively scans these output directories:
 
@@ -657,6 +678,8 @@ It recursively scans these output directories:
 | Content/Textures | Exact .qtexture extension |
 | Content/Audio | .wav, .flac, or .mp3, checked case-insensitively |
 | Content/Scripts | Exact .lua extension |
+| Content/UIDocuments | Exact .quidoc extension |
+| Content/UIStyleSheets | Exact .quistyle extension |
 
 Eligible regular files whose package-relative paths are absent from
 the manifest are collected for deletion.
@@ -709,8 +732,11 @@ When Application receives a runtime package path, it:
 4. Loads built-in runtime support assets.
 5. Loads packaged meshes, textures, and audio.
 6. Loads the manifest's startup Scene.
+7. Begins Scene runtime and attempts to mount the selected HUD.
 
-A reported failure in these startup operations throws a runtime error.
+A reported failure in required package or Scene startup operations throws
+a runtime error. A reported HUD mount failure logs a warning and leaves
+the overlay empty while runtime continues.
 
 The package context uses Content as its asset directory.
 It builds a registry from built-in records and manifest records rather
@@ -733,6 +759,10 @@ are not rolled back.
 Scripts have no separate eager loading batch in RuntimeAssetLoader.
 Their manifest records enter ProjectContext's registry, and ScriptWorld
 resolves and executes assigned scripts when Scene runtime begins.
+
+UI document and stylesheet records also enter that registry. Application
+reads the selected pair after the Scene begins runtime, using the already
+loaded texture library for Image nodes.
 
 Runtime loading does not consult .quiet-cook-cache.json or recheck its
 fingerprints. Reader validation and runtime initialization remain the

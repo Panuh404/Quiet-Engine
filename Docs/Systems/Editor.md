@@ -271,6 +271,7 @@ A Scene snapshot contains:
 - Supported optional component values.
 - Scene hierarchy.
 - Audio, physics, and render settings.
+- The optional HUD selection.
 - The selected Actor UUID.
 
 Supported optional components currently include StaticMesh, Material,
@@ -334,7 +335,8 @@ Redo performs the corresponding operation in the opposite direction.
 RestoreSnapshot() clears the destination Scene and reconstructs Actors
 using the recorded UUIDs.
 
-It restores supported components, hierarchy, Scene settings, and selection.
+It restores supported components, hierarchy, Scene settings, the HUD
+selection, and the selected Actor.
 
 Existing Actor pointers, references, and entity handles must not be reused
 after restoration. Resolve Actors again by UUID.
@@ -376,8 +378,8 @@ produce a history entry without marking Scene content dirty.
 Changing selection outside a mutation boundary does not automatically
 create a history entry.
 
-Dirty comparison includes Actor content and ordering, hierarchy, and
-audio, physics, and render settings.
+Dirty comparison includes Actor content and ordering, hierarchy, audio,
+physics and render settings, and the HUD selection.
 
 Returning to content equal to the clean baseline can clear Dirty even
 when undo or redo entries remain.

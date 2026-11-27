@@ -15,11 +15,12 @@ a finalized design.
 | Scene and ECS | EnTT-backed identity and components, Scene cloning, persistence, and deferred runtime requests | [Scene and Actors](Systems/Scene.md) |
 | Editor | Docked tools, hierarchy organization, Inspector, history, dirty state, and runtime transitions | [Editor](Systems/Editor.md), [Editor guide](Guides/Editor.md) |
 | Viewport and rendering | Vulkan static meshes, frame synchronization, viewport targets, grid, picking, gizmos, navigation, and selection outlines | [Renderer](Systems/Renderer.md) |
+| Text and runtime UI | Screen-space text, retained widgets and input, JSON documents and stylesheets, and Scene-selected HUDs in Editor Play and cooked Sandbox | [Renderer](Systems/Renderer.md), [Editor guide](Guides/Editor.md), [Cooking guide](Guides/Cooking.md) |
 | Assets | Registry identity, importing, loading, assignment, previews, and physical project-file operations | [Assets](Systems/Assets.md), [Assets guide](Guides/Assets.md) |
 | Physics | Fixed stepping, primitive colliders, rigid bodies, transform synchronization, and contact delivery | [Physics](Systems/Physics.md) |
 | Audio | Runtime sources/listeners, spatial playback, commands, shared mixing, and previews | [Audio](Systems/Audio.md) |
 | Scripting | Lua environments, callbacks, bindings, exposed properties, synchronization, and hot reload | [Scripting](Systems/Scripting.md) |
-| Cooking | Mesh/texture conversion, native audio/script packaging, cache integrity, manifests, and runtime consumption | [Cooking](Systems/Cooking.md), [Cooking guide](Guides/Cooking.md) |
+| Cooking | Mesh and texture conversion, native audio, Lua, and UI JSON packaging, cache integrity, manifests, and runtime consumption | [Cooking](Systems/Cooking.md), [Cooking guide](Guides/Cooking.md) |
 
 Implemented foundation does not imply completion of an entire domain.
 The linked chapters record the current contracts and limits.
@@ -27,11 +28,6 @@ The linked chapters record the current contracts and limits.
 ## Future development areas
 
 These areas preserve the direction established in the existing roadmap.
-
-### Text and runtime UI
-
-Develop text rendering and user-interface systems for runtime content,
-building beyond the current Dear ImGui Editor tooling.
 
 ### Navigation
 

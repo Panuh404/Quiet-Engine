@@ -40,8 +40,13 @@ The import interface detects type from the extension, case-insensitively:
 | Texture | .png, .jpg, .jpeg, .tga, .bmp |
 | Audio | .wav, .flac, .mp3 |
 | Script | .lua |
+| UI document | .quidoc |
+| UI stylesheet | .quistyle |
 
 Extension acceptance does not guarantee successful decoding or loading.
+
+Use the asset UUIDs from the two UI registrations in the Scene's HUD
+selection. See the [Editor guide](Editor.md) for the setup and Play check.
 
 ## Import an asset
 
@@ -96,6 +101,10 @@ runtime modes.
 Script source assets do not use this Reimport action.
 See [Scripting internals](../Systems/Scripting.md) for runtime reload
 and failed-load behavior.
+
+Application reads UI documents and stylesheets from disk at Play entry.
+Save changes to the source files, then stop and enter Play again to check
+them.
 
 ## Assign assets to Actors
 

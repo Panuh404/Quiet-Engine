@@ -92,16 +92,31 @@ Implementation:
 - Engine/src/Project/AssetRegistry.cpp
 - Quiet::Project::AssetRegistryIO
 
-Example project record:
+Example project registry:
 
 ```json
 {
-    "Version": 1,
+    "Version": 2,
     "Assets": [
         {
-            "ID": "Crate",
+            "ID": "6547bbc2e20c9127-bbd4ad89f5970ec1",
+            "Name": "Crate",
             "Type": "Mesh",
             "Path": "Assets/Crate.glb",
+            "BuiltIn": false
+        },
+        {
+            "ID": "ce4e18a5106b43d2-a901000000000001",
+            "Name": "Play HUD",
+            "Type": "UIDocument",
+            "Path": "Assets/PlayHUD.quidoc",
+            "BuiltIn": false
+        },
+        {
+            "ID": "ce4e18a5106b43d2-a901000000000002",
+            "Name": "Play HUD Styles",
+            "Type": "UIStyleSheet",
+            "Path": "Assets/PlayHUD.quistyle",
             "BuiltIn": false
         }
     ]
@@ -115,52 +130,45 @@ mesh records supplied by Quiet.
 
 | Field | JSON type | Reader behavior |
 | --- | --- | --- |
-| Version | Integer | Defaults to 1; no compatibility rejection here |
-| Assets | Array | Missing or non-array value produces no parsed project entries |
+| Version | Integer | Required. Must be 2 |
+| Assets | Array | Required. Each entry must be a valid asset object |
 
 The root must be an object.
 
 ### Asset fields
 
-| Field | JSON type | Missing-field default |
+| Field | JSON type | Reader behavior |
 | --- | --- | --- |
-| ID | String | Empty |
-| Type | String | Unknown |
-| Path | String | Empty |
-| BuiltIn | Boolean | false |
+| ID | Canonical UUID string | Required, nonzero, and unique in the array |
+| Name | String | Required and nonempty |
+| Type | String | Required and case-sensitive |
+| Path | String | Defaults to empty |
+| BuiltIn | Boolean | Defaults to false |
+| MeshTextureBindings | Object | Optional for external meshes. Maps source keys to canonical texture UUIDs |
 
-Type strings are case-sensitive: Mesh, Texture, Audio, Script, and Unknown.
+Accepted record types are Mesh, Texture, Audio, Script, UIDocument,
+and UIStyleSheet. UI source paths conventionally use `.quidoc` and
+`.quistyle`, respectively. The corresponding UUIDs can be selected in a
+[Scene's HUD fields](SceneFiles.md).
 
-Unrecognized type text becomes Unknown.
-
-A valid record requires only a nonempty ID and a type other than Unknown.
-Path validity, source existence, and loaded-resource availability are
-not established by this test.
+A valid record establishes identity, display name, and type. Source
+existence and loaded-resource availability are checked by the consumer.
 
 Relative source paths are resolved by consuming systems against the
 project root. Absolute paths can represent external sources.
 
 ### Loading
 
-Non-object array entries and invalid records are skipped.
-
-After reading, the loader restores built-in primitive records and sorts
-records by ID. Built-in restoration replaces the first matching record
-for each engine primitive ID.
-
-General duplicate IDs are not rejected or deduplicated by this loader.
-FindByID returns the first matching record.
-
-An accepted registry can therefore contain skipped entries or duplicates.
-Keep project IDs unique rather than relying on reader tolerance.
-
-Parse errors return false; field-type extraction errors can propagate.
-The output registry is replaced only after processing completes.
+The loader returns false for malformed JSON, wrong field types, unknown
+fields, duplicate UUIDs, or invalid records. Reserved UUID rules limit
+built-in records to Quiet's supplied primitive meshes. On success, the
+loader restores the primitive records, sorts by UUID, and publishes the
+result. A reported failure preserves the caller's previous registry.
 
 ### Saving
 
-The writer stores Version and valid records from the current registry.
-Invalid records are omitted.
+The writer validates the current version and every record before saving.
+An invalid record or duplicate UUID makes it return false.
 
 It writes the supplied record order; normal registry operations maintain
 sorted order, but saving alone does not sort an arbitrary registry.

@@ -118,125 +118,136 @@ Scene undo/redo. Save the Scene to persist the rectangle.
 Removing UI Rectangle preserves Text and restores its (24, 24) fallback.
 The rectangle does not create visible content by itself.
 
-### Retained UI demonstration
+## Test a project-authored HUD
 
-Application currently creates a retained Panel and child Label independently
-of Actor components. Its authored dimensions use logical UI pixels, converted
-to rendered target pixels by runtime UI scale. The current demonstration
-selects scale 1.25. The dark-blue panel's logical position (24, 24) and size
-320 by 120 become target position (30, 30) and size 400 by 150. White text
-"Retained UI label" begins at target (50, 60), with rendered pixel height 40.
-Displayed sizes can differ when the viewport image is stretched.
+A heads-up display (HUD) is the retained widget overlay drawn over the
+Scene view. A Scene can select one UI document and one stylesheet. The
+document describes layout and widgets. The stylesheet describes reusable
+appearance values. Start in Edit mode with a saved Scene in a disposable
+project.
 
-The demonstration appears in Edit, Play, and Simulate. Its hierarchy belongs
-to Application and survives Play and Stop. Editing an Actor's Text or UI
-Rectangle does not change these widgets.
+### Create the source files
 
-The upper panel preserves its logical offset. A separate action group
-anchors its bottom-right corner 24 logical units, currently 30 target pixels,
-from the Scene target edges. It contains a centered "Retained actions"
-heading above two side-by-side
-buttons. The first reads "First action"; the second reads "Second action"
-and "Measured text" on separate lines. Text measurement and padding determine
-button sizes. The shorter first button centers vertically beside the second.
-The group uses purple button backgrounds and gold text at logical height 28;
-the pale heading uses height 24. At scale 1.25 those heights render as 35 and
-30 target pixels. Styles are copied per widget, independently of callbacks.
+Save the following as `PlayHUD.quidoc`. This example uses canonical node
+UUIDs and a style reference matching the stylesheet below. The Image node
+starts with an empty texture reference. To show an image, import a texture
+and paste its **Copy ID** value into `texture_id`.
 
-The first button becomes brighter while hovered and darker while pressed
-inside. Release over it logs "First retained action activated." once.
-The second button starts disabled: it retains its gold text and layout but
-uses a gray background, has no hover/press feedback, and produces no callback.
-Its configured message, "Second retained action activated.", is available
-only after re-enabling it in C++. Disabled button geometry still blocks
-clicks from reaching overlapping widgets and subsequent gameplay queries.
-The empty space above or below the shorter button is not part of its hit area.
+```json
+{
+  "version": 1,
+  "roots": [
+    {
+      "id": "ce4e18a5106b43d2-b201000000000001",
+      "name": "Status",
+      "type": "label",
+      "bounds": { "position": [24, 24], "size": [200, 32] },
+      "anchor": [0, 0], "pivot": [0, 0],
+      "horizontal_alignment": "start", "vertical_alignment": "start",
+      "enabled": true, "clip_to_bounds": false,
+      "focusable": null, "hit_test": "none", "style_id": null,
+      "properties": { "content": "Ready" },
+      "children": []
+    },
+    {
+      "id": "ce4e18a5106b43d2-b201000000000002",
+      "name": "HUD image",
+      "type": "image",
+      "bounds": { "position": [24, 64], "size": [64, 64] },
+      "anchor": [0, 0], "pivot": [0, 0],
+      "horizontal_alignment": "start", "vertical_alignment": "start",
+      "enabled": true, "clip_to_bounds": false,
+      "focusable": null, "hit_test": "none", "style_id": null,
+      "properties": { "texture_id": "" },
+      "children": []
+    },
+    {
+      "id": "ce4e18a5106b43d2-b201000000000003",
+      "name": "Activate button",
+      "type": "button",
+      "bounds": { "position": [24, 144], "size": [160, 44] },
+      "anchor": [0, 0], "pivot": [0, 0],
+      "horizontal_alignment": "start", "vertical_alignment": "start",
+      "enabled": true, "clip_to_bounds": false,
+      "focusable": null, "hit_test": null,
+      "style_id": "ce4e18a5106b43d2-c301000000000001",
+      "properties": {},
+      "children": [
+        {
+          "id": "ce4e18a5106b43d2-b201000000000004",
+          "name": "Button caption",
+          "type": "label",
+          "bounds": { "position": [0, 0], "size": [0, 0] },
+          "anchor": [0, 0], "pivot": [0, 0],
+          "horizontal_alignment": "center", "vertical_alignment": "center",
+          "enabled": true, "clip_to_bounds": false,
+          "focusable": null, "hit_test": "none", "style_id": null,
+          "properties": { "content": "Activate" },
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
 
-A clipping panel at logical (24, 180), sized 180 by 80, deliberately contains
-an overflowing button. Only a narrow part of its "Clipped action" label is
-visible. Its background and text stop at the panel boundary. Clicking its
-visible portion logs "Clipped retained action activated."; its hidden
-continuation must not activate. This truncation is intentional.
+Save this as `PlayHUD.quistyle`.
 
-Resizing updates layout before painting and hit testing. The action group
-preserves its bottom-right offset; it does not shrink or wrap to fit a small
-viewport. Parent bounds restrict child content only when clipping is enabled.
-Actor-authored text renders after retained widgets and is not affected by
-runtime UI scale. Editor ImGui controls also retain their existing sizing.
+```json
+{
+  "version": 1,
+  "styles": [
+    {
+      "id": "ce4e18a5106b43d2-c301000000000001",
+      "name": "Activate",
+      "type": "button",
+      "properties": {
+        "normal_color": [0.08, 0.32, 0.30, 1],
+        "hovered_color": [0.10, 0.46, 0.43, 1],
+        "pressed_color": [0.06, 0.23, 0.21, 1],
+        "disabled_color": [0.20, 0.22, 0.22, 1],
+        "focused_color": [0.13, 0.40, 0.48, 1],
+        "padding": [10, 6, 10, 6]
+      }
+    }
+  ]
+}
+```
 
-To exercise pointer ownership, start with mouse capture disabled. In Play,
-release capture using Shift+F1. Press inside, drag outside, and return:
-the normal background appears outside and the pressed background returns
-inside. Release outside cancels activation. A press originating outside
-does not activate by dragging in. Camera capture cancels a pending press.
+### Select and play the HUD
 
-In Edit mode, clicking participating runtime UI skips Actor click selection,
-so an existing Actor selection is preserved. Normal selection outside the
-interactive widgets remains available. This guard does not disable gizmos.
+1. Import both UI files through the [Asset Browser](Assets.md) and copy
+   their registry UUIDs with **Copy ID**.
+2. In the saved Scene JSON, add a top-level `hud` object with
+   `document_asset_id` and `stylesheet_asset_id`. Use the copied registry
+   UUIDs. See the [Scene file format](../Reference/SceneFiles.md) for the
+   field layout.
+3. Reload the Scene using **Load Scene** while in Edit. Enter Play and
+   confirm that Ready and the styled button appear. If you set a registered
+   texture UUID, confirm that its image appears too.
+4. Use **Shift+F1** to release mouse capture before testing the button.
+   Hover and press to check its styles. Stop to remove the HUD. Enter Play
+   again to check that the HUD is rebuilt from disk.
 
-In Simulate or Play, UI-owned left-button gestures are hidden from gameplay
-mouse-button queries after routing. When testing with a script that logs
-left-button presses, expect an activation message for an enabled UI click,
-no activation or gameplay press for a disabled button click, and a gameplay
-message for an outside click. Repeat after resizing or detaching
-the Viewport; visible and interactive bounds should remain aligned.
+The example files define the appearance and layout. To exercise label
+activation with the shared TestDrive callback, close the Editor and set the
+document record's `ID` in the disposable project's AssetRegistry.json to
+`ce4e18a5106b43d2-a901000000000001`. Use a registry where that ID is free or
+already belongs to this document. Put the same UUID in
+`hud.document_asset_id` before reopening the project. The stylesheet keeps
+its own registry UUID. The example node IDs match the ones used by
+`Quiet::Samples::BindTestDriveHUD()` in `Samples/TestDriveHUD.h`.
 
-To check layout and clipping:
+In this fixture, click **Activate** to change Ready to Activated.
+Stop and enter Play again to confirm the label returns to Ready. With
+the viewport focused and capture released, Tab can focus the button, and
+releasing Enter, keypad Enter, or Space can activate it.
 
-1. Resize the Viewport and confirm the group remains anchored at bottom-right.
-2. Confirm the heading is centered and the first button remains shorter.
-3. Click the first button and verify its message; the disabled second button
-   must not activate or change its background on hover/press.
-4. Click the visible portion of the clipping button, then the area where its
-   hidden continuation would lie; only the visible portion should activate.
-5. Press the visible portion, drag outside the clip, and release; no activation
-   should occur. Returning inside before release permits normal activation.
-6. When checking alternate scales in C++, call SetRuntimeUIScale() with 1.0f,
-   1.25f, and 1.5f. Rebuild and confirm text, padding, gaps, clipping, and pointer
-   bounds scale together. Restore 1.25f for the current demonstration.
-
-For an inherited-state check, disable the actionRow container in
-InitializeCommonStartup(): both buttons must become disabled. Remove that
-temporary change afterward. Enabling a child cannot override a disabled
-ancestor. Re-enabling does not restore a cancelled press; start a fresh click.
-
-To exercise focus and keyboard/gamepad input, release camera capture and
-click the viewport so its window owns keyboard input. ImGui text input,
-keyboard capture, active items, another focused window, and camera capture
-prevent runtime UI keyboard routing. Pointer hover over a button is not
-required for traversal.
-
-1. Press Tab to move forward and Shift+Tab to move backward. Focus wraps;
-   the disabled second action is skipped. The partially visible clipping
-   button is eligible while it has visible area.
-2. Hold Enter, keypad Enter, or Space on a focused button: its pressed color
-   appears. Release activates once. Holding does not repeat.
-3. On a GLFW-mapped controller, D-pad Down/Up traverses forward/backward.
-   Hold the South face button (commonly A/Cross) and release to activate.
-4. Press East (commonly B/Circle) to clear focus without activation. With
-   no focus, runtime UI does not claim East.
-5. While holding an activation key or South, navigate or press East; release
-   must not activate the old or new focus. Changing viewport ownership or
-   enabling camera capture also cancels the pending activation.
-6. Reconnect a controller while holding a navigation/confirm button; release
-   and press again before expecting a new gesture. Test accepted UI keys and
-   controller buttons against subsequent gameplay queries where applicable.
-
-Mouse click can also select focus. Move the pointer away to see the focused
-color, since pointer hover has its own appearance. The current controller
-uses sequential focus order, not spatial directional search or analog sticks.
-
-Rows, columns, styles, enabled state, alignment, and clipping are configured
-in C++ through Application::InitializeCommonStartup() in
-`Engine/src/Core/Application.cpp`.
-There are no widget Inspector controls, scrolling,
-or text wrapping yet. Scale is configured explicitly in C++, within [0.25, 4.0],
-and does not automatically follow display DPI or shrink content to fit.
-The temporary logo preview is removed; the Image
-widget and its renderer remain available through C++.
-
-See [Application](../Systems/Application.md) for ownership and paint-list
-caching, and [Renderer](../Systems/Renderer.md) for widget and GPU contracts.
+A Scene with no `hud` object starts Play with an empty overlay. A
+reported HUD mount failure leaves Play active and logs a warning in
+Console. Check the Scene's asset UUIDs and types, the source file paths,
+style references, and image texture availability. See the
+[Cooking guide](Cooking.md) to run the same HUD from a package.
 
 ## Navigate the Viewport
 
