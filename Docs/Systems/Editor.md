@@ -33,7 +33,7 @@ Quiet::Editor::EditorState stores the shared authoring state.
 
 Its sections include:
 
-- Selected, hovered, and piloted Actor identities.
+- Actor selection, hover, and camera pilot state.
 - Viewport dimensions, interaction state, and display options.
 - Gizmo operation, coordinate mode, and snapping configuration.
 - Scene mode, dirty state, and display name.
@@ -43,8 +43,13 @@ Its sections include:
 - Panel focus and asset-operation feedback.
 - Pending Editor requests.
 
-Selection stores optional Actor UUIDs. It does not own Actors or retain
-Actor pointers.
+`EditorSelectionState` stores selected Actor UUIDs and an optional range
+anchor. `GetPrimaryActorID()` returns the last UUID in the selection.
+The hierarchy passes the order of Actor rows to `SelectActorRange()`
+for Shift-click selection. Viewport picking replaces the selection with
+one Actor or clears it. Hover and camera pilot state use separate
+optional UUIDs. Resolve these UUIDs against the active Scene when an
+operation needs an Actor.
 
 State describes the Editor session. Assigning a state field does not
 automatically execute the workflow associated with that field.
@@ -272,7 +277,7 @@ A Scene snapshot contains:
 - Scene hierarchy.
 - Audio, physics, and render settings.
 - The optional HUD selection.
-- The selected Actor UUID.
+- The optional primary Actor UUID.
 
 Supported optional components currently include StaticMesh, Material,
 DirectionalLight, Rotator, Camera, AudioSource, AudioListener, Script,
@@ -293,7 +298,7 @@ Capture, restoration, and equality comparison must explicitly support it.
 BeginMutation() does nothing outside Edit mode.
 
 When no pending snapshot exists, it captures the current Scene and
-selected Actor. Further begin calls retain that original snapshot.
+primary Actor UUID. Further begin calls retain that original snapshot.
 
 There is one pending boundary, not a stack or nesting counter.
 The first end call consumes it.
@@ -335,8 +340,9 @@ Redo performs the corresponding operation in the opposite direction.
 RestoreSnapshot() clears the destination Scene and reconstructs Actors
 using the recorded UUIDs.
 
-It restores supported components, hierarchy, Scene settings, the HUD
-selection, and the selected Actor.
+It restores supported components, hierarchy, Scene settings, and the HUD
+selection. The saved primary Actor becomes the sole selection. A
+snapshot without a primary Actor clears selection.
 
 Existing Actor pointers, references, and entity handles must not be reused
 after restoration. Resolve Actors again by UUID.
@@ -369,17 +375,13 @@ a successful save.
 
 ### History equality versus dirty equality
 
-History commit comparison includes the selected Actor UUID.
-Dirty-state comparison excludes selection.
+Changing only the Actor selection leaves undo history and Dirty
+unchanged, including within a mutation boundary.
 
-Consequently, a selection-only difference inside a mutation boundary can
-produce a history entry without marking Scene content dirty.
-
-Changing selection outside a mutation boundary does not automatically
-create a history entry.
-
-Dirty comparison includes Actor content and ordering, hierarchy, audio,
-physics and render settings, and the HUD selection.
+The history comparison includes Actor content and ordering, hierarchy,
+audio, physics and render settings, and the HUD selection. The dirty
+comparison checks Actor content and ordering, hierarchy, audio, physics
+and render settings against the clean baseline.
 
 Returning to content equal to the clean baseline can clear Dirty even
 when undo or redo entries remain.

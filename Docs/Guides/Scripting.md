@@ -5,15 +5,16 @@ using Quiet's bindings, testing callbacks, and diagnosing failures.
 
 ## Prerequisites
 
-Open an editable project and import a .lua file through
-[Assets](Assets.md).
-
-Add a Script component to an Actor using Inspector's + Add Component,
-then choose the imported asset in the Script field.
+Open an editable project and remain in Edit mode.
 
 ## First script
 
-Save this content in a Lua source file before importing it:
+In Assets, right-click the destination project folder and choose
+**New Lua Script...**. Name the file `Rotate.lua` and select **Create**.
+Use **Open Script** to open the file in your text editor. For an existing
+Lua file, use **Import Asset...**. See the [Assets guide](Assets.md).
+
+Replace the starter source with the following and save the file.
 
 ```lua
 local speed = Expose.Float("RotationSpeed", 45.0)
@@ -32,8 +33,9 @@ function OnDestroy()
 end
 ```
 
-Assign it to a visible Actor with TransformComponent and no rigid body
-for this exercise.
+Select a visible Actor with a Transform component and no rigid body.
+In the Inspector, use **+ Add Component → Script**, then choose
+`Rotate` in the Script field.
 
 RotationSpeed is degrees per second. Set its value under Exposed
 Properties, save the Scene, and enter Simulate with F6.

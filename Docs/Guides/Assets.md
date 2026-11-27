@@ -82,13 +82,34 @@ verify loading. Mesh import can register supported material textures
 from those locations. See the Imported material textures section in
 [Assets internals](../Systems/Assets.md) for how the importer tracks them.
 
+## Create a Lua script
+
+1. In Edit mode, right-click a project folder or the background of the
+   current folder in Assets.
+2. Choose **New Lua Script...** and enter a name such as `Rotate` or
+   `Rotate.lua`.
+3. Select **Create**.
+
+The Editor creates a `.lua` file with empty `OnCreate`, `OnUpdate`, and
+`OnDestroy` callbacks, registers it with a new UUID, and selects it in
+Assets. The script is available in the Inspector's Script picker.
+
+Choose a different name if the destination already contains a file of
+that name. If the path belongs to a stale registry entry, remove that
+entry or choose another name.
+
 ## Inspect and reimport
 
 Right-click an asset and select Inspect to view its details.
 
 Use Copy ID to copy the asset's UUID as text. The context menu also
-offers path copying and Reveal in File Manager. Open Script opens a
-script in the system's associated application.
+offers path copying and Reveal in File Manager.
+
+Use **Open Script**, **Open UI Document**, or **Open UI Stylesheet** to open
+the corresponding source file in the system's associated application.
+Double-clicking a script, UI document, or stylesheet opens it in both
+List and Browser views. On Windows, opening a UI source with no associated
+application offers the system **Open With** dialog.
 
 For an existing mesh, texture, or audio asset whose source changed,
 select Reimport.

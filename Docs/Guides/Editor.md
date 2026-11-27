@@ -15,7 +15,7 @@ Wait for project loading to complete before editing.
 | Panel | Purpose |
 | --- | --- |
 | Scene | Actor and folder hierarchy |
-| Inspector | Selected Actor properties and components |
+| Inspector | Actor properties, components, and selection summary |
 | Viewport | Scene viewing, selection, and transform gizmos |
 | Scene Settings | Scene-level rendering, physics, and audio settings |
 | Console | Engine messages and diagnostics |
@@ -30,12 +30,24 @@ Use View → Reset Layout to restore the default arrangement.
 3. Edit its Transform fields while in Edit mode.
 
 Viewport selection is also available by left-clicking a pickable mesh
-or displayed debug icon. Clicking empty space clears selection.
+or displayed debug icon. A viewport click selects a single Actor, and
+clicking empty space clears selection.
 
 Selection is suppressed during navigation capture, dragging assets,
 and gizmo interaction.
 
 An empty Actor has no rendered mesh, so select it through the hierarchy.
+
+## Select multiple Actors
+
+- Ctrl-click an Actor row in the Scene panel to add or remove it.
+- Click an Actor, then Shift-click another to select the range in
+  hierarchy order. The range includes Actor rows in expanded folders.
+
+The Inspector shows the selection count and the primary Actor. Press
+F to focus the primary Actor in the Viewport. Select a single Actor to
+edit its properties, drag its row, duplicate it, delete it, or use the
+transform gizmo.
 
 ## Create and modify Actors
 
@@ -269,6 +281,8 @@ Release the navigation mouse button to end capture.
 Losing window focus also ends navigation capture.
 
 Use the viewport camera-speed control to adjust movement speed.
+Open **Display** from the gear on the Viewport toolbar and toggle
+**Navigation Guide** to show or hide the camera-control hints.
 
 ## Transform gizmos
 
